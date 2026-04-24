@@ -1,0 +1,134 @@
+{
+	"nodeType": "BusinessScoreCard",
+	"id": "UUID1",
+	"title": "UUID1 Title",
+	"description": "UUID1 description",
+	"targetValue": 100,
+	"minimalValue": 0,
+	"unit": "%",
+	"historizedValues": [
+		{
+			"value": 100,
+			"date": "2026-04-23T18:25:43.511Z"
+		},
+		{
+			"value": 100,
+			"date": "2026-04-22T18:25:43.511Z"
+		}
+	],
+	"computed": true,
+	"weight": 1,
+	"childrenNodes": [
+		{
+			"nodeType": "BusinessScoreCard",
+			"id": "UUID2",
+			"title": "UUID2 Title",
+			"description": "UUID2 description",
+			"targetValue": 100,
+			"minimalValue": 0,
+			"unit": "%",
+			"historizedValues": [
+				{
+					"value": 100,
+					"date": "2026-04-23T18:25:43.511Z"
+				},
+				{
+					"value": 100,
+					"date": "2026-04-22T18:25:43.511Z"
+				}
+			],
+			"computed": false,
+			"weight": 1,
+			"childrenNodes": [
+				{
+					"nodeType": "BusinessScoreCard",
+					"id": "UUID5",
+					"title": "UUID5 Title",
+					"description": "UUID5 description",
+					"targetValue": 100,
+					"minimalValue": 0,
+					"unit": "%",
+					"historizedValues": [
+						{
+							"value": 100,
+							"date": "2026-04-23T18:25:43.511Z"
+						},
+						{
+							"value": 100,
+							"date": "2026-04-22T18:25:43.511Z"
+						}
+					],
+					"computed": false,
+					"weight": 1,
+					"childrenNodes": []
+				},
+				{
+					"nodeType": "BusinessScoreCard",
+					"id": "UUID6",
+					"title": "UUID6 Title",
+					"description": "UUID6 description",
+					"targetValue": 100,
+					"minimalValue": 0,
+					"unit": "%",
+					"historizedValues": [
+						{
+							"value": 100,
+							"date": "2026-04-23T18:25:43.511Z"
+						},
+						{
+							"value": 100,
+							"date": "2026-04-22T18:25:43.511Z"
+						}
+					],
+					"computed": false,
+					"weight": 1,
+					"childrenNodes": []
+				}
+			]
+		},
+		{
+			"nodeType": "BusinessScoreCard",
+			"id": "UUID3",
+			"title": "UUID3 Title",
+			"description": "UUID3 description",
+			"targetValue": 100,
+			"minimalValue": 0,
+			"unit": "%",
+			"historizedValues": [
+				{
+					"value": 0,
+					"date": "2026-04-23T18:25:43.511Z"
+				},
+				{
+					"value": 0,
+					"date": "2026-04-22T18:25:43.511Z"
+				}
+			],
+			"computed": false,
+			"weight": 1,
+			"childrenNodes": []
+		},
+		{
+			"nodeType": "BusinessScoreCard",
+			"id": "UUID4",
+			"title": "UUID4 Title",
+			"description": "UUID4 description",
+			"targetValue": 100,
+			"minimalValue": 0,
+			"unit": "%",
+			"historizedValues": [
+				{
+					"value": 50,
+					"date": "2026-04-23T18:25:43.511Z"
+				},
+				{
+					"value": 50,
+					"date": "2026-04-22T18:25:43.511Z"
+				}
+			],
+			"computed": false,
+			"weight": 1,
+			"childrenNodes": []
+		}
+	]
+}

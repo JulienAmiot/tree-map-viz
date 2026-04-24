@@ -1,0 +1,349 @@
+/* Fluid layout: wall displays, tablets, phones, safe areas */
+:root {
+  color-scheme: dark;
+  --bg: #0c0f14;
+  --panel: #151a22;
+  --text: #e8ecf4;
+  --muted: #8b95a8;
+  --accent: #5b8cff;
+  --ring: color-mix(in srgb, var(--accent) 50%, transparent);
+  --space: clamp(0.75rem, 1.2vw, 1.5rem);
+  --radius: clamp(10px, 1.2vw, 20px);
+  --font: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: max(var(--space), env(safe-area-inset-top))
+    max(var(--space), env(safe-area-inset-right))
+    max(calc(var(--space) * 1.5), env(safe-area-inset-bottom))
+    max(var(--space), env(safe-area-inset-left));
+  gap: var(--space);
+}
+
+.app-header h1 {
+  font-size: clamp(1.35rem, 2.4vw, 2.1rem);
+  font-weight: 600;
+  margin: 0 0 0.4rem 0;
+}
+
+.app-header p {
+  margin: 0;
+  color: var(--muted);
+  max-width: 64ch;
+  font-size: clamp(0.88rem, 1.1vw, 1rem);
+}
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Tree */
+.tree-error {
+  color: #f99;
+}
+
+.tree-screen {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2.5vw, 2.25rem);
+  min-height: 0;
+  flex: 1;
+}
+
+.tree-screen__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.tree-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.5rem 1.1rem 0.5rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--text) 20%, transparent);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: clamp(0.95rem, 1.1vw, 1.1rem);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.tree-back__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.tree-back:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--panel) 85%, var(--accent));
+}
+
+.tree-back:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Single card: focused parent + its children in the same surface (no outer wrapper) */
+.encap {
+  --encap-drill: 0.48s;
+  --encap-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  max-width: min(1200px, 100%);
+  margin: 0 auto;
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--text) 10%);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: 0 12px 48px color-mix(in srgb, #000 50%, transparent);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.encap[data-busy] {
+  pointer-events: none;
+  user-select: none;
+}
+
+.encap--leave {
+  opacity: 0.38;
+  transform: scale(0.985) translateY(6px);
+  box-shadow: 0 4px 20px color-mix(in srgb, #000 35%, transparent);
+}
+
+.encap__head {
+  max-height: 32rem;
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(0.4rem, 0.8vw, 0.5rem) clamp(0.65rem, 1.2vw, 0.85rem) 0;
+  transition: max-height 0.48s var(--encap-ease), min-height 0.48s var(--encap-ease), opacity 0.36s
+    ease, padding 0.36s ease, margin 0.36s ease;
+}
+
+.encap--drill .encap__head {
+  max-height: 0;
+  min-height: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  pointer-events: none;
+}
+
+/* Nest lives inside the same border as the head */
+.encap__nest {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, clamp(220px, 32vw, 400px)), 1fr)
+  );
+  align-items: start;
+  align-content: start;
+  gap: clamp(0.9rem, 1.5vw, 1.4rem);
+  padding: 0 clamp(0.65rem, 1.1vw, 0.9rem) clamp(0.85rem, 1.2vw, 1rem);
+  transition: gap 0.4s var(--encap-ease), padding 0.35s ease;
+}
+
+.encap--with-nest:not(.encap--drill) .encap__head {
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
+  margin: 0 clamp(0.25rem, 0.4vw, 0.4rem) 0.15rem;
+}
+
+.encap--drill .encap__nest {
+  gap: 0.25rem;
+  padding-top: clamp(0.4rem, 0.6vw, 0.5rem);
+}
+
+/* Children not chosen: fold away while the chosen row grows to former parent size */
+.encap--drill .encap__nest .node-card.node-card--child:not(.node-card--picking) {
+  overflow: hidden;
+  min-height: 0 !important;
+  max-height: 0;
+  margin: 0;
+  padding-block: 0;
+  border-width: 0;
+  opacity: 0;
+  transform: scale(0.96) translateY(0.2rem);
+  pointer-events: none;
+  transition: min-height 0.38s var(--encap-ease), max-height 0.4s var(--encap-ease), opacity 0.32s
+      ease, transform 0.32s ease, margin 0.32s ease, padding 0.32s ease, border-width 0.2s;
+}
+
+/* Selected child expands into the “hero” band (was parent) */
+.encap--drill .encap__nest .node-card--picking {
+  min-height: clamp(140px, 18vh, 280px);
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--text) 10%);
+  box-shadow: 0 12px 50px color-mix(in srgb, #000 50%, transparent);
+  transform: scale(1) translateY(0);
+  transition: min-height var(--encap-drill) var(--encap-ease), font-size 0.45s var(--encap-ease),
+    box-shadow 0.45s ease, border-color 0.4s ease, padding 0.45s var(--encap-ease), transform
+      0.45s var(--encap-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .encap,
+  .encap__head,
+  .encap__nest,
+  .encap--drill .encap__nest .node-card.node-card--child {
+    transition-duration: 0.01s !important;
+  }
+
+  .encap--leave {
+    opacity: 0.6;
+    transform: none;
+  }
+}
+
+/* Cards */
+.node-card {
+  width: 100%;
+  margin: 0;
+  text-align: left;
+  display: block;
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: clamp(1rem, 1.8vw, 1.75rem);
+  text-decoration: none;
+  font: inherit;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+button.node-card {
+  cursor: pointer;
+}
+
+.node-card--center {
+  min-height: clamp(140px, 18vh, 280px);
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--text) 10%);
+  box-shadow: 0 12px 50px color-mix(in srgb, #000 50%, transparent);
+}
+
+.node-card--child {
+  font-size: clamp(0.92rem, 1.15vw, 1.05rem);
+}
+
+.node-card--interactive:hover,
+.node-card--interactive:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+  transform: translateY(-1px);
+}
+
+.node-card--interactive:active {
+  transform: translateY(0);
+}
+
+.node-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.node-card__title {
+  font-size: clamp(1.05em, 1.6vw, 1.3em);
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.node-card__chip {
+  font-size: 0.72em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: #dbe5ff;
+}
+
+.node-card__desc {
+  margin: 0 0 0.6rem 0;
+  color: var(--muted);
+  font-size: 0.92em;
+  max-width: 64ch;
+}
+
+.node-card__figure {
+  font-size: clamp(1.6em, 3.2vw, 2.4em);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  margin: 0.2rem 0 0.5rem 0;
+}
+
+.node-card__meta {
+  margin: 0.25rem 0 0 0;
+  color: var(--muted);
+  font-size: 0.82em;
+}
+
+.node-card__extra {
+  list-style: none;
+  padding: 0.5rem 0 0 0;
+  margin: 0.75rem 0 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem 0.75rem;
+  border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  font-size: 0.82em;
+  color: var(--muted);
+}
+
+.node-card__extra li span {
+  display: block;
+  text-transform: uppercase;
+  font-size: 0.7em;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 0.15rem;
+}
+
+@media (max-width: 520px) {
+  .node-card__extra {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 1200px) and (min-height: 800px) {
+  .app-shell {
+    padding: clamp(1.25rem, 1.4vw, 1.8rem) clamp(1.5rem, 2.5vw, 3.5rem);
+  }
+}

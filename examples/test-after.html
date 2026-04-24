@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+			.parent {
+			  display:flex;
+			  flex-wrap:wrap;
+			  width:100vw;
+			  height:100vw;
+			}
+
+			.child {
+			  background-color:white;
+			  border:1px solid black;
+			  min-width:30%;
+			  flex:1 1 auto;
+			  }
+		</style>
+	</head>
+	<body>
+		<div class='parent' id='UUID2'>
+			<h2>UUID2 Title</h2>
+			<p>UUID2 Description</p>
+			<span class='value'>100 %</span> <span class='date'>Updated 2026-04-23T18:25:43.511Z</span>
+			<div class='child' id='UUID5'>
+				<h3>UUID5 Title</h3>
+				<span class='value'>0 %</span>
+			</div>
+			<div class='child' id='UUID6'>
+				<h3>UUID6 Title</h3>
+				<span class='value'>50 %</span>
+			</div>
+			<div id='buttonAddChildNode'>
+			</div>
+		</div>
+	</body>
+</html>
