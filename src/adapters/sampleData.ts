@@ -1,50 +1,58 @@
-import { BusinessScoreCard } from "../domain/BusinessScoreCard.js";
-import { Node } from "../domain/Node.js";
+import { BusinessScoreCard } from "../domain/nodes/BusinessScoreCard.js";
+import { BusinessScoreCardNode } from "../domain/nodes/BusinessScoreCardNode.js";
+import { TextNode } from "../domain/nodes/TextNode.js";
+import { Description } from "../domain/values/Description.js";
+import { NodeIdentity } from "../domain/values/NodeIdentity.js";
+import { Objective } from "../domain/values/Objective.js";
+import { TimestampedValue } from "../domain/values/TimestampedValue.js";
+import { Title } from "../domain/values/Title.js";
+import { Unit } from "../domain/values/Unit.js";
+import { Weight } from "../domain/values/Weight.js";
 
-/** Demo tree for development and tests; replace with a real adapter behind a port when loading from an API. */
-export function buildSampleTree(): Node {
-  const now = new Date("2026-04-23T12:00:00Z");
+function makeIdentity(title: string, description: string): NodeIdentity {
+  return NodeIdentity.of(Title.of(title), Description.of(description));
+}
 
-  const deep = new BusinessScoreCard(
-    "deep-1",
-    "North region",
-    "Trailing Q",
-    72,
-    "%",
-    now,
-    new Date("2026-05-01"),
-    50,
-    90,
-    [],
+/**
+ * Demo tree for development (Option B model).
+ * Replace with a real adapter behind a port when loading from an API.
+ */
+export function buildSampleTree(): TextNode {
+  const targetDate = new Date("2026-12-31T00:00:00Z");
+  const t1 = new Date("2026-04-22T18:25:43.511Z");
+  const t2 = new Date("2026-04-23T18:25:43.511Z");
+
+  const root = new TextNode("org", makeIdentity("Organization", "Top"), Weight.of(2));
+
+  const salesCard = BusinessScoreCard.of(
+    Unit.percent(),
+    Objective.of(95, 110, targetDate),
+    [TimestampedValue.of(95, t1), TimestampedValue.of(104, t2)],
   );
-
-  const sales = new BusinessScoreCard(
+  const sales = new BusinessScoreCardNode(
     "sales",
-    "Sales",
-    "Revenue vs plan",
-    104,
-    "%",
-    now,
-    new Date("2026-04-30"),
-    95,
-    110,
-    [deep],
+    makeIdentity("Sales", "Revenue vs plan"),
+    Weight.of(3),
+    salesCard,
+    false,
+    true,
   );
+  root.attach(sales);
 
-  const ops = new Node("ops", "Operations", "Cost and throughput", 98, "%", now, []);
-
-  const product = new Node("product", "Product", "Discovery and delivery", null, "", now, [
-    new Node("p-backlog", "Backlog health", "Ready stories", 42, "pts", now, []),
-    new Node("p-nps", "NPS", "Last 90 days", 38, "", now, []),
-  ]);
-
-  return new Node(
-    "org",
-    "Organization",
-    "Tap a branch to zoom into that node and its children.",
-    null,
-    "",
-    now,
-    [sales, ops, product],
+  const opsCard = BusinessScoreCard.of(
+    Unit.percent(),
+    Objective.of(85, 100, targetDate),
+    [TimestampedValue.of(98, t2)],
   );
+  const ops = new BusinessScoreCardNode(
+    "ops",
+    makeIdentity("Operations", "Cost and throughput"),
+    Weight.of(1),
+    opsCard,
+    false,
+    true,
+  );
+  root.attach(ops);
+
+  return root;
 }

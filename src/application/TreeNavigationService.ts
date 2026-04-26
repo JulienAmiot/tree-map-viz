@@ -1,4 +1,4 @@
-import type { Node } from "../domain/Node.js";
+import type { TreeNode } from "../domain/nodes/TreeNode.js";
 import { findNodeById, findParentOf } from "../domain/treeQueries.js";
 import type { FocusedTreeView, TreeNavigationPort } from "./ports/TreeNavigationPort.js";
 
@@ -6,15 +6,15 @@ import type { FocusedTreeView, TreeNavigationPort } from "./ports/TreeNavigation
  * Application service: orchestrates focus changes using domain queries (single responsibility).
  */
 export class TreeNavigationService implements TreeNavigationPort {
-  private root: Node;
+  private root: TreeNode<unknown>;
   private focusedId: string;
 
-  constructor(root: Node, initialFocusedId?: string) {
+  constructor(root: TreeNode<unknown>, initialFocusedId?: string) {
     this.root = root;
     this.focusedId = initialFocusedId ?? root.id;
   }
 
-  getRoot(): Node {
+  getRoot(): TreeNode<unknown> {
     return this.root;
   }
 
@@ -29,7 +29,7 @@ export class TreeNavigationService implements TreeNavigationPort {
     }
     return {
       center,
-      children: [...center.children],
+      childrenNodes: [...center.children],
     };
   }
 

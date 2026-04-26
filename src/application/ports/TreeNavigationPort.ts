@@ -1,14 +1,14 @@
-import type { Node } from "../../domain/Node.js";
+import type { TreeNode } from "../../domain/nodes/TreeNode.js";
 
-/** Read model for the focused “zoom” view: center node and its direct children. */
+/** Read model for the focused "zoom" view: center node and its direct children. */
 export type FocusedTreeView = {
-  center: Node;
-  children: Node[];
+  center: TreeNode<unknown>;
+  childrenNodes: readonly TreeNode<unknown>[];
 };
 
 /** Port: tree navigation without UI or storage details (hexagonal boundary). */
 export interface TreeNavigationPort {
-  getRoot(): Node;
+  getRoot(): TreeNode<unknown>;
   getFocusedId(): string;
   getFocusedView(): FocusedTreeView | null;
   /** Move focus to a direct child of the current focus. */

@@ -17,6 +17,7 @@
 		}
 	],
 	"computed": true,
+	"eligibleForParentComputation": false,
 	"weight": 1,
 	"childrenNodes": [
 		{
@@ -38,6 +39,7 @@
 				}
 			],
 			"computed": false,
+			"eligibleForParentComputation": true,
 			"weight": 1,
 			"childrenNodes": [
 				{
@@ -59,6 +61,7 @@
 						}
 					],
 					"computed": false,
+					"eligibleForParentComputation": true,
 					"weight": 1,
 					"childrenNodes": []
 				},
@@ -81,6 +84,7 @@
 						}
 					],
 					"computed": false,
+					"eligibleForParentComputation": true,
 					"weight": 1,
 					"childrenNodes": []
 				}
@@ -105,6 +109,7 @@
 				}
 			],
 			"computed": false,
+			"eligibleForParentComputation": true,
 			"weight": 1,
 			"childrenNodes": []
 		},
@@ -127,6 +132,7 @@
 				}
 			],
 			"computed": false,
+			"eligibleForParentComputation": true,
 			"weight": 1,
 			"childrenNodes": []
 		}

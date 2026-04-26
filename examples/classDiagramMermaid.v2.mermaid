@@ -1,0 +1,95 @@
+classDiagram
+    direction LR
+
+    %% --- Value objects (no primitive obsession) ---
+    class Title {
+      +String value
+    }
+    class Description {
+      +String value
+    }
+    class Weight {
+      +Number value
+    }
+    class Unit {
+      +String symbol
+    }
+    class NodeIdentity {
+      +Title title
+      +Description description
+    }
+
+    %% --- Historization ---
+    class TimestampedValue~T~ {
+      +Date date
+      +T value
+    }
+    class Historizable~T~ {
+      <<interface>>
+      +Array~TimestampedValue~T~~ history()
+    }
+
+    %% --- Objective ---
+    class Objective~T~ {
+      +T initialValue
+      +T targetValue
+      +Date targetDate
+    }
+    class HasObjective~T~ {
+      <<interface>>
+      +Objective~T~ objective()
+    }
+
+    %% --- Aggregation capability ---
+    %% TextNode does NOT implement this, so it is excluded from parent
+    %% computation by the type system, not by a runtime flag.
+    class ContributesToParent~T~ {
+      <<interface>>
+      +Boolean isEligible()
+      +TimestampedValue~T~ contribution()
+    }
+
+    %% --- Tree base (abstract, generic) ---
+    class TreeNode~T~ {
+      <<abstract>>
+      +UUID id
+      +NodeIdentity identity
+      +Weight weight
+      +TreeNode~T~ parent
+      +Array~TreeNode~T~~ children
+      +T currentValue()
+    }
+
+    %% --- Concrete node kinds: SIBLINGS, no chain between them ---
+    class TextNode {
+    }
+    class BusinessScoreCardNode~T~ {
+      +BusinessScoreCard~T~ scoreCard
+      +Boolean computed
+      +Boolean eligibleForParentComputation
+    }
+
+    %% --- Score card aggregate (used by BusinessScoreCardNode) ---
+    class BusinessScoreCard~T~ {
+      +Unit unit
+      +Objective~T~ objective
+      +Array~TimestampedValue~T~~ historizedValues
+    }
+
+    %% --- Composition ---
+    NodeIdentity *-- Title
+    NodeIdentity *-- Description
+    TreeNode~T~ *-- NodeIdentity
+    TreeNode~T~ *-- Weight
+    BusinessScoreCard~T~ *-- Objective~T~
+    BusinessScoreCard~T~ *-- Unit
+    BusinessScoreCard~T~ o-- "0..*" TimestampedValue~T~
+    BusinessScoreCardNode~T~ *-- BusinessScoreCard~T~
+
+    %% --- Inheritance / realization ---
+    TreeNode~T~ <|-- TextNode
+    TreeNode~T~ <|-- BusinessScoreCardNode~T~
+    BusinessScoreCard~T~ ..|> Historizable~T~
+    BusinessScoreCardNode~T~ ..|> Historizable~T~
+    BusinessScoreCardNode~T~ ..|> HasObjective~T~
+    BusinessScoreCardNode~T~ ..|> ContributesToParent~T~

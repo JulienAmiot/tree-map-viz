@@ -1,0 +1,35 @@
+classDiagram
+    class TreeNode~T~ <<abstract>> {
+        +uuid id
+        +String nodeType
+        +~T~ getValue()
+        +~T~
+        +TreeNode parent
+        +TreeNode[] children
+    }
+    class TimestampedValue~T~ {
+        +Date date
+        +~T~ getValue()
+    }
+    class Historizable~T~ <<interface>> {
+        +Array~TimestampedValue~T~~ history()
+    }
+    class Objective~T~ {
+        +~T~ targetValue
+        +~T~ initialValue
+        +Date targetDate
+    }
+    class BusinessScoreCard~T~ {
+        +Objective~T~ objective
+    }
+    class BusinessScoreCardNode~T~ {
+        +BusinessScoreCard~T~ businessScoreCard
+    }
+    Node <|-- TreeNode
+    Historizable~T~ <|.. BusinessScoreCard~T~
+    Historizable~T~ ..o TimestampedValue~T~
+    BusinessScoreCardNode~T~ ..> BusinessScoreCard~T~
+    BusinessScoreCard~T~ ..> Objective~T~
+    TreeNode <|-- TextNode
+    TextNode <|-- BusinessScoreCardNode~T~
+    
