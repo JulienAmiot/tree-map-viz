@@ -57,4 +57,13 @@ export class TreeNavigationService implements TreeNavigationPort {
     this.focusedId = parent.id;
     return { ok: true };
   }
+
+  focusByUuid(uuid: string): { ok: true } | { ok: false; reason: string } {
+    const target = findNodeById(this.root, uuid);
+    if (!target) {
+      return { ok: false, reason: "Node not found." };
+    }
+    this.focusedId = target.id;
+    return { ok: true };
+  }
 }

@@ -15,4 +15,9 @@ export interface TreeNavigationPort {
   focusChild(childId: string): { ok: true } | { ok: false; reason: string };
   /** Move focus to parent of current focus, if any. */
   focusParent(): { ok: true } | { ok: false; reason: string };
+  /**
+   * Move focus to any node addressable by uuid in the loaded tree.
+   * Used by deep-link routing (`#/b/<boardId>/n/<focusNodeUuid>`) and breadcrumb taps.
+   */
+  focusByUuid(uuid: string): { ok: true } | { ok: false; reason: string };
 }

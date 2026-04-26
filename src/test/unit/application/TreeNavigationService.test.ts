@@ -68,4 +68,42 @@ describe("TreeNavigationService", () => {
     const svc = new TreeNavigationService(root);
     expect(svc.focusParent().ok).toBe(false);
   });
+
+  describe("focusByUuid", () => {
+    it("focuses the root by its uuid", () => {
+      const root = demoTree();
+      const svc = new TreeNavigationService(root);
+      svc.focusChild("n2");
+      const r = svc.focusByUuid("root");
+      expect(r).toEqual({ ok: true });
+      expect(svc.getFocusedId()).toBe("root");
+    });
+
+    it("focuses a deeply-nested node by uuid (skipping intermediate parents)", () => {
+      const root = demoTree();
+      const svc = new TreeNavigationService(root);
+      const r = svc.focusByUuid("b3");
+      expect(r).toEqual({ ok: true });
+      expect(svc.getFocusedView()?.center.id).toBe("b3");
+    });
+
+    it("rejects unknown uuid and leaves focus untouched", () => {
+      const root = demoTree();
+      const svc = new TreeNavigationService(root);
+      svc.focusChild("n2");
+      const before = svc.getFocusedId();
+      const r = svc.focusByUuid("does-not-exist");
+      expect(r.ok).toBe(false);
+      expect(svc.getFocusedId()).toBe(before);
+    });
+
+    it("focuses an already-focused node as a no-op success", () => {
+      const root = demoTree();
+      const svc = new TreeNavigationService(root);
+      svc.focusChild("n2");
+      const r = svc.focusByUuid("n2");
+      expect(r).toEqual({ ok: true });
+      expect(svc.getFocusedId()).toBe("n2");
+    });
+  });
 });
