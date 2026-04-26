@@ -8,6 +8,7 @@ export type {
   BoardCollectionSnapshot,
 } from "./ports/BoardCollectionRepository.js";
 export type { IdGenerator } from "./ports/IdGenerator.js";
+export type { Router, RouteState } from "./ports/Router.js";
 export type { TreeCodec } from "./ports/TreeCodec.js";
 export type { FocusedTreeView, TreeNavigationPort } from "./ports/TreeNavigationPort.js";
 export { TreeNavigationService } from "./TreeNavigationService.js";
