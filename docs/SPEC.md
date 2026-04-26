@@ -50,6 +50,8 @@ Canonical diagram: `examples/classDiagramMermaid.v2.mermaid`.
 - `Objective<T>` — `initialValue: T`, `targetValue: T`, `targetDate: Date`.
 - `TimestampedValue<T>` — `date: Date`, `value: T`.
 
+> **As-built convention (Phase 2)**: `historizedValues` is canonically ordered **ascending** (oldest → newest). The fixture `examples/test.json` is reordered to match. See §17.2.
+
 ### Capability interfaces
 
 - `Historizable<T>` → `history(): TimestampedValue<T>[]`
@@ -76,6 +78,8 @@ The aggregation is **never written** to the parent's `historizedValues` — `his
 ### JSON wire format
 
 The flat shape from `examples/test.json` is the persistence contract. The decoder folds `targetValue` / `minimalValue` / `unit` into an `Objective<T>` + `Unit`, and `historizedValues` feeds `BusinessScoreCard<T>.historizedValues`.
+
+> **As-built decisions (Phase 2)**: an objective with **no deadline** omits `targetDate` on the wire; the codec round-trips this through a sentinel ISO date `9999-12-31T23:59:59.999Z` on the domain side. Decode errors carry an RFC-6901 JSON pointer (e.g. `/childrenNodes/2/historizedValues/0/date`). See §17.2.
 
 ## 4. Layout & UI rules
 
@@ -182,6 +186,8 @@ Triggered by activating the "+" tile. Never drills.
 - A **board collection**: an array of boards, each with `{ id, name, tree }` where `tree` follows the JSON shape in `examples/test.json`.
 - A **`currentBoardId`** pointer.
 
+> **As-built (Phase 4)**: stored under a single versioned key `tree-graph-viz/board-collection/v1` with envelope `{ v:1, currentBoardId, boards:[…] }`. Quota errors surface as a typed `StorageFullError`. See §17.4.
+
 ### Import / export
 
 - **Export**: serialize the current board (or all boards — TBD) to a `.json` file the user can download.
@@ -205,6 +211,8 @@ Hash-based, no router library:
 - Drilling / back / breadcrumb-click → `pushState`. Browser back/forward works naturally.
 - Unknown UUID → fall back to the board's root and `replaceState`.
 - Copying the URL = sharing the current snapshot.
+
+> **As-built (Phase 4)**: implemented by `HashRouter` against a `Router` port (`parse / build / current / push / replace / onChange` with unsubscribe). Strict regex `^#/b/([^/]+)/n/([^/]+)$`; non-matching shapes return `null`. See §17.4.
 
 ## 10. Out of scope (this iteration)
 
@@ -377,6 +385,8 @@ Every **scenario** carries (after first XRay round-trip; placeholder before):
 `@HE-2570` links the Test issue to the epic. `@HE-????` is the Test's own key, round-tripped into the file after first import so re-imports update existing tests instead of creating duplicates. `@component:*` becomes a Jira label.
 
 ### 12.5 Implementation order
+
+> **As-built progress lives in §17 (Implementation log).** §12.5 below is the original plan; §17 records which phases landed, the commits, the test deltas, and any decisions taken during implementation that this section did not pin down.
 
 | Phase | Scope | Done when |
 |---|---|---|
@@ -775,14 +785,113 @@ Two flat-config subtleties worth noting:
 
 ---
 
+## 17. Implementation log (as-built)
+
+This section records what has actually been built, on top of the plan in §12.5. §1–§16 capture the *intent*; §17 captures the *as-built* state, including decisions taken during implementation that earlier sections did not pin down. **When resuming, read §17.0 first to know where the codebase is at.**
+
+### 17.0 Status overview
+
+| Phase | Commit | Test count | Status | One-line note |
+|---|---|---|---|---|
+| **0 + 1** | `e1fcd91` | 0 → 198 | DONE | Phase 0 deps/skeleton + Phase 1 Option B domain landed atomically. |
+| **2** | `e2f4ef3` | 198 → 213 | DONE | JSON codec; `examples/test.json` reordered to ascending history. |
+| **3** | `3335610` | 213 → 249 | DONE | 4 application services + 1 new port (`IdGenerator`). |
+| **4** | `d3a8690` | 249 → 279 | DONE | `LocalStorageBoardCollectionRepository` + `HashRouter` + reusable contract test. |
+| **5–11** | — | — | TODO | Playwright skeleton, Lit views, shell, modal, animations, wiring, kiosk smoke. |
+
+Verification on each landed commit: `npm test` green, `npm run lint` (`tsc --noEmit`) clean, `npm run lint:rules` (ESLint layered rules) clean.
+
+### 17.1 Phase 0 + Phase 1 — Lit-ready infra + Option B domain (`e1fcd91`)
+
+Built end-to-end per §3 / §12.1 / §16. Decisions and concrete artefacts beyond what those sections pinned down:
+
+- **Test files participate in type-checking.** `tsconfig.json` was extended to include `src/**/*.test.ts` (and `src/test/**/*.ts`). Required so the compile-time assertion in `TextNode.test.ts` (`@ts-expect-error TextNode does NOT implement ContributesToParent`) is actually checked by `tsc --noEmit`.
+- **ESLint layered rules also gate the test mirror tree** (`src/test/unit/<layer>/`) — already implied by §14.3 / §16.7, confirmed in implementation.
+- **`treemapSquarify` 1/12 minimum-tile-area floor** — a tile that would render below 1/12 of its parent's area is clamped up to 1/12. Implemented inside the existing pure squarify; no new dependency. 9 unit tests cover it.
+- **Domain barrel `src/domain/index.ts` is curated (Option B)**: only re-exports the new node tree (TreeNode / TextNode / BusinessScoreCardNode / BusinessScoreCard / values / capabilities / aggregation / capacity / treeQueries / treemapSquarify). Legacy `Node.ts`, `BusinessScoreCard.ts` (root-level), and `guards.ts` were deleted; nothing else imports them.
+
+### 17.2 Phase 2 — JSON codec + test.json alignment (`e2f4ef3`)
+
+Implemented `src/application/jsonCodec.ts` and `JsonDecodeError`. Decisions:
+
+- **Open-ended `targetDate` sentinel.** The wire schema in `examples/test.json` omits `targetDate` for objectives that have no deadline; the domain mandates `Objective.targetDate: Date`. Resolution: a sentinel ISO date `9999-12-31T23:59:59.999Z`. Decode synthesises the sentinel when the field is absent; encode omits the field when the date equals the sentinel. Round-trip on the fixture is structurally lossless.
+- **Canonical history order is ascending** (oldest → newest). The fixture `examples/test.json` was reordered from descending to ascending so domain invariants line up with the wire format. All 15 codec tests + the round-trip tests assume ascending.
+- **Decode errors carry an RFC-6901 JSON pointer** in their message, e.g. `/childrenNodes/2/historizedValues/0/date`. Surfaces a precise location for user-facing error UI later.
+
+### 17.3 Phase 3 — Application services (`3335610`)
+
+Four services + their ports landed. New port added beyond §12.1's listed set:
+
+- **`application/ports/IdGenerator.ts`** — callable type alias `() => string`. Production binds `crypto.randomUUID`; tests inject deterministic stubs (e.g. counter-based). Lives at the application layer because it is a domain-side concern (every new node needs an id), but generation is a runtime capability.
+
+Service-specific contracts and ordering:
+
+- **`TreeNavigationService.focusByUuid(uuid)`** — tree-wide focus addressed by uuid; backs deep-link routing (§9) and breadcrumb taps. Returns `{ ok: false, reason }` on missing uuid. Coexists with the original index-path-based `focusBy(...)` (kept for the local "drill" gesture).
+- **`BoardCollectionService`** exposes a static async factory `BoardCollectionService.create(repo, idGen)` (async because the repo load is async). Mutations (`switchTo` / `rename` / `createBoard`) persist atomically through the repo port and only mutate in-memory state on success. `list()` returns a defensive copy.
+- **`AddChildService`** uses a `Persister = () => Promise<void>` callable injected at construction. Composition root binds it to a whole-snapshot save through `BoardCollectionRepository`, so `AddChildService` never knows about boards. **Ordering is strict**: capacity check (§4) → payload validation → attach → persist; if persist throws, the freshly-attached child is detached so the in-memory tree stays consistent with what was actually persisted. 11 tests cover the cap-then-validate-then-attach-then-persist + rollback path.
+- **`ImportExportService`** is decoupled from `BoardCollectionService` via two callables — `getCurrentTree: () => TreeNode` and `replaceCurrentTree: (TreeNode) => Promise<void>` — so the service still depends only on `domain/**` + its own port (`TreeCodec`). **Validate before replace**: a decode error never invokes the replace callback; the import is atomic (all-or-nothing).
+
+Deferred from §12.1's port list:
+
+- **`application/ports/Router.ts`** — created in Phase 4 instead, since no Phase 3 service consumes it.
+- **`application/ports/ImportExportFile.ts`** — not created. The file picker / Blob download is a UI concern (`<input type="file">`, `URL.createObjectURL`), so `ImportExportService` operates on plain strings and the UI adapter wraps file IO around it. If future cross-platform targets need a port, it can be added without changing the service.
+
+### 17.4 Phase 4 — Non-UI adapters (`d3a8690`)
+
+Two adapters + a reusable contract-test pattern landed.
+
+**`application/ports/Router.ts`** (created here):
+
+- `RouteState = { boardId: string; focusNodeUuid: string }`.
+- Methods: `parse(href) / build(state) / current() / push(state) / replace(state) / onChange(handler)`.
+- `onChange` returns an unsubscribe closure (idempotent — calling twice is a no-op).
+- `current()` and `parse()` return `null` for any non-matching hash (so the composition root can fall back to a default route).
+
+**`src/adapters/persistence/LocalStorageBoardCollectionRepository.ts`**:
+
+- **Storage key**: `tree-graph-viz/board-collection/v1` (versioned; future migrations bump the suffix).
+- **Wire envelope** (single key): `{ v: 1, currentBoardId: string, boards: [{ id, name, tree: <jsonCodec wire shape> }] }`. Each `tree` is the per-tree JSON object produced by `jsonCodec`; the parse/stringify dance at the codec boundary keeps `jsonCodec`'s string↔tree contract untouched.
+- **Seeding when storage is empty**: builds a default snapshot via injectable `seed?: () => BoardCollectionSnapshot` (default seed = one board "Default Board" containing a single empty `TextNode` root) and persists it before returning. Subsequent loads do **not** re-seed.
+- **`StorageFullError`**: typed translation of `QuotaExceededError`. Detection covers WHATWG `name === "QuotaExceededError"`, legacy WebKit `code === 22`, Firefox `NS_ERROR_DOM_QUOTA_REACHED`, and IE 1014 — so the same error class surfaces regardless of browser.
+- **Storage injection**: takes a `Storage` interface (jsdom's `localStorage` in dev, in-memory fakes in tests). The adapter never references `window` or globals directly.
+
+**`src/adapters/routing/HashRouter.ts`**:
+
+- Strict regex `^#/b/([^/]+)/n/([^/]+)$` — non-matching shapes return `null` from `parse`, `current`, and the `onChange` handler payload. Other hash shapes (e.g. `#anchor`) are ignored, not coerced.
+- **`RouterEnv` interface** (a `Pick<Window, "location" | "history" | "addEventListener" | "removeEventListener">`) is injected, so the same impl runs against real `window` in production and a stub in tests. No `globalThis` reach-through.
+
+**Reusable contract-test pattern**:
+
+- `src/test/unit/adapters/persistence/boardCollectionRepositoryContract.ts` — intentionally **no `.test.ts` suffix** so vitest does not auto-discover it. Exports `runBoardCollectionRepositoryContract(name, factory)` that adapter test files mount in their own `*.test.ts`.
+- 7 contract assertions: non-empty load on a fresh repo, save→load round-trip, multi-board ordering preserved, `BusinessScoreCardNode` field preservation, second-save overwrites, idempotent reads, current-board pointer stability.
+- The LocalStorage adapter mounts the contract + 7 adapter-specific tests (custom seed, custom key, error propagation on serialisation/quota, etc.) for 14 total.
+- **Convention**: any future adapter port (e.g. `Router` contract, `TreeCodec` contract) should follow the same `<port>Contract.ts` filename pattern in `src/test/unit/adapters/<port-folder>/`.
+
+### 17.5 What's testable today
+
+- `npm test` runs **279** unit tests (~6 s on a typical dev box).
+- `npm run lint` (`tsc --noEmit`) clean.
+- `npm run lint:rules` (ESLint layered rules) clean — no domain → application/adapters/browser-API leak, no application → adapters leak, no `lit` outside `adapters/ui`.
+- `npm run dev` launches Vite but renders blank — the `<tree-graph-screen>` element referenced by `index.html` is Phase 7 work.
+- `npm run test:e2e` has only the `playwright.config.ts` skeleton — no features/steps yet (Phase 5).
+
+### 17.6 Open follow-ups for Phase 5+
+
+- **Composition root** in `src/main.ts` (~30 lines per §14.5), wiring: `idGen → BoardCollectionService.create(repo, idGen) → TreeNavigationService → AddChildService → ImportExportService → HashRouter → testBridge`.
+- **`src/adapters/testBridge.ts`** (Phase 5) per §14.4 — single opt-in surface for BDD steps.
+- **Decide whether to add `application/ports/ImportExportFile.ts`** when the UI file picker / Blob download is built. Currently the UI is expected to wrap `<input type="file">` + `URL.createObjectURL` around the string-in/string-out service.
+- **Optional `architecture.test.ts`** mentioned in §12.5 Phase 4 was not added — `npm run lint:rules` (ESLint) already enforces the same import contract. Reconsider adding one only if a runtime invariant emerges that ESLint cannot express.
+
+---
+
 ## Resume protocol
 
 When resuming this conversation:
 
-1. **Re-read this file end-to-end.** Decisions §13.1, §13.2, §13.3, §14, §15, §16 are locked.
+1. **Read §17 (Implementation log) first** — it is the source of truth for as-built status (which phases have landed, on which commits, and any decisions taken during implementation that §1–§16 did not pin down). Then re-read this file end-to-end. Decisions §13.1, §13.2, §13.3, §14, §15, §16 are locked.
 2. **Re-read** `examples/classDiagramMermaid.v2.mermaid`, `examples/test.json`, `examples/test-before.html`, `examples/test-after.html`.
-3. **Look at `git status`** — there are unstaged WIP changes from the prior iteration (single-`Node` model, React UI) that will be **deleted** in Phase 0, not reconciled. The new domain model in §3 is built from scratch.
-4. **Verify Atlassian MCP is online** — list `C:\Users\amiot\.cursor\projects\d-Travail-tree-graph-viz\mcps\` and confirm an `atlassian`-like descriptor folder exists alongside `plugin-datadog-datadog`. If not, the user has not yet completed the OAuth flow after the Cursor restart that wrote `.cursor/mcp.json`.
-5. **Run §15.8 pre-creation inspection** before creating any Jira issue, **against project `HE`** (the project moved on 2026-04-26 — see §15.1). Confirm issue type IDs (`Development Task`, `Task`, `Test Plan`, `Test Set`, `Pre-Condition`), the `Blocks` link type ID, and any required custom fields on Development Task and XRay test types. Show findings to the user. Only then create the 10 Development Tasks + 2 Tasks + 4 Test Plans per §15.4–§15.6, with the inter-task `blocks` edges from §15.4 and the `blocks → HE-2571` edge on each (except Task B).
-6. **Begin Phase 0** of §12.5 (deps swap + folder skeleton + tsconfig + ESLint per-layer rules). Then Phase 1.1 (`Title` value object, TDD).
-7. Defer XRay import script and credentials until Phase 5.
+3. **Run `git status` and `git log --oneline`** — confirm `HEAD` matches the latest commit recorded in §17.0. Phases 0–4 are landed; the working tree should be clean (or hold only docs/test-fixture WIP).
+4. **Sanity check the build**: `npm test` (expect the count in §17.0), `npm run lint`, `npm run lint:rules` — all should be green before starting new work.
+5. **Verify Atlassian MCP is online** — list `C:\Users\amiot\.cursor\projects\d-Travail-tree-graph-viz\mcps\` and confirm an `atlassian`-like descriptor folder exists alongside `plugin-datadog-datadog`. If not, the user has not yet completed the OAuth flow after the Cursor restart that wrote `.cursor/mcp.json`. (Strand A — 16 issues + 25 `Blocks` edges — is already created per §15.9.)
+6. **Begin Phase 5** of §12.5: Playwright skeleton (`playwright.config.ts` already exists; needs `testBridge.ts`, one smoke `.feature` + step + page object), and the first XRay import dry-run (§15 Task B). The composition root in `src/main.ts` and a temporary `<tree-graph-screen>` shell are prerequisites for Playwright to have something to drive — see §17.6.
+7. XRay import script and credentials become relevant in Phase 5 (§16.8).
