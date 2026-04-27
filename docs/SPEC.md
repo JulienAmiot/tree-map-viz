@@ -799,7 +799,7 @@ This section records what has actually been built, on top of the plan in §12.5.
 | **4** | `d3a8690` | 249 → 279 | DONE | `LocalStorageBoardCollectionRepository` + `HashRouter` + reusable contract test. |
 | **5 (DT-9)** | `3daa85e` | 279 _(unit)_ + 0 → 2 _(e2e)_ | DONE | Composition root + Lit shell stub + `testBridge` + Playwright smoke (2 scenarios) green. |
 | **5 (DT-10)** | `6d971bb` | unchanged | DONE (script) / TODO (run) | XRay import pipeline scaffolded: `bin/xray-import.ps1` + `bin/xray-import.sh` + `bin/README.md` + `.github/workflows/xray-import.yml` + `.env.example`. Dry-run smoke green. **Task A (`HE-2586`) creds + Task B (`HE-2589`) first import** still TODO — see §17.8. |
-| **6 (DT-5)** | `<pending>` | 279 → 321 _(unit)_ + 2 → 14 _(e2e)_ | DONE | Per-kind/per-role Lit views + `<node-view>` dispatcher + `<plus-tile>` + view-model mapper; shell rewired to consume a plain `FocusedTreeViewModel`. 4 new view `.feature` files + `viewSteps.ts` cover the (role × computed) matrix, the three `computedValue` branches, and the `+`-affordance contract. See §17.9. |
+| **6 (DT-5)** | `7203eb8` | 279 → 321 _(unit)_ + 2 → 14 _(e2e)_ | DONE | Per-kind/per-role Lit views + `<node-view>` dispatcher + `<plus-tile>` + view-model mapper; shell rewired to consume a plain `FocusedTreeViewModel`. 4 new view `.feature` files + `viewSteps.ts` cover the (role × computed) matrix, the three `computedValue` branches, and the `+`-affordance contract. See §17.9. |
 | **7–11** | — | — | TODO | Lit shell + layout, modal, animations, wiring, kiosk smoke. |
 
 Verification on each landed commit: `npm test` green, `npm run lint` (`tsc --noEmit`) clean, `npm run lint:rules` (ESLint layered rules) clean. Phase 5 also requires `npm run test:e2e` (Playwright BDD) green.
@@ -995,7 +995,7 @@ The rewrite mechanics were also verified out-of-band by dot-sourcing `Rewrite-Pl
 - **OAuth flow is the user's manual step** — Cursor restart, *Tools & MCP* settings, sign in via the browser, pick the cloud site that owns project `HE`, approve scopes (Jira read/write minimum). After that, the §15.8 re-inspection (issue type IDs / link type IDs in `HE`) can run via the MCP and the §15.9 carry-over knowledge gets re-verified before any new issue creation work.
 - The committed `tree-graph-viz/.cursor/mcp.json` remains the canonical config for any future contributor — they get OAuth-only setup for free on first open of `tree-graph-viz` as a workspace.
 
-### 17.9 Phase 6 (DT-5) — Lit views (commit `<pending>`)
+### 17.9 Phase 6 (DT-5) — Lit views (commit `7203eb8`)
 
 DT-5 (`HE-2582`) — the per-kind / per-role view templates + `<node-view>` dispatcher + `<plus-tile>` + view-model mapper — landed atomically. The shell stub from §17.6 was rewired (composition root grows by exactly one wire: the `mapFocusedToViewModel` translation). 12 BDD scenarios across 4 new `views/*.feature` files (TP-A) cover the surface end-to-end.
 
