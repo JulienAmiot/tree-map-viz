@@ -797,7 +797,7 @@ This section records what has actually been built, on top of the plan in §12.5.
 | **2** | `e2f4ef3` | 198 → 213 | DONE | JSON codec; `examples/test.json` reordered to ascending history. |
 | **3** | `3335610` | 213 → 249 | DONE | 4 application services + 1 new port (`IdGenerator`). |
 | **4** | `d3a8690` | 249 → 279 | DONE | `LocalStorageBoardCollectionRepository` + `HashRouter` + reusable contract test. |
-| **5 (DT-9)** | `49c0eff` | 279 _(unit)_ + 0 → 2 _(e2e)_ | DONE | Composition root + Lit shell stub + `testBridge` + Playwright smoke (2 scenarios) green. DT-10 + Task B (XRay import + dry-run) still TODO. |
+| **5 (DT-9)** | `3daa85e` | 279 _(unit)_ + 0 → 2 _(e2e)_ | DONE | Composition root + Lit shell stub + `testBridge` + Playwright smoke (2 scenarios) green. DT-10 + Task B (XRay import + dry-run) still TODO. |
 | **6–11** | — | — | TODO | Lit views, shell, modal, animations, wiring, kiosk smoke. |
 
 Verification on each landed commit: `npm test` green, `npm run lint` (`tsc --noEmit`) clean, `npm run lint:rules` (ESLint layered rules) clean. Phase 5 also requires `npm run test:e2e` (Playwright BDD) green.
@@ -877,7 +877,7 @@ Two adapters + a reusable contract-test pattern landed.
 - `npm run dev` / `npm run preview` launch the kiosk. With empty `localStorage`, the default seed shows a single "Root" board.
 - `npm run test:e2e` runs the Playwright BDD smoke under headless Chromium (2 scenarios: default-seed boot, and bridge-seed-then-reload of the org tree). Both green.
 
-### 17.6 Phase 5 (DT-9) — BDD harness (`49c0eff`)
+### 17.6 Phase 5 (DT-9) — BDD harness (`3daa85e`)
 
 Composition root, Lit shell stub, test bridge, and Playwright skeleton landed atomically.
 
