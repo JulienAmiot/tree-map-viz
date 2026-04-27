@@ -798,7 +798,7 @@ This section records what has actually been built, on top of the plan in §12.5.
 | **3** | `3335610` | 213 → 249 | DONE | 4 application services + 1 new port (`IdGenerator`). |
 | **4** | `d3a8690` | 249 → 279 | DONE | `LocalStorageBoardCollectionRepository` + `HashRouter` + reusable contract test. |
 | **5 (DT-9)** | `3daa85e` | 279 _(unit)_ + 0 → 2 _(e2e)_ | DONE | Composition root + Lit shell stub + `testBridge` + Playwright smoke (2 scenarios) green. |
-| **5 (DT-10)** | _pending commit_ | unchanged | DONE (script) / TODO (run) | XRay import pipeline scaffolded: `bin/xray-import.ps1` + `bin/xray-import.sh` + `bin/README.md` + `.github/workflows/xray-import.yml` + `.env.example`. Dry-run smoke green. **Task A (`HE-2586`) creds + Task B (`HE-2589`) first import** still TODO — see §17.8. |
+| **5 (DT-10)** | `6d971bb` | unchanged | DONE (script) / TODO (run) | XRay import pipeline scaffolded: `bin/xray-import.ps1` + `bin/xray-import.sh` + `bin/README.md` + `.github/workflows/xray-import.yml` + `.env.example`. Dry-run smoke green. **Task A (`HE-2586`) creds + Task B (`HE-2589`) first import** still TODO — see §17.8. |
 | **6–11** | — | — | TODO | Lit views, shell, modal, animations, wiring, kiosk smoke. |
 
 Verification on each landed commit: `npm test` green, `npm run lint` (`tsc --noEmit`) clean, `npm run lint:rules` (ESLint layered rules) clean. Phase 5 also requires `npm run test:e2e` (Playwright BDD) green.
@@ -929,7 +929,7 @@ Composition root, Lit shell stub, test bridge, and Playwright skeleton landed at
 - **Optional `architecture.test.ts`** mentioned in §12.5 Phase 4 was not added — `npm run lint:rules` (ESLint) already enforces the same import contract. Reconsider adding one only if a runtime invariant emerges that ESLint cannot express.
 - **Composition root will grow** as Phases 6–8 land: `AddChildService` (Phase 8 modal consumer), `ImportExportService` (Phase 6/8 drawer consumer), and a router-driven board-switching path (Phase 10 routing/board_collection.feature).
 
-### 17.8 Phase 5 (DT-10) — XRay import pipeline scaffold (_commit pending_)
+### 17.8 Phase 5 (DT-10) — XRay import pipeline scaffold (commit `6d971bb`)
 
 DT-10 (`HE-2581`) — the script half of the XRay import strand — landed alongside the §17.6 BDD harness work. The runtime half (Task A creds + Task B first import) remains the user's manual ops step, captured at the end of this section.
 
