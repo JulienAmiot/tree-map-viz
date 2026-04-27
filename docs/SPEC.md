@@ -797,7 +797,8 @@ This section records what has actually been built, on top of the plan in §12.5.
 | **2** | `e2f4ef3` | 198 → 213 | DONE | JSON codec; `examples/test.json` reordered to ascending history. |
 | **3** | `3335610` | 213 → 249 | DONE | 4 application services + 1 new port (`IdGenerator`). |
 | **4** | `d3a8690` | 249 → 279 | DONE | `LocalStorageBoardCollectionRepository` + `HashRouter` + reusable contract test. |
-| **5 (DT-9)** | `3daa85e` | 279 _(unit)_ + 0 → 2 _(e2e)_ | DONE | Composition root + Lit shell stub + `testBridge` + Playwright smoke (2 scenarios) green. DT-10 + Task B (XRay import + dry-run) still TODO. |
+| **5 (DT-9)** | `3daa85e` | 279 _(unit)_ + 0 → 2 _(e2e)_ | DONE | Composition root + Lit shell stub + `testBridge` + Playwright smoke (2 scenarios) green. |
+| **5 (DT-10)** | _pending commit_ | unchanged | DONE (script) / TODO (run) | XRay import pipeline scaffolded: `bin/xray-import.ps1` + `bin/xray-import.sh` + `bin/README.md` + `.github/workflows/xray-import.yml` + `.env.example`. Dry-run smoke green. **Task A (`HE-2586`) creds + Task B (`HE-2589`) first import** still TODO — see §17.8. |
 | **6–11** | — | — | TODO | Lit views, shell, modal, animations, wiring, kiosk smoke. |
 
 Verification on each landed commit: `npm test` green, `npm run lint` (`tsc --noEmit`) clean, `npm run lint:rules` (ESLint layered rules) clean. Phase 5 also requires `npm run test:e2e` (Playwright BDD) green.
@@ -917,16 +918,81 @@ Composition root, Lit shell stub, test bridge, and Playwright skeleton landed at
 - **`page.addInitScript(() => localStorage.clear())` re-fires on every navigation, including reload.** This wiped the bridge-seeded state right before the reload's boot, causing Scenario 2 to render the default `"Root"` instead of `"UUID1 Title"`. Fix: drop the `addInitScript`. Playwright already gives every test a fresh browser context with empty `localStorage`, so the explicit clear was both unnecessary and harmful.
 - **playwright-bdd default `outputDir` is `.features-gen` (not `.generated`).** Updated `.gitignore` and `eslint.config.js` ignore lists. The §16.6 / §14.3 spec snippets reference `.features-gen` from this commit forward.
 
-**What's still TODO in Phase 5** (DT-10 + Task B, separate strand):
+**What's still TODO in Phase 5** (Task A + Task B — manual ops; see §17.8 for the script half, which has landed):
 
-- `bin/xray-import.ps1` (DT-10 / `HE-2581`) — script to zip `src/test/e2e/features/`, POST to XRay's `/api/v1/import/feature`, and round-trip the returned `@HE-…` Test keys back into the `.feature` files (§15.7).
-- First XRay import dry-run (Task B / `HE-2589`) — needs `XRAY_CLIENT_ID` + `XRAY_CLIENT_SECRET` from Task A (`HE-2586`). Until then, the placeholder `@HE-????` tags in `app_boots.feature` stay as-is.
+- **Task A (`HE-2586`)** — generate `XRAY_CLIENT_ID` + `XRAY_CLIENT_SECRET` in Jira admin → Apps → Manage your apps → Xray → API Keys.
+- **Task B (`HE-2589`)** — first XRay import + sanity-check Test issues in HE. Until completed, the placeholder `@HE-????` tags in `app_boots.feature` stay as-is.
 
 ### 17.7 Open follow-ups beyond Phase 5
 
 - **Decide whether to add `application/ports/ImportExportFile.ts`** when the UI file picker / Blob download is built. Currently the UI is expected to wrap `<input type="file">` + `URL.createObjectURL` around the string-in/string-out service.
 - **Optional `architecture.test.ts`** mentioned in §12.5 Phase 4 was not added — `npm run lint:rules` (ESLint) already enforces the same import contract. Reconsider adding one only if a runtime invariant emerges that ESLint cannot express.
 - **Composition root will grow** as Phases 6–8 land: `AddChildService` (Phase 8 modal consumer), `ImportExportService` (Phase 6/8 drawer consumer), and a router-driven board-switching path (Phase 10 routing/board_collection.feature).
+
+### 17.8 Phase 5 (DT-10) — XRay import pipeline scaffold (_commit pending_)
+
+DT-10 (`HE-2581`) — the script half of the XRay import strand — landed alongside the §17.6 BDD harness work. The runtime half (Task A creds + Task B first import) remains the user's manual ops step, captured at the end of this section.
+
+**Files added** (none modify existing source; entirely additive):
+
+- `bin/xray-import.ps1` (~165 LoC) — primary script for local Windows dev. Targets **Windows PowerShell 5.1+** (so it runs on stock Windows without installing PowerShell 7) under `Set-StrictMode -Version Latest`. Forces `[Net.SecurityProtocolType]::Tls12` because 5.1 still defaults to TLS 1.0 in some configurations.
+- `bin/xray-import.sh` (~140 LoC) — bash + `curl` + `jq` sibling for CI / Linux / macOS, wired by `.github/workflows/xray-import.yml`. Same algorithm, same idempotency contract.
+- `bin/README.md` — usage docs for both scripts: env vars, dry-run, idempotency table, troubleshooting, and a short note explaining why two scripts (per §15.7) instead of one Node.js cross-platform script.
+- `.env.example` (repo root) — credential template. Covered by the existing `.gitignore` rule `.env*` with `!.env.example` allowlist.
+- `.github/workflows/xray-import.yml` — CI hook described in §15.7. On push to `main` it runs `npm ci` → `npx playwright install --with-deps chromium` → `npm run lint` + `lint:rules` + `npm test` + `npm run test:e2e`, then invokes `bin/xray-import.sh`. If the import rewrites any `.feature` files, the workflow auto-commits them back to `main` with `[skip ci]` so the workflow doesn't re-trigger itself.
+
+**Algorithm — common to both scripts**:
+
+For each `.feature` file under `src/test/e2e/features/` (sorted by path for determinism):
+
+1. Authenticate against `POST {XRAY_BASE_URL}/api/v2/authenticate` with `{client_id, client_secret}`. The endpoint returns the JWT as a JSON string; both scripts strip wrapping quotes if any.
+2. POST the file as `multipart/form-data` to `/api/v1/import/feature?projectKey=HE`.
+3. Read `updatedOrCreatedTests[].key` from the response.
+4. Compute `existing = real @HE-\d+ keys already in the source` and `new = returned keys not in existing` and `updated = returned keys in existing`.
+5. If `len(new) === count of @HE-???? placeholders`, rewrite each placeholder in source order with the next new key. If they don't match, leave the file untouched and warn — operator decides next.
+
+**Idempotency contract** (same on both scripts):
+
+| Source tag before | First successful run | Re-run |
+|---|---|---|
+| `@HE-????` (placeholder) | XRay creates new Test; placeholder rewritten to the new key | (no longer present) |
+| `@HE-1234` (real key) | XRay updates existing `HE-1234`; tag untouched | Same — keep updating in place; no churn |
+
+So once `app_boots.feature` has been through one successful import, every subsequent run is a pure update — no new Test issues, no file rewrites, no CI auto-commit loop.
+
+**Decisions taken during implementation that §15 / §16 did not pin down**:
+
+- **Per-file POSTs over zipped batch** — §15.7 mentions zipping `src/test/e2e/features/`, but XRay's `import/feature` endpoint accepts either a single file or a zip and the per-file path keeps response→source attribution exact (the nth `updatedOrCreatedTests[i]` is the nth scenario in the posted file). Re-add a zip mode only if the feature-file count grows past the point where N round-trips matter.
+- **PowerShell 5.1, not 7** — the spec implied PS without version pinning; pinning at 7 would have forced an extra install on a stock Windows kiosk dev machine. PS 5.1 just means hand-rolled multipart body construction (~12 extra lines) and explicit TLS 1.2 enforcement, both already in.
+- **No `npm` script alias** (e.g. `npm run xray:import`) — invoking `bin/xray-import.ps1` directly on Windows is cleaner than wrapping it in an npm script that has to platform-detect between `pwsh`, `powershell.exe`, and `bash`. The CI workflow calls `bash bin/xray-import.sh` directly. If a unified entrypoint is wanted later, add it then.
+- **Auto-commit in CI uses `[skip ci]`** to prevent the workflow re-triggering itself; the commit author is `github-actions[bot]`.
+
+**Smoke-tested on the committed `app_boots.feature`** (no creds needed, no network):
+
+```
+[xray-import] Project    : HE
+[xray-import] BaseUrl    : https://xray.cloud.getxray.app
+[xray-import] Features   : 1 under .../src/test/e2e/features
+[xray-import] DryRun     : True
+
+[app_boots.feature]
+  existing keys  : 1 - HE-2570       <-- feature-level epic tag, untouched
+  placeholders   : 2                 <-- two @HE-???? scenario tags
+  [dry-run] would POST .../app_boots.feature and rewrite 2 placeholder(s).
+```
+
+The rewrite mechanics were also verified out-of-band by dot-sourcing `Rewrite-Placeholders` and feeding it synthetic keys `HE-9001`, `HE-9002`: the feature-level `@HE-2570` is preserved and the two scenario-level `@HE-????` are positionally replaced with `@HE-9001` and `@HE-9002`. The on-disk file is **not** modified during dry-run.
+
+**What's still TODO in DT-10's runtime half** (Tasks A + B, manual ops):
+
+- **Task A (`HE-2586`)** — generate `XRAY_CLIENT_ID` + `XRAY_CLIENT_SECRET` in Jira admin → Apps → Manage your apps → Xray → API Keys. Pair only shown once at creation. Save into local `.env` (gitignored) and register both as repo secrets in GitHub Settings → Secrets → Actions.
+- **Task B (`HE-2589`)** — first XRay import dry-run + sanity-check Test issues in HE. With creds in `.env`, run `powershell -NoProfile -ExecutionPolicy Bypass -File bin\xray-import.ps1` once locally; verify the two new Test issues appear under epic `HE-2570`, that `app_boots.feature`'s scenario tags now read `@HE-XXXX` instead of `@HE-????`, and that re-running the script is a no-op (no new tests, no further rewrites).
+
+**Atlassian MCP — auth state at end of this session**:
+
+- `.cursor/mcp.json` lives at three locations now: the repo's committed file (`tree-graph-viz/.cursor/mcp.json`), a global file at `%USERPROFILE%\.cursor\mcp.json`, and a workspace-root file at `c:\Cursor\.cursor\mcp.json` (since the user's current Cursor workspace root is `c:\Cursor`, not `tree-graph-viz`). All three carry the same single-server `atlassian → https://mcp.atlassian.com/v1/mcp` config; project file wins on duplicates per Cursor's documented merge rule, so there's no conflict.
+- **OAuth flow is the user's manual step** — Cursor restart, *Tools & MCP* settings, sign in via the browser, pick the cloud site that owns project `HE`, approve scopes (Jira read/write minimum). After that, the §15.8 re-inspection (issue type IDs / link type IDs in `HE`) can run via the MCP and the §15.9 carry-over knowledge gets re-verified before any new issue creation work.
+- The committed `tree-graph-viz/.cursor/mcp.json` remains the canonical config for any future contributor — they get OAuth-only setup for free on first open of `tree-graph-viz` as a workspace.
 
 ---
 
@@ -938,7 +1004,7 @@ When resuming this conversation:
 2. **Re-read** `examples/classDiagramMermaid.v2.mermaid`, `examples/test.json`, `examples/test-before.html`, `examples/test-after.html`.
 3. **Run `git status` and `git log --oneline`** — confirm `HEAD` matches the latest commit recorded in §17.0. Phases 0–5 (DT-9) are landed; the working tree should be clean (or hold only docs/test-fixture WIP).
 4. **Sanity check the build**: `npm test` (expect the count in §17.0), `npm run lint`, `npm run lint:rules`, and (Phase 5+) `npm run build` then `npm run test:e2e` — all should be green before starting new work. The first `npm run test:e2e` after a clone needs `npx playwright install chromium`.
-5. **Verify Atlassian MCP is online** — list `C:\Users\amiot\.cursor\projects\d-Travail-tree-graph-viz\mcps\` and confirm an `atlassian`-like descriptor folder exists alongside `plugin-datadog-datadog`. If not, the user has not yet completed the OAuth flow after the Cursor restart that wrote `.cursor/mcp.json`. (Strand A — 16 issues + 25 `Blocks` edges — is already created per §15.9.)
+5. **Verify Atlassian MCP is online** — list `C:\Users\amiot\.cursor\projects\<workspace-id>\mcps\` (the `<workspace-id>` derives from whichever folder is opened as the Cursor workspace; for `c:\Cursor` it is `c-Cursor`, for `c:\Cursor\tree-graph-viz` it is something like `d-…-tree-graph-viz`) and confirm an `atlassian`-like descriptor folder exists alongside `plugin-datadog-datadog`. If not, the user has not yet completed the OAuth flow after the Cursor restart that picked up `.cursor/mcp.json` (which is committed in the repo and also mirrored to global + workspace-root paths per §17.8). Strand A — 16 issues + 25 `Blocks` edges — is already created per §15.9.
 6. **Pick up the next strand**:
    - **Phase 5 leftovers (separate strand)**: DT-10 (`HE-2581`) + Task A (`HE-2586`) + Task B (`HE-2589`) — XRay import pipeline (`bin/xray-import.ps1`), credential provisioning, and first XRay import dry-run. Needs `XRAY_CLIENT_ID` + `XRAY_CLIENT_SECRET` in env (§16.8).
    - **Phase 6 (DT-5 — Lit views)**: per §12.5, build the per-kind/per-role view templates + `NodeView` dispatcher + `PlusTile`. The `<tree-graph-screen>` shell stub from §17.6 will be replaced; the composition root grows by one more wire (`AddChildService` consumer arrives later in DT-7).

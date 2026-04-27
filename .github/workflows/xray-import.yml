@@ -1,0 +1,95 @@
+# Tree Graph Viz — XRay import pipeline
+#
+# DT-10 / docs/SPEC.md sec.15.7: on every push to main, after the e2e suite is
+# green, push every `.feature` file under src/test/e2e/features/ to XRay so each
+# scenario has a corresponding HE-* Test issue. Round-tripped @HE-XXXX keys are
+# auto-committed back to main with [skip ci] so the workflow doesn't re-trigger
+# itself.
+#
+# Repo secrets required:
+#   XRAY_CLIENT_ID
+#   XRAY_CLIENT_SECRET
+# Both produced by Task A (HE-2586). See bin/README.md for context.
+
+name: xray-import
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/test/e2e/features/**.feature'
+      - 'bin/xray-import.sh'
+      - '.github/workflows/xray-import.yml'
+  workflow_dispatch: {}
+
+# Avoid two concurrent imports racing on the same .feature file rewrite.
+concurrency:
+  group: xray-import-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  # contents: write — needed so the auto-commit step can push the rewritten
+  # `.feature` files back to main using the workflow's GITHUB_TOKEN.
+  contents: write
+
+jobs:
+  e2e-then-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history so the auto-commit step can push back.
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers (chromium only)
+        run: npx playwright install --with-deps chromium
+
+      - name: Lint (tsc) and architectural rules
+        run: |
+          npm run lint
+          npm run lint:rules
+
+      - name: Unit tests
+        run: npm test
+
+      - name: E2E (Playwright + playwright-bdd)
+        run: npm run test:e2e
+
+      - name: Install jq
+        # ubuntu-latest already ships with jq; this guards a future runner change.
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -y && sudo apt-get install -y jq
+          fi
+
+      - name: XRay import (round-trips @HE-???? -> @HE-XXXX into the .feature files)
+        env:
+          XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+          XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+          XRAY_PROJECT_KEY: HE
+        run: bash bin/xray-import.sh
+
+      - name: Auto-commit rewritten feature files (if any)
+        run: |
+          set -euo pipefail
+          if [[ -z "$(git status --porcelain src/test/e2e/features)" ]]; then
+            echo "No .feature rewrites to commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/test/e2e/features
+          git commit -m "chore(xray): round-trip @HE-XXXX keys from XRay import [skip ci]"
+          git push origin HEAD:main
