@@ -1,0 +1,25 @@
+{
+  "nodeType": "TextNode",
+  "id": "TXT-ROOT",
+  "title": "Quarterly review",
+  "description": "Top-level scorecard",
+  "weight": 1,
+  "childrenNodes": [
+    {
+      "nodeType": "TextNode",
+      "id": "TXT-A",
+      "title": "Region",
+      "description": "North-east",
+      "weight": 1,
+      "childrenNodes": []
+    },
+    {
+      "nodeType": "TextNode",
+      "id": "TXT-B",
+      "title": "Bare",
+      "description": "",
+      "weight": 1,
+      "childrenNodes": []
+    }
+  ]
+}

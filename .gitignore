@@ -16,3 +16,6 @@ playwright/.cache/
 .env
 .env.*
 !.env.example
+
+# Local stdout captures from npm scripts (vitest.log, build.log, etc.)
+*.log

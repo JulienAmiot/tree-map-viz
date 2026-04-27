@@ -799,7 +799,8 @@ This section records what has actually been built, on top of the plan in §12.5.
 | **4** | `d3a8690` | 249 → 279 | DONE | `LocalStorageBoardCollectionRepository` + `HashRouter` + reusable contract test. |
 | **5 (DT-9)** | `3daa85e` | 279 _(unit)_ + 0 → 2 _(e2e)_ | DONE | Composition root + Lit shell stub + `testBridge` + Playwright smoke (2 scenarios) green. |
 | **5 (DT-10)** | `6d971bb` | unchanged | DONE (script) / TODO (run) | XRay import pipeline scaffolded: `bin/xray-import.ps1` + `bin/xray-import.sh` + `bin/README.md` + `.github/workflows/xray-import.yml` + `.env.example`. Dry-run smoke green. **Task A (`HE-2586`) creds + Task B (`HE-2589`) first import** still TODO — see §17.8. |
-| **6–11** | — | — | TODO | Lit views, shell, modal, animations, wiring, kiosk smoke. |
+| **6 (DT-5)** | `<pending>` | 279 → 321 _(unit)_ + 2 → 14 _(e2e)_ | DONE | Per-kind/per-role Lit views + `<node-view>` dispatcher + `<plus-tile>` + view-model mapper; shell rewired to consume a plain `FocusedTreeViewModel`. 4 new view `.feature` files + `viewSteps.ts` cover the (role × computed) matrix, the three `computedValue` branches, and the `+`-affordance contract. See §17.9. |
+| **7–11** | — | — | TODO | Lit shell + layout, modal, animations, wiring, kiosk smoke. |
 
 Verification on each landed commit: `npm test` green, `npm run lint` (`tsc --noEmit`) clean, `npm run lint:rules` (ESLint layered rules) clean. Phase 5 also requires `npm run test:e2e` (Playwright BDD) green.
 
@@ -994,6 +995,86 @@ The rewrite mechanics were also verified out-of-band by dot-sourcing `Rewrite-Pl
 - **OAuth flow is the user's manual step** — Cursor restart, *Tools & MCP* settings, sign in via the browser, pick the cloud site that owns project `HE`, approve scopes (Jira read/write minimum). After that, the §15.8 re-inspection (issue type IDs / link type IDs in `HE`) can run via the MCP and the §15.9 carry-over knowledge gets re-verified before any new issue creation work.
 - The committed `tree-graph-viz/.cursor/mcp.json` remains the canonical config for any future contributor — they get OAuth-only setup for free on first open of `tree-graph-viz` as a workspace.
 
+### 17.9 Phase 6 (DT-5) — Lit views (commit `<pending>`)
+
+DT-5 (`HE-2582`) — the per-kind / per-role view templates + `<node-view>` dispatcher + `<plus-tile>` + view-model mapper — landed atomically. The shell stub from §17.6 was rewired (composition root grows by exactly one wire: the `mapFocusedToViewModel` translation). 12 BDD scenarios across 4 new `views/*.feature` files (TP-A) cover the surface end-to-end.
+
+**Files added** (all under `src/adapters/ui/views/` unless noted):
+
+- `NodeViewModel.ts` — UI-only contract. `NodeViewModel = TextNodeViewModel | BusinessScoreCardNodeViewModel`; the BSC variant carries a discriminated `value: BusinessScoreCardValueViewModel` mirroring the three branches of `domain/aggregation/computedValue` 1:1 (`computedMean` / `recordedValue` / `childrenCount`). `FocusedTreeViewModel = { center, children: ChildSlotViewModel[] }` with `ChildSlotViewModel = { slot: "node"; vm } | { slot: "plus"; parentId }` so the shell consumes a single homogeneous list.
+- `nodeViewRegistry.ts` — `(kind, role) → tag-name` map. `register(kind, role, tag)` is the only mutation API, enforced by `freeze()` (subsequent `register` calls throw). `resolveTag(kind, role)` is total over the 4 (kind × role) cells; `lookupTag` returns `null` for unregistered cells (used by `<node-view>` for diagnostics).
+- `index.ts` — module-load side effect that calls `register(...)` for the 4 cells then `freeze()`. Importing this barrel is the only way to populate the registry — no entry self-registers, keeping element files free of registry coupling.
+- `NodeView.ts` — `<node-view>` dispatcher. `@property({ attribute: false }) vm: NodeViewModel | null` + `@property({ attribute: "view-role", reflect: true }) role: NodeRole`. `render()` resolves `tag = registry.resolveTag(vm.kind, role)`, then emits `<${tag} .vm=${vm}></${tag}>` via `unsafeStatic` (the registry is the only source of tag names so the unsafe path is bounded). On unknown `kind` it throws (mapped at the registry boundary, never silent).
+- `TextNode/TextNodeAsParent.ts` + `TextNode/TextNodeAsChild.ts` — Title + Description, no value, no Σ. Both roles emit `[data-testid="title"]` and `[data-testid="description"]`; CSS hides the description when empty (`display: none`) without removing the element so e2e tests can still address it. Roles differ only in typography/padding (asParent uses `<h1>` + larger `clamp()` font; asChild uses `<h2>` + tighter spacing) — content is identical per §5.
+- `BusinessScoreCardNode/BusinessScoreCardNodeAsParent.ts` + `.../BusinessScoreCardNodeAsChild.ts` — Title + Description + value-row. Value-row content is delegated to a shared `valueTemplate.ts` so the (role × value-kind) matrix is *one* template, not eight.
+- `BusinessScoreCardNode/valueTemplate.ts` — per-branch HTML:
+  - `computedMean` → `<span data-testid="value" data-value-kind="computedMean">${mean.toFixed(1)} ${unit}</span>` + `<span data-testid="computed-badge" aria-label="Computed value">Σ</span>`.
+  - `recordedValue` → `<span data-testid="value" data-value-kind="recordedValue">${value} ${unit}</span>` + `<time data-testid="value-date" datetime=${dateIso}>${formatDate(dateIso)}</time>` (no Σ).
+  - `childrenCount` n>0 → `<span data-testid="value" data-value-kind="childrenCount">${n} children</span>` (no Σ, no Unit, no date).
+  - `childrenCount` n=0 → `<span data-testid="value" data-value-kind="childrenCount-empty"></span>` (empty by design — span is *present* so e2e tests can assert presence + emptiness, satisfying §13.2 + §12.3).
+- `plus/PlusTile.ts` — `<plus-tile>`. Single `<button data-testid="plus-tile">` with dashed CSS border + a `+` glyph. Activation dispatches a bubbling+composed `plus-tile-activate` `CustomEvent<{parentId}>` (`PLUS_TILE_ACTIVATE_EVENT` constant) — the Phase 8 / DT-7 modal will listen on the shell. **The tile never drills**: `e.stopPropagation()` in the click handler blocks any ancestor click-to-focus listener that might land later; e2e covers this with a "click `+` → focused id is unchanged" scenario (`plus_tile.feature`). Per §5 final sentence + §12.3 plus_tile row, the `+` tile is a UI affordance, not a node kind — deliberately not in `nodeViewRegistry`.
+- `viewModelMapper.ts` — domain → VM boundary. `mapNodeToViewModel(node)` is total over `TextNode | BusinessScoreCardNode` (throws `ViewModelMappingError` on unknown subclasses). `mapBusinessScoreValue` calls `computedValue(node)` once and switches on its three branches. `mapFocusedToViewModel(center, children)` appends `{ slot: "plus", parentId }` iff `shouldRenderPlusTile(center)` (§4 — capacity-gated). The mapper sits under `adapters/ui/views/` (UI concern: shape of `NodeViewModel` is a UI contract) and imports from `domain/**` only — never from `application/**`, so the composition root is the single layer that pairs `TreeNavigationService.getFocusedView()` with the mapper.
+
+**Files modified**:
+
+- `src/adapters/ui/shell/TreeGraphScreen.ts` — body replaced. Now consumes `FocusedTreeViewModel | null` via `@property({ attribute: false }) view`; renders parent strip (`<header data-testid="parent-strip" data-focused-id=${center.id}>` containing `<node-view view-role="asParent" .vm=${center}>`) over a flat children grid (`<section data-testid="children">`). Each child slot becomes either `<div data-testid="child" data-id=${id} data-view-kind=${kind}><node-view view-role="asChild" .vm=${vm}></node-view></div>` or a `<plus-tile parent-id=${parentId} .parentId=${parentId}>` wrapper. Importing `../views/index.js` is the side-effect that populates+freezes the registry; the shell never registers anything itself. The squarified treemap layout, breadcrumb, and drawer arrive in Phase 7 (DT-6).
+- `src/main.ts` — composition root grows by one wire: `screen.view = view ? mapFocusedToViewModel(view.center, view.childrenNodes) : null`. Domain types (`TreeNode`, `BusinessScoreCard`, `TimestampedValue`) still never cross the UI property boundary — `<tree-graph-screen>` and every `<node-view>`/`<*-as-*>` element only sees plain JSON-shaped VMs.
+
+**Unit tests added** (Vitest — 321 total now, +42 since §17.6):
+
+- `nodeViewRegistry.test.ts` (6 tests) — register-then-resolve happy path, all 4 cells round-trip, double-register throws, post-`freeze` register throws, `resolveTag` is exhaustive, `lookupTag` returns `null` for empty cells.
+- `NodeView.test.ts` (5 tests) — dispatcher renders the registered tag for each (kind, role) pair, propagates the VM via `.vm` property, throws on unknown kind, reflects `view-role` attribute, defends against missing `vm`.
+- `TextNode/TextNodeAsParent.test.ts` (4) + `TextNodeAsChild.test.ts` (3) — title + description, empty-description hidden, no value or computed-badge present, role-specific element tag for the title (`h1` vs `h2`).
+- `BusinessScoreCardNode/BusinessScoreCardNodeAsParent.test.ts` (5) + `BusinessScoreCardNodeAsChild.test.ts` (4) — full (role × value-branch) matrix asserts on `data-testid`s + presence/absence of `computed-badge` and `value-date` per branch.
+- `plus/PlusTile.test.ts` (6) — renders single `[data-testid="plus-tile"]`, dashed border via `getComputedStyle`, `+` glyph + sr-only label, click fires bubbling+composed `plus-tile-activate` with `{parentId}`, click does **not** propagate as a regular DOM `click` to ancestors (the `e.stopPropagation()` smoke), `parent-id` attribute reflects.
+- `viewModelMapper.test.ts` (9) — TextNode → `{ kind: "TextNode", … }`, BSC computed=true with eligibles → `computedMean` mean+unit, BSC computed=false → `recordedValue` with ISO date, BSC computed=true zero-eligible → `childrenCount` with `n = children.length`, plus-tile slot is appended iff `shouldRenderPlusTile(center)` (covers n=0/1/11/12 outline of `treemap_n_plus_one`), unsupported subclass throws `ViewModelMappingError`.
+
+**Unit-test infrastructure — `src/test/fixtures/litElementFixture.ts`**:
+
+The Lit + jsdom + Vitest combo had two pitfalls that the existing pattern (`document.createElement` + `await el.updateComplete`) did not survive cleanly:
+
+1. **`@customElement` decorator-on-import is tree-shaken away** when the test only imports the class as a *type*. esbuild/Vitest dropped the side-effect that `customElements.define(...)` relies on. Fixed by **always** pairing a side-effect import (`import "./TextNodeAsParent.js"`) with the type-only import (`import type { TextNodeAsParent } from "./TextNodeAsParent.js"`) in every view test. Documented as a convention in `docs/TESTING.md`-style comment in the fixture file.
+2. **First `updateComplete` resolves before the shadow root is populated** in jsdom for some elements. Fixed by `mountLitElement(tag, props)` which creates the element, attaches it, sets each property, and then awaits `updateComplete` *plus* a microtask drain (`await Promise.resolve(); await Promise.resolve();`) before returning — covering both the "sync render" path and the "render scheduled in a microtask" path. The fixture always returns once `el.shadowRoot` is non-null and the queried template root has rendered.
+
+The fixture is unit-test-only (`src/test/fixtures/`) and never ships in production — `tsconfig.test.json` includes it; the prod `tsconfig.json` does not.
+
+**Playwright BDD added — TP-A test set** (4 `.feature` files under `src/test/e2e/features/views/`):
+
+- `text_node_views.feature` (2 scenarios) — TextNode `asParent` and `asChild` both render Title + Description and only those fields (no value, no Σ). Background seeds `textTree.json` (TextNode root + 2 TextNode children).
+- `business_score_card_views.feature` (4 scenarios) — full (role × computed) matrix on `mixedComputed.json`: `(asParent, computed=true)` → mean + Σ, `(asChild, computed=true)` → mean + Σ, `(asChild, computed=false)` → recorded value + date, `(asParent, computed=false)` → recorded value + date, all with the right Σ presence/absence.
+- `computed_aggregation_view.feature` (4 scenarios) — three branches of `computedValue`: weighted mean + Σ (`mixedComputed`), `n children` plain text on `zeroEligible.json` (3 ineligible BSC + TextNode children), empty value-area + only-`+`-tile when computed=true with zero children (focus on `EmptyLeaf`), recordedValue + date when computed=false (focus on `ChildB`).
+- `plus_tile.feature` (2 scenarios) — exactly one `[data-testid="plus-tile"]`, dashed border (read via `getComputedStyle().borderStyle`), `+` glyph, no descendant `[data-testid="title|value|value-date"]`, and clicking the tile leaves `data-focused-id` unchanged (the affordance is **not** a navigation target).
+
+**Step + page-object plumbing**:
+
+- `src/test/e2e/steps/viewSteps.ts` — adds 24 generic steps (parametric over fixture name, node uuid, expected text, expected count) so the same vocabulary serves all 4 view features. Loads fixtures via `node:fs` + a small in-memory cache (`fixtureCache`); never imports from `src/{domain,application,adapters}/**` (loose-coupling rule from §13.3, enforced by `eslint.config.js`).
+- `src/test/e2e/pageObjects/TreeGraphPage.ts` — extended with `focusedDescription / focusedValue / focusedValueDate / focusedComputedBadge / parentStrip / childTiles / childById(id) / plusTileHosts / plusTileButtons / focusedId / focusNode(uuid)` accessors. Each chains `getByTestId` (Playwright's locator walks open shadow DOM, so the chain through `<tree-graph-screen> → <node-view> → <*-as-*>` is transparent); `focusNode` drives the hash router via the bridge's `navigateTo` so steps don't synthesise URLs themselves.
+- New fixtures under `src/test/e2e/fixtures/trees/`:
+  - `textTree.json` — TextNode root + 2 TextNode children (one with empty description).
+  - `mixedComputed.json` — `Root` (computed=true) → `ChildA` (computed=true with `GrandLeaf`), `ChildB` (computed=false), `EmptyLeaf` (computed=true, no children). One file covers every cell in the (role × computed) matrix and the empty-value-area scenario.
+  - `zeroEligible.json` — computed=true `Root` + 3 ineligible children (2 BSC `eligible=false`, 1 TextNode) so `computedValue` returns `childrenCount` with `n = 3`.
+
+**Pitfalls fixed in flight**:
+
+- **Side-effect imports vs. type-only imports** (see fixture infrastructure above). Specifically: tests that do `import type { Foo } from "./Foo.js"` got tree-shaken, the `@customElement` decorator never ran, and `document.createElement("foo-tag")` returned a generic `HTMLElement` (no `updateComplete`). Convention now: every view test pairs a bare `import "./Foo.js"` with the type import.
+- **`await el.updateComplete` is necessary but not sufficient** under jsdom: a microtask drain after `updateComplete` was needed for some elements before `el.shadowRoot.querySelector(...)` returned the expected nodes. Encapsulated in `mountLitElement`.
+- **`PlusTile` click stopping propagation** is intentional — the `+` tile is *not* a navigation target, so we must not let a future ancestor "click-to-focus" listener swallow the action and drill. The unit test asserts the click does not bubble as a regular DOM `click`; the e2e test confirms the focused id is unchanged after clicking.
+- **VM mapper sits in `adapters/ui/views/`, not `application/`** even though it converts domain → plain data. Rationale: `NodeViewModel`'s shape is a UI concern (it determines what the Lit templates expect); placing the mapper in `application/` would leak UI shape upward. ESLint's `adapters` ruleset still allows the mapper to import from `domain/**`. The composition root keeps the single bridge from `application` to `adapters` — `main.ts` calls `nav.getFocusedView()` (application) and `mapFocusedToViewModel(...)` (adapters/ui).
+
+**What's testable today**:
+
+- `npm test` — **321 unit tests** across 31 files (~7 s).
+- `npm run lint` (`tsc --noEmit`) clean.
+- `npm run lint:rules` (ESLint layered rules) clean — no domain → application/adapters/browser-API leak, no application → adapters leak, no `lit` outside `adapters/ui`, no `src/{domain,application,adapters}/**` imports inside `src/test/e2e/**`.
+- `npm run build` produces a `dist/` of ~48 KB (gzip 14.6 KB) JS for the kiosk + 0.75 KB on-demand `testBridge` chunk.
+- `npm run test:e2e` runs **14 Playwright BDD scenarios** under headless Chromium (boot smoke ×2 + view scenarios ×12) — all green.
+
+**What's deferred to Phase 7 (DT-6)**:
+
+- `<tree-graph-screen>`'s flat children grid → squarified treemap with the 1/12 minimum-tile clamp + `ResizeObserver`-driven reflow.
+- Breadcrumb + drawer + burger menu (the `shell/*.feature` test set).
+- The `n=0/1/11/12` outline of `treemap_n_plus_one.feature` — the VM mapper already places the `+` slot correctly per `shouldRenderPlusTile(center)`, so Phase 7 only needs to drive the layout engine; the data plumbing is done.
+
 ---
 
 ## Resume protocol
@@ -1007,5 +1088,5 @@ When resuming this conversation:
 5. **Verify Atlassian MCP is online** — list `C:\Users\amiot\.cursor\projects\<workspace-id>\mcps\` (the `<workspace-id>` derives from whichever folder is opened as the Cursor workspace; for `c:\Cursor` it is `c-Cursor`, for `c:\Cursor\tree-graph-viz` it is something like `d-…-tree-graph-viz`) and confirm an `atlassian`-like descriptor folder exists alongside `plugin-datadog-datadog`. If not, the user has not yet completed the OAuth flow after the Cursor restart that picked up `.cursor/mcp.json` (which is committed in the repo and also mirrored to global + workspace-root paths per §17.8). Strand A — 16 issues + 25 `Blocks` edges — is already created per §15.9.
 6. **Pick up the next strand**:
    - **Phase 5 leftovers (separate strand)**: DT-10 (`HE-2581`) + Task A (`HE-2586`) + Task B (`HE-2589`) — XRay import pipeline (`bin/xray-import.ps1`), credential provisioning, and first XRay import dry-run. Needs `XRAY_CLIENT_ID` + `XRAY_CLIENT_SECRET` in env (§16.8).
-   - **Phase 6 (DT-5 — Lit views)**: per §12.5, build the per-kind/per-role view templates + `NodeView` dispatcher + `PlusTile`. The `<tree-graph-screen>` shell stub from §17.6 will be replaced; the composition root grows by one more wire (`AddChildService` consumer arrives later in DT-7).
-7. XRay import script and credentials are tracked under the Phase 5 (DT-10/Task A/Task B) strand above; not blocking for Phase 6.
+   - **Phase 7 (DT-6 — Lit shell + layout)**: the per-kind/per-role views + `<node-view>` dispatcher + `<plus-tile>` from Phase 6 (DT-5) are landed (§17.9). DT-6 replaces `<tree-graph-screen>`'s flat children grid with the squarified treemap + 1/12-floor + `ResizeObserver` reflow, then layers breadcrumb + drawer + burger menu on top. The `shell/*` and `layout/*` test sets (TP-B) drive the work.
+7. XRay import script and credentials are tracked under the Phase 5 (DT-10/Task A/Task B) strand above; not blocking for Phase 7.

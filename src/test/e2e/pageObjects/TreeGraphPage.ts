@@ -46,9 +46,70 @@ export class TreeGraphPage {
     await this.expectBridgeReady();
   }
 
-  /** Read the focused node's title (the H1 inside `<tree-graph-screen>`). */
+  /**
+   * Read the focused node's title — the `data-testid="title"` element rendered
+   * by the `asParent` view inside the parent identity strip.
+   *
+   * The chain pierces three shadow roots (`tree-graph-screen` → `node-view` →
+   * per-kind element); Playwright's `getByTestId` walks open shadow DOM, so
+   * scoping by `parent-strip` first is enough to disambiguate against the
+   * `asChild` titles in the children grid.
+   */
   focusedTitle(): Locator {
-    return this.page.getByTestId("focused-title");
+    return this.parentStrip().getByTestId("title");
+  }
+
+  /** Description element rendered by the focused (asParent) view. */
+  focusedDescription(): Locator {
+    return this.parentStrip().getByTestId("description");
+  }
+
+  /** Value cell in the focused (asParent) BusinessScoreCard view (also empty for `childrenCount` n=0). */
+  focusedValue(): Locator {
+    return this.parentStrip().getByTestId("value");
+  }
+
+  /** ISO date next to a `recordedValue` in the focused (asParent) view. */
+  focusedValueDate(): Locator {
+    return this.parentStrip().getByTestId("value-date");
+  }
+
+  /** `Σ` badge appended by the focused (asParent) view when value-kind is `computedMean`. */
+  focusedComputedBadge(): Locator {
+    return this.parentStrip().getByTestId("computed-badge");
+  }
+
+  /** Parent identity strip — also exposes `data-focused-id` for "still focused" assertions. */
+  parentStrip(): Locator {
+    return this.page.getByTestId("parent-strip");
+  }
+
+  /** All children tiles in the focused-view grid (excludes the `+` slot). */
+  childTiles(): Locator {
+    return this.page.getByTestId("child");
+  }
+
+  /**
+   * The child tile bound to the given domain node id (`data-id` on `child-tile`).
+   * Use child-scoped getByTestId for nested fields (title/description/value/...).
+   */
+  childById(id: string): Locator {
+    return this.page.locator(`[data-testid="child"][data-id="${id}"]`);
+  }
+
+  /** All `<plus-tile>` host elements (custom-element tag — useful for "no descendant testids" assertions). */
+  plusTileHosts(): Locator {
+    return this.page.locator("plus-tile");
+  }
+
+  /** All inner `<button data-testid="plus-tile">` elements — what the user actually clicks. */
+  plusTileButtons(): Locator {
+    return this.page.getByTestId("plus-tile");
+  }
+
+  /** Read the currently-rendered focused node id from the parent strip's `data-focused-id`. */
+  async focusedId(): Promise<string | null> {
+    return this.parentStrip().getAttribute("data-focused-id");
   }
 
   /** Seed a tree via the test bridge. The page must be reloaded for the new state to render. */
@@ -60,6 +121,22 @@ export class TreeGraphPage {
       }
       await w.__appTestApi__.seed(json);
     }, treeJson);
+  }
+
+  /**
+   * Drive the hash router to focus a specific node — uses the canonical
+   * `#/b/<boardId>/n/<focusNodeUuid>` shape so the bridge reads back the
+   * same id via `currentFocusUuid()`.
+   */
+  async focusNode(nodeUuid: string): Promise<void> {
+    await this.page.evaluate(async (uuid) => {
+      const w = window as BridgedWindow;
+      if (!w.__appTestApi__) {
+        throw new Error("test bridge not installed; was the page opened with ?test=1?");
+      }
+      const boardId = w.__appTestApi__.currentBoardId();
+      await w.__appTestApi__.navigateTo(`#/b/${boardId}/n/${uuid}`);
+    }, nodeUuid);
   }
 
   /**

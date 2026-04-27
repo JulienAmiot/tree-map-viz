@@ -1,0 +1,82 @@
+{
+  "nodeType": "BusinessScoreCard",
+  "id": "Root",
+  "title": "Root",
+  "description": "Computed root",
+  "targetValue": 100,
+  "minimalValue": 0,
+  "unit": "%",
+  "historizedValues": [
+    { "value": 1, "date": "2026-04-22T18:25:43.511Z" }
+  ],
+  "computed": true,
+  "eligibleForParentComputation": false,
+  "weight": 1,
+  "childrenNodes": [
+    {
+      "nodeType": "BusinessScoreCard",
+      "id": "ChildA",
+      "title": "ChildA",
+      "description": "Computed branch",
+      "targetValue": 100,
+      "minimalValue": 0,
+      "unit": "%",
+      "historizedValues": [
+        { "value": 100, "date": "2026-04-22T18:25:43.511Z" }
+      ],
+      "computed": true,
+      "eligibleForParentComputation": true,
+      "weight": 1,
+      "childrenNodes": [
+        {
+          "nodeType": "BusinessScoreCard",
+          "id": "GrandLeaf",
+          "title": "GrandLeaf",
+          "description": "Recorded grandchild",
+          "targetValue": 100,
+          "minimalValue": 0,
+          "unit": "%",
+          "historizedValues": [
+            { "value": 80, "date": "2026-04-22T18:25:43.511Z" }
+          ],
+          "computed": false,
+          "eligibleForParentComputation": true,
+          "weight": 1,
+          "childrenNodes": []
+        }
+      ]
+    },
+    {
+      "nodeType": "BusinessScoreCard",
+      "id": "ChildB",
+      "title": "ChildB",
+      "description": "Recorded child",
+      "targetValue": 100,
+      "minimalValue": 0,
+      "unit": "%",
+      "historizedValues": [
+        { "value": 60, "date": "2026-04-22T18:25:43.511Z" }
+      ],
+      "computed": false,
+      "eligibleForParentComputation": true,
+      "weight": 1,
+      "childrenNodes": []
+    },
+    {
+      "nodeType": "BusinessScoreCard",
+      "id": "EmptyLeaf",
+      "title": "EmptyLeaf",
+      "description": "Computed leaf with no children",
+      "targetValue": 100,
+      "minimalValue": 0,
+      "unit": "%",
+      "historizedValues": [
+        { "value": 0, "date": "2026-04-22T18:25:43.511Z" }
+      ],
+      "computed": true,
+      "eligibleForParentComputation": false,
+      "weight": 1,
+      "childrenNodes": []
+    }
+  ]
+}
