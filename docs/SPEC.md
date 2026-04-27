@@ -802,7 +802,7 @@ This section records what has actually been built, on top of the plan in §12.5.
 | **6 (DT-5)** | `7203eb8` | 279 → 321 _(unit)_ + 2 → 14 _(e2e)_ | DONE | Per-kind/per-role Lit views + `<node-view>` dispatcher + `<plus-tile>` + view-model mapper; shell rewired to consume a plain `FocusedTreeViewModel`. 4 new view `.feature` files + `viewSteps.ts` cover the (role × computed) matrix, the three `computedValue` branches, and the `+`-affordance contract. See §17.9. |
 | **7–11** | — | — | TODO | Lit shell + layout, modal, animations, wiring, kiosk smoke. |
 
-Verification on each landed commit: `npm test` green, `npm run lint` (`tsc --noEmit`) clean, `npm run lint:rules` (ESLint layered rules) clean. Phase 5 also requires `npm run test:e2e` (Playwright BDD) green.
+Verification on each landed commit: `npm test` green, `npm run lint` (`tsc --noEmit`) clean, `npm run lint:rules` (ESLint layered rules) clean. From Phase 5 onward, `npm run test:e2e` (Playwright BDD) is also part of the gate. From Phase 6 onward, `npm run build` (Vite production bundle) is too — the kiosk has shipped renderable views.
 
 ### 17.1 Phase 0 + Phase 1 — Lit-ready infra + Option B domain (`e1fcd91`)
 
@@ -872,12 +872,14 @@ Two adapters + a reusable contract-test pattern landed.
 
 ### 17.5 What's testable today
 
-- `npm test` runs **279** unit tests (~6 s on a typical dev box).
+Snapshot kept current with the latest landed phase (Phase 6 / DT-5 — commit `7203eb8`). Each phase's own as-built sub-section (§17.1–§17.9) preserves the per-phase numbers at landing time so the historical record isn't lost.
+
+- `npm test` runs **321** unit tests across **31** files (~7 s on a typical dev box).
 - `npm run lint` (`tsc --noEmit`) clean.
-- `npm run lint:rules` (ESLint layered rules) clean — no domain → application/adapters/browser-API leak, no application → adapters leak, no `lit` outside `adapters/ui`.
-- `npm run build` produces a `dist/` with `<tree-graph-screen>` rendering the focused node's title and children. The `testBridge` is emitted as a separate ~0.75 KB chunk that's only fetched when `?test=1` is in the URL (dynamic-import tree-shake).
-- `npm run dev` / `npm run preview` launch the kiosk. With empty `localStorage`, the default seed shows a single "Root" board.
-- `npm run test:e2e` runs the Playwright BDD smoke under headless Chromium (2 scenarios: default-seed boot, and bridge-seed-then-reload of the org tree). Both green.
+- `npm run lint:rules` (ESLint layered rules) clean — no domain → application/adapters/browser-API leak, no application → adapters leak, no `lit` outside `adapters/ui`, no `src/{domain,application,adapters}/**` imports inside `src/test/e2e/**`.
+- `npm run build` produces a `dist/` with the kiosk bundle at ~48 KB (gzip ~14.6 KB) + a 0.75 KB on-demand `testBridge` chunk that's only fetched when `?test=1` is in the URL (dynamic-import tree-shake). The bundled `<tree-graph-screen>` renders the parent identity strip + flat children grid + `+` tile through the `<node-view>` dispatcher (per-kind/per-role Lit elements from §17.9). The squarified treemap layout arrives in Phase 7 (DT-6).
+- `npm run dev` / `npm run preview` launch the kiosk. With empty `localStorage`, the default seed shows a single "Root" board (a `TextNode` — so the parent strip renders Title + Description and the children grid contains only the `+` tile).
+- `npm run test:e2e` runs **14** Playwright BDD scenarios under headless Chromium: 2 boot scenarios (default-seed boot + bridge-seed-then-reload) plus 12 view scenarios across 4 `views/*.feature` files (TP-A test set per §15.5 — see §17.9). All green.
 
 ### 17.6 Phase 5 (DT-9) — BDD harness (`3daa85e`)
 
@@ -1083,8 +1085,8 @@ When resuming this conversation:
 
 1. **Read §17 (Implementation log) first** — it is the source of truth for as-built status (which phases have landed, on which commits, and any decisions taken during implementation that §1–§16 did not pin down). Then re-read this file end-to-end. Decisions §13.1, §13.2, §13.3, §14, §15, §16 are locked.
 2. **Re-read** `examples/classDiagramMermaid.v2.mermaid`, `examples/test.json`, `examples/test-before.html`, `examples/test-after.html`.
-3. **Run `git status` and `git log --oneline`** — confirm `HEAD` matches the latest commit recorded in §17.0. Phases 0–5 (DT-9) are landed; the working tree should be clean (or hold only docs/test-fixture WIP).
-4. **Sanity check the build**: `npm test` (expect the count in §17.0), `npm run lint`, `npm run lint:rules`, and (Phase 5+) `npm run build` then `npm run test:e2e` — all should be green before starting new work. The first `npm run test:e2e` after a clone needs `npx playwright install chromium`.
+3. **Run `git status` and `git log --oneline`** — confirm `HEAD` matches the latest commit recorded in §17.0. Phases 0–6 (DT-5) are landed (DT-10 script half too — Tasks A/B remain manual ops); the working tree should be clean (or hold only docs/test-fixture WIP).
+4. **Sanity check the build**: `npm test` (expect the count in §17.5), `npm run lint`, `npm run lint:rules`, `npm run build`, and `npm run test:e2e` — all should be green before starting new work. The first `npm run test:e2e` after a clone needs `npx playwright install chromium`.
 5. **Verify Atlassian MCP is online** — list `C:\Users\amiot\.cursor\projects\<workspace-id>\mcps\` (the `<workspace-id>` derives from whichever folder is opened as the Cursor workspace; for `c:\Cursor` it is `c-Cursor`, for `c:\Cursor\tree-graph-viz` it is something like `d-…-tree-graph-viz`) and confirm an `atlassian`-like descriptor folder exists alongside `plugin-datadog-datadog`. If not, the user has not yet completed the OAuth flow after the Cursor restart that picked up `.cursor/mcp.json` (which is committed in the repo and also mirrored to global + workspace-root paths per §17.8). Strand A — 16 issues + 25 `Blocks` edges — is already created per §15.9.
 6. **Pick up the next strand**:
    - **Phase 5 leftovers (separate strand)**: DT-10 (`HE-2581`) + Task A (`HE-2586`) + Task B (`HE-2589`) — XRay import pipeline (`bin/xray-import.ps1`), credential provisioning, and first XRay import dry-run. Needs `XRAY_CLIENT_ID` + `XRAY_CLIENT_SECRET` in env (§16.8).
