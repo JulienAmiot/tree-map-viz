@@ -1,9 +1,12 @@
 import { defineConfig } from "@playwright/test";
 import { defineBddConfig } from "playwright-bdd";
 
+// Patterns are resolved relative to this config file's directory
+// (`configDir` per playwright-bdd's `TestFilesGenerator.loadFeatures`),
+// so they stay short and survive a workspace move.
 const testDir = defineBddConfig({
-  features: "src/test/e2e/features/**/*.feature",
-  steps: "src/test/e2e/steps/**/*.ts",
+  features: "features/**/*.feature",
+  steps: "steps/**/*.ts",
 });
 
 export default defineConfig({

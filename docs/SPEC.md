@@ -748,7 +748,7 @@ import globals from "globals";
 const FORBID_LIT = ["lit", "lit/decorators.js", "lit/directives/class-map.js", "lit/directives/style-map.js", "lit-html"];
 
 export default tseslint.config(
-  { ignores: ["dist/**", "node_modules/**", "src/test/e2e/.generated/**", "playwright-report/**", "test-results/**"] },
+  { ignores: ["dist/**", "node_modules/**", "src/test/e2e/.features-gen/**", "playwright-report/**", "test-results/**"] },
   { languageOptions: { parser: tseslint.parser, ecmaVersion: 2022, sourceType: "module",
                        globals: { ...globals.browser, ...globals.node } } },
   { files: ["src/domain/**/*.ts", "src/test/unit/domain/**/*.ts"],
@@ -797,9 +797,10 @@ This section records what has actually been built, on top of the plan in §12.5.
 | **2** | `e2f4ef3` | 198 → 213 | DONE | JSON codec; `examples/test.json` reordered to ascending history. |
 | **3** | `3335610` | 213 → 249 | DONE | 4 application services + 1 new port (`IdGenerator`). |
 | **4** | `d3a8690` | 249 → 279 | DONE | `LocalStorageBoardCollectionRepository` + `HashRouter` + reusable contract test. |
-| **5–11** | — | — | TODO | Playwright skeleton, Lit views, shell, modal, animations, wiring, kiosk smoke. |
+| **5 (DT-9)** | `49c0eff` | 279 _(unit)_ + 0 → 2 _(e2e)_ | DONE | Composition root + Lit shell stub + `testBridge` + Playwright smoke (2 scenarios) green. DT-10 + Task B (XRay import + dry-run) still TODO. |
+| **6–11** | — | — | TODO | Lit views, shell, modal, animations, wiring, kiosk smoke. |
 
-Verification on each landed commit: `npm test` green, `npm run lint` (`tsc --noEmit`) clean, `npm run lint:rules` (ESLint layered rules) clean.
+Verification on each landed commit: `npm test` green, `npm run lint` (`tsc --noEmit`) clean, `npm run lint:rules` (ESLint layered rules) clean. Phase 5 also requires `npm run test:e2e` (Playwright BDD) green.
 
 ### 17.1 Phase 0 + Phase 1 — Lit-ready infra + Option B domain (`e1fcd91`)
 
@@ -872,15 +873,60 @@ Two adapters + a reusable contract-test pattern landed.
 - `npm test` runs **279** unit tests (~6 s on a typical dev box).
 - `npm run lint` (`tsc --noEmit`) clean.
 - `npm run lint:rules` (ESLint layered rules) clean — no domain → application/adapters/browser-API leak, no application → adapters leak, no `lit` outside `adapters/ui`.
-- `npm run dev` launches Vite but renders blank — the `<tree-graph-screen>` element referenced by `index.html` is Phase 7 work.
-- `npm run test:e2e` has only the `playwright.config.ts` skeleton — no features/steps yet (Phase 5).
+- `npm run build` produces a `dist/` with `<tree-graph-screen>` rendering the focused node's title and children. The `testBridge` is emitted as a separate ~0.75 KB chunk that's only fetched when `?test=1` is in the URL (dynamic-import tree-shake).
+- `npm run dev` / `npm run preview` launch the kiosk. With empty `localStorage`, the default seed shows a single "Root" board.
+- `npm run test:e2e` runs the Playwright BDD smoke under headless Chromium (2 scenarios: default-seed boot, and bridge-seed-then-reload of the org tree). Both green.
 
-### 17.6 Open follow-ups for Phase 5+
+### 17.6 Phase 5 (DT-9) — BDD harness (`49c0eff`)
 
-- **Composition root** in `src/main.ts` (~30 lines per §14.5), wiring: `idGen → BoardCollectionService.create(repo, idGen) → TreeNavigationService → AddChildService → ImportExportService → HashRouter → testBridge`.
-- **`src/adapters/testBridge.ts`** (Phase 5) per §14.4 — single opt-in surface for BDD steps.
+Composition root, Lit shell stub, test bridge, and Playwright skeleton landed atomically.
+
+**Composition root — `src/main.ts`** (~75 lines including comments, ~35 of code; deliberate margin over §14.5's "~30 lines"):
+
+- Wires `idGen → LocalStorageBoardCollectionRepository → BoardCollectionService.create → TreeNavigationService` over the current board's tree → `HashRouter`.
+- Drives URL ↔ focus bidirectional sync: on boot, replaceState if the current hash doesn't match the loaded board; on `hashchange`, focus by uuid (replaceState back to root on miss).
+- Lazy-imports `testBridge.ts` only when `?test=1` is in the URL — Vite emits it as a separate chunk, so the production bundle stays bridge-free unless the gate is opened.
+- **Deliberately defers** wiring `AddChildService` / `ImportExportService`. Their consumers (modal + drawer) land in Phases 6–8; wiring them now would trip `noUnusedLocals` and add complexity that has nothing to drive it. The composition root grows incrementally with each phase that introduces a new consumer.
+
+**Lit shell stub — `src/adapters/ui/shell/TreeGraphScreen.ts`** (~80 lines):
+
+- `<tree-graph-screen>` renders the focused node's title + a flat list of its direct children's titles, exposed as `data-testid="focused-title"` and `data-testid="child"`. Phase 7 replaces the body with the squarified treemap + parent identity strip + drawer.
+- View model is a plain `FocusedTreeViewModel` (id + title + children id/title) — `main.ts` is the only place that translates `TreeNode` → VM, so domain types never leak through Lit reactive updates.
+- Built with Lit 3 + `experimentalDecorators: true` + `useDefineForClassFields: false` (the path picked in §16.4). `@property({ attribute: false })` works without `accessor`.
+
+**Test bridge — `src/adapters/testBridge.ts`** (60 LOC, well under §14.4's 80-line cap):
+
+- JSON-only API per §14.4: `seed(json)`, `currentFocusUuid()`, `currentBoardId()`, `navigateTo(url)`, `dismissAnimations()`.
+- `seed` decodes via the public `TreeCodec`, wraps the tree in a single fixed-id `"test-board"` snapshot, and writes through the public `BoardCollectionRepository.save`. Never reaches into `TreeNode`. The page must reload for the new state to render — the bridge does not bypass the repo's load/save lifecycle.
+- Activation gate is owned by `main.ts` (not the bridge): `main.ts` only does `await import("./adapters/testBridge.js")` when `?test=1` is set, so the bridge module is dynamically imported and tree-shaken otherwise.
+- `Object.defineProperty(target, "__appTestApi__", { value: Object.freeze(api), … })` — the surface is frozen and re-installable (idempotent).
+
+**Playwright skeleton — `src/test/e2e/`**:
+
+- `playwright.config.ts` already existed (Phase 0). **Path correction (deviation from §16.6):** the canonical example in §16.6 has `features: "src/test/e2e/features/**/*.feature"` and `steps: "src/test/e2e/steps/**/*.ts"`. That shape only works if `playwright.config.ts` lives at the repo root. Our config sits at `src/test/e2e/playwright.config.ts`; playwright-bdd's `TestFilesGenerator.loadFeatures` calls `resolveFeatureFiles(configDir, features)` so patterns are resolved from the config's directory. Corrected to `features/**/*.feature` and `steps/**/*.ts`.
+- `features/boot/app_boots.feature` (smoke) — 2 Scenarios:
+  - **Scenario 1**: open with empty storage → focused title is `"Root"` (exercises composition root + LocalStorage default seed + Lit shell render).
+  - **Scenario 2**: open with empty storage → seed the org tree via the bridge → reload → focused title is `"UUID1 Title"` (exercises the bridge + codec + reload boot flow).
+  - Tagged `@HE-2570 @component:boot` (feature) and `@HE-???? @priority:<high|medium>` (per scenario, placeholders for first XRay round-trip).
+- `steps/bootSteps.ts` — 4 steps; reads the org tree fixture via `node:fs` (Playwright runs from the repo root). The `@playwright/test` + `playwright-bdd` imports stay external.
+- `pageObjects/TreeGraphPage.ts` — wraps `Page`; `expectBridgeReady()` waits for `window.__appTestApi__` to appear (the bridge is dynamically imported, so it's not synchronously available right after `goto`).
+- `fixtures/trees/orgTree.json` — copy of `examples/test.json`. Independent fixture per §12.1; the wire reference at `examples/test.json` can change without breaking the smoke.
+
+**Pitfalls fixed in flight**:
+
+- **`page.addInitScript(() => localStorage.clear())` re-fires on every navigation, including reload.** This wiped the bridge-seeded state right before the reload's boot, causing Scenario 2 to render the default `"Root"` instead of `"UUID1 Title"`. Fix: drop the `addInitScript`. Playwright already gives every test a fresh browser context with empty `localStorage`, so the explicit clear was both unnecessary and harmful.
+- **playwright-bdd default `outputDir` is `.features-gen` (not `.generated`).** Updated `.gitignore` and `eslint.config.js` ignore lists. The §16.6 / §14.3 spec snippets reference `.features-gen` from this commit forward.
+
+**What's still TODO in Phase 5** (DT-10 + Task B, separate strand):
+
+- `bin/xray-import.ps1` (DT-10 / `HE-2581`) — script to zip `src/test/e2e/features/`, POST to XRay's `/api/v1/import/feature`, and round-trip the returned `@HE-…` Test keys back into the `.feature` files (§15.7).
+- First XRay import dry-run (Task B / `HE-2589`) — needs `XRAY_CLIENT_ID` + `XRAY_CLIENT_SECRET` from Task A (`HE-2586`). Until then, the placeholder `@HE-????` tags in `app_boots.feature` stay as-is.
+
+### 17.7 Open follow-ups beyond Phase 5
+
 - **Decide whether to add `application/ports/ImportExportFile.ts`** when the UI file picker / Blob download is built. Currently the UI is expected to wrap `<input type="file">` + `URL.createObjectURL` around the string-in/string-out service.
 - **Optional `architecture.test.ts`** mentioned in §12.5 Phase 4 was not added — `npm run lint:rules` (ESLint) already enforces the same import contract. Reconsider adding one only if a runtime invariant emerges that ESLint cannot express.
+- **Composition root will grow** as Phases 6–8 land: `AddChildService` (Phase 8 modal consumer), `ImportExportService` (Phase 6/8 drawer consumer), and a router-driven board-switching path (Phase 10 routing/board_collection.feature).
 
 ---
 
@@ -890,8 +936,10 @@ When resuming this conversation:
 
 1. **Read §17 (Implementation log) first** — it is the source of truth for as-built status (which phases have landed, on which commits, and any decisions taken during implementation that §1–§16 did not pin down). Then re-read this file end-to-end. Decisions §13.1, §13.2, §13.3, §14, §15, §16 are locked.
 2. **Re-read** `examples/classDiagramMermaid.v2.mermaid`, `examples/test.json`, `examples/test-before.html`, `examples/test-after.html`.
-3. **Run `git status` and `git log --oneline`** — confirm `HEAD` matches the latest commit recorded in §17.0. Phases 0–4 are landed; the working tree should be clean (or hold only docs/test-fixture WIP).
-4. **Sanity check the build**: `npm test` (expect the count in §17.0), `npm run lint`, `npm run lint:rules` — all should be green before starting new work.
+3. **Run `git status` and `git log --oneline`** — confirm `HEAD` matches the latest commit recorded in §17.0. Phases 0–5 (DT-9) are landed; the working tree should be clean (or hold only docs/test-fixture WIP).
+4. **Sanity check the build**: `npm test` (expect the count in §17.0), `npm run lint`, `npm run lint:rules`, and (Phase 5+) `npm run build` then `npm run test:e2e` — all should be green before starting new work. The first `npm run test:e2e` after a clone needs `npx playwright install chromium`.
 5. **Verify Atlassian MCP is online** — list `C:\Users\amiot\.cursor\projects\d-Travail-tree-graph-viz\mcps\` and confirm an `atlassian`-like descriptor folder exists alongside `plugin-datadog-datadog`. If not, the user has not yet completed the OAuth flow after the Cursor restart that wrote `.cursor/mcp.json`. (Strand A — 16 issues + 25 `Blocks` edges — is already created per §15.9.)
-6. **Begin Phase 5** of §12.5: Playwright skeleton (`playwright.config.ts` already exists; needs `testBridge.ts`, one smoke `.feature` + step + page object), and the first XRay import dry-run (§15 Task B). The composition root in `src/main.ts` and a temporary `<tree-graph-screen>` shell are prerequisites for Playwright to have something to drive — see §17.6.
-7. XRay import script and credentials become relevant in Phase 5 (§16.8).
+6. **Pick up the next strand**:
+   - **Phase 5 leftovers (separate strand)**: DT-10 (`HE-2581`) + Task A (`HE-2586`) + Task B (`HE-2589`) — XRay import pipeline (`bin/xray-import.ps1`), credential provisioning, and first XRay import dry-run. Needs `XRAY_CLIENT_ID` + `XRAY_CLIENT_SECRET` in env (§16.8).
+   - **Phase 6 (DT-5 — Lit views)**: per §12.5, build the per-kind/per-role view templates + `NodeView` dispatcher + `PlusTile`. The `<tree-graph-screen>` shell stub from §17.6 will be replaced; the composition root grows by one more wire (`AddChildService` consumer arrives later in DT-7).
+7. XRay import script and credentials are tracked under the Phase 5 (DT-10/Task A/Task B) strand above; not blocking for Phase 6.

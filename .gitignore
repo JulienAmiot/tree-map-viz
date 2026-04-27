@@ -9,7 +9,7 @@ dist
 # Playwright + playwright-bdd artefacts
 playwright-report/
 test-results/
-src/test/e2e/.generated/
+src/test/e2e/.features-gen/
 playwright/.cache/
 
 # Local env (never commit secrets)
