@@ -1,71 +1,81 @@
 /**
- * `<tree-graph-screen>` — Lit shell custom element (SPEC §5, §17).
+ * `<tree-graph-screen>` — Lit shell custom element (SPEC §4 / §5 / §17).
  *
- * Phase 6 body: parent identity strip (large `<node-view>` rendering the
- * focused node) on top + flat children grid below, where each child is a
- * `<node-view view-role="asChild">` and a trailing `<plus-tile>` is
- * appended iff the focused parent has capacity (§4). The squarified
- * treemap layout, breadcrumb, and drawer arrive in Phase 7+.
+ * Phase 7 (DT-6 — layout half) body: a 2-row CSS grid composition of
+ *   - `<parent-identity-strip>` (20–25 % of the viewport, top in both
+ *     orientations per §4 + locked option c1) bound to `view.center`,
+ *   - `<children-grid>` (the remaining 75–80 %) bound to `view.children`,
+ *     which itself drives the squarified treemap layout via its internal
+ *     `TreemapController`.
  *
- * The element is purely view: it accepts a plain `FocusedTreeViewModel`
+ * The shell is purely view: it accepts a plain `FocusedTreeViewModel`
  * through the `view` property and never reaches into domain types.
  * `main.ts` is the only caller that knows about `TreeNode`,
  * `TreeNavigationService`, etc.
  *
- * Importing `../views/index.js` is a side-effect import that registers
- * each per-kind view + freezes `nodeViewRegistry`. Rendering relies on
- * the registry being populated; the shell does not register entries
- * itself (kept decoupled from concrete kinds).
+ * Orientation:
+ *   - An `OrientationController` observes the host's content rect and
+ *     reports `'landscape' | 'portrait'`. The shell reflects the current
+ *     orientation onto the wrapper as `data-orientation` so CSS / e2e
+ *     can branch on it (SPEC §4 — aspect 16/9 ↔ 9/16 reflows on rotation).
+ *   - Per §4, the parent strip stays at the top in both orientations; the
+ *     `data-orientation` attribute is exposed for future style tweaks
+ *     (typography, breadcrumb truncation, etc.) and as the e2e seam for
+ *     `layout/orientation_reflow.feature`.
+ *
+ * Side-effect imports for `<parent-identity-strip>` and `<children-grid>`
+ * are mandatory (SPEC §17.9 pitfall): without them, esbuild tree-shakes
+ * the modules and the `@customElement` decorators never register the
+ * tags, so `document.createElement(...)` returns a plain `HTMLElement`
+ * without `updateComplete`.
  */
 
 import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
+import { OrientationController } from "../controllers/OrientationController.js";
 import "../views/index.js";
 import type { FocusedTreeViewModel } from "../views/NodeViewModel.js";
+import "./ChildrenGrid.js";
+import "./ParentIdentityStrip.js";
 
 @customElement("tree-graph-screen")
 export class TreeGraphScreen extends LitElement {
   @property({ attribute: false })
   view: FocusedTreeViewModel | null = null;
 
+  readonly orientation = new OrientationController(this);
+
   static styles = css`
     :host {
       display: block;
       box-sizing: border-box;
+      width: 100%;
       height: 100%;
-      padding: clamp(0.75rem, 2vw, 1.5rem);
       color: var(--text, #e8ecf4);
       font: 1rem/1.4 system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
-    .parent-strip {
-      margin: 0 0 1rem 0;
-      padding: 0 0 0.75rem 0;
-      border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+    .layout {
+      display: grid;
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      /* §4: parent strip ≈ 22 % (mid of 20–25 %), children grid ≈ 78 %. */
+      grid-template-rows: 22fr 78fr;
     }
-    .children {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+    parent-identity-strip {
+      min-height: 0;
+      min-width: 0;
     }
-    .child-tile {
-      flex: 1 1 12rem;
-      min-width: 8rem;
-      padding: 0.25rem;
-      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
-      border-radius: 6px;
-      background: color-mix(in srgb, currentColor 6%, transparent);
-      cursor: pointer;
-    }
-    .child-tile:hover,
-    .child-tile:focus-within {
-      background: color-mix(in srgb, currentColor 10%, transparent);
-    }
-    .plus-slot {
-      flex: 0 1 8rem;
-      min-width: 6rem;
+    children-grid {
+      min-height: 0;
+      min-width: 0;
     }
     .empty {
+      display: grid;
+      place-items: center;
+      width: 100%;
+      height: 100%;
       color: color-mix(in srgb, currentColor 60%, transparent);
       font-style: italic;
     }
@@ -76,32 +86,14 @@ export class TreeGraphScreen extends LitElement {
       return html`<p class="empty" data-testid="loading">Loading…</p>`;
     }
     const { center, children } = this.view;
-    return html`
-      <header
-        class="parent-strip"
-        data-testid="parent-strip"
-        data-focused-id=${center.id}
-      >
-        <node-view view-role="asParent" .vm=${center}></node-view>
-      </header>
-      <section class="children" data-testid="children">
-        ${children.map((slot) => {
-          if (slot.slot === "plus") {
-            return html`<div class="plus-slot">
-              <plus-tile parent-id=${slot.parentId} .parentId=${slot.parentId}></plus-tile>
-            </div>`;
-          }
-          return html`<div
-            class="child-tile"
-            data-testid="child"
-            data-id=${slot.vm.id}
-            data-view-kind=${slot.vm.kind}
-          >
-            <node-view view-role="asChild" .vm=${slot.vm}></node-view>
-          </div>`;
-        })}
-      </section>
-    `;
+    return html`<div
+      class="layout"
+      data-testid="layout"
+      data-orientation=${this.orientation.orientation}
+    >
+      <parent-identity-strip .vm=${center}></parent-identity-strip>
+      <children-grid .slots=${children}></children-grid>
+    </div>`;
   }
 }
 

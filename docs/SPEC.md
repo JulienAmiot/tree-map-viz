@@ -800,7 +800,9 @@ This section records what has actually been built, on top of the plan in §12.5.
 | **5 (DT-9)** | `3daa85e` | 279 _(unit)_ + 0 → 2 _(e2e)_ | DONE | Composition root + Lit shell stub + `testBridge` + Playwright smoke (2 scenarios) green. |
 | **5 (DT-10)** | `6d971bb` | unchanged | DONE (script) / TODO (run) | XRay import pipeline scaffolded: `bin/xray-import.ps1` + `bin/xray-import.sh` + `bin/README.md` + `.github/workflows/xray-import.yml` + `.env.example`. Dry-run smoke green. **Task A (`HE-2586`) creds + Task B (`HE-2589`) first import** still TODO — see §17.8. |
 | **6 (DT-5)** | `7203eb8` | 279 → 321 _(unit)_ + 2 → 14 _(e2e)_ | DONE | Per-kind/per-role Lit views + `<node-view>` dispatcher + `<plus-tile>` + view-model mapper; shell rewired to consume a plain `FocusedTreeViewModel`. 4 new view `.feature` files + `viewSteps.ts` cover the (role × computed) matrix, the three `computedValue` branches, and the `+`-affordance contract. See §17.9. |
-| **7–11** | — | — | TODO | Lit shell + layout, modal, animations, wiring, kiosk smoke. |
+| **7 (DT-6 — layout)** | _(see git log)_ | 321 → 370 _(unit)_ + 14 → 23 _(e2e)_ | DONE | `OrientationController` + `TreemapController` + `<parent-identity-strip>` + `<children-grid>` (squarified treemap with the 1/12 floor + `ResizeObserver`-driven reflow). Shell composes them through a 22 % / 78 % CSS grid + reflects orientation as `data-orientation`. 3 new layout `.feature` files (TP-B): `treemap_n_plus_one` (n ∈ {0,1,11,12} outline), `treemap_min_tile_clamp`, `orientation_reflow`. See §17.10. |
+| **7 (DT-6 — shell chrome)** | — | — | TODO | Drawer + breadcrumb + burger menu; the `shell/*.feature` test set (TP-B). |
+| **8–11** | — | — | TODO | Add-child modal, animations, persistence/routing wiring, kiosk smoke. |
 
 Verification on each landed commit: `npm test` green, `npm run lint` (`tsc --noEmit`) clean, `npm run lint:rules` (ESLint layered rules) clean. From Phase 5 onward, `npm run test:e2e` (Playwright BDD) is also part of the gate. From Phase 6 onward, `npm run build` (Vite production bundle) is too — the kiosk has shipped renderable views.
 
@@ -872,14 +874,14 @@ Two adapters + a reusable contract-test pattern landed.
 
 ### 17.5 What's testable today
 
-Snapshot kept current with the latest landed phase (Phase 6 / DT-5 — commit `7203eb8`). Each phase's own as-built sub-section (§17.1–§17.9) preserves the per-phase numbers at landing time so the historical record isn't lost.
+Snapshot kept current with the latest landed phase (Phase 7 / DT-6 — layout half). Each phase's own as-built sub-section (§17.1–§17.10) preserves the per-phase numbers at landing time so the historical record isn't lost.
 
-- `npm test` runs **321** unit tests across **31** files (~7 s on a typical dev box).
+- `npm test` runs **370** unit tests across **36** files (~7 s on a typical dev box).
 - `npm run lint` (`tsc --noEmit`) clean.
 - `npm run lint:rules` (ESLint layered rules) clean — no domain → application/adapters/browser-API leak, no application → adapters leak, no `lit` outside `adapters/ui`, no `src/{domain,application,adapters}/**` imports inside `src/test/e2e/**`.
-- `npm run build` produces a `dist/` with the kiosk bundle at ~48 KB (gzip ~14.6 KB) + a 0.75 KB on-demand `testBridge` chunk that's only fetched when `?test=1` is in the URL (dynamic-import tree-shake). The bundled `<tree-graph-screen>` renders the parent identity strip + flat children grid + `+` tile through the `<node-view>` dispatcher (per-kind/per-role Lit elements from §17.9). The squarified treemap layout arrives in Phase 7 (DT-6).
+- `npm run build` produces a `dist/` with the kiosk bundle at ~53 KB (gzip ~16.2 KB) + a 0.75 KB on-demand `testBridge` chunk that's only fetched when `?test=1` is in the URL (dynamic-import tree-shake). 61 modules transformed (was 56 in §17.9). The bundled `<tree-graph-screen>` now composes `<parent-identity-strip>` (top, 22 %) + `<children-grid>` (bottom, 78 %, squarified treemap with 1/12 floor + `ResizeObserver` reflow), with `data-orientation` exposed on the layout wrapper for landscape/portrait CSS hooks (§17.10).
 - `npm run dev` / `npm run preview` launch the kiosk. With empty `localStorage`, the default seed shows a single "Root" board (a `TextNode` — so the parent strip renders Title + Description and the children grid contains only the `+` tile).
-- `npm run test:e2e` runs **14** Playwright BDD scenarios under headless Chromium: 2 boot scenarios (default-seed boot + bridge-seed-then-reload) plus 12 view scenarios across 4 `views/*.feature` files (TP-A test set per §15.5 — see §17.9). All green.
+- `npm run test:e2e` runs **23** Playwright BDD scenarios under headless Chromium: 2 boot scenarios + 12 view scenarios (TP-A; §17.9) + 9 layout scenarios across 3 `layout/*.feature` files (TP-B — `treemap_n_plus_one` ×4 outline rows, `treemap_min_tile_clamp` ×2, `orientation_reflow` ×3; §17.10). All green.
 
 ### 17.6 Phase 5 (DT-9) — BDD harness (`3daa85e`)
 
@@ -1077,6 +1079,72 @@ The fixture is unit-test-only (`src/test/fixtures/`) and never ships in producti
 - Breadcrumb + drawer + burger menu (the `shell/*.feature` test set).
 - The `n=0/1/11/12` outline of `treemap_n_plus_one.feature` — the VM mapper already places the `+` slot correctly per `shouldRenderPlusTile(center)`, so Phase 7 only needs to drive the layout engine; the data plumbing is done.
 
+### 17.10 Phase 7 (DT-6 — layout half) — Lit shell + layout
+
+DT-6 (`HE-2583`) — squarified-treemap layout + orientation-aware shell composition — landed as a single coherent chunk on top of Phase 6 (`7203eb8`). The shell-chrome half of DT-6 (drawer + breadcrumb + burger menu, the `shell/*.feature` test set) is deliberately deferred to a separate sub-strand; this section documents only the layout half.
+
+**Files added** (all under `src/adapters/ui/` unless noted):
+
+- `controllers/OrientationController.ts` — Lit `ReactiveController`; subscribes a `ResizeObserver` over the host, derives `'landscape' | 'portrait'` from `width >= height` (square ties default to landscape per §4 — kiosk at-rest pose), and calls `host.requestUpdate()` only on flips. The `ResizeObserver` constructor is injectable for tests.
+- `controllers/TreemapController.ts` — Lit `ReactiveController`; owns the most recently observed content size, the most recent weights/options, and the resulting rects. Two entry points: `layout(weights, opts?)` (host calls during render — synchronous, does *not* request update) and the private `onResize` (re-runs the squarify and requests update only if rects actually changed). `rects` is `[]` until the first `ResizeObserver` callback so the host knows to render an empty grid in jsdom (which never fires the observer).
+- `views/NodeViewModel.ts` (modified) — `ChildSlotViewModel` gained a `weight: number` field. For `node` slots it mirrors `TreeNode.weight.value`; for `plus` slots it is fixed at `1` (matches the default new-child weight per §4 — keeps the `+` tile tappable under the 1/12 floor).
+- `views/viewModelMapper.ts` (modified) — propagates `child.weight.value` per node slot and emits `weight: 1` on the `+` slot. +2 tests in the mapper suite.
+- `shell/ParentIdentityStrip.ts` — `<parent-identity-strip>`. Thin wrapper over `<node-view view-role="asParent">` that emits `[data-testid="parent-strip"]` + `data-focused-id`. Exists as its own element (not inlined into the shell) so the e2e selector contract from §17.9 stays stable through the Phase 7 rewrite + the strip's CSS box (border, padding) is owned in one place.
+- `shell/ChildrenGrid.ts` — `<children-grid>`. Holds a `TreemapController`, takes `slots: readonly ChildSlotViewModel[]`, runs `treemap.layout(weights, { padding: 4 })` from `willUpdate`, and absolutely-positions one `.tile` div per slot. Each tile wraps either `<node-view view-role="asChild">` (with `data-testid="child"` + `data-id` + `data-view-kind`) or `<plus-tile>` (with `data-slot="plus"` + `data-parent-id` — deliberately no `data-testid` per the §17.9 plus-tile contract). 4 px squarify padding (`TILE_PADDING_PX`).
+- `shell/TreeGraphScreen.ts` (rewritten) — composes `<parent-identity-strip>` + `<children-grid>` through a 22 fr / 78 fr CSS grid (mid of §4's 20–25 % / 75–80 % range). Hosts an `OrientationController`; `render()` reflects the current orientation as `data-orientation` on the `[data-testid="layout"]` wrapper so CSS / e2e can branch on it without re-deriving the geometry. Loading placeholder kept (`[data-testid="loading"]`) for the brief pre-bridge boot.
+
+**Test fixture added** — `src/test/fixtures/fakeResizeObserver.ts` (deliberately no `.test.ts`, vitest does not auto-discover it). jsdom does not implement `ResizeObserver`; the existing global stub in `src/test/setup.ts` is a no-op. The fake records observe/disconnect counts and exposes a synchronous `fire(entries)` so each controller test can drive its observer callback deterministically. `static instances[]` + `reset()` is the cross-test escape hatch — `beforeEach` resets, then the test grabs `FakeResizeObserver.instances.at(-1)`. Used by the controller tests, the `<children-grid>` test, and the `<tree-graph-screen>` test.
+
+**Unit tests added** (Vitest — 370 total now, +49 since §17.9):
+
+- `OrientationController.test.ts` (9) — landscape default, flip on portrait/landscape contentRect, square-tie → landscape, observe/disconnect/re-subscribe lifecycle, `requestUpdate` only on actual flips, ignores entries for other targets.
+- `TreemapController.test.ts` (17) — empty pre-layout, 0×0 host gives empty rects, weight-proportional areas, full coverage, resize-driven re-layout, observe/disconnect lifecycle, `requestUpdate` only when rects change, `layout()` does *not* request update (host already rendering), padding propagation, ignores entries for other targets, returns same reference as `rects`, empty weights → empty rects.
+- `ParentIdentityStrip.test.ts` (5) — null vm renders nothing in body, vm renders a `<node-view view-role="asParent">` carrying the supplied vm, `[data-testid="parent-strip"]` + `data-focused-id` are present, vm change updates both.
+- `ChildrenGrid.test.ts` (11) — empty slots → 0 tiles, slots + first resize → N tiles with squarify-driven absolute geometry, areas proportional to weights, `<node-view view-role="asChild">` per node slot, `<plus-tile>` per plus slot with `parent-id` propagated, `data-testid="child"` only on node tiles (the `+` is not a child per §12.3), re-render on slots change, re-layout on host resize, plus-tile inherits the 1/12 floor.
+- `TreeGraphScreen.test.ts` (5) — null view → loading placeholder, view set → composes both child elements with right vm/slots, view change re-propagates, controller orientation reflected as `data-orientation`, loading hidden once view is set.
+- `viewModelMapper.test.ts` (+2) — node slot weight mirrors domain `Weight.value`; plus slot weight is fixed at 1 even when children carry heavier weights.
+
+**Playwright BDD added — TP-B (layout half)** (3 `.feature` files under `src/test/e2e/features/layout/`):
+
+- `treemap_n_plus_one.feature` — Background seeds `capacityTree.json` (root with 4 branches: 0, 1, 11, 12 children). Scenario Outline over n ∈ {0, 1, 11, 12} → child-tile count {0, 1, 11, 12} + plus-tile count {1, 1, 1, 0}. Mirrors §12.3's `{1,2,12,12}` total tile counts (children + plus).
+- `treemap_min_tile_clamp.feature` — Background seeds `skewedWeights.json` (4 children, weights `[10, 1, 1, 1]`). Scenario 1: `every tile area is at least one twelfth of the inner children grid area` (assertion goes through tile bounding boxes against `<children-grid>`'s box minus the 4 px squarify padding × 2). Scenario 2: tiles together cover the inner children grid area within 2 %.
+- `orientation_reflow.feature` — Background seeds `textTree.json`. Scenarios: default 1280×720 viewport reports `landscape`; resize to 400×900 flips to `portrait`; rotate back to 1280×720 flips again. Every scenario also asserts `the parent strip is above the children grid` to lock §4 / option c1 in both orientations.
+
+**Step + page-object plumbing**:
+
+- `src/test/e2e/steps/layoutSteps.ts` — adds 5 generic steps: `there are {int} plus tiles` (parametric supplement to the existing "exactly one plus tile"; lives in `viewSteps.ts` for locality), `I resize the viewport to {int}x{int}` (`page.setViewportSize`), `the layout orientation is {string}`, `the parent strip is above the children grid` (bounding-box geometry), `every tile area is at least one twelfth of the inner children grid area`, `the sum of tile areas covers the inner children grid area within {int}%`.
+- `src/test/e2e/pageObjects/TreeGraphPage.ts` — extended with `layout()` (`getByTestId("layout")`), `childrenGridHost()` / `parentStripHost()` (custom-element CSS locators — Playwright's CSS engine pierces open shadow DOM, confirmed by the existing plus-tile selector chain), and `orientation()` (reads the `data-orientation` attribute).
+- New e2e fixtures under `src/test/e2e/fixtures/trees/`:
+  - `capacityTree.json` — TextNode root with branches `n0` (0 children), `n1` (1 child), `n11` (11), `n12` (12). 25 grandchildren total.
+  - `skewedWeights.json` — TextNode root + 4 TextNode children with weights `[10, 1, 1, 1]`.
+
+**Decisions taken during implementation that earlier sections did not pin down**:
+
+- **`ChildrenGrid.children` would shadow `Element.children: HTMLCollection`** and break structural assignability of `ChildrenGrid` to `Element`, which in turn breaks `lastObserver().fire([{ target: el, … }])` (where `target: Element`). Renamed to `slots` — it matches the existing `ChildSlotViewModel` / `nodeSlot` / `plusSlot` terminology and doesn't collide with anything native. Documented in the Lit element's docstring so the next contributor doesn't re-introduce the shadow.
+- **`OrientationController` lives on the shell, not on `<children-grid>`.** Orientation is a global property of the kiosk (ties into typography, breadcrumb truncation, future drawer placement); tile geometry only depends on the host's content rect, which `TreemapController` already observes independently. Reflecting `data-orientation` on the shell's `[data-testid="layout"]` wrapper gives both CSS and the e2e harness a single canonical seam.
+- **22 fr / 78 fr CSS grid for the parent strip / children grid split** (mid of §4's 20–25 % / 75–80 % range). Pure ratio, no `clamp`, so the split is exact in both orientations; the strip's own padding/typography handles the 4K-pixel-density side of "looks right".
+- **Skewed-weights fixture uses `[10, 1, 1, 1]`, not §12.3's illustrative `[100, 1, 1, 1]`.** The domain caps `Weight` at 10 (`InvalidWeightError` outside `[1, 10]`); the math still bites the floor with weight=10 (5 small tiles including the `+` get clamped to ≈ 10 / 7 ≈ 1.43 each, hitting exactly 1/12 of inner area). Captured here so re-readers don't try to widen the Weight bound just to honour a sketch.
+- **Cucumber-expression literal-number pitfall.** `playwright-bdd`'s cucumber-expressions auto-parameterize literal numbers in step text — the step "every tile area is at least 1/12 of the inner children grid area" was parsed as `{int}/{int}` and didn't match any defined step. Spelled-out wording ("one twelfth") avoids this without dropping into a regex step. Convention going forward: prefer worded fractions in step text.
+- **Per-tile floor assertion uses tolerance × 0.95** against the inner area (gross children-grid box minus 4 px padding × 2). Sub-pixel rounding from Chromium's layout engine can shave a few percent off the smallest tile in a row; the unit-test side (`treemapSquarify.test.ts`) holds the strict math, the e2e side holds the end-to-end behaviour with sane slack.
+- **`<plus-tile>` participates in the 1/12 floor on equal footing.** The slot model carries `weight: 1` for plus slots (per §4); the squarify sees the plus tile as just another weight in the input, so its area is clamped up the same way as the lights in skewed-weights. The Phase 8 modal can still drop the plus tile (or hide it at cap) without changing the floor logic.
+- **Side-effect imports for `<parent-identity-strip>` + `<children-grid>` in the shell.** `@customElement` decorators only register their tag if the module is *evaluated*. The shell's `import "./ChildrenGrid.js"` + `import "./ParentIdentityStrip.js"` are bare side-effect imports next to the `import type {}` from `NodeViewModel` (per the §17.9 view-test convention). Without them, the production bundle would silently render `<children-grid>` as a generic `HTMLElement` since nothing else imports it for runtime.
+
+**What's testable today**:
+
+- `npm test` — **370 unit tests** across 36 files (~7 s).
+- `npm run lint` (`tsc --noEmit`) clean.
+- `npm run lint:rules` (ESLint layered rules) clean.
+- `npm run build` produces a 53.08 KB / 16.18 KB gzip bundle (was 48.08 / 14.65 in §17.9) + 0.75 KB on-demand `testBridge` chunk; 61 modules transformed (was 56).
+- `npm run dev` / `npm run preview` — kiosk renders the parent identity strip + squarified children grid + plus tile, reflows on viewport resize.
+- `npm run test:e2e` runs **23 Playwright BDD scenarios** under headless Chromium (boot ×2 + view ×12 + layout ×9). All green.
+
+**What's deferred to the DT-6 shell-chrome sub-strand**:
+
+- Drawer + handle + auto-hide gesture (`shell/drawer.feature`).
+- Breadcrumb (root → focus, left-truncating, navigates on tap; `shell/breadcrumb.feature`).
+- Burger menu (Import / Export / Boards entries; `shell/burger_menu.feature`).
+- The composition root will need to wire `BoardCollectionService` rename / switch / create through the burger menu, and `ImportExportService` through the drawer's Import / Export entries.
+
 ---
 
 ## Resume protocol
@@ -1085,10 +1153,10 @@ When resuming this conversation:
 
 1. **Read §17 (Implementation log) first** — it is the source of truth for as-built status (which phases have landed, on which commits, and any decisions taken during implementation that §1–§16 did not pin down). Then re-read this file end-to-end. Decisions §13.1, §13.2, §13.3, §14, §15, §16 are locked.
 2. **Re-read** `examples/classDiagramMermaid.v2.mermaid`, `examples/test.json`, `examples/test-before.html`, `examples/test-after.html`.
-3. **Run `git status` and `git log --oneline`** — confirm `HEAD` matches the latest commit recorded in §17.0. Phases 0–6 (DT-5) are landed (DT-10 script half too — Tasks A/B remain manual ops); the working tree should be clean (or hold only docs/test-fixture WIP).
-4. **Sanity check the build**: `npm test` (expect the count in §17.5), `npm run lint`, `npm run lint:rules`, `npm run build`, and `npm run test:e2e` — all should be green before starting new work. The first `npm run test:e2e` after a clone needs `npx playwright install chromium`.
+3. **Run `git status` and `git log --oneline`** — confirm `HEAD` matches the latest commit recorded in §17.0. Phases 0–7 (DT-6 — layout half) are landed (DT-10 script half too — Tasks A/B remain manual ops); the working tree should be clean (or hold only docs/test-fixture WIP).
+4. **Sanity check the build**: `npm test` (expect **370** tests across **36** files per §17.5), `npm run lint`, `npm run lint:rules`, `npm run build` (expect ~53 KB / ~16 KB gzip), and `npm run test:e2e` (expect **23** scenarios) — all should be green before starting new work. The first `npm run test:e2e` after a clone needs `npx playwright install chromium`.
 5. **Verify Atlassian MCP is online** — list `C:\Users\amiot\.cursor\projects\<workspace-id>\mcps\` (the `<workspace-id>` derives from whichever folder is opened as the Cursor workspace; for `c:\Cursor` it is `c-Cursor`, for `c:\Cursor\tree-graph-viz` it is something like `d-…-tree-graph-viz`) and confirm an `atlassian`-like descriptor folder exists alongside `plugin-datadog-datadog`. If not, the user has not yet completed the OAuth flow after the Cursor restart that picked up `.cursor/mcp.json` (which is committed in the repo and also mirrored to global + workspace-root paths per §17.8). Strand A — 16 issues + 25 `Blocks` edges — is already created per §15.9.
 6. **Pick up the next strand**:
    - **Phase 5 leftovers (separate strand)**: DT-10 (`HE-2581`) + Task A (`HE-2586`) + Task B (`HE-2589`) — XRay import pipeline (`bin/xray-import.ps1`), credential provisioning, and first XRay import dry-run. Needs `XRAY_CLIENT_ID` + `XRAY_CLIENT_SECRET` in env (§16.8).
-   - **Phase 7 (DT-6 — Lit shell + layout)**: the per-kind/per-role views + `<node-view>` dispatcher + `<plus-tile>` from Phase 6 (DT-5) are landed (§17.9). DT-6 replaces `<tree-graph-screen>`'s flat children grid with the squarified treemap + 1/12-floor + `ResizeObserver` reflow, then layers breadcrumb + drawer + burger menu on top. The `shell/*` and `layout/*` test sets (TP-B) drive the work.
+   - **Phase 7 shell-chrome sub-strand (DT-6 continuation)**: the layout half is landed (§17.10 — `<parent-identity-strip>` + `<children-grid>` + `OrientationController` + 9 BDD layout scenarios). The remaining DT-6 work is Drawer (`shell/drawer.feature`) + Breadcrumb (`shell/breadcrumb.feature`) + Burger menu (`shell/burger_menu.feature`). Once those land, DT-6 is fully done and Phase 8 (DT-7 — Add-child modal) can start.
 7. XRay import script and credentials are tracked under the Phase 5 (DT-10/Task A/Task B) strand above; not blocking for Phase 7.

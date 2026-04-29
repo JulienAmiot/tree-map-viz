@@ -70,10 +70,15 @@ export type NodeViewModel = TextNodeViewModel | BusinessScoreCardNodeViewModel;
  * (drilled into via the standard "+"-less tile) or the `+` affordance, which
  * is **not** a node kind (§5 final sentence) and so lives outside the view
  * registry.
+ *
+ * `weight` feeds the squarified treemap layout (§4) — for `node` slots it
+ * mirrors the domain `TreeNode.weight.value`; for `plus` slots it is fixed
+ * at `1` (matches the default new-child weight per §4).
  */
-export type ChildSlotViewModel =
+export type ChildSlotViewModel = { readonly weight: number } & (
   | { readonly slot: "node"; readonly vm: NodeViewModel }
-  | { readonly slot: "plus"; readonly parentId: string };
+  | { readonly slot: "plus"; readonly parentId: string }
+);
 
 export type FocusedTreeViewModel = {
   readonly center: NodeViewModel;

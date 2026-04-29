@@ -107,6 +107,30 @@ export class TreeGraphPage {
     return this.page.getByTestId("plus-tile");
   }
 
+  /**
+   * The shell's `data-testid="layout"` wrapper, which carries the
+   * orientation flag (`data-orientation="landscape" | "portrait"`) — the
+   * e2e seam for `layout/orientation_reflow.feature`.
+   */
+  layout(): Locator {
+    return this.page.getByTestId("layout");
+  }
+
+  /** The `<children-grid>` host element (custom-element tag) — used for tile-area math against its bounding box. */
+  childrenGridHost(): Locator {
+    return this.page.locator("children-grid");
+  }
+
+  /** The `<parent-identity-strip>` host element (custom-element tag) — used for above/below geometry assertions. */
+  parentStripHost(): Locator {
+    return this.page.locator("parent-identity-strip");
+  }
+
+  /** Read the layout wrapper's `data-orientation` attribute. */
+  async orientation(): Promise<string | null> {
+    return this.layout().getAttribute("data-orientation");
+  }
+
   /** Read the currently-rendered focused node id from the parent strip's `data-focused-id`. */
   async focusedId(): Promise<string | null> {
     return this.parentStrip().getAttribute("data-focused-id");

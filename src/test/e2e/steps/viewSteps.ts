@@ -174,6 +174,11 @@ Then("there is exactly one plus tile", async ({ page }) => {
   await expect(kiosk.plusTileButtons()).toHaveCount(1);
 });
 
+Then("there are {int} plus tiles", async ({ page }, expected: number) => {
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.plusTileButtons()).toHaveCount(expected);
+});
+
 Then("the plus tile shows {string}", async ({ page }, expected: string) => {
   const kiosk = new TreeGraphPage(page);
   await expect(kiosk.plusTileButtons().first()).toContainText(expected);

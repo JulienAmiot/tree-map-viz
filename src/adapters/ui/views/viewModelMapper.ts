@@ -94,10 +94,11 @@ export function mapFocusedToViewModel(
 ): FocusedTreeViewModel {
   const slots: ChildSlotViewModel[] = children.map((c) => ({
     slot: "node",
+    weight: c.weight.value,
     vm: mapNodeToViewModel(c),
   }));
   if (shouldRenderPlusTile(center)) {
-    slots.push({ slot: "plus", parentId: center.id });
+    slots.push({ slot: "plus", weight: 1, parentId: center.id });
   }
   return {
     center: mapNodeToViewModel(center),

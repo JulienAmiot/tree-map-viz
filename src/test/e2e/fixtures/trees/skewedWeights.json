@@ -1,0 +1,41 @@
+{
+  "nodeType": "TextNode",
+  "id": "skewed-root",
+  "title": "Skewed weights",
+  "description": "Weights 10/1/1/1 — domain caps Weight at 10; this is enough to trigger the 1/12 floor",
+  "weight": 1,
+  "childrenNodes": [
+    {
+      "nodeType": "TextNode",
+      "id": "heavy",
+      "title": "Heavy",
+      "description": "",
+      "weight": 10,
+      "childrenNodes": []
+    },
+    {
+      "nodeType": "TextNode",
+      "id": "light1",
+      "title": "Light 1",
+      "description": "",
+      "weight": 1,
+      "childrenNodes": []
+    },
+    {
+      "nodeType": "TextNode",
+      "id": "light2",
+      "title": "Light 2",
+      "description": "",
+      "weight": 1,
+      "childrenNodes": []
+    },
+    {
+      "nodeType": "TextNode",
+      "id": "light3",
+      "title": "Light 3",
+      "description": "",
+      "weight": 1,
+      "childrenNodes": []
+    }
+  ]
+}

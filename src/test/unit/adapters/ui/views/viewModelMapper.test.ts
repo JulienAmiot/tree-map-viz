@@ -192,9 +192,10 @@ describe("mapFocusedToViewModel", () => {
     expect(vm.children).toHaveLength(3);
     expect(vm.children[0]).toEqual({
       slot: "node",
+      weight: 1,
       vm: { kind: "TextNode", id: "c1", title: "Sales", description: "" },
     });
-    expect(vm.children[2]).toEqual({ slot: "plus", parentId: "center" });
+    expect(vm.children[2]).toEqual({ slot: "plus", weight: 1, parentId: "center" });
   });
 
   it("omits the plus slot when the focused parent is at capacity (12 children)", () => {
@@ -214,6 +215,39 @@ describe("mapFocusedToViewModel", () => {
     const vm = mapFocusedToViewModel(center, []);
 
     expect(vm.children).toHaveLength(1);
-    expect(vm.children[0]).toEqual({ slot: "plus", parentId: "c" });
+    expect(vm.children[0]).toEqual({ slot: "plus", weight: 1, parentId: "c" });
+  });
+
+  it("propagates each child's domain weight to its slot (§3 / §4 — drives squarify)", () => {
+    const center = makeText("center", "Org");
+    const heavy = new TextNode(
+      "heavy",
+      identityOf("Heavy", ""),
+      Weight.of(7),
+    );
+    const light = new TextNode(
+      "light",
+      identityOf("Light", ""),
+      Weight.of(2),
+    );
+
+    const vm = mapFocusedToViewModel(center, [heavy, light]);
+
+    expect(vm.children[0]?.weight).toBe(7);
+    expect(vm.children[1]?.weight).toBe(2);
+  });
+
+  it("plus slot weight is fixed at 1 even when children have heavier weights (§4 — '+' tile = 1)", () => {
+    const center = makeText("center", "Org");
+    const heavy = new TextNode(
+      "heavy",
+      identityOf("Heavy", ""),
+      Weight.of(9),
+    );
+
+    const vm = mapFocusedToViewModel(center, [heavy]);
+
+    const plus = vm.children.find((s) => s.slot === "plus");
+    expect(plus?.weight).toBe(1);
   });
 });
