@@ -145,6 +145,80 @@ describe("<add-child-modal>", () => {
     ).not.toBeNull();
   });
 
+  it("weight field is pre-filled with `1` on both Text and BSC forms (\u00a717.16)", async () => {
+    // SPEC §17.16 — most kiosk-added children take the default weight,
+    // so the form pre-fills `1` (matching the service fallback) instead
+    // of leaving the field empty with just a placeholder.
+    const elText = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickText(elText);
+    expect((fieldOf(elText, "field-weight") as HTMLInputElement).value).toBe("1");
+
+    const elBsc = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickBsc(elBsc);
+    expect((fieldOf(elBsc, "field-weight") as HTMLInputElement).value).toBe("1");
+  });
+
+  it("weight default is re-applied each time the modal re-opens (no leak)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickText(el);
+    await setInput(el, "field-weight", "7");
+    el.open = false;
+    await el.updateComplete;
+    el.open = true;
+    await el.updateComplete;
+    await pickText(el);
+    expect((fieldOf(el, "field-weight") as HTMLInputElement).value).toBe("1");
+  });
+
+  it("BSC current-value row aligns current-value, unit, and as-of date on one line (\u00a717.16)", async () => {
+    // SPEC §17.16 — the three fields that together describe a single
+    // measurement (number + unit + date) live on one `field-row`,
+    // so the kiosk operator's eye stays on a horizontal line while
+    // entering "42 % as of today". The unit field is no longer in the
+    // weight row.
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickBsc(el);
+
+    const cvRow = el.shadowRoot?.querySelector(
+      '[data-testid="current-value-row"]',
+    );
+    expect(cvRow).not.toBeNull();
+    const ids = Array.from(
+      cvRow?.querySelectorAll<HTMLElement>("[data-testid]") ?? [],
+    ).map((f) => f.getAttribute("data-testid"));
+    expect(ids).toEqual([
+      "field-current-value",
+      "field-unit",
+      "field-current-value-date",
+    ]);
+
+    // The weight row is now unit-less.
+    const weightRow = el.shadowRoot?.querySelector(
+      '[data-testid="weight-row"]',
+    );
+    expect(weightRow?.querySelector('[data-testid="field-unit"]')).toBeNull();
+  });
+
   it("picking BusinessScoreCard exposes unit + objective + current-value + toggle fields", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
@@ -363,6 +437,10 @@ describe("<add-child-modal>", () => {
     expect(p?.kind).toBe("BusinessScoreCardNode");
     if (p?.kind !== "BusinessScoreCardNode") return; // narrow
     expect(p.title).toBe("Revenue");
+    // SPEC §17.16 — weight defaults to `1` (the form pre-fills it). The
+    // operator did not touch the weight field in this test, so the
+    // payload carries the default value end-to-end.
+    expect(p.weight).toBe(1);
     expect(p.unit).toBe("M€");
     expect(p.objective.initialValue).toBe(10);
     expect(p.objective.targetValue).toBe(120);

@@ -46,19 +46,23 @@
  * Defaults (mirroring `AddChildPayload` optional fields):
  *   - Text: title + a **mandatory current value** (the seed
  *     `TimestampedValue<string>` of the otherwise-empty `TextCard`
- *     history, SPEC §17.14) are required; weight default 1. There is
- *     **no** description field for TextNode — by §17.15 the current
- *     value (the latest entry in the `TextCard`) IS the node's
- *     description, so collecting it twice would be redundant.
+ *     history, SPEC §17.14) are required. Weight is **pre-filled with
+ *     `1`** (§17.16) and stays editable. There is **no** description
+ *     field for TextNode — by §17.15 the current value (the latest
+ *     entry in the `TextCard`) IS the node's description, so collecting
+ *     it twice would be redundant.
  *   - BusinessScoreCard: title + unit + objective + a **mandatory current
  *     value** (the seed `TimestampedValue<number>` of the otherwise-empty
  *     `BusinessScoreCard` history, SPEC §17.13) are all required;
- *     description optional, weight default 1, computed default false,
- *     eligibleForParentComputation default true. The "as of" date for
- *     both kinds defaults to **today** (the kiosk operator's local
- *     calendar day, ISO `YYYY-MM-DD`) and stays editable — most field
- *     uses record "what we measured today", but back-filling a past
- *     observation must remain trivial.
+ *     description optional, weight pre-filled with `1` (§17.16),
+ *     computed default false, eligibleForParentComputation default
+ *     true. Per §17.16 the BSC current-value row lays out **current
+ *     value, unit, and as-of date on the same line** (cognitively a
+ *     unit — the seed observation). The "as of" date for both kinds
+ *     defaults to **today** (the kiosk operator's local calendar day,
+ *     ISO `YYYY-MM-DD`) and stays editable — most field uses record
+ *     "what we measured today", but back-filling a past observation
+ *     must remain trivial.
  *
  * Validation: rejects empty `title` (and empty `unit` + missing objective
  * numbers + missing current-value/date — for both Text and BSC kinds) by
@@ -443,7 +447,7 @@ export class AddChildModal extends LitElement {
           />
         </div>
         ${isText ? nothing : this.renderDescriptionField()}
-        <div class="field-row">
+        <div class="field-row" data-testid="weight-row">
           <div class="field">
             <input
               data-testid="field-weight"
@@ -455,7 +459,6 @@ export class AddChildModal extends LitElement {
               @input=${(e: Event) => this.bindString(e, "weight")}
             />
           </div>
-          ${isText ? nothing : this.renderUnitField()}
         </div>
         ${isText
           ? this.renderTextCurrentValueFields()
@@ -497,21 +500,6 @@ export class AddChildModal extends LitElement {
     `;
   }
 
-  private renderUnitField() {
-    return html`
-      <div class="field">
-        <input
-          data-testid="field-unit"
-          type="text"
-          placeholder='Unit — e.g. "%" or "M€"'
-          .value=${this.unit}
-          required
-          @input=${(e: Event) => this.bindString(e, "unit")}
-        />
-      </div>
-    `;
-  }
-
   /**
    * SPEC §17.15 — only `BusinessScoreCardNode` carries a meaningful
    * description (the metric's definition: "Quarterly revenue across the
@@ -538,10 +526,16 @@ export class AddChildModal extends LitElement {
    * SPEC §17.13 — every BSC must boot with at least one `TimestampedValue`
    * in its history; otherwise `currentValue()` would throw on the very
    * first read. The kiosk collects that seed measurement here.
+   *
+   * SPEC §17.16 — the row deliberately lays out **current value, unit,
+   * and as-of date on the same line**: those three pieces together
+   * describe a single measurement (the seed observation) and are
+   * cognitively a unit. Putting them side-by-side reduces eye-travel for
+   * the kiosk operator entering "42 % as of today".
    */
   private renderBscCurrentValueFields() {
     return html`
-      <div class="field-row">
+      <div class="field-row" data-testid="current-value-row">
         <div class="field">
           <input
             data-testid="field-current-value"
@@ -550,6 +544,16 @@ export class AddChildModal extends LitElement {
             .value=${this.currentValue}
             required
             @input=${(e: Event) => this.bindString(e, "currentValue")}
+          />
+        </div>
+        <div class="field">
+          <input
+            data-testid="field-unit"
+            type="text"
+            placeholder='Unit — e.g. "%" or "M€"'
+            .value=${this.unit}
+            required
+            @input=${(e: Event) => this.bindString(e, "unit")}
           />
         </div>
         <div class="field">
@@ -808,7 +812,13 @@ export class AddChildModal extends LitElement {
     this.chosenKind = null;
     this.formTitle = "";
     this.description = "";
-    this.weight = "";
+    // SPEC §17.16 — `weight` is pre-filled with the default value `"1"`
+    // (matching the placeholder example AND the service-side fallback in
+    // `AddChildService.buildNode`). The vast majority of nodes carry the
+    // default weight; pre-filling saves the operator a tap and removes a
+    // "do I need to type 1?" hesitation. It stays editable for the rare
+    // case where a child should weigh more (or less) than its siblings.
+    this.weight = "1";
     this.unit = "";
     this.initialValue = "";
     this.targetValue = "";
