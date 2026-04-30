@@ -24,8 +24,12 @@ const { When, Then } = createBdd();
 // -- Modal lifecycle -----------------------------------------------------
 
 When("I pick the kind {string}", async ({ page }, kind: string) => {
+  // SPEC §17.19 — single-page flow: pick the kind by selecting the
+  // matching `<option>` in the kind dropdown (was two large buttons
+  // pre-§17.19). Playwright's `selectOption` dispatches `change`,
+  // which the modal listens to.
   const kiosk = new TreeGraphPage(page);
-  await kiosk.addChildModalKindCard(kind).click();
+  await kiosk.addChildModalKindSelect().selectOption(kind);
 });
 
 When("I fill in the title with {string}", async ({ page }, title: string) => {
@@ -50,13 +54,11 @@ When("I confirm the add-child modal", async ({ page }) => {
 });
 
 When("I cancel the add-child modal", async ({ page }) => {
+  // SPEC §17.19 — single-page flow: there's exactly one Cancel button
+  // (no more dual Cancel buttons across Step 1 / Step 2), so we click
+  // the testid directly.
   const kiosk = new TreeGraphPage(page);
-  // The picker step has its own Cancel button at index 0; the form step
-  // also has one (plus a Back button before it). `.first()` resolves to
-  // the visible Cancel — the picker's only one in Step 1, and the form's
-  // is the only one matching `[data-testid="modal-cancel"]` once we are in
-  // Step 2 because the picker is no longer in the DOM.
-  await kiosk.addChildModalCancel().first().click();
+  await kiosk.addChildModalCancel().click();
 });
 
 // -- Modal state --------------------------------------------------------
@@ -74,23 +76,51 @@ Then("the add-child modal is closed", async ({ page }) => {
 });
 
 Then(
-  "the modal step indicator shows {string}",
-  async ({ page }, expected: string) => {
+  "the modal offers a {string} kind",
+  async ({ page }, kindLabel: string) => {
+    // SPEC §17.19 — the modal lists the available kinds as `<option>`
+    // entries inside the kind dropdown, each labelled
+    // "Name — Description". `evaluate` reads the live `select.options`
+    // collection (avoids Playwright's quirks around `<select>` light
+    // children inside a shadow root).
     const kiosk = new TreeGraphPage(page);
-    await expect(kiosk.addChildModalStepIndicator()).toHaveText(expected);
+    const sel = kiosk.addChildModalKindSelect();
+    await expect(sel).toHaveCount(1);
+    const optionTexts = await sel.evaluate((node: Element) => {
+      const select = node as HTMLSelectElement;
+      return Array.from(select.options).map(
+        (o) => o.textContent?.trim() ?? "",
+      );
+    });
+    const matching = optionTexts.filter((t) =>
+      t.startsWith(`${kindLabel} \u2014`),
+    );
+    expect(matching).toHaveLength(1);
   },
 );
 
 Then(
-  "the modal offers a {string} kind",
-  async ({ page }, kindLabel: string) => {
+  "the modal kind dropdown shows {string} options labelled with name and description",
+  async ({ page }, expected: string) => {
+    // SPEC §17.19 — dropdown shape: `<expected>` real options (the
+    // placeholder option is excluded from the count); each carries a
+    // dash-separated "Name — Description" label. We `evaluate` against
+    // the `<select>` so we can read its `<option>` children directly
+    // through the live DOM API (Playwright's `locator("option")` does
+    // not always traverse `<select>` children as expected when the
+    // select sits inside an open shadow root).
     const kiosk = new TreeGraphPage(page);
-    const map: Record<string, string> = {
-      Text: "TextNode",
-      "Business Score Card": "BusinessScoreCardNode",
-    };
-    const kind = map[kindLabel] ?? kindLabel;
-    await expect(kiosk.addChildModalKindCard(kind)).toHaveCount(1);
+    const sel = kiosk.addChildModalKindSelect();
+    const optionTexts = await sel.evaluate((node: Element) => {
+      const select = node as HTMLSelectElement;
+      return Array.from(select.options)
+        .filter((o) => !o.disabled)
+        .map((o) => o.textContent?.trim() ?? "");
+    });
+    expect(optionTexts).toHaveLength(Number(expected));
+    for (const t of optionTexts) {
+      expect(t).toMatch(/^[A-Z][^\u2014]+ \u2014 .+/);
+    }
   },
 );
 
@@ -105,6 +135,21 @@ Then(
 Then("the modal has a title field", async ({ page }) => {
   const kiosk = new TreeGraphPage(page);
   await expect(kiosk.addChildModalField("field-title")).toHaveCount(1);
+});
+
+// SPEC §17.19 — before a kind is picked, no type-specific fields
+// render; the form is just the dropdown + actions row.
+Then("the modal has no title field", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.addChildModalField("field-title")).toHaveCount(0);
+});
+
+Then("the modal has no current-value field", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.addChildModalField("field-current-value")).toHaveCount(0);
+  await expect(
+    kiosk.addChildModalField("field-current-value-date"),
+  ).toHaveCount(0);
 });
 
 Then("the modal has a description field", async ({ page }) => {

@@ -28,12 +28,12 @@ function backdropOf(el: AddChildModal): HTMLElement {
   return bd;
 }
 
-function kindCardOf(el: AddChildModal, kind: string): HTMLButtonElement {
-  const card = el.shadowRoot?.querySelector<HTMLButtonElement>(
-    `[data-testid="kind-card"][data-kind="${kind}"]`,
+function kindSelectOf(el: AddChildModal): HTMLSelectElement {
+  const sel = el.shadowRoot?.querySelector<HTMLSelectElement>(
+    '[data-testid="kind-select"]',
   );
-  if (!card) throw new Error(`expected kind-card[${kind}]`);
-  return card;
+  if (!sel) throw new Error("expected kind-select dropdown");
+  return sel;
 }
 
 function fieldOf(
@@ -66,14 +66,26 @@ async function setInput(
   await el.updateComplete;
 }
 
-async function pickText(el: AddChildModal): Promise<void> {
-  kindCardOf(el, "TextNode").click();
+async function pickKind(
+  el: AddChildModal,
+  kind: "TextNode" | "BusinessScoreCardNode",
+): Promise<void> {
+  // SPEC §17.19 — picking a kind = setting the dropdown's value and
+  // dispatching `change` (the modal listens to `change` to update
+  // `chosenKind`). We mirror the user's interaction instead of poking
+  // the @state property directly.
+  const sel = kindSelectOf(el);
+  sel.value = kind;
+  sel.dispatchEvent(new Event("change", { bubbles: true }));
   await el.updateComplete;
 }
 
+async function pickText(el: AddChildModal): Promise<void> {
+  await pickKind(el, "TextNode");
+}
+
 async function pickBsc(el: AddChildModal): Promise<void> {
-  kindCardOf(el, "BusinessScoreCardNode").click();
-  await el.updateComplete;
+  await pickKind(el, "BusinessScoreCardNode");
 }
 
 describe("<add-child-modal>", () => {
@@ -86,7 +98,7 @@ describe("<add-child-modal>", () => {
     ).toBeNull();
   });
 
-  it("renders the type picker (Step 1 / 2) when open=true", async () => {
+  it("renders the kind dropdown with both options on a single page when open=true (\u00a717.19)", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {
@@ -96,18 +108,54 @@ describe("<add-child-modal>", () => {
     );
     const panel = panelOf(el);
     expect(panel).not.toBeNull();
-    expect(panel?.dataset["step"]).toBe("pick-kind");
+    // §17.19 — single page; no `step` indicator anymore.
     expect(
-      el.shadowRoot
-        ?.querySelector('[data-testid="modal-step"]')
-        ?.textContent?.trim(),
-    ).toBe("Step 1 / 2");
-    expect(
-      el.shadowRoot?.querySelectorAll('[data-testid="kind-card"]').length,
-    ).toBe(2);
+      el.shadowRoot?.querySelector('[data-testid="modal-step"]'),
+    ).toBeNull();
+    const sel = kindSelectOf(el);
+    const optionKinds = Array.from(sel.options).map((o) => o.value);
+    // First option is the placeholder ("" — Card type — e.g. ...);
+    // then the two real kinds in registration order.
+    expect(optionKinds).toEqual(["", "TextNode", "BusinessScoreCardNode"]);
+    // Placeholder option is `disabled` so it's only the initial value,
+    // never a valid choice (mirrors the "must pick" gate).
+    expect(sel.options[0]?.disabled).toBe(true);
+    // Each real option carries the kind's "Name — Description" text
+    // (same content the pre-§17.19 kind-cards rendered).
+    expect(sel.options[1]?.textContent).toMatch(/^\s*Text\s+\u2014\s+/);
+    expect(sel.options[2]?.textContent).toMatch(
+      /^\s*Business Score Card\s+\u2014\s+/,
+    );
   });
 
-  it("picking a kind moves to Step 2 / 2 with the form for that kind", async () => {
+  it("when no kind is chosen the form below the dropdown is empty (\u00a717.19)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    // Form root is rendered (the dropdown lives inside it) but the
+    // type-specific fields are absent until the operator picks a kind.
+    const form = el.shadowRoot?.querySelector<HTMLFormElement>(
+      '[data-testid="modal-form"]',
+    );
+    expect(form).not.toBeNull();
+    expect(form?.dataset["kind"]).toBe("");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-title"]'),
+    ).toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-current-value"]'),
+    ).toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-unit"]'),
+    ).toBeNull();
+    // Confirm exists but is disabled.
+    expect(confirmBtnOf(el).disabled).toBe(true);
+  });
+
+  it("picking a kind reveals the form for that kind dynamically below the dropdown (\u00a717.19)", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {
@@ -115,12 +163,16 @@ describe("<add-child-modal>", () => {
       },
     );
     await pickText(el);
-    const panel = panelOf(el);
-    expect(panel?.dataset["step"]).toBe("fill-form");
     const form = el.shadowRoot?.querySelector<HTMLFormElement>(
       '[data-testid="modal-form"]',
     );
     expect(form?.dataset["kind"]).toBe("TextNode");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-title"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-current-value"]'),
+    ).not.toBeNull();
     expect(
       el.shadowRoot?.querySelector('[data-testid="field-unit"]'),
     ).toBeNull();
@@ -130,6 +182,30 @@ describe("<add-child-modal>", () => {
     expect(
       el.shadowRoot?.querySelector('[data-testid="field-description"]'),
     ).toBeNull();
+  });
+
+  it("switching the dropdown from TextNode to BusinessScoreCardNode swaps in the BSC form (\u00a717.19)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickText(el);
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-unit"]'),
+    ).toBeNull();
+    await pickBsc(el);
+    const form = el.shadowRoot?.querySelector<HTMLFormElement>(
+      '[data-testid="modal-form"]',
+    );
+    expect(form?.dataset["kind"]).toBe("BusinessScoreCardNode");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-unit"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-description"]'),
+    ).not.toBeNull();
   });
 
   it("BSC form keeps the description field (\u00a717.15 — only TextNode drops it)", async () => {
@@ -510,7 +586,7 @@ describe("<add-child-modal>", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it("opening the modal again resets the form (no leak from a prior unconfirmed session)", async () => {
+  it("opening the modal again resets the form (no leak from a prior unconfirmed session, \u00a717.19)", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {
@@ -523,25 +599,16 @@ describe("<add-child-modal>", () => {
     await el.updateComplete;
     el.open = true;
     await el.updateComplete;
-    expect(panelOf(el)?.dataset["step"]).toBe("pick-kind");
-  });
-
-  it("Back returns to the type picker without firing cancel", async () => {
-    const el = await mountLitElement<AddChildModal>(
-      "add-child-modal",
-      (e) => {
-        e.open = true;
-      },
+    // §17.19 — single page; the dropdown reverts to the placeholder
+    // option and no type-specific fields render.
+    const form = el.shadowRoot?.querySelector<HTMLFormElement>(
+      '[data-testid="modal-form"]',
     );
-    const cancelHandler = vi.fn();
-    el.addEventListener(ADD_CHILD_CANCEL_EVENT, cancelHandler);
-    await pickText(el);
-    el.shadowRoot
-      ?.querySelector<HTMLButtonElement>('[data-testid="modal-back"]')
-      ?.click();
-    await el.updateComplete;
-    expect(panelOf(el)?.dataset["step"]).toBe("pick-kind");
-    expect(cancelHandler).not.toHaveBeenCalled();
+    expect(form?.dataset["kind"]).toBe("");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-title"]'),
+    ).toBeNull();
+    expect(kindSelectOf(el).value).toBe("");
   });
 
   it("renders an inline error when `errorMessage` is set", async () => {

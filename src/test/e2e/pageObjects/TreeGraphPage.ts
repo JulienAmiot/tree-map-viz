@@ -212,17 +212,17 @@ export class TreeGraphPage {
     return this.page.getByTestId("modal-backdrop");
   }
 
-  /** Step indicator text ("Step 1 / 2" or "Step 2 / 2"). */
-  addChildModalStepIndicator(): Locator {
-    return this.page.getByTestId("modal-step");
+  /**
+   * SPEC §17.19 — single-page flow with a `<select>` dropdown for the
+   * kind. The pre-§17.19 step indicator + kind-card helpers are gone;
+   * the dropdown is the single picker now.
+   */
+  addChildModalKindSelect(): Locator {
+    return this.page.getByTestId("kind-select");
   }
 
-  /** Kind-card buttons in Step 1. */
-  addChildModalKindCard(kind: string): Locator {
-    return this.page.locator(`[data-testid="kind-card"][data-kind="${kind}"]`);
-  }
-
-  /** The form rendered in Step 2. */
+  /** The form (always rendered while open; type-specific fields appear
+   *  underneath the dropdown once a kind is chosen). */
   addChildModalForm(): Locator {
     return this.page.getByTestId("modal-form");
   }

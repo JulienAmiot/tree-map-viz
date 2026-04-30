@@ -3,11 +3,14 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
 
   SPEC §7: activating the "+" tile opens a wide modal with a
   semi-transparent backdrop so the underlying board is still partially
-  visible. Step 1 picks the node kind (Text or BusinessScoreCard); Step 2
-  is a per-kind form (using the empty-field placeholder pattern, §6).
-  Confirm appends a child to the focused parent and persists; cancel never
-  persists. Activating the "+" tile is never a navigation; the focused id
-  stays put through the whole interaction.
+  visible. SPEC §17.19 — the modal is a single page: a kind dropdown at
+  the top picks the node kind (each option shows "Name — Description",
+  same content the pre-§17.19 kind-cards carried), and the type-specific
+  form (using the empty-field placeholder pattern, §6) appears
+  dynamically beneath the dropdown as soon as a kind is chosen. Confirm
+  appends a child to the focused parent and persists; cancel never
+  persists. Activating the "+" tile is never a navigation; the focused
+  id stays put through the whole interaction.
 
   Background:
     When I open the kiosk in test mode with empty storage
@@ -19,12 +22,20 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And there is exactly one plus tile
 
   @HE-???? @priority:high
-  Scenario: Clicking the "+" tile opens the modal at Step 1
+  Scenario: Clicking the "+" tile opens the modal with a kind dropdown (§17.19)
     When I click the plus tile
     Then the add-child modal is open
-    And the modal step indicator shows "Step 1 / 2"
+    And the modal kind dropdown shows "2" options labelled with name and description
     And the modal offers a "Text" kind
     And the modal offers a "Business Score Card" kind
+
+  @HE-???? @priority:high
+  Scenario: Before a kind is chosen, no type-specific fields render below the dropdown (§17.19)
+    When I click the plus tile
+    Then the add-child modal is open
+    And the modal has no title field
+    And the modal has no current-value field
+    And the modal has no unit field
 
   @HE-???? @priority:high
   Scenario: The modal backdrop is semi-transparent (the board is still behind)
@@ -36,7 +47,6 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     When I click the plus tile
     And I pick the kind "TextNode"
     Then the add-child modal is open
-    And the modal step indicator shows "Step 2 / 2"
     And the modal form is for kind "TextNode"
     And the modal has a title field
     And the modal has no description field
@@ -58,6 +68,16 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has objective fields
     And the modal has the computed toggle
     And the modal has the eligible-for-parent-computation toggle
+
+  @HE-???? @priority:high
+  Scenario: Switching the dropdown from Text to BusinessScoreCard swaps in the BSC form (§17.19)
+    When I click the plus tile
+    And I pick the kind "TextNode"
+    Then the modal has no unit field
+    When I pick the kind "BusinessScoreCardNode"
+    Then the modal form is for kind "BusinessScoreCardNode"
+    And the modal has a unit field
+    And the modal has a description field
 
   @HE-???? @priority:high
   Scenario: Confirming a Text child appends it to the focused parent and closes the modal
