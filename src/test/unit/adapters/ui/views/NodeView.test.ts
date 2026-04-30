@@ -47,7 +47,6 @@ describe("<node-view> dispatcher", () => {
       kind: "TextNode",
       id: "n1",
       title: "Hello",
-      description: "World",
       value: { text: "Hello world", dateIso: "2026-04-23T00:00:00.000Z" },
     };
     const el = await mountLitElement<NodeView>("node-view", (e) => {
@@ -72,7 +71,6 @@ describe("<node-view> dispatcher", () => {
       kind: "TextNode",
       id: "n2",
       title: "T",
-      description: "",
       value: { text: "", dateIso: "" },
     };
     const el = await mountLitElement<NodeView>("node-view", (e) => {

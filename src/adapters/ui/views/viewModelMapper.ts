@@ -46,11 +46,12 @@ export function mapNodeToViewModel(node: TreeNode<unknown>): NodeViewModel {
     // runs on every refresh — surfacing it would crash the whole
     // composition root over a single empty leaf.
     const latest = node.card.history().at(-1);
+    // SPEC §17.15 — TextNode VM intentionally omits `description`; the
+    // current value (`value.text`) IS the description for text cards.
     return {
       kind: "TextNode",
       id: node.id,
       title: node.identity.title.value,
-      description: node.identity.description.value,
       value: {
         text: latest?.value ?? "",
         dateIso: latest?.asOf.toISOString() ?? "",

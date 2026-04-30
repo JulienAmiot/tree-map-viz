@@ -32,14 +32,14 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     Then the modal backdrop is semi-transparent
 
   @HE-???? @priority:high
-  Scenario: Picking Text reveals title + description + weight + current-value (no Unit, no objective)
+  Scenario: Picking Text reveals title + weight + current-value (no description, no unit, no objective — §17.15)
     When I click the plus tile
     And I pick the kind "TextNode"
     Then the add-child modal is open
     And the modal step indicator shows "Step 2 / 2"
     And the modal form is for kind "TextNode"
     And the modal has a title field
-    And the modal has a description field
+    And the modal has no description field
     And the modal has a weight field
     And the modal has a current-value field
     And the as-of date defaults to today's local-calendar ISO
@@ -47,10 +47,11 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has no objective fields
 
   @HE-???? @priority:high
-  Scenario: Picking BusinessScoreCard reveals unit + current-value + objective + toggles
+  Scenario: Picking BusinessScoreCard reveals description + unit + current-value + objective + toggles
     When I click the plus tile
     And I pick the kind "BusinessScoreCardNode"
     Then the modal form is for kind "BusinessScoreCardNode"
+    And the modal has a description field
     And the modal has a unit field
     And the modal has a current-value field
     And the as-of date defaults to today's local-calendar ISO

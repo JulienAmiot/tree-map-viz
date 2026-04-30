@@ -35,12 +35,18 @@ export type NodeRole = "asParent" | "asChild";
  * When the underlying `TextCard` history is empty (e.g. the default-seed
  * root before any user input), both fields are `""` so the view layer
  * gracefully renders an empty tile body and no timestamp.
+ *
+ * SPEC §17.15 — there is **no** `description` field on the TextNode VM:
+ * for text-kind cards the current value IS the description, so exposing
+ * a separate field would be redundant (and would tempt the view layer
+ * to render the same string twice). The domain `NodeIdentity` still
+ * carries a description slot for shape uniformity; it is just always
+ * `""` for `TextNode` and never crosses the VM boundary.
  */
 export type TextNodeViewModel = {
   readonly kind: "TextNode";
   readonly id: string;
   readonly title: string;
-  readonly description: string;
   readonly value: {
     readonly text: string;
     readonly dateIso: string;

@@ -71,16 +71,17 @@ describe("mapNodeToViewModel", () => {
     ]);
     const vm = mapNodeToViewModel(node);
 
+    // SPEC §17.15 — TextNode VM intentionally omits `description`.
     expect(vm).toEqual({
       kind: "TextNode",
       id: "t1",
       title: "Quarterly review",
-      description: "Top-level scorecard",
       value: {
         text: "newest",
         dateIso: DEFAULT_TEXT_DATE.toISOString(),
       },
     });
+    expect(vm).not.toHaveProperty("description");
   });
 
   it("falls back to an empty value when the TextNode's history is empty (graceful degradation)", () => {
@@ -223,7 +224,6 @@ describe("mapFocusedToViewModel", () => {
         kind: "TextNode",
         id: "c1",
         title: "Sales",
-        description: "",
         value: { text: "Sales", dateIso: DEFAULT_TEXT_DATE.toISOString() },
       },
     });

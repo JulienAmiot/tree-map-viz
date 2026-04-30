@@ -17,7 +17,6 @@ function vmWith(opts: Partial<TextNodeViewModel> = {}): TextNodeViewModel {
     kind: "TextNode",
     id: "p1",
     title: "Quarterly review",
-    description: "Top-level scorecard",
     value: { text: "On track for Q2", dateIso },
     ...opts,
   } as TextNodeViewModel;

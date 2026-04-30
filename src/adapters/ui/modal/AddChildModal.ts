@@ -46,8 +46,10 @@
  * Defaults (mirroring `AddChildPayload` optional fields):
  *   - Text: title + a **mandatory current value** (the seed
  *     `TimestampedValue<string>` of the otherwise-empty `TextCard`
- *     history, SPEC §17.14) are required; description optional, weight
- *     default 1.
+ *     history, SPEC §17.14) are required; weight default 1. There is
+ *     **no** description field for TextNode — by §17.15 the current
+ *     value (the latest entry in the `TextCard`) IS the node's
+ *     description, so collecting it twice would be redundant.
  *   - BusinessScoreCard: title + unit + objective + a **mandatory current
  *     value** (the seed `TimestampedValue<number>` of the otherwise-empty
  *     `BusinessScoreCard` history, SPEC §17.13) are all required;
@@ -390,7 +392,8 @@ export class AddChildModal extends LitElement {
         >
           <div class="kind-name">Text</div>
           <div class="kind-blurb">
-            A note: title + description, no value, no Σ.
+            A note: a free-form text value (latest in its timestamped
+            history); no Σ.
           </div>
         </button>
         <button
@@ -439,16 +442,7 @@ export class AddChildModal extends LitElement {
             @input=${(e: Event) => this.bindString(e, "formTitle")}
           />
         </div>
-        <div class="field">
-          <textarea
-            data-testid="field-description"
-            placeholder="Description — e.g. Quarterly revenue across the EU-North region; sourced from the BI data warehouse."
-            rows="3"
-            maxlength="280"
-            .value=${this.description}
-            @input=${(e: Event) => this.bindString(e, "description")}
-          ></textarea>
-        </div>
+        ${isText ? nothing : this.renderDescriptionField()}
         <div class="field-row">
           <div class="field">
             <input
@@ -514,6 +508,28 @@ export class AddChildModal extends LitElement {
           required
           @input=${(e: Event) => this.bindString(e, "unit")}
         />
+      </div>
+    `;
+  }
+
+  /**
+   * SPEC §17.15 — only `BusinessScoreCardNode` carries a meaningful
+   * description (the metric's definition: "Quarterly revenue across the
+   * EU-North region; sourced from the BI data warehouse."). For
+   * `TextNode` the current value IS the description, so this field is
+   * rendered only on the BSC branch.
+   */
+  private renderDescriptionField() {
+    return html`
+      <div class="field">
+        <textarea
+          data-testid="field-description"
+          placeholder="Description — e.g. Quarterly revenue across the EU-North region; sourced from the BI data warehouse."
+          rows="3"
+          maxlength="280"
+          .value=${this.description}
+          @input=${(e: Event) => this.bindString(e, "description")}
+        ></textarea>
       </div>
     `;
   }
@@ -695,6 +711,9 @@ export class AddChildModal extends LitElement {
       // SPEC §17.14 — Text nodes require a seed `TimestampedValue<string>`
       // so the rendered tile has a value/timestamp instead of throwing.
       // The seed is mandatory; gating mirrors BSC's §17.13 contract.
+      // SPEC §17.15 — the current value IS the TextNode's description, so
+      // the form deliberately omits a separate description field. The
+      // payload reflects that: no `description` key here.
       const currentText = this.currentValue;
       const currentAsOf = this.currentValueDate
         ? new Date(`${this.currentValueDate}T00:00:00.000Z`)
@@ -709,7 +728,6 @@ export class AddChildModal extends LitElement {
       return {
         kind: "TextNode",
         title,
-        ...(description === undefined ? {} : { description }),
         ...(weight === undefined ? {} : { weight }),
         initialHistory: [{ value: currentText, asOf: currentAsOf }],
       };

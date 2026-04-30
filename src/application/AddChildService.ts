@@ -21,12 +21,17 @@ import type { IdGenerator } from "./ports/IdGenerator.js";
  * that folds it into domain value objects. Optional fields default sensibly
  * (weight=1, description="", computed=false, eligibleForParentComputation=true,
  * empty initial history).
+ *
+ * SPEC §17.15 — the `TextNode` variant intentionally has **no**
+ * `description` field. For text-kind cards the current value (the latest
+ * `TimestampedValue<string>` in the `TextCard`) IS the description, so
+ * the modal omits the field and the service constructs the underlying
+ * `NodeIdentity` with `Description.of("")`.
  */
 export type AddChildPayload =
   | {
       readonly kind: "TextNode";
       readonly title: string;
-      readonly description?: string;
       readonly weight?: number;
       // SPEC §17.14 — TextNode now seeds a TimestampedValue<string> history
       // exactly like BSC does (§17.13). Optional in the payload type so
@@ -107,13 +112,14 @@ export class AddChildService {
 
   private buildNode(payload: AddChildPayload): TreeNode<unknown> {
     const id = this.idGen();
-    const identity = NodeIdentity.of(
-      Title.of(payload.title),
-      Description.of(payload.description ?? ""),
-    );
     const weight = Weight.of(payload.weight ?? 1);
 
     if (payload.kind === "TextNode") {
+      // SPEC §17.15 — the current value is the TextNode's description, so
+      // the underlying NodeIdentity always carries an empty Description.
+      // (The `NodeIdentity` shape stays uniform with BSC; keeping the slot
+      // empty avoids a TextNode-specific identity type.)
+      const identity = NodeIdentity.of(Title.of(payload.title), Description.of(""));
       const initialHistory = (payload.initialHistory ?? []).map((entry) =>
         TimestampedValue.of(entry.value, entry.asOf),
       );
@@ -121,6 +127,10 @@ export class AddChildService {
       return new TextNode(id, identity, weight, card);
     }
     if (payload.kind === "BusinessScoreCardNode") {
+      const identity = NodeIdentity.of(
+        Title.of(payload.title),
+        Description.of(payload.description ?? ""),
+      );
       const objective = Objective.of(
         payload.objective.initialValue,
         payload.objective.targetValue,

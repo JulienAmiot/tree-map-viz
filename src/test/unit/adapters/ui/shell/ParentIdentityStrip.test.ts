@@ -14,7 +14,6 @@ const textVm: NodeViewModel = {
   kind: "TextNode",
   id: "uuid-1",
   title: "Quarterly review",
-  description: "Top-level scorecard",
   value: { text: "Quarterly review", dateIso: "2026-04-23T00:00:00.000Z" },
 };
 
@@ -59,7 +58,6 @@ describe("<parent-identity-strip>", () => {
       kind: "TextNode",
       id: "uuid-2",
       title: "Other",
-      description: "",
       value: { text: "Other", dateIso: "2026-04-23T00:00:00.000Z" },
     };
     el.vm = next;

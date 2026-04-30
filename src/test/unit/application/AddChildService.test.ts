@@ -76,7 +76,6 @@ describe("AddChildService", () => {
       const r = await svc.addChild(parent, {
         kind: "TextNode",
         title: "Notes",
-        description: "Section header",
         weight: 1,
       });
 
@@ -85,7 +84,9 @@ describe("AddChildService", () => {
         expect(r.child).toBeInstanceOf(TextNode);
         expect(r.child.id).toBe("uuid-1");
         expect(r.child.identity.title.value).toBe("Notes");
-        expect(r.child.identity.description.value).toBe("Section header");
+        // SPEC §17.15 — TextNode's NodeIdentity description is always
+        // empty: the current value IS the description.
+        expect(r.child.identity.description.value).toBe("");
         expect(r.child.weight.value).toBe(1);
         expect(r.child.parent).toBe(parent);
       }
@@ -93,7 +94,7 @@ describe("AddChildService", () => {
       expect(persist).toHaveBeenCalledTimes(1);
     });
 
-    it("uses default weight (1) and empty description when fields are omitted", async () => {
+    it("uses default weight (1) and an always-empty description (§17.15) when fields are omitted", async () => {
       const parent = makeRoot();
 
       const r = await svc.addChild(parent, { kind: "TextNode", title: "Quick" });

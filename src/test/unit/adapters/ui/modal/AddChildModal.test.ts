@@ -124,6 +124,25 @@ describe("<add-child-modal>", () => {
     expect(
       el.shadowRoot?.querySelector('[data-testid="field-unit"]'),
     ).toBeNull();
+    // SPEC §17.15 — TextNode form has NO description field. The current
+    // value IS the description for text cards; collecting it twice would
+    // be redundant.
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-description"]'),
+    ).toBeNull();
+  });
+
+  it("BSC form keeps the description field (\u00a717.15 — only TextNode drops it)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickBsc(el);
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-description"]'),
+    ).not.toBeNull();
   });
 
   it("picking BusinessScoreCard exposes unit + objective + current-value + toggle fields", async () => {
@@ -288,7 +307,6 @@ describe("<add-child-modal>", () => {
 
     await pickText(el);
     await setInput(el, "field-title", "Quick note");
-    await setInput(el, "field-description", "Some context");
     await setInput(el, "field-weight", "2");
     await setInput(el, "field-current-value", "Today's headline");
     await setInput(el, "field-current-value-date", "2026-04-30");
@@ -305,7 +323,9 @@ describe("<add-child-modal>", () => {
     expect(p?.kind).toBe("TextNode");
     if (p?.kind !== "TextNode") return; // narrow
     expect(p.title).toBe("Quick note");
-    expect(p.description).toBe("Some context");
+    // SPEC §17.15 — the TextNode payload variant carries no `description`
+    // field at all; the current value IS the description for text cards.
+    expect(p).not.toHaveProperty("description");
     expect(p.weight).toBe(2);
     expect(p.initialHistory).toHaveLength(1);
     const seed = p.initialHistory?.[0];

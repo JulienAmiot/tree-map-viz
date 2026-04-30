@@ -44,7 +44,6 @@ const textVm: NodeViewModel = {
   kind: "TextNode",
   id: "uuid-root",
   title: "Quarterly review",
-  description: "Top-level scorecard",
   value: { text: "Quarterly review", dateIso: "2026-04-23T00:00:00.000Z" },
 };
 
@@ -56,7 +55,6 @@ function nodeSlot(id: string, title: string, weight = 1): ChildSlotViewModel {
       kind: "TextNode",
       id,
       title,
-      description: "",
       value: { text: title, dateIso: "2026-04-23T00:00:00.000Z" },
     },
   };
@@ -111,7 +109,6 @@ describe("<tree-graph-screen>", () => {
       kind: "TextNode",
       id: "uuid-other",
       title: "Other",
-      description: "",
       value: { text: "Other", dateIso: "2026-04-23T00:00:00.000Z" },
     };
     el.view = focusedView(next, [nodeSlot("b", "B"), nodeSlot("c", "C")]);

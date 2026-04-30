@@ -42,7 +42,6 @@ function nodeSlot(id: string, title: string, weight = 1): ChildSlotViewModel {
       kind: "TextNode",
       id,
       title,
-      description: "",
       value: { text: title, dateIso: "2026-04-23T00:00:00.000Z" },
     },
   };

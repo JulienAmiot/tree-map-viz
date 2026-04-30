@@ -112,6 +112,13 @@ Then("the modal has a description field", async ({ page }) => {
   await expect(kiosk.addChildModalField("field-description")).toHaveCount(1);
 });
 
+// SPEC §17.15 — TextNode form omits the description field; the current
+// value IS the description for text cards.
+Then("the modal has no description field", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.addChildModalField("field-description")).toHaveCount(0);
+});
+
 Then("the modal has a weight field", async ({ page }) => {
   const kiosk = new TreeGraphPage(page);
   await expect(kiosk.addChildModalField("field-weight")).toHaveCount(1);

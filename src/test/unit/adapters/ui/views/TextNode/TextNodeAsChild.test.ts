@@ -17,7 +17,6 @@ function vmWith(opts: Partial<TextNodeViewModel> = {}): TextNodeViewModel {
     kind: "TextNode",
     id: "c1",
     title: "Region",
-    description: "North-east",
     value: { text: "North-east region", dateIso },
     ...opts,
   } as TextNodeViewModel;
