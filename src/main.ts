@@ -18,18 +18,40 @@
  *     and the `<node-view>` dispatcher. Domain types still never cross the
  *     UI property boundary; the mapper itself sits under `adapters/ui/views/`.
  *
- * `AddChildService` and `ImportExportService` are wired in Phases 7/8 when
- * their consumers (modal, drawer) land — see §17 for the as-built phase log.
+ * Phase 7 wiring (DT-6 — Lit shell + chrome):
+ *   + The shell now also receives `boardName` (from the current board on
+ *     `BoardCollectionService`) and a `breadcrumbPath` (from
+ *     `walkPath(boardTree, focusedId)` mapped to plain `{ id, title }`).
+ *     Both are recomputed on every refresh, so the drawer chrome stays in
+ *     sync with the focus + board state.
+ *   + The shell emits `breadcrumb-navigate` `{ nodeId }` when the user taps
+ *     an ancestor segment; the composition root drives `nav.focusByUuid` +
+ *     `refresh()` synchronously and also `router.push(...)` so the URL stays
+ *     in sync with focus state (SPEC §11.3). `router.push` uses
+ *     `history.pushState`, which does NOT fire `hashchange`, so the
+ *     `router.onChange` listener wouldn't see internal navigation; we drive
+ *     the state update locally and let `router.onChange` cover external
+ *     changes (browser back/forward, manual hash edits, the test bridge).
+ *   + `burger-menu-action` `{ action }` is logged today as a placeholder;
+ *     the real Import / Export / Boards consumers (`ImportExportService`,
+ *     `BoardCollectionService` mutation surface) wire in Phase 10
+ *     per SPEC §15.4 + §17.3.
  */
 
 import { LocalStorageBoardCollectionRepository } from "./adapters/persistence/LocalStorageBoardCollectionRepository.js";
 import { decode, encode } from "./adapters/persistence/jsonCodec.js";
 import { HashRouter } from "./adapters/routing/HashRouter.js";
+import type {
+  BreadcrumbNavigateDetail,
+  BreadcrumbSegment,
+} from "./adapters/ui/shell/Breadcrumb.js";
+import type { BurgerMenuActionDetail } from "./adapters/ui/shell/BurgerMenu.js";
 import "./adapters/ui/shell/TreeGraphScreen.js";
 import type { TreeGraphScreen } from "./adapters/ui/shell/TreeGraphScreen.js";
 import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
 import { BoardCollectionService } from "./application/BoardCollectionService.js";
 import { TreeNavigationService } from "./application/TreeNavigationService.js";
+import { walkPath } from "./domain/treeQueries.js";
 import "./index.css";
 
 async function main(): Promise<void> {
@@ -50,7 +72,30 @@ async function main(): Promise<void> {
   const refresh = (): void => {
     const view = nav.getFocusedView();
     screen.view = view ? mapFocusedToViewModel(view.center, view.childrenNodes) : null;
+    const current = boards.getCurrentBoard();
+    screen.boardName = current.name;
+    screen.breadcrumbPath = computeBreadcrumb(current.tree, nav.getFocusedId());
   };
+
+  screen.addEventListener("breadcrumb-navigate", (e) => {
+    const detail = (e as CustomEvent<BreadcrumbNavigateDetail>).detail;
+    const r = nav.focusByUuid(detail.nodeId);
+    if (!r.ok) {
+      return;
+    }
+    router.push({
+      boardId: boards.getCurrentBoardId(),
+      focusNodeUuid: detail.nodeId,
+    });
+    refresh();
+  });
+
+  screen.addEventListener("burger-menu-action", (e) => {
+    const detail = (e as CustomEvent<BurgerMenuActionDetail>).detail;
+    // Placeholder: the real Import / Export / Boards consumers land in
+    // Phase 10 (Persistence + Routing), per SPEC §15.4 + §17.3.
+    console.info("[main] burger-menu-action (placeholder)", detail.action);
+  });
 
   const startRoute = router.current();
   if (startRoute && startRoute.boardId === boards.getCurrentBoardId()) {
@@ -76,6 +121,17 @@ async function main(): Promise<void> {
     const { installTestBridge } = await import("./adapters/testBridge.js");
     installTestBridge(window, { repo, codec, router });
   }
+}
+
+function computeBreadcrumb(
+  root: import("./domain/nodes/TreeNode.js").TreeNode<unknown>,
+  focusedId: string,
+): readonly BreadcrumbSegment[] {
+  const path = walkPath(root, focusedId);
+  if (!path) {
+    return [];
+  }
+  return path.map((n) => ({ id: n.id, title: n.identity.title.value }));
 }
 
 void main().catch((err: unknown) => {

@@ -131,6 +131,72 @@ export class TreeGraphPage {
     return this.layout().getAttribute("data-orientation");
   }
 
+  /** The `<app-drawer>` host element. Carries the reflected `open` boolean attribute. */
+  drawerHost(): Locator {
+    return this.page.getByTestId("drawer");
+  }
+
+  /** The `<button data-testid="drawer-handle">` rendered inside `<app-drawer>` shadow root. */
+  drawerHandle(): Locator {
+    return this.page.getByTestId("drawer-handle");
+  }
+
+  /** The board-name `<span>` shown at the leading edge of the drawer body. */
+  boardNameLabel(): Locator {
+    return this.page.getByTestId("board-name");
+  }
+
+  /** The `<focus-breadcrumb>` host element rendered inside the drawer body. */
+  breadcrumbHost(): Locator {
+    return this.page.locator("focus-breadcrumb");
+  }
+
+  /** All breadcrumb segments (ancestors + the focused current segment) in order. */
+  breadcrumbSegments(): Locator {
+    return this.page.getByTestId("crumb");
+  }
+
+  /** The breadcrumb segment whose `data-node-id` matches the given uuid. */
+  breadcrumbSegmentByNodeId(nodeId: string): Locator {
+    return this.page.locator(
+      `[data-testid="crumb"][data-node-id="${nodeId}"]`,
+    );
+  }
+
+  /** The `<button data-testid="burger-trigger">` rendered inside `<burger-menu>` shadow root. */
+  burgerTrigger(): Locator {
+    return this.page.getByTestId("burger-trigger");
+  }
+
+  /** The `<ul data-testid="burger-menu">` (popup) — `hidden` attribute reflects open state. */
+  burgerMenuList(): Locator {
+    return this.page.getByTestId("burger-menu");
+  }
+
+  /** Burger menu items (rendered always; visible only while open). */
+  burgerMenuItems(): Locator {
+    return this.page.getByTestId("burger-item");
+  }
+
+  /** The burger menu item whose `data-action` matches. */
+  burgerMenuItemByAction(action: string): Locator {
+    return this.page.locator(
+      `[data-testid="burger-item"][data-action="${action}"]`,
+    );
+  }
+
+  /** Read the drawer host's reflected `open` attribute (presence ↔ open). */
+  async isDrawerOpen(): Promise<boolean> {
+    const v = await this.drawerHost().getAttribute("open");
+    return v !== null;
+  }
+
+  /** Read the burger menu list's `hidden` attribute (presence ↔ closed). */
+  async isBurgerMenuOpen(): Promise<boolean> {
+    const v = await this.burgerMenuList().getAttribute("hidden");
+    return v === null;
+  }
+
   /** Read the currently-rendered focused node id from the parent strip's `data-focused-id`. */
   async focusedId(): Promise<string | null> {
     return this.parentStrip().getAttribute("data-focused-id");

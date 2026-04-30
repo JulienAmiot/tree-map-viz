@@ -1,0 +1,155 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import "../../../../../adapters/ui/shell/BurgerMenu.js";
+import {
+  BURGER_MENU_ACTION_EVENT,
+  type BurgerMenu,
+  type BurgerMenuActionDetail,
+} from "../../../../../adapters/ui/shell/BurgerMenu.js";
+import {
+  cleanupLitFixtures,
+  mountLitElement,
+} from "../../../../fixtures/litElementFixture.js";
+
+afterEach(cleanupLitFixtures);
+
+function triggerOf(el: BurgerMenu): HTMLButtonElement {
+  const btn = el.shadowRoot?.querySelector<HTMLButtonElement>(
+    '[data-testid="burger-trigger"]',
+  );
+  if (!btn) throw new Error("expected burger trigger to be rendered");
+  return btn;
+}
+
+function menuOf(el: BurgerMenu): HTMLElement {
+  const m = el.shadowRoot?.querySelector<HTMLElement>(
+    '[data-testid="burger-menu"]',
+  );
+  if (!m) throw new Error("expected burger menu list to be rendered");
+  return m;
+}
+
+function itemsOf(el: BurgerMenu): HTMLButtonElement[] {
+  return Array.from(
+    el.shadowRoot?.querySelectorAll<HTMLButtonElement>(
+      '[data-testid="burger-item"]',
+    ) ?? [],
+  );
+}
+
+describe("<burger-menu>", () => {
+  it("starts closed (menu hidden, aria-expanded=false)", async () => {
+    const el = await mountLitElement<BurgerMenu>("burger-menu");
+    expect(menuOf(el).hasAttribute("hidden")).toBe(true);
+    expect(triggerOf(el).getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("renders exactly three items: import, export, boards (in order)", async () => {
+    const el = await mountLitElement<BurgerMenu>("burger-menu");
+    triggerOf(el).click();
+    await el.updateComplete;
+    const items = itemsOf(el);
+    expect(items.map((i) => i.dataset["action"])).toEqual([
+      "import",
+      "export",
+      "boards",
+    ]);
+    expect(items.map((i) => i.textContent?.trim())).toEqual([
+      "Import…",
+      "Export…",
+      "Boards…",
+    ]);
+  });
+
+  it("clicking the trigger toggles the menu open / closed", async () => {
+    const el = await mountLitElement<BurgerMenu>("burger-menu");
+    triggerOf(el).click();
+    await el.updateComplete;
+    expect(menuOf(el).hasAttribute("hidden")).toBe(false);
+    expect(triggerOf(el).getAttribute("aria-expanded")).toBe("true");
+
+    triggerOf(el).click();
+    await el.updateComplete;
+    expect(menuOf(el).hasAttribute("hidden")).toBe(true);
+    expect(triggerOf(el).getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("clicking an item dispatches `burger-menu-action` with that action AND closes the menu", async () => {
+    const el = await mountLitElement<BurgerMenu>("burger-menu");
+    const handler = vi.fn();
+    el.addEventListener(BURGER_MENU_ACTION_EVENT, handler);
+    triggerOf(el).click();
+    await el.updateComplete;
+
+    const exportItem = itemsOf(el).find(
+      (i) => i.dataset["action"] === "export",
+    )!;
+    exportItem.click();
+    await el.updateComplete;
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    const evt = handler.mock.calls[0]?.[0] as
+      | CustomEvent<BurgerMenuActionDetail>
+      | undefined;
+    expect(evt?.detail.action).toBe("export");
+    expect(evt?.bubbles).toBe(true);
+    expect(evt?.composed).toBe(true);
+    expect(menuOf(el).hasAttribute("hidden")).toBe(true);
+  });
+
+  it("a tap outside the burger host while open closes the menu", async () => {
+    const el = await mountLitElement<BurgerMenu>("burger-menu");
+    triggerOf(el).click();
+    await el.updateComplete;
+    expect(menuOf(el).hasAttribute("hidden")).toBe(false);
+
+    const outside = document.createElement("div");
+    document.body.appendChild(outside);
+    try {
+      outside.click();
+      await el.updateComplete;
+      expect(menuOf(el).hasAttribute("hidden")).toBe(true);
+    } finally {
+      outside.remove();
+    }
+  });
+
+  it("a tap inside the menu (on an item) does NOT trigger the outside-tap close path (the item handler handles closing)", async () => {
+    // Verifies that the outside-click logic correctly identifies clicks within
+    // the host's composed path as inside, even when the click target lives in
+    // the burger's shadow root.
+    const el = await mountLitElement<BurgerMenu>("burger-menu");
+    const handler = vi.fn();
+    el.addEventListener(BURGER_MENU_ACTION_EVENT, handler);
+    triggerOf(el).click();
+    await el.updateComplete;
+
+    const importItem = itemsOf(el).find(
+      (i) => i.dataset["action"] === "import",
+    )!;
+    importItem.click();
+    await el.updateComplete;
+
+    // Exactly one event fired (from the item handler), not double-fired by an
+    // outside-click misclassification.
+    expect(handler).toHaveBeenCalledTimes(1);
+    const evt = handler.mock.calls[0]?.[0] as
+      | CustomEvent<BurgerMenuActionDetail>
+      | undefined;
+    expect(evt?.detail.action).toBe("import");
+  });
+
+  it("Escape closes the menu when open and is a no-op when closed", async () => {
+    const el = await mountLitElement<BurgerMenu>("burger-menu");
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await el.updateComplete;
+    expect(menuOf(el).hasAttribute("hidden")).toBe(true);
+
+    triggerOf(el).click();
+    await el.updateComplete;
+    expect(menuOf(el).hasAttribute("hidden")).toBe(false);
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await el.updateComplete;
+    expect(menuOf(el).hasAttribute("hidden")).toBe(true);
+  });
+});

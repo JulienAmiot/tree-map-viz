@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import "../../../../../adapters/ui/shell/TreeGraphScreen.js";
 import type { TreeGraphScreen } from "../../../../../adapters/ui/shell/TreeGraphScreen.js";
+import type { FocusBreadcrumb } from "../../../../../adapters/ui/shell/Breadcrumb.js";
 import type { ChildrenGrid } from "../../../../../adapters/ui/shell/ChildrenGrid.js";
 import type { ParentIdentityStrip } from "../../../../../adapters/ui/shell/ParentIdentityStrip.js";
 import type {
@@ -145,5 +146,57 @@ describe("<tree-graph-screen>", () => {
     el.view = focusedView(textVm, []);
     await el.updateComplete;
     expect(el.shadowRoot?.querySelector('[data-testid="loading"]')).toBeNull();
+  });
+
+  it("renders the drawer + drawer-content (board name, breadcrumb, burger) at all times — even before view is set", async () => {
+    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+      e.boardName = "Quarterly OKRs";
+      e.breadcrumbPath = [
+        { id: "uuid-root", title: "Root" },
+        { id: "uuid-eng", title: "Engineering" },
+      ];
+    });
+
+    const drawer = el.shadowRoot?.querySelector('[data-testid="drawer"]');
+    const boardName = el.shadowRoot?.querySelector('[data-testid="board-name"]');
+    const crumb = el.shadowRoot?.querySelector(
+      "focus-breadcrumb",
+    ) as FocusBreadcrumb | null;
+    const burger = el.shadowRoot?.querySelector("burger-menu");
+
+    expect(drawer).not.toBeNull();
+    expect(boardName?.textContent?.trim()).toBe("Quarterly OKRs");
+    expect(burger).not.toBeNull();
+    expect(crumb?.path).toHaveLength(2);
+    expect(crumb?.path[0]?.title).toBe("Root");
+    expect(crumb?.path[1]?.title).toBe("Engineering");
+  });
+
+  it("propagates updates to boardName + breadcrumbPath into the slotted children", async () => {
+    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+      e.boardName = "First";
+      e.breadcrumbPath = [{ id: "uuid-root", title: "Root" }];
+    });
+
+    el.boardName = "Second";
+    el.breadcrumbPath = [
+      { id: "uuid-root", title: "Root" },
+      { id: "uuid-x", title: "X" },
+      { id: "uuid-y", title: "Y" },
+    ];
+    await el.updateComplete;
+
+    const boardName = el.shadowRoot?.querySelector(
+      '[data-testid="board-name"]',
+    );
+    const crumb = el.shadowRoot?.querySelector(
+      "focus-breadcrumb",
+    ) as FocusBreadcrumb | null;
+    expect(boardName?.textContent?.trim()).toBe("Second");
+    expect(crumb?.path.map((s) => s.id)).toEqual([
+      "uuid-root",
+      "uuid-x",
+      "uuid-y",
+    ]);
   });
 });
