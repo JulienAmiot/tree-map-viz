@@ -130,6 +130,33 @@ Then("the modal has objective fields", async ({ page }) => {
   await expect(kiosk.addChildModalField("field-target-date")).toHaveCount(1);
 });
 
+// SPEC §17.13 — the BSC modal collects a mandatory seed TimestampedValue
+// to feed the otherwise-empty history; the as-of date defaults to today.
+Then("the modal has a current-value field", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.addChildModalField("field-current-value")).toHaveCount(1);
+  await expect(
+    kiosk.addChildModalField("field-current-value-date"),
+  ).toHaveCount(1);
+});
+
+Then(
+  "the as-of date defaults to today's local-calendar ISO",
+  async ({ page }) => {
+    const kiosk = new TreeGraphPage(page);
+    const today = (() => {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    })();
+    await expect(
+      kiosk.addChildModalField("field-current-value-date"),
+    ).toHaveValue(today);
+  },
+);
+
 Then("the modal has the computed toggle", async ({ page }) => {
   const kiosk = new TreeGraphPage(page);
   await expect(kiosk.addChildModalField("field-computed")).toHaveCount(1);
@@ -169,10 +196,10 @@ Then("the modal backdrop is semi-transparent", async ({ page }) => {
   expect(alpha).toBeLessThan(1);
 });
 
-// -- Empty-field placeholder pattern (SPEC §6) ---------------------------
+// -- Empty-field placeholder pattern (SPEC §6 + §17.13) ------------------
 
 Then(
-  'every modal text input has a placeholder starting with "e.g."',
+  'every modal text input has a placeholder of the form "<Field name> — e.g. <mock>"',
   async ({ page }) => {
     const kiosk = new TreeGraphPage(page);
     const placeholders = await kiosk
@@ -186,8 +213,12 @@ Then(
         return Array.from(fields).map((f) => f.placeholder);
       });
     expect(placeholders.length).toBeGreaterThan(0);
+    // SPEC §6 (refined in §17.13) — every placeholder reads
+    // `<Field name> — e.g. <example>`. The capital-leading field name
+    // (re-)states the input's purpose, and the `e.g.` clause carries a
+    // concrete sample value.
     for (const p of placeholders) {
-      expect(p).toMatch(/^e\.g\./);
+      expect(p).toMatch(/^[A-Z].* — e\.g\./);
     }
   },
 );

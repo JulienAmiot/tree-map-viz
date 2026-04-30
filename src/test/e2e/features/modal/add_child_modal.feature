@@ -45,11 +45,13 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has no objective fields
 
   @HE-???? @priority:high
-  Scenario: Picking BusinessScoreCard reveals unit + objective + toggles
+  Scenario: Picking BusinessScoreCard reveals unit + current-value + objective + toggles
     When I click the plus tile
     And I pick the kind "BusinessScoreCardNode"
     Then the modal form is for kind "BusinessScoreCardNode"
     And the modal has a unit field
+    And the modal has a current-value field
+    And the as-of date defaults to today's local-calendar ISO
     And the modal has objective fields
     And the modal has the computed toggle
     And the modal has the eligible-for-parent-computation toggle

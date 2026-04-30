@@ -1,9 +1,11 @@
 @HE-2570 @component:modal @phase:8
 Feature: Empty modal fields use the placeholder pattern (no labels)
 
-  SPEC §6: modal form fields show a distinctively styled placeholder that
-  doubles as an example mock value (starting with "e.g."). No `<label>`
-  siblings; the placeholder is the field's purpose. Typing into the field
+  SPEC §6 (refined in §17.13): modal form fields show a distinctively
+  styled placeholder of the form `<Field name> — e.g. <mock>` — the
+  capital-leading field name (re-)states the input's purpose, and the
+  `e.g.` clause carries a concrete sample value. No `<label>` siblings;
+  the placeholder *is* the field's affordance. Typing into the field
   replaces the placeholder with the user's value.
 
   Background:
@@ -11,14 +13,14 @@ Feature: Empty modal fields use the placeholder pattern (no labels)
     And I click the plus tile
 
   @HE-???? @priority:high
-  Scenario: TextNode form — every text/number/textarea field has an "e.g." placeholder
+  Scenario: TextNode form — every text/number/textarea field has a "<Field name> — e.g. <mock>" placeholder
     When I pick the kind "TextNode"
-    Then every modal text input has a placeholder starting with "e.g."
+    Then every modal text input has a placeholder of the form "<Field name> — e.g. <mock>"
 
   @HE-???? @priority:high
-  Scenario: BSC form — every text/number/date/textarea field has an "e.g." placeholder
+  Scenario: BSC form — every text/number/date/textarea field has a "<Field name> — e.g. <mock>" placeholder
     When I pick the kind "BusinessScoreCardNode"
-    Then every modal text input has a placeholder starting with "e.g."
+    Then every modal text input has a placeholder of the form "<Field name> — e.g. <mock>"
 
   @HE-???? @priority:high
   Scenario: Typing into the title field replaces the placeholder with the user's value

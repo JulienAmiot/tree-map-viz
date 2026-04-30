@@ -6,8 +6,9 @@
  *   1. **Type selector**: pick `Text` or `BusinessScoreCard` (extensible
  *      later through the same per-kind registry as views).
  *   2. **Type-specific form**: empty-field placeholder pattern (§6) — every
- *      input shows a `placeholder` starting with `e.g.` that doubles as a
- *      mock value; no `<label>` siblings.
+ *      input shows a `placeholder` of the form `<Field name> — e.g. <mock>`
+ *      so the field's purpose is explicit AND a concrete example is
+ *      visible at a glance; no `<label>` siblings.
  *
  * Surface contract:
  *   - `open` (boolean attribute, reflected) — whether the modal is visible.
@@ -44,18 +45,22 @@
  *
  * Defaults (mirroring `AddChildPayload` optional fields):
  *   - Text: title required, description optional, weight default 1.
- *   - BusinessScoreCard: title + unit + objective fields required;
- *     description optional, weight default 1, computed default false,
- *     eligibleForParentComputation default true, no initial history (the
- *     codepath that records values is part of the future "edit" feature
- *     rather than first creation).
+ *   - BusinessScoreCard: title + unit + objective + a **mandatory current
+ *     value** (the seed `TimestampedValue` of the otherwise-empty history,
+ *     SPEC §17.13) are all required; description optional, weight default
+ *     1, computed default false, eligibleForParentComputation default
+ *     true. The "as of" date for the current value defaults to **today**
+ *     (the kiosk operator's local calendar day, ISO `YYYY-MM-DD`) and
+ *     stays editable — most field uses record "what we measured today",
+ *     but back-filling a past observation must remain trivial.
  *
  * Validation: rejects empty `title` (and empty `unit` + missing objective
- * numbers for BSC) by leaving the Confirm button disabled until the
- * required fields are filled. Domain-side validation (Title.of throws on
- * length cap, Weight.of rejects ≤0, etc.) still runs in `AddChildService`,
- * which surfaces failures back through its `Outcome` — the modal reflects
- * those into the `data-error` attribute on the form.
+ * numbers + missing current-value/date for BSC) by leaving the Confirm
+ * button disabled until the required fields are filled. Domain-side
+ * validation (Title.of throws on length cap, Weight.of rejects ≤0, etc.)
+ * still runs in `AddChildService`, which surfaces failures back through
+ * its `Outcome` — the modal reflects those into the `data-error`
+ * attribute on the form.
  */
 
 import { LitElement, css, html, nothing } from "lit";
@@ -117,6 +122,21 @@ export class AddChildModal extends LitElement {
 
   @state()
   private targetDate = "";
+
+  /** Seed value for the BSC's TimestampedValue history (SPEC §17.13). */
+  @state()
+  private currentValue = "";
+
+  /**
+   * "As of" date for {@link currentValue}, ISO `YYYY-MM-DD`.
+   *
+   * Re-initialised to **today** every time the modal opens (see
+   * `resetForm`). Kept editable so the operator can back-fill a past
+   * observation (e.g. recording last quarter's revenue when on-boarding
+   * a new metric).
+   */
+  @state()
+  private currentValueDate = "";
 
   @state()
   private computed = false;
@@ -408,7 +428,7 @@ export class AddChildModal extends LitElement {
           <input
             data-testid="field-title"
             type="text"
-            placeholder=${'e.g. "North-region revenue"'}
+            placeholder=${'Title — e.g. "North-region revenue"'}
             .value=${this.formTitle}
             required
             maxlength="120"
@@ -418,7 +438,7 @@ export class AddChildModal extends LitElement {
         <div class="field">
           <textarea
             data-testid="field-description"
-            placeholder="e.g. Quarterly revenue across the EU-North region; sourced from the BI data warehouse."
+            placeholder="Description — e.g. Quarterly revenue across the EU-North region; sourced from the BI data warehouse."
             rows="3"
             maxlength="280"
             .value=${this.description}
@@ -432,13 +452,14 @@ export class AddChildModal extends LitElement {
               type="number"
               min="0.1"
               step="0.1"
-              placeholder="e.g. 1"
+              placeholder="Weight — e.g. 1"
               .value=${this.weight}
               @input=${(e: Event) => this.bindString(e, "weight")}
             />
           </div>
           ${isText ? nothing : this.renderUnitField()}
         </div>
+        ${isText ? nothing : this.renderCurrentValueFields()}
         ${isText ? nothing : this.renderObjectiveFields()}
         ${isText ? nothing : this.renderBscToggles()}
         ${this.errorMessage
@@ -482,11 +503,43 @@ export class AddChildModal extends LitElement {
         <input
           data-testid="field-unit"
           type="text"
-          placeholder='e.g. "%" or "M€"'
+          placeholder='Unit — e.g. "%" or "M€"'
           .value=${this.unit}
           required
           @input=${(e: Event) => this.bindString(e, "unit")}
         />
+      </div>
+    `;
+  }
+
+  /**
+   * SPEC §17.13 — every BSC must boot with at least one `TimestampedValue`
+   * in its history; otherwise `currentValue()` would throw on the very
+   * first read. The kiosk collects that seed measurement here.
+   */
+  private renderCurrentValueFields() {
+    return html`
+      <div class="field-row">
+        <div class="field">
+          <input
+            data-testid="field-current-value"
+            type="number"
+            placeholder="Current value — e.g. 42"
+            .value=${this.currentValue}
+            required
+            @input=${(e: Event) => this.bindString(e, "currentValue")}
+          />
+        </div>
+        <div class="field">
+          <input
+            data-testid="field-current-value-date"
+            type="date"
+            placeholder="As of — e.g. 2026-04-30 (today)"
+            .value=${this.currentValueDate}
+            required
+            @input=${(e: Event) => this.bindString(e, "currentValueDate")}
+          />
+        </div>
       </div>
     `;
   }
@@ -498,7 +551,7 @@ export class AddChildModal extends LitElement {
           <input
             data-testid="field-initial"
             type="number"
-            placeholder="e.g. 0"
+            placeholder="Objective initial value — e.g. 0"
             .value=${this.initialValue}
             required
             @input=${(e: Event) => this.bindString(e, "initialValue")}
@@ -508,7 +561,7 @@ export class AddChildModal extends LitElement {
           <input
             data-testid="field-target"
             type="number"
-            placeholder="e.g. 100"
+            placeholder="Objective target value — e.g. 100"
             .value=${this.targetValue}
             required
             @input=${(e: Event) => this.bindString(e, "targetValue")}
@@ -518,7 +571,7 @@ export class AddChildModal extends LitElement {
           <input
             data-testid="field-target-date"
             type="date"
-            placeholder="e.g. 2026-12-31"
+            placeholder="Objective target date — e.g. 2026-12-31"
             .value=${this.targetDate}
             required
             @input=${(e: Event) => this.bindString(e, "targetDate")}
@@ -613,12 +666,23 @@ export class AddChildModal extends LitElement {
       const targetDate = this.targetDate
         ? new Date(`${this.targetDate}T00:00:00.000Z`)
         : null;
+      // Mandatory seed for the otherwise-empty TimestampedValue history
+      // (SPEC §17.13). Confirm stays disabled until both halves are filled.
+      const currentValueRaw = this.currentValue.trim();
+      const currentValue = Number(this.currentValue);
+      const currentAsOf = this.currentValueDate
+        ? new Date(`${this.currentValueDate}T00:00:00.000Z`)
+        : null;
       if (
         !unit ||
         Number.isNaN(initialValue) ||
         Number.isNaN(targetValue) ||
         targetDate === null ||
-        Number.isNaN(targetDate.getTime())
+        Number.isNaN(targetDate.getTime()) ||
+        currentValueRaw === "" ||
+        Number.isNaN(currentValue) ||
+        currentAsOf === null ||
+        Number.isNaN(currentAsOf.getTime())
       ) {
         return null;
       }
@@ -631,6 +695,7 @@ export class AddChildModal extends LitElement {
         objective: { initialValue, targetValue, targetDate },
         computed: this.computed,
         eligibleForParentComputation: this.eligibleForParentComputation,
+        initialHistory: [{ value: currentValue, asOf: currentAsOf }],
       };
     }
     return null;
@@ -649,7 +714,9 @@ export class AddChildModal extends LitElement {
       | "unit"
       | "initialValue"
       | "targetValue"
-      | "targetDate",
+      | "targetDate"
+      | "currentValue"
+      | "currentValueDate",
   ): void {
     const target = e.target as HTMLInputElement | HTMLTextAreaElement;
     this[field] = target.value;
@@ -673,9 +740,27 @@ export class AddChildModal extends LitElement {
     this.initialValue = "";
     this.targetValue = "";
     this.targetDate = "";
+    this.currentValue = "";
+    this.currentValueDate = AddChildModal.todayIsoDate();
     this.computed = false;
     this.eligibleForParentComputation = true;
     this.errorMessage = null;
+  }
+
+  /**
+   * Local-calendar today, ISO `YYYY-MM-DD`. Used as the default for the
+   * BSC current-value's "as of" field so the kiosk operator's most
+   * common case ("we measured this today") needs zero typing. Computed
+   * from `Date` rather than imported as a clock port because the modal
+   * is a pure presentational element with no other domain dependencies;
+   * the seam is the editable input itself, not a constructor argument.
+   */
+  private static todayIsoDate(): string {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
   }
 
   private handleBackdropClick = (e: Event): void => {

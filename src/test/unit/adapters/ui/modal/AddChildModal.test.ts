@@ -126,7 +126,7 @@ describe("<add-child-modal>", () => {
     ).toBeNull();
   });
 
-  it("picking BusinessScoreCard exposes unit + objective + toggle fields", async () => {
+  it("picking BusinessScoreCard exposes unit + objective + current-value + toggle fields", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {
@@ -147,11 +147,62 @@ describe("<add-child-modal>", () => {
       el.shadowRoot?.querySelector('[data-testid="field-target-date"]'),
     ).not.toBeNull();
     expect(
+      el.shadowRoot?.querySelector('[data-testid="field-current-value"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-current-value-date"]'),
+    ).not.toBeNull();
+    expect(
       el.shadowRoot?.querySelector('[data-testid="field-computed"]'),
     ).not.toBeNull();
     expect(
       el.shadowRoot?.querySelector('[data-testid="field-eligible"]'),
     ).not.toBeNull();
+  });
+
+  it("BSC 'as of' date defaults to today's local-calendar ISO date (SPEC §17.13)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickBsc(el);
+    const expected = (() => {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    })();
+    const dateInput = fieldOf(el, "field-current-value-date") as HTMLInputElement;
+    expect(dateInput.value).toBe(expected);
+  });
+
+  it("BSC 'as of' default is re-applied each time the modal re-opens (no leak)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickBsc(el);
+    await setInput(el, "field-current-value-date", "2020-01-01");
+    el.open = false;
+    await el.updateComplete;
+    el.open = true;
+    await el.updateComplete;
+    await pickBsc(el);
+    const today = (() => {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    })();
+    expect(
+      (fieldOf(el, "field-current-value-date") as HTMLInputElement).value,
+    ).toBe(today);
   });
 
   it("Confirm is disabled until required fields are filled (TextNode = title only)", async () => {
@@ -168,7 +219,7 @@ describe("<add-child-modal>", () => {
     expect(confirmBtnOf(el).disabled).toBe(false);
   });
 
-  it("Confirm is disabled for BSC until title + unit + objective fields are filled", async () => {
+  it("Confirm is disabled for BSC until title + unit + objective + current value are filled", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {
@@ -183,6 +234,15 @@ describe("<add-child-modal>", () => {
     await setInput(el, "field-initial", "0");
     await setInput(el, "field-target", "100");
     await setInput(el, "field-target-date", "2026-12-31");
+    // Objective + identity fields filled, but the mandatory current-value
+    // seed (SPEC §17.13) is still empty → Confirm stays disabled.
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-current-value", "42");
+    expect(confirmBtnOf(el).disabled).toBe(false);
+    // Also: clearing the as-of date back to empty must re-disable Confirm.
+    await setInput(el, "field-current-value-date", "");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-current-value-date", "2026-04-30");
     expect(confirmBtnOf(el).disabled).toBe(false);
   });
 
@@ -218,7 +278,7 @@ describe("<add-child-modal>", () => {
     });
   });
 
-  it("clicking Confirm fires `add-child-confirm` with a BusinessScoreCard payload (numbers parsed, date as Date)", async () => {
+  it("clicking Confirm fires `add-child-confirm` with a BusinessScoreCard payload (numbers parsed, date as Date, history seeded)", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {
@@ -235,6 +295,8 @@ describe("<add-child-modal>", () => {
     await setInput(el, "field-initial", "10");
     await setInput(el, "field-target", "120");
     await setInput(el, "field-target-date", "2027-03-31");
+    await setInput(el, "field-current-value", "55");
+    await setInput(el, "field-current-value-date", "2026-04-30");
     confirmBtnOf(el).click();
 
     expect(handler).toHaveBeenCalledTimes(1);
@@ -252,6 +314,12 @@ describe("<add-child-modal>", () => {
     expect(p.objective.targetDate.toISOString()).toBe("2027-03-31T00:00:00.000Z");
     expect(p.computed).toBe(false);
     expect(p.eligibleForParentComputation).toBe(true);
+    // SPEC §17.13 — the seed TimestampedValue is in the payload exactly once.
+    expect(p.initialHistory).toHaveLength(1);
+    const seed = p.initialHistory?.[0];
+    expect(seed?.value).toBe(55);
+    expect(seed?.asOf).toBeInstanceOf(Date);
+    expect(seed?.asOf.toISOString()).toBe("2026-04-30T00:00:00.000Z");
   });
 
   it("Cancel button fires `add-child-cancel`", async () => {
@@ -365,7 +433,13 @@ describe("<add-child-modal>", () => {
 });
 
 describe("<add-child-modal> empty-field placeholder pattern (SPEC §6)", () => {
-  it("every input/textarea on the TextNode form has a placeholder starting with 'e.g.'", async () => {
+  // SPEC §6 (refined in §17.13): every modal placeholder reads
+  // `<Field name> — e.g. <mock value>`. The capital-leading field name
+  // (re-)states the input's purpose, the em-dash separates label from
+  // example, and the `e.g.` clause carries a concrete sample value.
+  const FIELD_NAME_AND_EG = /^[A-Z].* — e\.g\./;
+
+  it("every input/textarea on the TextNode form has a placeholder of the form '<Field name> — e.g. <mock>'", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {
@@ -380,11 +454,11 @@ describe("<add-child-modal> empty-field placeholder pattern (SPEC §6)", () => {
     );
     expect(fields.length).toBeGreaterThan(0);
     for (const f of fields) {
-      expect(f.placeholder).toMatch(/^e\.g\./);
+      expect(f.placeholder).toMatch(FIELD_NAME_AND_EG);
     }
   });
 
-  it("every text/number/date/textarea on the BSC form has a placeholder starting with 'e.g.'", async () => {
+  it("every text/number/date/textarea on the BSC form has a placeholder of the form '<Field name> — e.g. <mock>'", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {
@@ -401,7 +475,7 @@ describe("<add-child-modal> empty-field placeholder pattern (SPEC §6)", () => {
     );
     expect(fields.length).toBeGreaterThan(0);
     for (const f of fields) {
-      expect(f.placeholder).toMatch(/^e\.g\./);
+      expect(f.placeholder).toMatch(FIELD_NAME_AND_EG);
     }
   });
 
