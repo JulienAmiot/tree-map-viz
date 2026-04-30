@@ -23,11 +23,28 @@ export type NodeKind = "TextNode" | "BusinessScoreCardNode";
  */
 export type NodeRole = "asParent" | "asChild";
 
+/**
+ * SPEC §17.14 — TextNode now carries a `TimestampedValue<string>` history;
+ * the displayed value is `history.at(-1).value`. The VM exposes:
+ *
+ *   - `text` — the latest recorded string (renders as the tile body, big
+ *     enough to fill the available space).
+ *   - `dateIso` — the latest entry's `asOf.toISOString()` (renders as the
+ *     timestamp in the tile's top-right corner).
+ *
+ * When the underlying `TextCard` history is empty (e.g. the default-seed
+ * root before any user input), both fields are `""` so the view layer
+ * gracefully renders an empty tile body and no timestamp.
+ */
 export type TextNodeViewModel = {
   readonly kind: "TextNode";
   readonly id: string;
   readonly title: string;
   readonly description: string;
+  readonly value: {
+    readonly text: string;
+    readonly dateIso: string;
+  };
 };
 
 /**

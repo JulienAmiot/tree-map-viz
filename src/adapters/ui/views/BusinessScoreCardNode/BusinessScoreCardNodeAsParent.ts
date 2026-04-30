@@ -1,75 +1,51 @@
 /**
  * `<business-score-card-as-parent>` — large parent-strip rendering for
- * `BusinessScoreCardNode` (SPEC §5).
+ * `BusinessScoreCardNode` (SPEC §5 — refined in §17.14).
  *
- * Field rules: Title + Description + value (with `Σ` badge when computed).
- * Same fields as the `AsChild` sibling — only typography differs.
+ * Layout (post-§17.14):
+ *   - Title (top, `3vh` row, consistent across tiles).
+ *   - Timestamp (top-right corner) — own `asOf` for `recordedValue`,
+ *     omitted for `computedMean` / `childrenCount` (no single
+ *     representative date for derived aggregates).
+ *   - Value (fills the tile) — number + unit (1/3 size) for value
+ *     branches; `<n> children` for childrenCount > 0; empty for
+ *     childrenCount = 0. The Σ badge for `computedMean` is rendered
+ *     adjacent to the value.
+ *
+ * Description is no longer rendered in the tile (still a domain field).
  */
 
 import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
-import { renderValueTemplate } from "./valueTemplate.js";
+import { tileLayoutStyles } from "../tileLayoutStyles.js";
+import {
+  formatDate,
+  renderValueTemplate,
+  timestampForValue,
+} from "./valueTemplate.js";
 
 @customElement("business-score-card-as-parent")
 export class BusinessScoreCardNodeAsParent extends LitElement {
   @property({ attribute: false })
   vm: BusinessScoreCardNodeViewModel | null = null;
 
-  static styles = css`
-    :host {
-      display: block;
-      box-sizing: border-box;
-      padding: 0.25rem 0;
-      color: inherit;
-      font: inherit;
-    }
-    .title {
-      margin: 0 0 0.35rem 0;
-      font-weight: 700;
-      font-size: clamp(1.4rem, 2.4vw, 2.1rem);
-      line-height: 1.1;
-    }
-    .description {
-      margin: 0 0 0.5rem 0;
-      font-size: clamp(0.95rem, 1.2vw, 1.1rem);
-      color: color-mix(in srgb, currentColor 80%, transparent);
-      line-height: 1.4;
-    }
-    .description.empty {
-      display: none;
-    }
-    .value-row {
-      display: inline-flex;
-      align-items: baseline;
-      gap: 0.5rem;
-      font-size: clamp(1.1rem, 1.6vw, 1.35rem);
-    }
-    .value {
-      font-weight: 600;
-    }
-    .value.empty::before {
-      content: "";
-    }
-    .sigma {
-      font-size: 0.85em;
-      padding: 0 0.35em;
-      border-radius: 999px;
-      background: color-mix(in srgb, currentColor 12%, transparent);
-      color: color-mix(in srgb, currentColor 90%, transparent);
-    }
-    .date {
-      font-size: 0.85em;
-      color: color-mix(in srgb, currentColor 65%, transparent);
-    }
-  `;
+  static styles = [
+    tileLayoutStyles,
+    css`
+      .title {
+        font-size: 2.4vh;
+        font-weight: 700;
+      }
+    `,
+  ];
 
   render() {
     if (!this.vm) {
       return html``;
     }
-    const desc = this.vm.description;
+    const dateIso = timestampForValue(this.vm.value);
     return html`
       <h1
         class="title"
@@ -79,13 +55,15 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
       >
         ${this.vm.title}
       </h1>
-      <p
-        class=${desc.length === 0 ? "description empty" : "description"}
-        data-testid="description"
-      >
-        ${desc}
-      </p>
-      <div class="value-row" data-testid="value-row">
+      ${dateIso
+        ? html`<time
+            class="timestamp"
+            data-testid="value-date"
+            datetime=${dateIso}
+            >${formatDate(dateIso)}</time
+          >`
+        : html``}
+      <div class="value-area" data-testid="value-row">
         ${renderValueTemplate(this.vm.value)}
       </div>
     `;

@@ -205,7 +205,7 @@ describe("<add-child-modal>", () => {
     ).toBe(today);
   });
 
-  it("Confirm is disabled until required fields are filled (TextNode = title only)", async () => {
+  it("Confirm is disabled for TextNode until title + current value + as-of date are filled (\u00a717.14)", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {
@@ -216,7 +216,36 @@ describe("<add-child-modal>", () => {
     const btn = confirmBtnOf(el);
     expect(btn.disabled).toBe(true);
     await setInput(el, "field-title", "Hello");
+    // Title alone is no longer enough: TextNode now also requires a seed
+    // `TimestampedValue<string>` (current text + as-of date).
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-current-value", "First note");
+    // The as-of date defaults to today on open, so once the current
+    // value is filled Confirm should enable.
     expect(confirmBtnOf(el).disabled).toBe(false);
+    await setInput(el, "field-current-value-date", "");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-current-value-date", "2026-04-30");
+    expect(confirmBtnOf(el).disabled).toBe(false);
+  });
+
+  it("TextNode form's `as of` date defaults to today's local-calendar ISO (\u00a717.14)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickText(el);
+    const expected = (() => {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    })();
+    const dateInput = fieldOf(el, "field-current-value-date") as HTMLInputElement;
+    expect(dateInput.value).toBe(expected);
   });
 
   it("Confirm is disabled for BSC until title + unit + objective + current value are filled", async () => {
@@ -246,7 +275,7 @@ describe("<add-child-modal>", () => {
     expect(confirmBtnOf(el).disabled).toBe(false);
   });
 
-  it("clicking Confirm fires `add-child-confirm` with the parentId + a TextNode payload", async () => {
+  it("clicking Confirm fires `add-child-confirm` with the parentId + a TextNode payload (history seeded, \u00a717.14)", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {
@@ -261,6 +290,8 @@ describe("<add-child-modal>", () => {
     await setInput(el, "field-title", "Quick note");
     await setInput(el, "field-description", "Some context");
     await setInput(el, "field-weight", "2");
+    await setInput(el, "field-current-value", "Today's headline");
+    await setInput(el, "field-current-value-date", "2026-04-30");
     confirmBtnOf(el).click();
 
     expect(handler).toHaveBeenCalledTimes(1);
@@ -270,12 +301,17 @@ describe("<add-child-modal>", () => {
     expect(evt?.bubbles).toBe(true);
     expect(evt?.composed).toBe(true);
     expect(evt?.detail.parentId).toBe("uuid-parent");
-    expect(evt?.detail.payload).toEqual({
-      kind: "TextNode",
-      title: "Quick note",
-      description: "Some context",
-      weight: 2,
-    });
+    const p = evt?.detail.payload;
+    expect(p?.kind).toBe("TextNode");
+    if (p?.kind !== "TextNode") return; // narrow
+    expect(p.title).toBe("Quick note");
+    expect(p.description).toBe("Some context");
+    expect(p.weight).toBe(2);
+    expect(p.initialHistory).toHaveLength(1);
+    const seed = p.initialHistory?.[0];
+    expect(seed?.value).toBe("Today's headline");
+    expect(seed?.asOf).toBeInstanceOf(Date);
+    expect(seed?.asOf.toISOString()).toBe("2026-04-30T00:00:00.000Z");
   });
 
   it("clicking Confirm fires `add-child-confirm` with a BusinessScoreCard payload (numbers parsed, date as Date, history seeded)", async () => {
@@ -447,10 +483,14 @@ describe("<add-child-modal> empty-field placeholder pattern (SPEC §6)", () => {
       },
     );
     await pickText(el);
+    // SPEC §17.14 — TextNode form now includes a `date` input (the seed
+    // `as of` field), so the selector covers all four field types.
     const fields = Array.from(
       el.shadowRoot?.querySelectorAll<
         HTMLInputElement | HTMLTextAreaElement
-      >('[data-testid="modal-form"] input[type="text"], [data-testid="modal-form"] input[type="number"], [data-testid="modal-form"] textarea') ?? [],
+      >(
+        '[data-testid="modal-form"] input[type="text"], [data-testid="modal-form"] input[type="number"], [data-testid="modal-form"] input[type="date"], [data-testid="modal-form"] textarea',
+      ) ?? [],
     );
     expect(fields.length).toBeGreaterThan(0);
     for (const f of fields) {

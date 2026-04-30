@@ -1,5 +1,6 @@
 import { BusinessScoreCard } from "../domain/nodes/BusinessScoreCard.js";
 import { BusinessScoreCardNode } from "../domain/nodes/BusinessScoreCardNode.js";
+import { TextCard } from "../domain/nodes/TextCard.js";
 import { TextNode } from "../domain/nodes/TextNode.js";
 import { Description } from "../domain/values/Description.js";
 import { NodeIdentity } from "../domain/values/NodeIdentity.js";
@@ -22,7 +23,15 @@ export function buildSampleTree(): TextNode {
   const t1 = new Date("2026-04-22T18:25:43.511Z");
   const t2 = new Date("2026-04-23T18:25:43.511Z");
 
-  const root = new TextNode("org", makeIdentity("Organization", "Top"), Weight.of(2));
+  const rootCard = TextCard.of([
+    TimestampedValue.of("Organization", t2),
+  ]);
+  const root = new TextNode(
+    "org",
+    makeIdentity("Organization", "Top"),
+    Weight.of(2),
+    rootCard,
+  );
 
   const salesCard = BusinessScoreCard.of(
     Unit.percent(),

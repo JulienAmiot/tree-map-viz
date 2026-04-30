@@ -15,6 +15,7 @@ const textVm: NodeViewModel = {
   id: "uuid-1",
   title: "Quarterly review",
   description: "Top-level scorecard",
+  value: { text: "Quarterly review", dateIso: "2026-04-23T00:00:00.000Z" },
 };
 
 describe("<parent-identity-strip>", () => {
@@ -59,6 +60,7 @@ describe("<parent-identity-strip>", () => {
       id: "uuid-2",
       title: "Other",
       description: "",
+      value: { text: "Other", dateIso: "2026-04-23T00:00:00.000Z" },
     };
     el.vm = next;
     await el.updateComplete;

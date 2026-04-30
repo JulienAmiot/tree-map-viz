@@ -50,7 +50,7 @@ describe("jsonCodec", () => {
   });
 
   describe("decode (TextNode wire \u2192 TextNode)", () => {
-    it("decodes a TextNode wire entry into a TextNode instance", () => {
+    it("decodes a TextNode wire entry into a TextNode instance (no history → empty TextCard)", () => {
       const wire = {
         nodeType: "TextNode",
         id: "txt-1",
@@ -65,6 +65,66 @@ describe("jsonCodec", () => {
       expect(tree.identity.title.value).toBe("Notes");
       expect(tree.weight.value).toBe(1);
       expect(tree.children).toHaveLength(0);
+      expect((tree as TextNode).card.history()).toHaveLength(0);
+    });
+
+    it("decodes the TextNode `historizedValues` array into TimestampedValue<string> sorted by date asc (\u00a717.14)", () => {
+      const wire = {
+        nodeType: "TextNode",
+        id: "txt-2",
+        title: "Notes",
+        description: "",
+        weight: 1,
+        historizedValues: [
+          { value: "newer", date: "2026-04-23T00:00:00.000Z" },
+          { value: "older", date: "2026-04-22T00:00:00.000Z" },
+        ],
+        childrenNodes: [],
+      };
+      const tree = decode(JSON.stringify(wire)) as TextNode;
+      const history = tree.card.history();
+      expect(history).toHaveLength(2);
+      expect(history[0]!.value).toBe("older");
+      expect(history[0]!.asOf.toISOString()).toBe("2026-04-22T00:00:00.000Z");
+      expect(history[1]!.value).toBe("newer");
+      expect(tree.currentValue().value).toBe("newer");
+    });
+
+    it("rejects a TextNode wire whose `historizedValues` entry has an unparseable date", () => {
+      const wire = {
+        nodeType: "TextNode",
+        id: "txt-3",
+        title: "T",
+        description: "",
+        weight: 1,
+        historizedValues: [{ value: "v", date: "not-a-date" }],
+        childrenNodes: [],
+      };
+      try {
+        decode(JSON.stringify(wire));
+        expect.fail("should have thrown");
+      } catch (err) {
+        expect(err).toBeInstanceOf(JsonDecodeError);
+        expect((err as JsonDecodeError).pointer).toBe("/historizedValues/0/date");
+      }
+    });
+
+    it("emits the `historizedValues` field on encode (round-trip preserves the TextCard)", () => {
+      const wire = {
+        nodeType: "TextNode",
+        id: "txt-4",
+        title: "Round-trip",
+        description: "",
+        weight: 1,
+        historizedValues: [
+          { value: "first", date: "2026-04-22T00:00:00.000Z" },
+          { value: "second", date: "2026-04-23T00:00:00.000Z" },
+        ],
+        childrenNodes: [],
+      };
+      const tree = decode(JSON.stringify(wire));
+      const reparsed = JSON.parse(encode(tree));
+      expect(reparsed).toEqual(wire);
     });
   });
 

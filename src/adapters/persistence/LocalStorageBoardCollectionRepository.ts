@@ -30,10 +30,12 @@ import type {
   BoardCollectionRepository,
   BoardCollectionSnapshot,
 } from "../../application/ports/BoardCollectionRepository.js";
+import { TextCard } from "../../domain/nodes/TextCard.js";
 import { TextNode } from "../../domain/nodes/TextNode.js";
 import type { TreeNode } from "../../domain/nodes/TreeNode.js";
 import { Description } from "../../domain/values/Description.js";
 import { NodeIdentity } from "../../domain/values/NodeIdentity.js";
+import { TimestampedValue } from "../../domain/values/TimestampedValue.js";
 import { Title } from "../../domain/values/Title.js";
 import { Weight } from "../../domain/values/Weight.js";
 
@@ -150,10 +152,16 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
 }
 
 function defaultSeed(): BoardCollectionSnapshot {
+  // SPEC §17.14 — every TextNode now boots with a non-empty history; the
+  // default seed records the operator's "blank kiosk" value as today's
+  // observation so the view layer renders cleanly out of the box.
+  const seedDate = new Date();
+  const card = TextCard.of([TimestampedValue.of("", seedDate)]);
   const root = new TextNode(
     "default-root",
     NodeIdentity.of(Title.of("Root"), Description.of("")),
     Weight.of(1),
+    card,
   );
   return {
     boards: [{ id: "default-board", name: "Default Board", tree: root }],

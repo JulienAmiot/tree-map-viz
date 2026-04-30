@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { TextCard } from "../../../domain/nodes/TextCard.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { findNodeById, findParentOf, walkPath } from "../../../domain/treeQueries.js";
 import { Description } from "../../../domain/values/Description.js";
@@ -11,7 +12,7 @@ const identity = NodeIdentity.of(Title.of("X"), Description.of(""));
 const w = Weight.of(1);
 
 function tn(idStr: string): TextNode {
-  return new TextNode(idStr, identity, w);
+  return new TextNode(idStr, identity, w, TextCard.of());
 }
 
 // Tree shape:

@@ -6,6 +6,7 @@ import {
   StorageFullError,
 } from "../../../../adapters/persistence/LocalStorageBoardCollectionRepository.js";
 import type { BoardCollectionSnapshot } from "../../../../application/ports/BoardCollectionRepository.js";
+import { TextCard } from "../../../../domain/nodes/TextCard.js";
 import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import { Description } from "../../../../domain/values/Description.js";
 import { NodeIdentity } from "../../../../domain/values/NodeIdentity.js";
@@ -23,6 +24,7 @@ function tn(idStr: string, title = "X"): TextNode {
     idStr,
     NodeIdentity.of(Title.of(title), Description.of("")),
     Weight.of(1),
+    TextCard.of(),
   );
 }
 

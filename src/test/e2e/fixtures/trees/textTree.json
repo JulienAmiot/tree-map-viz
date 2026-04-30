@@ -4,6 +4,9 @@
   "title": "Quarterly review",
   "description": "Top-level scorecard",
   "weight": 1,
+  "historizedValues": [
+    { "value": "On track for Q2", "date": "2026-04-23T18:25:43.511Z" }
+  ],
   "childrenNodes": [
     {
       "nodeType": "TextNode",
@@ -11,6 +14,9 @@
       "title": "Region",
       "description": "North-east",
       "weight": 1,
+      "historizedValues": [
+        { "value": "North-east region", "date": "2026-04-23T18:25:43.511Z" }
+      ],
       "childrenNodes": []
     },
     {
@@ -19,6 +25,7 @@
       "title": "Bare",
       "description": "",
       "weight": 1,
+      "historizedValues": [],
       "childrenNodes": []
     }
   ]

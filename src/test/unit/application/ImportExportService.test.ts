@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ImportExportService } from "../../../application/ImportExportService.js";
 import type { TreeCodec } from "../../../application/ports/TreeCodec.js";
+import { TextCard } from "../../../domain/nodes/TextCard.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
 import type { TreeNode } from "../../../domain/nodes/TreeNode.js";
 import { Description } from "../../../domain/values/Description.js";
@@ -16,6 +17,7 @@ function tn(idStr: string, title = "X"): TextNode {
     idStr,
     NodeIdentity.of(Title.of(title), Description.of("")),
     Weight.of(1),
+    TextCard.of(),
   );
 }
 

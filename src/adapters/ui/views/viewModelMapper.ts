@@ -38,11 +38,23 @@ export class ViewModelMappingError extends Error {
 /** Map a single domain node to its plain-data view model. */
 export function mapNodeToViewModel(node: TreeNode<unknown>): NodeViewModel {
   if (node instanceof TextNode) {
+    // SPEC §17.14 — pull the latest entry from the `TextCard` history;
+    // when the history is empty (default-seed root before first input,
+    // pre-§17.14 imported data without `historizedValues`) we fall back
+    // to empty strings so the view degrades gracefully. We avoid
+    // throwing `EmptyHistoryError` here because `mapNodeToViewModel`
+    // runs on every refresh — surfacing it would crash the whole
+    // composition root over a single empty leaf.
+    const latest = node.card.history().at(-1);
     return {
       kind: "TextNode",
       id: node.id,
       title: node.identity.title.value,
       description: node.identity.description.value,
+      value: {
+        text: latest?.value ?? "",
+        dateIso: latest?.asOf.toISOString() ?? "",
+      },
     };
   }
   if (node instanceof BusinessScoreCardNode) {

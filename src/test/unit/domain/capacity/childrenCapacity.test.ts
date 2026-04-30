@@ -5,6 +5,7 @@ import {
   MAX_CHILDREN,
   shouldRenderPlusTile,
 } from "../../../../domain/capacity/childrenCapacity.js";
+import { TextCard } from "../../../../domain/nodes/TextCard.js";
 import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import type { TreeNode } from "../../../../domain/nodes/TreeNode.js";
 import { Description } from "../../../../domain/values/Description.js";
@@ -16,7 +17,7 @@ const identity = NodeIdentity.of(Title.of("X"), Description.of(""));
 const w = Weight.of(1);
 
 function makeTextNode(id: string): TextNode {
-  return new TextNode(id, identity, w);
+  return new TextNode(id, identity, w, TextCard.of());
 }
 
 function withChildren(n: number): TextNode {

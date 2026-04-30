@@ -18,6 +18,7 @@
 
 import { BusinessScoreCard } from "../../domain/nodes/BusinessScoreCard.js";
 import { BusinessScoreCardNode } from "../../domain/nodes/BusinessScoreCardNode.js";
+import { TextCard } from "../../domain/nodes/TextCard.js";
 import { TextNode } from "../../domain/nodes/TextNode.js";
 import { TreeNode } from "../../domain/nodes/TreeNode.js";
 import { Description } from "../../domain/values/Description.js";
@@ -65,6 +66,11 @@ type WireTextNode = {
   title: string;
   description: string;
   weight: number;
+  // SPEC §17.14 — TextNode now carries a `TimestampedValue<string>` history
+  // exactly like `BusinessScoreCard` carries a `TimestampedValue<number>`
+  // history. Optional on decode for backward compat with pre-§17.14 wire
+  // payloads (treated as an empty `TextCard`); always emitted on encode.
+  historizedValues?: { value: string; date: string }[];
   childrenNodes: WireNode[];
 };
 
@@ -139,9 +145,45 @@ function decodeTextNode(obj: Record<string, unknown>, pointer: string): TextNode
   const title = Title.of(requireString(obj, "title", pointer));
   const description = Description.of(requireString(obj, "description", pointer));
   const weight = Weight.of(requireNumber(obj, "weight", pointer));
-  const node = new TextNode(id, NodeIdentity.of(title, description), weight);
+  // `historizedValues` is optional on decode (pre-§17.14 wire payloads
+  // omitted it); when absent the node decodes with an empty `TextCard`,
+  // which is consistent with `currentValue()` throwing `EmptyHistoryError`
+  // — the view layer maps that to an empty value area gracefully.
+  const historyRaw = obj["historizedValues"];
+  let history: ReturnType<typeof decodeTextTimestampedValue>[] = [];
+  if (historyRaw !== undefined) {
+    if (!Array.isArray(historyRaw)) {
+      throw new JsonDecodeError(
+        joinPointer(pointer, "historizedValues"),
+        `expected array, got ${typeOf(historyRaw)}`,
+      );
+    }
+    const historyPointer = joinPointer(pointer, "historizedValues");
+    history = historyRaw.map((entry, i) =>
+      decodeTextTimestampedValue(entry, joinPointer(historyPointer, String(i))),
+    );
+  }
+  const card = TextCard.of(history);
+  const node = new TextNode(id, NodeIdentity.of(title, description), weight, card);
   attachChildren(node, obj, pointer);
   return node;
+}
+
+function decodeTextTimestampedValue(
+  raw: unknown,
+  pointer: string,
+): TimestampedValue<string> {
+  const obj = requireObject(raw, pointer);
+  const value = requireString(obj, "value", pointer);
+  const dateString = requireString(obj, "date", pointer);
+  const ms = Date.parse(dateString);
+  if (Number.isNaN(ms)) {
+    throw new JsonDecodeError(
+      joinPointer(pointer, "date"),
+      `not a valid ISO-8601 date: "${dateString}"`,
+    );
+  }
+  return TimestampedValue.of(value, new Date(ms));
 }
 
 function attachChildren(
@@ -226,6 +268,10 @@ function encodeTextNode(node: TextNode): WireTextNode {
     title: node.identity.title.value,
     description: node.identity.description.value,
     weight: node.weight.value,
+    historizedValues: node.card.history().map((tv) => ({
+      value: tv.value,
+      date: tv.asOf.toISOString(),
+    })),
     childrenNodes: node.children.map(encodeNode),
   };
 }

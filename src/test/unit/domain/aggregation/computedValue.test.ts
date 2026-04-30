@@ -6,6 +6,7 @@ import {
   BusinessScoreCardNode,
   EmptyHistoryError,
 } from "../../../../domain/nodes/BusinessScoreCardNode.js";
+import { TextCard } from "../../../../domain/nodes/TextCard.js";
 import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import { Description } from "../../../../domain/values/Description.js";
 import { NodeIdentity } from "../../../../domain/values/NodeIdentity.js";
@@ -44,7 +45,7 @@ function bsc(opts: BscOpts = {}): BusinessScoreCardNode<number> {
 }
 
 function txt(idStr = "tn"): TextNode {
-  return new TextNode(idStr, identity, Weight.of(1));
+  return new TextNode(idStr, identity, Weight.of(1), TextCard.of());
 }
 
 describe("computedValue", () => {

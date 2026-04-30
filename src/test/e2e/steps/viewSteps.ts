@@ -210,3 +210,108 @@ Then("the plus tile has no value-date", async ({ page }) => {
   const kiosk = new TreeGraphPage(page);
   await expect(kiosk.plusTileHosts().getByTestId("value-date")).toHaveCount(0);
 });
+
+// — §17.14 layout steps ———————————————————————————————————————————
+
+Then("the focused tile has no description block", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  // SPEC §17.14 — Description is no longer rendered in the tile body
+  // for either kind; the value (text or number+unit) takes that space.
+  await expect(kiosk.parentStrip().getByTestId("description")).toHaveCount(0);
+});
+
+Then("every tile title has the same font-size", async ({ page }) => {
+  // SPEC §17.14 — "consistent across all the tiles" applies to the
+  // children-grid tiles (the parent identity strip is a strip, not a
+  // tile; it's allowed to scale up its title for the focused-context
+  // emphasis). All child-tile titles must therefore agree pixel-for-
+  // pixel modulo sub-pixel rounding.
+  const sizes = await page
+    .locator('children-grid [data-testid="title"]')
+    .evaluateAll((els: Element[]) =>
+      els.map((el) => parseFloat(getComputedStyle(el as HTMLElement).fontSize)),
+    );
+  expect(sizes.length).toBeGreaterThan(0);
+  const first = sizes[0]!;
+  for (const s of sizes) {
+    expect(Math.abs(s - first)).toBeLessThanOrEqual(1);
+  }
+});
+
+Then("every tile title's font-size is approximately 2vh", async ({ page }) => {
+  const viewportHeight = page.viewportSize()?.height ?? 0;
+  expect(viewportHeight).toBeGreaterThan(0);
+  // tileLayoutStyles.ts sets the AsChild title to `font-size: 2vh`; the
+  // AsParent variant overrides with `2.4vh`. We assert the AsChild
+  // (children grid) titles to ensure the §17.14 baseline holds; the
+  // AsParent variant is allowed to scale up slightly per role.
+  const sizes = await page.$$eval(
+    'children-grid [data-testid="title"]',
+    (els: Element[]) =>
+      els.map((el) => parseFloat(getComputedStyle(el as HTMLElement).fontSize)),
+  );
+  expect(sizes.length).toBeGreaterThan(0);
+  const expected = viewportHeight * 0.02;
+  for (const s of sizes) {
+    // ±1.5px tolerance — covers fractional rounding + minor anti-aliasing.
+    expect(Math.abs(s - expected)).toBeLessThanOrEqual(1.5);
+  }
+});
+
+Then(
+  "the focused value's unit font-size is one third of the value font-size",
+  async ({ page }) => {
+    // Playwright's locator API walks open shadow roots, which the raw
+    // `querySelector` chain above does not — that's why an earlier
+    // probe-via-evaluate version returned `null` for the unit element.
+    const kiosk = new TreeGraphPage(page);
+    const value = kiosk.parentStrip().getByTestId("value");
+    await expect(value).toHaveCount(1);
+    const valueFs = await value.evaluate((el: Element) =>
+      parseFloat(getComputedStyle(el as HTMLElement).fontSize),
+    );
+    const unit = value.locator(".unit");
+    await expect(unit).toHaveCount(1);
+    const unitFs = await unit.evaluate((el: Element) =>
+      parseFloat(getComputedStyle(el as HTMLElement).fontSize),
+    );
+    expect(valueFs).toBeGreaterThan(0);
+    expect(unitFs).toBeGreaterThan(0);
+    // calc(1em / 3) → 1/3 of the value's resolved font-size; allow ±1px
+    // tolerance for sub-pixel rendering.
+    expect(Math.abs(unitFs - valueFs / 3)).toBeLessThanOrEqual(1);
+  },
+);
+
+Then(
+  "the focused value-date is in the top-right corner of the tile",
+  async ({ page }) => {
+    // The "tile" host is the per-kind element that the parent-identity
+    // strip mounts inside its `<node-view>` slot. Both BSC and Text
+    // variants expose `data-view-kind` on their `[data-testid="title"]`,
+    // so we walk up from the title to find the host element.
+    const kiosk = new TreeGraphPage(page);
+    const ts = kiosk.parentStrip().getByTestId("value-date");
+    const title = kiosk.parentStrip().getByTestId("title");
+    await expect(ts).toHaveCount(1);
+    await expect(title).toHaveCount(1);
+    const tsBox = await ts.boundingBox();
+    // Use the title's bounding box as the "tile" reference: the title
+    // spans the full width of the per-kind element and sits at the very
+    // top, so its `right` edge is the tile's right edge and its `top`
+    // is the tile's top. That's a reliable proxy without piercing
+    // shadow DOM ourselves.
+    const titleBox = await title.boundingBox();
+    expect(tsBox).not.toBeNull();
+    expect(titleBox).not.toBeNull();
+    // Right of horizontal midpoint:
+    const titleMidX = titleBox!.x + titleBox!.width / 2;
+    expect(tsBox!.x).toBeGreaterThan(titleMidX);
+    // Vertically inside the title row (top of tile, ±a small slack for
+    // the timestamp's own height extending below the title baseline):
+    expect(tsBox!.y).toBeLessThan(titleBox!.y + titleBox!.height);
+    // Hugs the right edge of the tile (within a sensible inset):
+    const distFromRight = titleBox!.x + titleBox!.width - (tsBox!.x + tsBox!.width);
+    expect(distFromRight).toBeLessThan(64);
+  },
+);

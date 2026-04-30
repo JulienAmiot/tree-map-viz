@@ -25,6 +25,7 @@ import type {
 } from "../../../../application/ports/BoardCollectionRepository.js";
 import { BusinessScoreCard } from "../../../../domain/nodes/BusinessScoreCard.js";
 import { BusinessScoreCardNode } from "../../../../domain/nodes/BusinessScoreCardNode.js";
+import { TextCard } from "../../../../domain/nodes/TextCard.js";
 import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import type { TreeNode } from "../../../../domain/nodes/TreeNode.js";
 import { Description } from "../../../../domain/values/Description.js";
@@ -42,6 +43,9 @@ function tn(idStr: string, title: string, weight = 1): TextNode {
     idStr,
     NodeIdentity.of(Title.of(title), Description.of("")),
     Weight.of(weight),
+    TextCard.of([
+      TimestampedValue.of(`${title} note`, new Date("2026-04-15T00:00:00Z")),
+    ]),
   );
 }
 

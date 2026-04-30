@@ -33,6 +33,17 @@ When("I fill in the title with {string}", async ({ page }, title: string) => {
   await kiosk.addChildModalField("field-title").fill(title);
 });
 
+When(
+  "I fill in the current value with {string}",
+  async ({ page }, value: string) => {
+    // SPEC §17.13 / §17.14 — both kinds collect a mandatory seed
+    // `TimestampedValue`; the `field-current-value` testid is the same
+    // whether the underlying input is a number (BSC) or textarea (Text).
+    const kiosk = new TreeGraphPage(page);
+    await kiosk.addChildModalField("field-current-value").fill(value);
+  },
+);
+
 When("I confirm the add-child modal", async ({ page }) => {
   const kiosk = new TreeGraphPage(page);
   await kiosk.addChildModalConfirm().click();

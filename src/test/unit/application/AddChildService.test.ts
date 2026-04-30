@@ -7,6 +7,7 @@ import type {
 import type { IdGenerator } from "../../../application/ports/IdGenerator.js";
 import { MAX_CHILDREN } from "../../../domain/capacity/childrenCapacity.js";
 import { BusinessScoreCardNode } from "../../../domain/nodes/BusinessScoreCardNode.js";
+import { TextCard } from "../../../domain/nodes/TextCard.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { Description } from "../../../domain/values/Description.js";
 import { NodeIdentity } from "../../../domain/values/NodeIdentity.js";
@@ -16,13 +17,18 @@ import { Weight } from "../../../domain/values/Weight.js";
 // ----- helpers --------------------------------------------------------------
 
 function makeRoot(idStr = "root"): TextNode {
-  return new TextNode(idStr, NodeIdentity.of(Title.of("Root"), Description.of("")), Weight.of(1));
+  return new TextNode(
+    idStr,
+    NodeIdentity.of(Title.of("Root"), Description.of("")),
+    Weight.of(1),
+    TextCard.of(),
+  );
 }
 
 function fillToCap(parent: TextNode): void {
   const identity = NodeIdentity.of(Title.of("X"), Description.of(""));
   for (let i = 0; i < MAX_CHILDREN; i++) {
-    parent.attach(new TextNode(`existing-${i}`, identity, Weight.of(1)));
+    parent.attach(new TextNode(`existing-${i}`, identity, Weight.of(1), TextCard.of()));
   }
 }
 

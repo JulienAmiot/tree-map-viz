@@ -21,7 +21,7 @@ function makeVm(value: BusinessScoreCardNodeViewModel["value"]): BusinessScoreCa
 }
 
 describe("<business-score-card-as-child>", () => {
-  it("renders Σ for computed values, same as AsParent (§5 — uniform fields across roles)", async () => {
+  it("renders Σ for computed values, same as AsParent (\u00a75 — uniform fields across roles)", async () => {
     const vm = makeVm({ kind: "computedMean", mean: 50, unit: "%" });
     const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
@@ -31,12 +31,15 @@ describe("<business-score-card-as-child>", () => {
     );
 
     expect(
-      el.shadowRoot?.querySelector('[data-testid="value"]')?.textContent?.trim(),
+      el.shadowRoot
+        ?.querySelector('[data-testid="value"]')
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim(),
     ).toBe("50.0 %");
     expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).not.toBeNull();
   });
 
-  it("does not render Σ for recordedValue", async () => {
+  it("does not render Σ for recordedValue, but does render the corner timestamp", async () => {
     const vm = makeVm({
       kind: "recordedValue",
       value: 50,
@@ -51,10 +54,12 @@ describe("<business-score-card-as-child>", () => {
     );
 
     expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).toBeNull();
-    expect(el.shadowRoot?.querySelector('[data-testid="value-date"]')).not.toBeNull();
+    const ts = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="value-date"]');
+    expect(ts).not.toBeNull();
+    expect(ts?.classList.contains("timestamp")).toBe(true);
   });
 
-  it('renders "5 children" for childrenCount > 0', async () => {
+  it('renders "5 children" for childrenCount > 0 (no Σ, no Unit, no timestamp)', async () => {
     const vm = makeVm({ kind: "childrenCount", n: 5 });
     const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
@@ -66,6 +71,7 @@ describe("<business-score-card-as-child>", () => {
     expect(
       el.shadowRoot?.querySelector('[data-testid="value"]')?.textContent?.trim(),
     ).toBe("5 children");
+    expect(el.shadowRoot?.querySelector('[data-testid="value-date"]')).toBeNull();
   });
 
   it("renders empty value area for childrenCount = 0", async () => {

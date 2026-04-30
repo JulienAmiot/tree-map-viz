@@ -1,6 +1,7 @@
 import { canAddChild } from "../domain/capacity/childrenCapacity.js";
 import { BusinessScoreCard } from "../domain/nodes/BusinessScoreCard.js";
 import { BusinessScoreCardNode } from "../domain/nodes/BusinessScoreCardNode.js";
+import { TextCard } from "../domain/nodes/TextCard.js";
 import { TextNode } from "../domain/nodes/TextNode.js";
 import type { TreeNode } from "../domain/nodes/TreeNode.js";
 import { Description } from "../domain/values/Description.js";
@@ -27,6 +28,12 @@ export type AddChildPayload =
       readonly title: string;
       readonly description?: string;
       readonly weight?: number;
+      // SPEC §17.14 — TextNode now seeds a TimestampedValue<string> history
+      // exactly like BSC does (§17.13). Optional in the payload type so
+      // unit tests that don't exercise rendering can omit it; the modal
+      // surfaces it as a mandatory field on the form, and `buildNode`
+      // accepts an empty default (→ empty TextCard) when omitted.
+      readonly initialHistory?: readonly { readonly value: string; readonly asOf: Date }[];
     }
   | {
       readonly kind: "BusinessScoreCardNode";
@@ -107,7 +114,11 @@ export class AddChildService {
     const weight = Weight.of(payload.weight ?? 1);
 
     if (payload.kind === "TextNode") {
-      return new TextNode(id, identity, weight);
+      const initialHistory = (payload.initialHistory ?? []).map((entry) =>
+        TimestampedValue.of(entry.value, entry.asOf),
+      );
+      const card = TextCard.of(initialHistory);
+      return new TextNode(id, identity, weight, card);
     }
     if (payload.kind === "BusinessScoreCardNode") {
       const objective = Objective.of(

@@ -44,23 +44,27 @@
  *     focused parent strip + children grid stay fully interactive.
  *
  * Defaults (mirroring `AddChildPayload` optional fields):
- *   - Text: title required, description optional, weight default 1.
+ *   - Text: title + a **mandatory current value** (the seed
+ *     `TimestampedValue<string>` of the otherwise-empty `TextCard`
+ *     history, SPEC §17.14) are required; description optional, weight
+ *     default 1.
  *   - BusinessScoreCard: title + unit + objective + a **mandatory current
- *     value** (the seed `TimestampedValue` of the otherwise-empty history,
- *     SPEC §17.13) are all required; description optional, weight default
- *     1, computed default false, eligibleForParentComputation default
- *     true. The "as of" date for the current value defaults to **today**
- *     (the kiosk operator's local calendar day, ISO `YYYY-MM-DD`) and
- *     stays editable — most field uses record "what we measured today",
- *     but back-filling a past observation must remain trivial.
+ *     value** (the seed `TimestampedValue<number>` of the otherwise-empty
+ *     `BusinessScoreCard` history, SPEC §17.13) are all required;
+ *     description optional, weight default 1, computed default false,
+ *     eligibleForParentComputation default true. The "as of" date for
+ *     both kinds defaults to **today** (the kiosk operator's local
+ *     calendar day, ISO `YYYY-MM-DD`) and stays editable — most field
+ *     uses record "what we measured today", but back-filling a past
+ *     observation must remain trivial.
  *
  * Validation: rejects empty `title` (and empty `unit` + missing objective
- * numbers + missing current-value/date for BSC) by leaving the Confirm
- * button disabled until the required fields are filled. Domain-side
- * validation (Title.of throws on length cap, Weight.of rejects ≤0, etc.)
- * still runs in `AddChildService`, which surfaces failures back through
- * its `Outcome` — the modal reflects those into the `data-error`
- * attribute on the form.
+ * numbers + missing current-value/date — for both Text and BSC kinds) by
+ * leaving the Confirm button disabled until the required fields are
+ * filled. Domain-side validation (Title.of throws on length cap,
+ * Weight.of rejects ≤0, etc.) still runs in `AddChildService`, which
+ * surfaces failures back through its `Outcome` — the modal reflects
+ * those into the `data-error` attribute on the form.
  */
 
 import { LitElement, css, html, nothing } from "lit";
@@ -459,7 +463,9 @@ export class AddChildModal extends LitElement {
           </div>
           ${isText ? nothing : this.renderUnitField()}
         </div>
-        ${isText ? nothing : this.renderCurrentValueFields()}
+        ${isText
+          ? this.renderTextCurrentValueFields()
+          : this.renderBscCurrentValueFields()}
         ${isText ? nothing : this.renderObjectiveFields()}
         ${isText ? nothing : this.renderBscToggles()}
         ${this.errorMessage
@@ -517,7 +523,7 @@ export class AddChildModal extends LitElement {
    * in its history; otherwise `currentValue()` would throw on the very
    * first read. The kiosk collects that seed measurement here.
    */
-  private renderCurrentValueFields() {
+  private renderBscCurrentValueFields() {
     return html`
       <div class="field-row">
         <div class="field">
@@ -530,6 +536,40 @@ export class AddChildModal extends LitElement {
             @input=${(e: Event) => this.bindString(e, "currentValue")}
           />
         </div>
+        <div class="field">
+          <input
+            data-testid="field-current-value-date"
+            type="date"
+            placeholder="As of — e.g. 2026-04-30 (today)"
+            .value=${this.currentValueDate}
+            required
+            @input=${(e: Event) => this.bindString(e, "currentValueDate")}
+          />
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * SPEC §17.14 — TextNode mirror of the BSC seed contract: every fresh
+   * TextNode must boot with at least one `TimestampedValue<string>` so
+   * `currentValue()` returns the displayed text instead of throwing.
+   * Uses a `textarea` because text-typed values are typically richer
+   * than a single line (notes, summaries, headlines).
+   */
+  private renderTextCurrentValueFields() {
+    return html`
+      <div class="field">
+        <textarea
+          data-testid="field-current-value"
+          placeholder="Current value — e.g. The team shipped the v2 dashboard."
+          rows="3"
+          .value=${this.currentValue}
+          required
+          @input=${(e: Event) => this.bindString(e, "currentValue")}
+        ></textarea>
+      </div>
+      <div class="field-row">
         <div class="field">
           <input
             data-testid="field-current-value-date"
@@ -652,11 +692,26 @@ export class AddChildModal extends LitElement {
     const description = this.description.trim() || undefined;
     const weight = this.weight.trim() === "" ? undefined : Number(this.weight);
     if (this.chosenKind === "TextNode") {
+      // SPEC §17.14 — Text nodes require a seed `TimestampedValue<string>`
+      // so the rendered tile has a value/timestamp instead of throwing.
+      // The seed is mandatory; gating mirrors BSC's §17.13 contract.
+      const currentText = this.currentValue;
+      const currentAsOf = this.currentValueDate
+        ? new Date(`${this.currentValueDate}T00:00:00.000Z`)
+        : null;
+      if (
+        currentText.length === 0 ||
+        currentAsOf === null ||
+        Number.isNaN(currentAsOf.getTime())
+      ) {
+        return null;
+      }
       return {
         kind: "TextNode",
         title,
         ...(description === undefined ? {} : { description }),
         ...(weight === undefined ? {} : { weight }),
+        initialHistory: [{ value: currentText, asOf: currentAsOf }],
       };
     }
     if (this.chosenKind === "BusinessScoreCardNode") {

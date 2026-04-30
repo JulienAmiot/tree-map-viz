@@ -10,64 +10,72 @@ import {
 
 afterEach(cleanupLitFixtures);
 
+const dateIso = "2026-04-23T18:25:43.511Z";
+
+function vmWith(opts: Partial<TextNodeViewModel> = {}): TextNodeViewModel {
+  return {
+    kind: "TextNode",
+    id: "p1",
+    title: "Quarterly review",
+    description: "Top-level scorecard",
+    value: { text: "On track for Q2", dateIso },
+    ...opts,
+  } as TextNodeViewModel;
+}
+
 describe("<text-node-as-parent>", () => {
-  it("renders Title + Description (§5 row 3)", async () => {
-    const vm: TextNodeViewModel = {
-      kind: "TextNode",
-      id: "p1",
-      title: "Quarterly review",
-      description: "Top-level scorecard",
-    };
+  it("renders Title + the latest text value (\u00a717.14 — no description in the tile)", async () => {
     const el = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => {
-      e.vm = vm;
+      e.vm = vmWith();
     });
 
-    const title = el.shadowRoot?.querySelector('[data-testid="title"]');
-    const description = el.shadowRoot?.querySelector('[data-testid="description"]');
-    expect(title?.textContent?.trim()).toBe("Quarterly review");
-    expect(description?.textContent?.trim()).toBe("Top-level scorecard");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="title"]')?.textContent?.trim(),
+    ).toBe("Quarterly review");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="value"]')?.textContent?.trim(),
+    ).toBe("On track for Q2");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="value"]')?.getAttribute("data-value-kind"),
+    ).toBe("textValue");
+    expect(el.shadowRoot?.querySelector('[data-testid="description"]')).toBeNull();
   });
 
-  it("does not render a value or a Σ badge (§5 — TextNode has no value)", async () => {
-    const vm: TextNodeViewModel = {
-      kind: "TextNode",
-      id: "p2",
-      title: "T",
-      description: "D",
-    };
+  it("renders the timestamp in the top-right corner (\u00a717.14)", async () => {
     const el = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => {
-      e.vm = vm;
+      e.vm = vmWith();
     });
 
-    expect(el.shadowRoot?.querySelector('[data-testid="value"]')).toBeNull();
+    const ts = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="value-date"]');
+    expect(ts).not.toBeNull();
+    expect(ts?.getAttribute("datetime")).toBe(dateIso);
+    // The `.timestamp` class is what carries the absolute-positioning rule
+    // in `tileLayoutStyles`; we check the class instead of computed
+    // styles because jsdom doesn't fully resolve shadow-scoped CSS.
+    expect(ts?.classList.contains("timestamp")).toBe(true);
+  });
+
+  it("does not render a Σ badge (TextNode has no computed flag, \u00a75)", async () => {
+    const el = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => {
+      e.vm = vmWith();
+    });
     expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).toBeNull();
-    expect(el.shadowRoot?.querySelector('[data-testid="value-row"]')).toBeNull();
   });
 
-  it("hides the description block when description is empty", async () => {
-    const vm: TextNodeViewModel = {
-      kind: "TextNode",
-      id: "p3",
-      title: "Bare",
-      description: "",
-    };
+  it("renders an empty value (no text) and omits the timestamp when the history is empty", async () => {
     const el = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => {
-      e.vm = vm;
+      e.vm = vmWith({ value: { text: "", dateIso: "" } });
     });
 
-    const description = el.shadowRoot?.querySelector('[data-testid="description"]');
-    expect(description?.classList.contains("empty")).toBe(true);
+    const value = el.shadowRoot?.querySelector('[data-testid="value"]');
+    expect(value?.textContent?.trim()).toBe("");
+    expect(value?.classList.contains("empty")).toBe(true);
+    expect(el.shadowRoot?.querySelector('[data-testid="value-date"]')).toBeNull();
   });
 
   it("tags the rendered title with view-kind metadata for e2e selectors", async () => {
-    const vm: TextNodeViewModel = {
-      kind: "TextNode",
-      id: "p4",
-      title: "T",
-      description: "",
-    };
     const el = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => {
-      e.vm = vm;
+      e.vm = vmWith({ id: "p4" });
     });
 
     const title = el.shadowRoot?.querySelector('[data-testid="title"]');

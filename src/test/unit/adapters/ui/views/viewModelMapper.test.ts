@@ -7,6 +7,7 @@ import {
 } from "../../../../../adapters/ui/views/viewModelMapper.js";
 import { BusinessScoreCard } from "../../../../../domain/nodes/BusinessScoreCard.js";
 import { BusinessScoreCardNode } from "../../../../../domain/nodes/BusinessScoreCardNode.js";
+import { TextCard } from "../../../../../domain/nodes/TextCard.js";
 import { TextNode } from "../../../../../domain/nodes/TextNode.js";
 import { TreeNode } from "../../../../../domain/nodes/TreeNode.js";
 import { Description } from "../../../../../domain/values/Description.js";
@@ -23,8 +24,19 @@ function identityOf(title: string, description: string): NodeIdentity {
   return NodeIdentity.of(Title.of(title), Description.of(description));
 }
 
-function makeText(id: string, title: string, description = ""): TextNode {
-  return new TextNode(id, identityOf(title, description), Weight.of(1));
+/** Default seed date for TextNode helpers; arbitrary but deterministic. */
+const DEFAULT_TEXT_DATE = new Date("2026-04-23T18:25:43.511Z");
+
+function makeText(
+  id: string,
+  title: string,
+  description = "",
+  history: { value: string; date: Date }[] = [{ value: title, date: DEFAULT_TEXT_DATE }],
+): TextNode {
+  const card = TextCard.of(
+    history.map((e) => TimestampedValue.of(e.value, e.date)),
+  );
+  return new TextNode(id, identityOf(title, description), Weight.of(1), card);
 }
 
 function makeBsc(opts: {
@@ -52,8 +64,11 @@ function makeBsc(opts: {
 }
 
 describe("mapNodeToViewModel", () => {
-  it("maps a TextNode to a TextNodeViewModel (no value field)", () => {
-    const node = makeText("t1", "Quarterly review", "Top-level scorecard");
+  it("maps a TextNode to a TextNodeViewModel with the latest history entry as `value` (\u00a717.14)", () => {
+    const node = makeText("t1", "Quarterly review", "Top-level scorecard", [
+      { value: "older", date: new Date("2026-04-22T00:00:00.000Z") },
+      { value: "newest", date: DEFAULT_TEXT_DATE },
+    ]);
     const vm = mapNodeToViewModel(node);
 
     expect(vm).toEqual({
@@ -61,7 +76,18 @@ describe("mapNodeToViewModel", () => {
       id: "t1",
       title: "Quarterly review",
       description: "Top-level scorecard",
+      value: {
+        text: "newest",
+        dateIso: DEFAULT_TEXT_DATE.toISOString(),
+      },
     });
+  });
+
+  it("falls back to an empty value when the TextNode's history is empty (graceful degradation)", () => {
+    const node = makeText("t-empty", "Empty", "", []);
+    const vm = mapNodeToViewModel(node);
+    if (vm.kind !== "TextNode") throw new Error("expected TextNode VM");
+    expect(vm.value).toEqual({ text: "", dateIso: "" });
   });
 
   it("maps computed=false BSC to recordedValue VM with the latest TimestampedValue", () => {
@@ -193,7 +219,13 @@ describe("mapFocusedToViewModel", () => {
     expect(vm.children[0]).toEqual({
       slot: "node",
       weight: 1,
-      vm: { kind: "TextNode", id: "c1", title: "Sales", description: "" },
+      vm: {
+        kind: "TextNode",
+        id: "c1",
+        title: "Sales",
+        description: "",
+        value: { text: "Sales", dateIso: DEFAULT_TEXT_DATE.toISOString() },
+      },
     });
     expect(vm.children[2]).toEqual({ slot: "plus", weight: 1, parentId: "center" });
   });
@@ -224,11 +256,13 @@ describe("mapFocusedToViewModel", () => {
       "heavy",
       identityOf("Heavy", ""),
       Weight.of(7),
+      TextCard.of(),
     );
     const light = new TextNode(
       "light",
       identityOf("Light", ""),
       Weight.of(2),
+      TextCard.of(),
     );
 
     const vm = mapFocusedToViewModel(center, [heavy, light]);
@@ -243,6 +277,7 @@ describe("mapFocusedToViewModel", () => {
       "heavy",
       identityOf("Heavy", ""),
       Weight.of(9),
+      TextCard.of(),
     );
 
     const vm = mapFocusedToViewModel(center, [heavy]);

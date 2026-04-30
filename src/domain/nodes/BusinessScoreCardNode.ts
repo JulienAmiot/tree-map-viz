@@ -6,14 +6,13 @@ import type { Objective } from "../values/Objective.js";
 import type { TimestampedValue } from "../values/TimestampedValue.js";
 import type { Weight } from "../values/Weight.js";
 import type { BusinessScoreCard } from "./BusinessScoreCard.js";
+import { EmptyHistoryError } from "./EmptyHistoryError.js";
 import { TreeNode } from "./TreeNode.js";
 
-export class EmptyHistoryError extends Error {
-  constructor(nodeId: string) {
-    super(`BusinessScoreCardNode "${nodeId}" has no recorded values yet`);
-    this.name = "EmptyHistoryError";
-  }
-}
+// Back-compat re-export: pre-§17.14 callers imported `EmptyHistoryError`
+// from this module. The error now lives in its own file (shared with
+// `TextNode`), but consumer paths through this module keep working.
+export { EmptyHistoryError };
 
 export class BusinessScoreCardNode<T>
   extends TreeNode<T>

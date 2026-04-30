@@ -7,6 +7,7 @@ import type {
   BoardCollectionSnapshot,
 } from "../../../application/ports/BoardCollectionRepository.js";
 import type { IdGenerator } from "../../../application/ports/IdGenerator.js";
+import { TextCard } from "../../../domain/nodes/TextCard.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { Description } from "../../../domain/values/Description.js";
 import { NodeIdentity } from "../../../domain/values/NodeIdentity.js";
@@ -17,7 +18,7 @@ import { Weight } from "../../../domain/values/Weight.js";
 
 function freshTree(idStr: string): TextNode {
   const identity = NodeIdentity.of(Title.of("Root"), Description.of(""));
-  return new TextNode(idStr, identity, Weight.of(1));
+  return new TextNode(idStr, identity, Weight.of(1), TextCard.of());
 }
 
 function makeBoard(id: string, name: string): Board {

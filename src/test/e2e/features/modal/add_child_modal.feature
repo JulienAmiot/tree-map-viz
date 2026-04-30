@@ -32,7 +32,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     Then the modal backdrop is semi-transparent
 
   @HE-???? @priority:high
-  Scenario: Picking Text reveals only the text fields (no Unit, no objective)
+  Scenario: Picking Text reveals title + description + weight + current-value (no Unit, no objective)
     When I click the plus tile
     And I pick the kind "TextNode"
     Then the add-child modal is open
@@ -41,6 +41,8 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has a title field
     And the modal has a description field
     And the modal has a weight field
+    And the modal has a current-value field
+    And the as-of date defaults to today's local-calendar ISO
     And the modal has no unit field
     And the modal has no objective fields
 
@@ -61,6 +63,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     When I click the plus tile
     And I pick the kind "TextNode"
     And I fill in the title with "Quarterly review"
+    And I fill in the current value with "Q2 was on track"
     And I confirm the add-child modal
     Then the add-child modal is closed
     And there are 1 child tiles
@@ -80,5 +83,6 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     When I click the plus tile
     And I pick the kind "TextNode"
     And I fill in the title with "Stable focus"
+    And I fill in the current value with "Today's update"
     And I confirm the add-child modal
     Then the focused id is unchanged after the modal interaction

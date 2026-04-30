@@ -10,51 +10,59 @@ import {
 
 afterEach(cleanupLitFixtures);
 
+const dateIso = "2026-04-23T18:25:43.511Z";
+
+function vmWith(opts: Partial<TextNodeViewModel> = {}): TextNodeViewModel {
+  return {
+    kind: "TextNode",
+    id: "c1",
+    title: "Region",
+    description: "North-east",
+    value: { text: "North-east region", dateIso },
+    ...opts,
+  } as TextNodeViewModel;
+}
+
 describe("<text-node-as-child>", () => {
-  it("renders the same Title + Description fields as AsParent (§5 — uniform fields)", async () => {
-    const vm: TextNodeViewModel = {
-      kind: "TextNode",
-      id: "c1",
-      title: "Region",
-      description: "North-east",
-    };
+  it("renders Title + the latest text value (uniform with AsParent, \u00a75 + \u00a717.14)", async () => {
     const el = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => {
-      e.vm = vm;
+      e.vm = vmWith();
     });
 
-    const title = el.shadowRoot?.querySelector('[data-testid="title"]');
-    const description = el.shadowRoot?.querySelector('[data-testid="description"]');
-    expect(title?.textContent?.trim()).toBe("Region");
-    expect(description?.textContent?.trim()).toBe("North-east");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="title"]')?.textContent?.trim(),
+    ).toBe("Region");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="value"]')?.textContent?.trim(),
+    ).toBe("North-east region");
+    expect(el.shadowRoot?.querySelector('[data-testid="description"]')).toBeNull();
   });
 
-  it("does not render a value or a Σ badge", async () => {
-    const vm: TextNodeViewModel = {
-      kind: "TextNode",
-      id: "c2",
-      title: "T",
-      description: "D",
-    };
+  it("renders the timestamp in the top-right corner", async () => {
     const el = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => {
-      e.vm = vm;
+      e.vm = vmWith();
     });
 
-    expect(el.shadowRoot?.querySelector('[data-testid="value"]')).toBeNull();
+    const ts = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="value-date"]');
+    expect(ts).not.toBeNull();
+    expect(ts?.getAttribute("datetime")).toBe(dateIso);
+  });
+
+  it("does not render a Σ badge", async () => {
+    const el = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => {
+      e.vm = vmWith();
+    });
     expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).toBeNull();
   });
 
-  it("hides description when empty", async () => {
-    const vm: TextNodeViewModel = {
-      kind: "TextNode",
-      id: "c3",
-      title: "Bare",
-      description: "",
-    };
+  it("renders an empty value and omits the timestamp when the history is empty", async () => {
     const el = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => {
-      e.vm = vm;
+      e.vm = vmWith({ value: { text: "", dateIso: "" } });
     });
 
-    const description = el.shadowRoot?.querySelector('[data-testid="description"]');
-    expect(description?.classList.contains("empty")).toBe(true);
+    const value = el.shadowRoot?.querySelector('[data-testid="value"]');
+    expect(value?.textContent?.trim()).toBe("");
+    expect(value?.classList.contains("empty")).toBe(true);
+    expect(el.shadowRoot?.querySelector('[data-testid="value-date"]')).toBeNull();
   });
 });
