@@ -4,13 +4,15 @@
  *
  * Same fields and timestamp policy as `<business-score-card-as-parent>`
  * (§5 — uniform fields across roles); same shared `tileLayoutStyles`.
- * Timestamp sits in the **bottom-right** corner.
+ * Timestamp sits in the **bottom-right** corner with an age-based
+ * colour gradient (`dateAgeColor`).
  */
 
 import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
+import { dateAgeColor } from "../dateAgeColor.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import {
   formatDate,
@@ -37,6 +39,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
       return html``;
     }
     const dateIso = timestampForValue(this.vm);
+    const ageColor = dateIso ? dateAgeColor(dateIso) : null;
     return html`
       <h2
         class="title"
@@ -51,6 +54,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
             class="timestamp"
             data-testid="value-date"
             datetime=${dateIso}
+            style=${ageColor ? `--age-color: ${ageColor}` : ""}
             >${formatDate(dateIso)}</time
           >`
         : html``}

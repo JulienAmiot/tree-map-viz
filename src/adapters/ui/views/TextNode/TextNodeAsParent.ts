@@ -1,11 +1,13 @@
 /**
  * `<text-node-as-parent>` — large parent-strip rendering for `TextNode`
- * (SPEC §5 — refined in §17.14).
+ * (SPEC §5 — refined in §17.14, §17.18).
  *
- * Layout (post-§17.14):
+ * Layout (post-§17.18):
  *   - Title (top, `3vh` row, `vh`-scaled font, consistent across tiles).
- *   - Timestamp (top-right corner, `vh`-scaled, muted) — the `asOf` of
- *     the latest entry in the underlying `TextCard` history.
+ *   - Timestamp (**bottom-right** corner, `vh`-scaled) — the `asOf` of
+ *     the latest entry in the underlying `TextCard` history. Colour
+ *     follows a warm-orange → cold-pale-blue lerp by age in days
+ *     (`dateAgeColor`).
  *   - Value (fills the tile below the title) — the `text` of the latest
  *     entry, sized via `cqmin` so it grows to occupy the available
  *     space. Empty when the history is empty (graceful degradation).
@@ -19,6 +21,7 @@ import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import type { TextNodeViewModel } from "../NodeViewModel.js";
+import { dateAgeColor } from "../dateAgeColor.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 
 @customElement("text-node-as-parent")
@@ -44,6 +47,7 @@ export class TextNodeAsParent extends LitElement {
     }
     const { value } = this.vm;
     const dateLabel = value.dateIso ? formatDate(value.dateIso) : "";
+    const ageColor = value.dateIso ? dateAgeColor(value.dateIso) : null;
     return html`
       <h1
         class="title"
@@ -58,6 +62,7 @@ export class TextNodeAsParent extends LitElement {
             class="timestamp"
             data-testid="value-date"
             datetime=${value.dateIso}
+            style=${ageColor ? `--age-color: ${ageColor}` : ""}
             >${dateLabel}</time
           >`
         : html``}

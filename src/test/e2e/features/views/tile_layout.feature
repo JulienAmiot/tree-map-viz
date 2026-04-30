@@ -1,5 +1,5 @@
 @HE-2570 @component:views @phase:6
-Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-right (§17.14, §17.18)
+Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-right with age gradient (§17.14, §17.18)
 
   SPEC §17.14 unifies the per-tile layout across both kinds:
     - Title row is fixed at 3 % of the viewport height (`vh`-relative,
@@ -12,7 +12,8 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
       **bottom-right** corner (§17.18 — moved from top-right so the
       title row uses the full width and the date sits below the
       figure where the eye lands after reading the value),
-      absolutely positioned.
+      absolutely positioned, with a colour interpolated by age (warm
+      orange → cold pale blue).
 
   These invariants are layout-only, so we assert via real-browser
   computed styles (jsdom is too lossy for shadow-scoped CSS).
@@ -40,6 +41,14 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And I reload the kiosk
     And I focus on node "ChildB"
     Then the focused value-date is in the bottom-right corner of the tile
+
+  @HE-???? @priority:high
+  Scenario: Current-value timestamp colour is age-gradient driven (§17.18 — warm orange → cold pale blue)
+    When I open the kiosk in test mode with empty storage
+    And I seed the "mixedComputed" fixture via the test bridge
+    And I reload the kiosk
+    And I focus on node "ChildB"
+    Then the focused value-date colour is on the warm-to-cold age gradient
 
   @HE-???? @priority:high
   Scenario: The figure is substantially bigger than the title on every child tile (§17.17)

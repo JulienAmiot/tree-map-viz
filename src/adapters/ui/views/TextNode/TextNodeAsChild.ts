@@ -1,16 +1,19 @@
 /**
  * `<text-node-as-child>` — compact treemap-tile rendering for `TextNode`
- * (SPEC §5 — refined in §17.14).
+ * (SPEC §5 — refined in §17.14, §17.18).
  *
  * Same fields as `<text-node-as-parent>` (§5 — uniform fields across
  * roles); same shared `tileLayoutStyles`. The role only differs through
- * a slightly different `.title` weight, picked up here.
+ * a slightly different `.title` weight, picked up here. Timestamp sits
+ * in the **bottom-right** corner with an age-based colour gradient
+ * (`dateAgeColor`).
  */
 
 import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import type { TextNodeViewModel } from "../NodeViewModel.js";
+import { dateAgeColor } from "../dateAgeColor.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 
 @customElement("text-node-as-child")
@@ -33,6 +36,7 @@ export class TextNodeAsChild extends LitElement {
     }
     const { value } = this.vm;
     const dateLabel = value.dateIso ? formatDate(value.dateIso) : "";
+    const ageColor = value.dateIso ? dateAgeColor(value.dateIso) : null;
     return html`
       <h2
         class="title"
@@ -47,6 +51,7 @@ export class TextNodeAsChild extends LitElement {
             class="timestamp"
             data-testid="value-date"
             datetime=${value.dateIso}
+            style=${ageColor ? `--age-color: ${ageColor}` : ""}
             >${dateLabel}</time
           >`
         : html``}

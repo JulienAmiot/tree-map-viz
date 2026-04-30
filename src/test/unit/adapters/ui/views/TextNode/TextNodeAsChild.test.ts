@@ -37,7 +37,7 @@ describe("<text-node-as-child>", () => {
     expect(el.shadowRoot?.querySelector('[data-testid="description"]')).toBeNull();
   });
 
-  it("renders the timestamp in the bottom-right corner (\u00a717.18)", async () => {
+  it("renders the timestamp in the bottom-right corner with an age-based --age-color (\u00a717.18)", async () => {
     const el = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => {
       e.vm = vmWith();
     });
@@ -54,6 +54,10 @@ describe("<text-node-as-child>", () => {
     expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?bottom:\s*0\.4rem/);
     expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?right:\s*0\.6rem/);
     expect(cssText).not.toMatch(/\.timestamp\s*\{[\s\S]*?top:\s*0\.4rem/);
+    // §17.18 — inline `--age-color` custom property carries the
+    // age-based gradient colour (warm orange → cold pale blue).
+    const inlineStyle = ts?.getAttribute("style") ?? "";
+    expect(inlineStyle).toMatch(/--age-color:\s*rgb\(/);
   });
 
   it("does not render a Σ badge", async () => {

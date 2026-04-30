@@ -13,6 +13,10 @@
  *     branches; `<n> children` for childrenCount > 0; empty for
  *     childrenCount = 0. The Σ badge for `computedMean` is rendered
  *     adjacent to the value.
+ *   - Timestamp colour follows a warm-orange → cold-pale-blue lerp
+ *     by age in days (`dateAgeColor`), so a glance at the wall of
+ *     tiles tells the user which numbers are *fresh* and which are
+ *     *stale* without reading the date.
  *
  * Description is no longer rendered in the tile (still a domain field).
  */
@@ -21,6 +25,7 @@ import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
+import { dateAgeColor } from "../dateAgeColor.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import {
   formatDate,
@@ -48,6 +53,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
       return html``;
     }
     const dateIso = timestampForValue(this.vm);
+    const ageColor = dateIso ? dateAgeColor(dateIso) : null;
     return html`
       <h1
         class="title"
@@ -62,6 +68,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
             class="timestamp"
             data-testid="value-date"
             datetime=${dateIso}
+            style=${ageColor ? `--age-color: ${ageColor}` : ""}
             >${formatDate(dateIso)}</time
           >`
         : html``}

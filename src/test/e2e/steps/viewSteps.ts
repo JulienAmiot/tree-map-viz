@@ -398,3 +398,34 @@ Then(
     expect(distFromBottom).toBeLessThan(64);
   },
 );
+
+Then(
+  "the focused value-date colour is on the warm-to-cold age gradient",
+  async ({ page }) => {
+    // §17.18 — the corner timestamp's colour is set via `--age-color`
+    // (a custom property) → `color: var(--age-color, currentColor)`.
+    // We read the resolved `color` and confirm it lies in the convex
+    // hull of the warm-orange / cold-pale-blue endpoints (i.e. the
+    // gradient is actually being applied — not falling through to
+    // `currentColor`).
+    const kiosk = new TreeGraphPage(page);
+    const ts = kiosk.parentStrip().getByTestId("value-date");
+    await expect(ts).toHaveCount(1);
+    const color = await ts.evaluate((el) => getComputedStyle(el).color);
+    // Expect rgb(...) — the timestamp picks one of the gradient stops
+    // (or any lerp between them), all of which serialise as `rgb(r, g, b)`.
+    expect(color).toMatch(/^rgb\(\d+,\s*\d+,\s*\d+\)$/);
+    const m = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(color);
+    expect(m).not.toBeNull();
+    const [r, g, b] = [Number(m![1]), Number(m![2]), Number(m![3])];
+    // Endpoints (see `dateAgeColor.ts`): rgb(255, 145, 50) — warm
+    // orange, rgb(140, 180, 220) — cold pale blue. Any convex
+    // combination lands in: 140 ≤ r ≤ 255, 145 ≤ g ≤ 180, 50 ≤ b ≤ 220.
+    expect(r).toBeGreaterThanOrEqual(140);
+    expect(r).toBeLessThanOrEqual(255);
+    expect(g).toBeGreaterThanOrEqual(145);
+    expect(g).toBeLessThanOrEqual(180);
+    expect(b).toBeGreaterThanOrEqual(50);
+    expect(b).toBeLessThanOrEqual(220);
+  },
+);

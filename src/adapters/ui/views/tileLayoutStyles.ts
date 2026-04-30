@@ -12,9 +12,10 @@
  *    tile width and the date sits below the figure where the eye lands
  *    after reading the value). Rendered by the per-role element (the
  *    BSC value template tells callers via `timestampForValue()` whether
- *    to show one). Sized in `vh` so it stays readable at any tile size,
- *    and de-emphasised visually so it doesn't fight with the value for
- *    attention.
+ *    to show one). Sized in `vh` so it stays readable at any tile size;
+ *    the *colour* is set per-tile via the `--age-color` custom property
+ *    (warm orange → cold pale blue lerp by age in days, see
+ *    `dateAgeColor.ts`).
  *  - **Value box**: takes the rest of the tile (`flex: 1`) and centers a
  *    big value glyph. Font-size is `cqmin`-driven so the value fills the
  *    *tile* (container query — independent of the title's `vh` scale),
@@ -72,7 +73,15 @@ export const tileLayoutStyles = css`
     right: 0.6rem;
     font-size: 1.4vh;
     line-height: 1;
-    color: color-mix(in srgb, currentColor 60%, transparent);
+    /* Per-tile colour driven by --age-color (warm orange to cold
+       pale blue, lerped by age in days; see dateAgeColor.ts). The
+       fallback currentColor keeps tests / unit fixtures readable
+       even when no inline style is set. We deliberately drop the
+       prior color-mix transparent dimming so the picked gradient
+       colour shows at full saturation against the tile background;
+       both endpoint colours pass WCAG AA contrast on the kiosk's
+       dark theme (see §17.18). */
+    color: var(--age-color, currentColor);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
     pointer-events: none;

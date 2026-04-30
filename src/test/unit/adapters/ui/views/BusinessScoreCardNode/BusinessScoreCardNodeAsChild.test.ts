@@ -46,7 +46,7 @@ describe("<business-score-card-as-child>", () => {
     expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).not.toBeNull();
   });
 
-  it("does not render Σ for recordedValue, but does render the corner timestamp", async () => {
+  it("does not render Σ for recordedValue, but does render the corner timestamp with --age-color (\u00a717.18)", async () => {
     const vm = makeVm({
       kind: "recordedValue",
       value: 50,
@@ -64,6 +64,7 @@ describe("<business-score-card-as-child>", () => {
     const ts = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="value-date"]');
     expect(ts).not.toBeNull();
     expect(ts?.classList.contains("timestamp")).toBe(true);
+    expect(ts?.getAttribute("style") ?? "").toMatch(/--age-color:\s*rgb\(/);
   });
 
   it('renders "5 children" for childrenCount > 0 (no Σ, no Unit, no timestamp)', async () => {

@@ -85,6 +85,7 @@ describe("<business-score-card-as-parent>", () => {
     );
     expect(date).not.toBeNull();
     expect(date?.getAttribute("datetime")).toBe("2026-04-15T10:00:00.000Z");
+    expect(date?.getAttribute("style") ?? "").toMatch(/--age-color:\s*rgb\(/);
   });
 
   it("nests the unit inside the value as a `.unit` span (\u00a717.14 — 1/3-size styling, asserted in CSS)", async () => {
@@ -107,7 +108,7 @@ describe("<business-score-card-as-parent>", () => {
     // the CSS file itself + the e2e suite (real browser).
   });
 
-  it("renders value + corner timestamp (no Σ) for kind=recordedValue", async () => {
+  it("renders value + corner timestamp (no Σ) for kind=recordedValue with age-coloured date (\u00a717.18)", async () => {
     const vm = makeVm({
       kind: "recordedValue",
       value: 100,
@@ -122,11 +123,15 @@ describe("<business-score-card-as-parent>", () => {
     );
 
     const value = el.shadowRoot?.querySelector('[data-testid="value"]');
-    const date = el.shadowRoot?.querySelector('[data-testid="value-date"]');
+    const date = el.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="value-date"]',
+    );
     expect(value?.textContent?.replace(/\s+/g, " ").trim()).toBe("100 %");
     expect(value?.getAttribute("data-value-kind")).toBe("recordedValue");
     expect(date?.getAttribute("datetime")).toBe("2026-04-23T18:25:43.511Z");
     expect(date?.classList.contains("timestamp")).toBe(true);
+    // §17.18 — inline `--age-color` carries the lerped colour.
+    expect(date?.getAttribute("style") ?? "").toMatch(/--age-color:\s*rgb\(/);
     expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).toBeNull();
   });
 
