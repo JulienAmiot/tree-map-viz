@@ -197,6 +197,55 @@ export class TreeGraphPage {
     return v === null;
   }
 
+  /** The `<add-child-modal>` host element. */
+  addChildModalHost(): Locator {
+    return this.page.locator("add-child-modal");
+  }
+
+  /** The modal panel (`role="dialog"`) — only present in the DOM while open. */
+  addChildModalPanel(): Locator {
+    return this.page.getByTestId("add-child-modal");
+  }
+
+  /** Backdrop `<div>` behind the panel. */
+  addChildModalBackdrop(): Locator {
+    return this.page.getByTestId("modal-backdrop");
+  }
+
+  /** Step indicator text ("Step 1 / 2" or "Step 2 / 2"). */
+  addChildModalStepIndicator(): Locator {
+    return this.page.getByTestId("modal-step");
+  }
+
+  /** Kind-card buttons in Step 1. */
+  addChildModalKindCard(kind: string): Locator {
+    return this.page.locator(`[data-testid="kind-card"][data-kind="${kind}"]`);
+  }
+
+  /** The form rendered in Step 2. */
+  addChildModalForm(): Locator {
+    return this.page.getByTestId("modal-form");
+  }
+
+  /** Form field by data-testid (`field-title`, `field-unit`, etc.). */
+  addChildModalField(testId: string): Locator {
+    return this.page.getByTestId(testId);
+  }
+
+  /** Confirm / Cancel buttons. */
+  addChildModalConfirm(): Locator {
+    return this.page.getByTestId("modal-confirm");
+  }
+  addChildModalCancel(): Locator {
+    return this.page.getByTestId("modal-cancel");
+  }
+
+  /** Read the modal host's reflected `open` attribute. */
+  async isAddChildModalOpen(): Promise<boolean> {
+    const v = await this.addChildModalHost().getAttribute("open");
+    return v !== null;
+  }
+
   /** Read the currently-rendered focused node id from the parent strip's `data-focused-id`. */
   async focusedId(): Promise<string | null> {
     return this.parentStrip().getAttribute("data-focused-id");

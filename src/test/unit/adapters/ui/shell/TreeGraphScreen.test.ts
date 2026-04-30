@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import "../../../../../adapters/ui/shell/TreeGraphScreen.js";
 import type { TreeGraphScreen } from "../../../../../adapters/ui/shell/TreeGraphScreen.js";
+import type { AddChildModal } from "../../../../../adapters/ui/modal/AddChildModal.js";
 import type { FocusBreadcrumb } from "../../../../../adapters/ui/shell/Breadcrumb.js";
 import type { ChildrenGrid } from "../../../../../adapters/ui/shell/ChildrenGrid.js";
 import type { ParentIdentityStrip } from "../../../../../adapters/ui/shell/ParentIdentityStrip.js";
@@ -10,6 +11,7 @@ import type {
   FocusedTreeViewModel,
   NodeViewModel,
 } from "../../../../../adapters/ui/views/NodeViewModel.js";
+import { PLUS_TILE_ACTIVATE_EVENT } from "../../../../../adapters/ui/views/plus/PlusTile.js";
 import { FakeResizeObserver } from "../../../../fixtures/fakeResizeObserver.js";
 import {
   cleanupLitFixtures,
@@ -198,5 +200,124 @@ describe("<tree-graph-screen>", () => {
       "uuid-x",
       "uuid-y",
     ]);
+  });
+
+  it("renders an <add-child-modal> overlay (closed by default) at all times", async () => {
+    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+    const modal = el.shadowRoot?.querySelector("add-child-modal") as
+      | AddChildModal
+      | null;
+    expect(modal).not.toBeNull();
+    expect(modal?.hasAttribute("open")).toBe(false);
+    expect(el.isAddChildModalOpen).toBe(false);
+  });
+
+  it("`plus-tile-activate` from inside the layout opens the modal with the supplied parentId", async () => {
+    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+      e.view = focusedView(textVm, [nodeSlot("a", "A"), plusSlot("uuid-root")]);
+    });
+    expect(el.isAddChildModalOpen).toBe(false);
+
+    const layout = el.shadowRoot?.querySelector(
+      '[data-testid="layout"]',
+    ) as HTMLElement | null;
+    expect(layout).not.toBeNull();
+    layout!.dispatchEvent(
+      new CustomEvent(PLUS_TILE_ACTIVATE_EVENT, {
+        bubbles: true,
+        composed: true,
+        detail: { parentId: "uuid-root" },
+      }),
+    );
+    await el.updateComplete;
+
+    const modal = el.shadowRoot?.querySelector("add-child-modal") as
+      | AddChildModal
+      | null;
+    expect(el.isAddChildModalOpen).toBe(true);
+    expect(modal?.hasAttribute("open")).toBe(true);
+    expect(modal?.parentId).toBe("uuid-root");
+  });
+
+  it("`add-child-cancel` from the modal closes it (without re-emitting through the screen)", async () => {
+    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+      e.view = focusedView(textVm, [plusSlot("uuid-root")]);
+    });
+    const layout = el.shadowRoot?.querySelector(
+      '[data-testid="layout"]',
+    ) as HTMLElement;
+    layout.dispatchEvent(
+      new CustomEvent(PLUS_TILE_ACTIVATE_EVENT, {
+        bubbles: true,
+        composed: true,
+        detail: { parentId: "uuid-root" },
+      }),
+    );
+    await el.updateComplete;
+    expect(el.isAddChildModalOpen).toBe(true);
+
+    const modal = el.addChildModalElement!;
+    modal.dispatchEvent(
+      new CustomEvent("add-child-cancel", { bubbles: true, composed: true }),
+    );
+    await el.updateComplete;
+    expect(el.isAddChildModalOpen).toBe(false);
+  });
+
+  it("`closeAddChildModal()` is the public seam for the composition root", async () => {
+    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+    const layout = el.shadowRoot?.querySelector('[data-testid="loading"]');
+    expect(layout).not.toBeNull(); // sanity: shell still renders before view
+    el.dispatchEvent(
+      new CustomEvent(PLUS_TILE_ACTIVATE_EVENT, {
+        bubbles: true,
+        composed: true,
+        detail: { parentId: "uuid-x" },
+      }),
+    );
+    // No layout wrapper (view=null) ⇒ event handler isn't attached;
+    // simulate the open state directly via the public seam instead.
+    el.setAddChildError("nope");
+    expect(el.addChildError).toBe("nope");
+    el.closeAddChildModal();
+    expect(el.addChildError).toBeNull();
+    expect(el.isAddChildModalOpen).toBe(false);
+  });
+
+  it("`add-child-confirm` does NOT auto-close the modal — the composition root must call `closeAddChildModal()`", async () => {
+    // Why: the composition root needs to call AddChildService and only on
+    // success close. The shell deliberately does NOT close on confirm so a
+    // failed addChild can leave the modal open with an error.
+    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+      e.view = focusedView(textVm, [plusSlot("uuid-root")]);
+    });
+    const layout = el.shadowRoot?.querySelector(
+      '[data-testid="layout"]',
+    ) as HTMLElement;
+    layout.dispatchEvent(
+      new CustomEvent(PLUS_TILE_ACTIVATE_EVENT, {
+        bubbles: true,
+        composed: true,
+        detail: { parentId: "uuid-root" },
+      }),
+    );
+    await el.updateComplete;
+    expect(el.isAddChildModalOpen).toBe(true);
+
+    const modal = el.addChildModalElement!;
+    const confirmHandler = vi.fn();
+    el.addEventListener("add-child-confirm", confirmHandler);
+    modal.dispatchEvent(
+      new CustomEvent("add-child-confirm", {
+        bubbles: true,
+        composed: true,
+        detail: { parentId: "uuid-root", payload: { kind: "TextNode", title: "ok" } },
+      }),
+    );
+    await el.updateComplete;
+    // Event bubbled to the shell:
+    expect(confirmHandler).toHaveBeenCalledTimes(1);
+    // Modal stayed open — the shell does not auto-close:
+    expect(el.isAddChildModalOpen).toBe(true);
   });
 });

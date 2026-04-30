@@ -1,5 +1,5 @@
 /**
- * `<tree-graph-screen>` — Lit shell custom element (SPEC §4 / §5 / §17).
+ * `<tree-graph-screen>` — Lit shell custom element (SPEC §4 / §5 / §7 / §17).
  *
  * Phase 7 (DT-6) body:
  *   - **Layout half** (already shipped): a 2-row CSS grid composition of
@@ -8,11 +8,21 @@
  *     `<children-grid>` (≈ 78 %) bound to `view.children`, which itself
  *     drives the squarified treemap layout via its internal
  *     `TreemapController`.
- *   - **Shell-chrome half** (this slice): an absolutely-positioned
+ *   - **Shell-chrome half** (already shipped): an absolutely-positioned
  *     `<app-drawer>` overlays the top of the host. The drawer's body
  *     contains the **board name** + `<focus-breadcrumb>` + `<burger-menu>`
  *     (SPEC §4: drawer holds board name, breadcrumb of focus path, burger
  *     menu — Import / Export / Boards / future admin).
+ *
+ * Phase 8 (DT-7) addition:
+ *   - `<add-child-modal>` is rendered as a sibling overlay (`z-index: 200`)
+ *     inside the shell. The shell owns its open state because the trigger
+ *     (`plus-tile-activate` from `<plus-tile>`) is a local UI event
+ *     captured by the layout wrapper. The composition root listens to
+ *     `add-child-confirm` on the screen and calls `AddChildService`; on
+ *     success it calls `screen.closeAddChildModal()`, on failure it calls
+ *     `screen.setAddChildError(reason)` so the modal renders an inline
+ *     error and stays open (SPEC §7 — never persists on failure).
  *
  * The shell is purely view: it accepts plain view models through the
  * `view`, `boardName`, and `breadcrumbPath` properties and never reaches
@@ -43,9 +53,12 @@
  */
 
 import { LitElement, css, html } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 
 import { OrientationController } from "../controllers/OrientationController.js";
+import "../modal/AddChildModal.js";
+import type { AddChildModal } from "../modal/AddChildModal.js";
+import type { PlusTileActivateDetail } from "../views/plus/PlusTile.js";
 import "../views/index.js";
 import type { FocusedTreeViewModel } from "../views/NodeViewModel.js";
 import type { BreadcrumbSegment } from "./Breadcrumb.js";
@@ -67,6 +80,22 @@ export class TreeGraphScreen extends LitElement {
   /** Path from root to the focused node, used by `<focus-breadcrumb>`. */
   @property({ attribute: false })
   breadcrumbPath: readonly BreadcrumbSegment[] = [];
+
+  /** Whether the add-child modal (SPEC §7) is open. The shell owns this so the
+   * `<plus-tile>` → `<add-child-modal>` interaction is local; the composition
+   * root only sees the resulting `add-child-confirm` event. */
+  @state()
+  private modalOpen = false;
+
+  /** Parent id propagated to the modal — picked up from `plus-tile-activate`. */
+  @state()
+  private modalParentId = "";
+
+  /** Latest error from a failed `AddChildService.addChild` call. The composition
+   * root sets this back via `setAddChildError(...)` after a failed confirm so the
+   * modal can render an inline message (SPEC §7 — never persists on failure). */
+  @property({ attribute: false })
+  addChildError: string | null = null;
 
   readonly orientation = new OrientationController(this);
 
@@ -140,10 +169,20 @@ export class TreeGraphScreen extends LitElement {
       </app-drawer>
     `;
 
+    const modal = html`
+      <add-child-modal
+        ?open=${this.modalOpen}
+        .parentId=${this.modalParentId}
+        .errorMessage=${this.addChildError}
+        @add-child-cancel=${this.handleModalClose}
+      ></add-child-modal>
+    `;
+
     if (!this.view) {
       return html`
         ${drawer}
         <p class="empty" data-testid="loading">Loading…</p>
+        ${modal}
       `;
     }
     const { center, children } = this.view;
@@ -153,11 +192,52 @@ export class TreeGraphScreen extends LitElement {
         class="layout"
         data-testid="layout"
         data-orientation=${this.orientation.orientation}
+        @plus-tile-activate=${this.handlePlusTileActivate}
       >
         <parent-identity-strip .vm=${center}></parent-identity-strip>
         <children-grid .slots=${children}></children-grid>
       </div>
+      ${modal}
     `;
+  }
+
+  private handlePlusTileActivate = (e: Event): void => {
+    const detail = (e as CustomEvent<PlusTileActivateDetail>).detail;
+    this.modalParentId = detail.parentId;
+    this.modalOpen = true;
+    this.addChildError = null;
+  };
+
+  private handleModalClose = (): void => {
+    this.modalOpen = false;
+    this.addChildError = null;
+  };
+
+  /** Called by the composition root after a successful `addChild` so the
+   * modal closes (preserving any other state the shell owns). Public so
+   * `main.ts` can drive it without re-querying the modal element. */
+  closeAddChildModal(): void {
+    this.modalOpen = false;
+    this.addChildError = null;
+  }
+
+  /** Called by the composition root after a failed `addChild` so the modal
+   * stays open and renders the error inline. */
+  setAddChildError(message: string): void {
+    this.addChildError = message;
+  }
+
+  /** Read-only accessor used by tests — keeps the `@state` private. */
+  get isAddChildModalOpen(): boolean {
+    return this.modalOpen;
+  }
+
+  /** Direct accessor to the modal element, useful for the composition root
+   * when it needs to inspect its current state. */
+  get addChildModalElement(): AddChildModal | null {
+    return (
+      this.shadowRoot?.querySelector<AddChildModal>("add-child-modal") ?? null
+    );
   }
 }
 

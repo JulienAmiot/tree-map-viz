@@ -36,11 +36,25 @@
  *     the real Import / Export / Boards consumers (`ImportExportService`,
  *     `BoardCollectionService` mutation surface) wire in Phase 10
  *     per SPEC §15.4 + §17.3.
+ *
+ * Phase 8 wiring (DT-7 — Add-child modal):
+ *   + `AddChildService` lands here. Its `Persister` callback re-saves the
+ *     current board collection through the `BoardCollectionRepository`
+ *     port; the in-memory tree mutation done by `parent.attach(child)` is
+ *     captured by `repo.save({ boards: list, currentBoardId })` because
+ *     each board's `tree` is the same reference the service mutated.
+ *   + `add-child-confirm` `{ parentId, payload }` triggers
+ *     `AddChildService.addChild(parent, payload)`. On success the modal
+ *     closes and `refresh()` repaints the focused view (with the new
+ *     child + the now-correctly-budgeted plus-tile slot, per
+ *     `shouldRenderPlusTile`). On failure the screen renders an inline
+ *     error and the modal stays open for retry.
  */
 
 import { LocalStorageBoardCollectionRepository } from "./adapters/persistence/LocalStorageBoardCollectionRepository.js";
 import { decode, encode } from "./adapters/persistence/jsonCodec.js";
 import { HashRouter } from "./adapters/routing/HashRouter.js";
+import type { AddChildConfirmDetail } from "./adapters/ui/modal/AddChildModal.js";
 import type {
   BreadcrumbNavigateDetail,
   BreadcrumbSegment,
@@ -49,9 +63,10 @@ import type { BurgerMenuActionDetail } from "./adapters/ui/shell/BurgerMenu.js";
 import "./adapters/ui/shell/TreeGraphScreen.js";
 import type { TreeGraphScreen } from "./adapters/ui/shell/TreeGraphScreen.js";
 import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
+import { AddChildService } from "./application/AddChildService.js";
 import { BoardCollectionService } from "./application/BoardCollectionService.js";
 import { TreeNavigationService } from "./application/TreeNavigationService.js";
-import { walkPath } from "./domain/treeQueries.js";
+import { findNodeById, walkPath } from "./domain/treeQueries.js";
 import "./index.css";
 
 async function main(): Promise<void> {
@@ -69,6 +84,14 @@ async function main(): Promise<void> {
     throw new Error("composition: <tree-graph-screen> not present in document");
   }
 
+  const persistCurrent = async (): Promise<void> => {
+    await repo.save({
+      boards: [...boards.list()],
+      currentBoardId: boards.getCurrentBoardId(),
+    });
+  };
+  const addChildSvc = new AddChildService(idGen, persistCurrent);
+
   const refresh = (): void => {
     const view = nav.getFocusedView();
     screen.view = view ? mapFocusedToViewModel(view.center, view.childrenNodes) : null;
@@ -76,6 +99,24 @@ async function main(): Promise<void> {
     screen.boardName = current.name;
     screen.breadcrumbPath = computeBreadcrumb(current.tree, nav.getFocusedId());
   };
+
+  screen.addEventListener("add-child-confirm", (e) => {
+    void (async () => {
+      const detail = (e as CustomEvent<AddChildConfirmDetail>).detail;
+      const parent = findNodeById(boards.getCurrentBoard().tree, detail.parentId);
+      if (!parent) {
+        screen.setAddChildError(`Parent node "${detail.parentId}" not found.`);
+        return;
+      }
+      const result = await addChildSvc.addChild(parent, detail.payload);
+      if (!result.ok) {
+        screen.setAddChildError(result.reason);
+        return;
+      }
+      screen.closeAddChildModal();
+      refresh();
+    })();
+  });
 
   screen.addEventListener("breadcrumb-navigate", (e) => {
     const detail = (e as CustomEvent<BreadcrumbNavigateDetail>).detail;
