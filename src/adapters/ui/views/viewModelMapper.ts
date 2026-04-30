@@ -16,6 +16,7 @@
  */
 
 import { computedValue } from "../../../domain/aggregation/computedValue.js";
+import { currentValueDateIso } from "../../../domain/aggregation/currentValueDate.js";
 import { shouldRenderPlusTile } from "../../../domain/capacity/childrenCapacity.js";
 import { BusinessScoreCardNode } from "../../../domain/nodes/BusinessScoreCardNode.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
@@ -59,12 +60,18 @@ export function mapNodeToViewModel(node: TreeNode<unknown>): NodeViewModel {
     };
   }
   if (node instanceof BusinessScoreCardNode) {
+    // SPEC §17.18 — corner timestamp comes from the unified domain
+    // helper. For computed BSCs this is the most-recent date amongst
+    // the children's current values (recurses), so an aggregate's
+    // displayed date answers "as of when is this aggregate current?".
+    const dateIso = currentValueDateIso(node) ?? "";
     return {
       kind: "BusinessScoreCardNode",
       id: node.id,
       title: node.identity.title.value,
       description: node.identity.description.value,
       value: mapBusinessScoreValue(node),
+      dateIso,
     };
   }
   throw new ViewModelMappingError(

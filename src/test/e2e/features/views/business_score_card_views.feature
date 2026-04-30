@@ -6,12 +6,12 @@ Feature: BusinessScoreCard views render the (role × computed) matrix
   `recordedValue` / `childrenCount`). This feature covers the full
   `(role × computed)` matrix using `mixedComputed.json`:
 
-  | role     | computed | expected value branch              |
-  |----------|----------|------------------------------------|
-  | asParent | true     | weighted mean + Σ                  |
-  | asParent | false    | own latest value + date, no Σ      |
-  | asChild  | true     | weighted mean + Σ                  |
-  | asChild  | false    | own latest value + date, no Σ      |
+  | role     | computed | expected value branch                                |
+  |----------|----------|------------------------------------------------------|
+  | asParent | true     | weighted mean + Σ + children-derived date (§17.18)   |
+  | asParent | false    | own latest value + own date, no Σ                    |
+  | asChild  | true     | weighted mean + Σ + children-derived date (§17.18)   |
+  | asChild  | false    | own latest value + own date, no Σ                    |
 
   Background:
     When I open the kiosk in test mode with empty storage
@@ -19,11 +19,11 @@ Feature: BusinessScoreCard views render the (role × computed) matrix
     And I reload the kiosk
 
   @HE-???? @priority:high
-  Scenario: asParent + computed=true renders the weighted mean with a Σ badge
+  Scenario: asParent + computed=true renders the weighted mean with a Σ badge and a children-derived date (§17.18)
     Then the focused title is "Root"
     And the focused value is "80.0 %"
     And the focused node has a computed badge
-    And the focused value has no date
+    And the focused value has a date
 
   @HE-???? @priority:high
   Scenario: asChild + computed=true renders the weighted mean with a Σ badge

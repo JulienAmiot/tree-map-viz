@@ -8,22 +8,22 @@ Feature: BusinessScoreCard value aggregation modes
   area — see `valueTemplate.ts`).
 
   @HE-???? @priority:high
-  Scenario: computed=true with eligible children renders weighted mean with Σ
+  Scenario: computed=true with eligible children renders weighted mean with Σ and a children-derived date (§17.18)
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge
     And I reload the kiosk
     Then the focused value is "80.0 %"
     And the focused node has a computed badge
-    And the focused value has no date
+    And the focused value has a date
 
   @HE-???? @priority:high
-  Scenario: computed=true with zero eligible children renders "n children" plain text
+  Scenario: computed=true with zero eligible children renders "n children" plain text and a children-derived date (§17.18)
     When I open the kiosk in test mode with empty storage
     And I seed the "zeroEligible" fixture via the test bridge
     And I reload the kiosk
     Then the focused value is "3 children"
     And the focused node has no computed badge
-    And the focused value has no date
+    And the focused value has a date
 
   @HE-???? @priority:high
   Scenario: computed=true with zero children renders an empty value area and only a "+" tile

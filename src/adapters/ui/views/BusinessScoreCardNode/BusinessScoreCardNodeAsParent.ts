@@ -1,12 +1,14 @@
 /**
  * `<business-score-card-as-parent>` — large parent-strip rendering for
- * `BusinessScoreCardNode` (SPEC §5 — refined in §17.14).
+ * `BusinessScoreCardNode` (SPEC §5 — refined in §17.14, §17.18).
  *
- * Layout (post-§17.14):
+ * Layout (post-§17.18):
  *   - Title (top, `3vh` row, consistent across tiles).
- *   - Timestamp (top-right corner) — own `asOf` for `recordedValue`,
- *     omitted for `computedMean` / `childrenCount` (no single
- *     representative date for derived aggregates).
+ *   - Timestamp (**bottom-right** corner) — own `asOf` for
+ *     `recordedValue`, the **most recent date amongst children's
+ *     current-value dates** for `computedMean` / `childrenCount` (the
+ *     answer to "as of when is this aggregate current?", computed by
+ *     `domain/aggregation/currentValueDate`).
  *   - Value (fills the tile) — number + unit (1/3 size) for value
  *     branches; `<n> children` for childrenCount > 0; empty for
  *     childrenCount = 0. The Σ badge for `computedMean` is rendered
@@ -45,7 +47,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
     if (!this.vm) {
       return html``;
     }
-    const dateIso = timestampForValue(this.vm.value);
+    const dateIso = timestampForValue(this.vm);
     return html`
       <h1
         class="title"

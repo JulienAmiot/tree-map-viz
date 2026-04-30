@@ -117,7 +117,103 @@ describe("mapNodeToViewModel", () => {
         unit: "%",
         dateIso: "2026-04-23T18:25:43.511Z",
       },
+      // SPEC §17.18 — top-level dateIso mirrors the recorded value's date.
+      dateIso: "2026-04-23T18:25:43.511Z",
     });
+  });
+
+  it("sets vm.dateIso to the most recent eligible child's date for a computed BSC (\u00a717.18)", () => {
+    const parent = makeBsc({
+      id: "p-dates",
+      title: "Group",
+      computed: true,
+      eligible: false,
+      history: [{ value: 0, iso: "2026-01-01T00:00:00.000Z" }],
+    });
+    parent.attach(
+      makeBsc({
+        id: "older",
+        title: "Older",
+        computed: false,
+        eligible: true,
+        history: [{ value: 50, iso: "2026-03-01T00:00:00.000Z" }],
+      }),
+    );
+    parent.attach(
+      makeBsc({
+        id: "newer",
+        title: "Newer",
+        computed: false,
+        eligible: true,
+        history: [{ value: 70, iso: "2026-04-15T00:00:00.000Z" }],
+      }),
+    );
+
+    const vm = mapNodeToViewModel(parent);
+    if (vm.kind !== "BusinessScoreCardNode") {
+      throw new Error("expected BSC VM");
+    }
+    expect(vm.dateIso).toBe(new Date("2026-04-15T00:00:00.000Z").toISOString());
+  });
+
+  it("recurses through nested computed BSCs to find the most recent date (\u00a717.18)", () => {
+    const grandparent = makeBsc({
+      id: "gp",
+      title: "GP",
+      computed: true,
+      eligible: false,
+      history: [{ value: 0, iso: "2026-01-01T00:00:00.000Z" }],
+    });
+    const parent = makeBsc({
+      id: "p",
+      title: "P",
+      computed: true,
+      eligible: true,
+      history: [{ value: 0, iso: "2026-01-01T00:00:00.000Z" }],
+    });
+    parent.attach(
+      makeBsc({
+        id: "leaf-old",
+        title: "Old",
+        computed: false,
+        eligible: true,
+        history: [{ value: 10, iso: "2026-02-01T00:00:00.000Z" }],
+      }),
+    );
+    parent.attach(
+      makeBsc({
+        id: "leaf-new",
+        title: "New",
+        computed: false,
+        eligible: true,
+        history: [{ value: 20, iso: "2026-04-29T00:00:00.000Z" }],
+      }),
+    );
+    grandparent.attach(parent);
+
+    const vm = mapNodeToViewModel(grandparent);
+    if (vm.kind !== "BusinessScoreCardNode") {
+      throw new Error("expected BSC VM");
+    }
+    expect(vm.dateIso).toBe(new Date("2026-04-29T00:00:00.000Z").toISOString());
+  });
+
+  it("vm.dateIso is empty when a computed BSC has no children with dates (\u00a717.18)", () => {
+    const parent = makeBsc({
+      id: "p-empty",
+      title: "Empty",
+      computed: true,
+      eligible: false,
+      history: [{ value: 0, iso: "2026-01-01T00:00:00.000Z" }],
+    });
+    // Attach a TextNode with empty history → no contributing date.
+    parent.attach(makeText("t-empty", "leaf", "", []));
+
+    const vm = mapNodeToViewModel(parent);
+    if (vm.kind !== "BusinessScoreCardNode") {
+      throw new Error("expected BSC VM");
+    }
+    expect(vm.dateIso).toBe("");
   });
 
   it("maps computed=true with eligible children to a weighted-mean computedMean VM", () => {

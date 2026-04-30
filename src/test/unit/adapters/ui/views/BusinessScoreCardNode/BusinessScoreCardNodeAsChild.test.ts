@@ -10,13 +10,20 @@ import {
 
 afterEach(cleanupLitFixtures);
 
-function makeVm(value: BusinessScoreCardNodeViewModel["value"]): BusinessScoreCardNodeViewModel {
+function makeVm(
+  value: BusinessScoreCardNodeViewModel["value"],
+  dateIso?: string,
+): BusinessScoreCardNodeViewModel {
+  // SPEC §17.18 — see sibling `AsParent.test.ts` for the rationale.
+  const resolvedDateIso =
+    dateIso ?? (value.kind === "recordedValue" ? value.dateIso : "");
   return {
     kind: "BusinessScoreCardNode",
     id: "bsc-c",
     title: "Sales",
     description: "Region",
     value,
+    dateIso: resolvedDateIso,
   };
 }
 

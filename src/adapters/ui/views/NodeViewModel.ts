@@ -60,6 +60,17 @@ export type TextNodeViewModel = {
  *  - `recordedValue`    — `computed=false` → latest `TimestampedValue` + its date (no `Σ`).
  *  - `childrenCount`    — `computed=true` AND zero eligible children → render `n children` plain
  *                         text when `n > 0`, or empty value area when `n === 0` (§13.2 + §12.3).
+ *
+ * Per SPEC §17.18, the **displayed timestamp** is now a top-level
+ * field on `BusinessScoreCardNodeViewModel` (`dateIso`), derived from
+ * `domain/aggregation/currentValueDate.currentValueDateIso(node)` — for
+ * recorded BSCs it's the latest history entry's date; for computed BSCs
+ * it's the most recent date amongst the children's own current-value
+ * dates (recurses naturally through nested computed BSCs). This is the
+ * single source of truth for the corner timestamp on every BSC tile.
+ * `recordedValue` keeps its own `dateIso` for backward-compat — it's
+ * the same string as the top-level `dateIso` on a `recordedValue` BSC,
+ * and a few unit tests still read it.
  */
 export type BusinessScoreCardValueViewModel =
   | {
@@ -84,6 +95,12 @@ export type BusinessScoreCardNodeViewModel = {
   readonly title: string;
   readonly description: string;
   readonly value: BusinessScoreCardValueViewModel;
+  /**
+   * SPEC §17.18 — ISO-8601 date for the corner timestamp; empty string
+   * when no date applies (e.g. a computed BSC with no contributing
+   * children, or a recorded BSC with an empty history).
+   */
+  readonly dateIso: string;
 };
 
 export type NodeViewModel = TextNodeViewModel | BusinessScoreCardNodeViewModel;

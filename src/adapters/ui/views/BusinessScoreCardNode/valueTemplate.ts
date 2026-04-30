@@ -22,7 +22,10 @@
 
 import { html, type TemplateResult } from "lit";
 
-import type { BusinessScoreCardValueViewModel } from "../NodeViewModel.js";
+import type {
+  BusinessScoreCardNodeViewModel,
+  BusinessScoreCardValueViewModel,
+} from "../NodeViewModel.js";
 
 const COMPUTED_DECIMALS = 1;
 
@@ -74,23 +77,24 @@ export function renderValueTemplate(
 }
 
 /**
- * Returns the ISO date string to render in the tile's top-right corner
- * (SPEC §17.14 — every node's current value timestamp goes top-right) for
- * a given BSC value VM, or `null` when no timestamp is meaningful.
+ * Returns the ISO date string to render in the tile's bottom-right
+ * corner (SPEC §17.18 — moved from top-right; every BSC tile shows a
+ * timestamp when one can be derived) for a given BSC view model, or
+ * `null` when no timestamp is meaningful.
  *
- * Per-branch policy:
- *   - `recordedValue` — own latest entry's date.
- *   - `computedMean` / `childrenCount` — no single representative date,
- *     so we omit the timestamp to avoid implying one entry's date applies
- *     to a derived aggregate.
+ * Per-branch policy (now uniform — read from `vm.dateIso`):
+ *   - `recordedValue`   — own latest history entry's date.
+ *   - `computedMean`    — most recent date amongst the (eligible)
+ *                         children's current-value dates (recurses
+ *                         through nested computed BSCs); set by
+ *                         `viewModelMapper`.
+ *   - `childrenCount`   — same rule (most recent child date), or
+ *                         `null` if no child has a date / no children.
  */
 export function timestampForValue(
-  value: BusinessScoreCardValueViewModel,
+  vm: BusinessScoreCardNodeViewModel,
 ): string | null {
-  if (value.kind === "recordedValue") {
-    return value.dateIso;
-  }
-  return null;
+  return vm.dateIso ? vm.dateIso : null;
 }
 
 /**

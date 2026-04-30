@@ -1,9 +1,10 @@
 /**
  * `<business-score-card-as-child>` — compact treemap-tile rendering for
- * `BusinessScoreCardNode` (SPEC §5 — refined in §17.14).
+ * `BusinessScoreCardNode` (SPEC §5 — refined in §17.14, §17.18).
  *
  * Same fields and timestamp policy as `<business-score-card-as-parent>`
  * (§5 — uniform fields across roles); same shared `tileLayoutStyles`.
+ * Timestamp sits in the **bottom-right** corner.
  */
 
 import { LitElement, css, html } from "lit";
@@ -35,7 +36,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
     if (!this.vm) {
       return html``;
     }
-    const dateIso = timestampForValue(this.vm.value);
+    const dateIso = timestampForValue(this.vm);
     return html`
       <h2
         class="title"
