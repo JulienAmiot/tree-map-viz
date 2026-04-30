@@ -1,11 +1,11 @@
 @HE-2570 @component:views @phase:6
-Feature: Text node views render Title + the latest text value (timestamp top-right)
+Feature: Text node views render Title + the latest text value (timestamp bottom-right)
 
   TextNode is now a `Historizable<string>` (SPEC §17.14). Both `asParent`
   and `asChild` roles render Title + the latest `TimestampedValue<string>`
   (its `.value` becomes the displayed text, its `.asOf` the timestamp in
-  the tile's top-right corner). Description is no longer rendered in the
-  tile body; it stays on `NodeIdentity` as a domain field.
+  the tile's **bottom-right** corner — §17.18). Description is no longer
+  rendered in the tile body; it stays on `NodeIdentity` as a domain field.
 
   Background:
     When I open the kiosk in test mode with empty storage

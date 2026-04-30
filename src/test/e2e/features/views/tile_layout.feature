@@ -1,5 +1,5 @@
 @HE-2570 @component:views @phase:6
-Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp top-right (§17.14)
+Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-right (§17.14, §17.18)
 
   SPEC §17.14 unifies the per-tile layout across both kinds:
     - Title row is fixed at 3 % of the viewport height (`vh`-relative,
@@ -9,7 +9,10 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp top-right (
     - Numeric values render the unit at exactly 1/3 of the value's
       font-size (`calc(1em / 3)`).
     - The `asOf` timestamp of the current value sits in the tile's
-      top-right corner, absolutely positioned.
+      **bottom-right** corner (§17.18 — moved from top-right so the
+      title row uses the full width and the date sits below the
+      figure where the eye lands after reading the value),
+      absolutely positioned.
 
   These invariants are layout-only, so we assert via real-browser
   computed styles (jsdom is too lossy for shadow-scoped CSS).
@@ -31,12 +34,12 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp top-right (
     Then the focused value's unit font-size is one third of the value font-size
 
   @HE-???? @priority:high
-  Scenario: Current-value timestamp is rendered in the top-right corner of the tile
+  Scenario: Current-value timestamp is rendered in the bottom-right corner of the tile (§17.18)
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge
     And I reload the kiosk
     And I focus on node "ChildB"
-    Then the focused value-date is in the top-right corner of the tile
+    Then the focused value-date is in the bottom-right corner of the tile
 
   @HE-???? @priority:high
   Scenario: The figure is substantially bigger than the title on every child tile (§17.17)

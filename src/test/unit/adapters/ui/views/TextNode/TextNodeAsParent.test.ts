@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import "../../../../../../adapters/ui/views/TextNode/TextNodeAsParent.js";
-import type { TextNodeAsParent } from "../../../../../../adapters/ui/views/TextNode/TextNodeAsParent.js";
+import { TextNodeAsParent } from "../../../../../../adapters/ui/views/TextNode/TextNodeAsParent.js";
 import type { TextNodeViewModel } from "../../../../../../adapters/ui/views/NodeViewModel.js";
 import {
   cleanupLitFixtures,
@@ -40,7 +40,7 @@ describe("<text-node-as-parent>", () => {
     expect(el.shadowRoot?.querySelector('[data-testid="description"]')).toBeNull();
   });
 
-  it("renders the timestamp in the top-right corner (\u00a717.14)", async () => {
+  it("renders the timestamp in the bottom-right corner (\u00a717.18)", async () => {
     const el = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => {
       e.vm = vmWith();
     });
@@ -48,10 +48,14 @@ describe("<text-node-as-parent>", () => {
     const ts = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="value-date"]');
     expect(ts).not.toBeNull();
     expect(ts?.getAttribute("datetime")).toBe(dateIso);
-    // The `.timestamp` class is what carries the absolute-positioning rule
-    // in `tileLayoutStyles`; we check the class instead of computed
-    // styles because jsdom doesn't fully resolve shadow-scoped CSS.
     expect(ts?.classList.contains("timestamp")).toBe(true);
+    // §17.18 — read the static CSS text directly (jsdom can't compute
+    // shadow-scoped CSS); same pattern as ChildrenGrid.test.ts.
+    const cssText = (TextNodeAsParent.styles as readonly { cssText?: string }[])
+      .map((s) => String(s.cssText ?? s))
+      .join("\n");
+    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?bottom:\s*0\.4rem/);
+    expect(cssText).not.toMatch(/\.timestamp\s*\{[\s\S]*?top:\s*0\.4rem/);
   });
 
   it("does not render a Σ badge (TextNode has no computed flag, \u00a75)", async () => {

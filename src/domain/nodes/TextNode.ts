@@ -12,7 +12,7 @@ import { TreeNode } from "./TreeNode.js";
  * Like `BusinessScoreCardNode`, a `TextNode` carries a timestamped history
  * (`TextCard`) — but its values are strings, not numbers. The displayed
  * "value" of a text node is the most recent string in its history; the
- * timestamp goes in the tile's top-right corner just like for BSC.
+ * timestamp goes in the tile's bottom-right corner (§17.18) just like for BSC.
  *
  * What `TextNode` is **not**:
  *   - Not `ContributesToParent` — text values can never feed a parent's

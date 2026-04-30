@@ -30,7 +30,7 @@ export type NodeRole = "asParent" | "asChild";
  *   - `text` — the latest recorded string (renders as the tile body, big
  *     enough to fill the available space).
  *   - `dateIso` — the latest entry's `asOf.toISOString()` (renders as the
- *     timestamp in the tile's top-right corner).
+ *     timestamp in the tile's **bottom-right** corner per §17.18).
  *
  * When the underlying `TextCard` history is empty (e.g. the default-seed
  * root before any user input), both fields are `""` so the view layer

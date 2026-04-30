@@ -4,10 +4,11 @@
  *
  * The template returns the **inner** content of the `.value` slot (which
  * the parent element wraps with `<div class="value-area">`); the outer
- * tile layout (title row, top-right timestamp slot, value-fills-tile box)
- * is owned by the per-role element so the layout rules stay in one place
- * per tile (SPEC §17.14: title height = `3vh`, value font fills the tile
- * via `cqmin`, unit = 1/3 of value).
+ * tile layout (title row, bottom-right timestamp slot, value-fills-tile
+ * box) is owned by the per-role element so the layout rules stay in one
+ * place per tile (SPEC §17.14: title height = `3vh`, value font fills
+ * the tile via `cqmin`, unit = 1/3 of value; SPEC §17.18: timestamp
+ * lives in the bottom-right corner).
  *
  * Mapping (unchanged from §17.9 / §17.12 — only the visual size changes):
  *

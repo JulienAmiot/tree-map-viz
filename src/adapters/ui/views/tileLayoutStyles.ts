@@ -7,11 +7,14 @@
  *    `vh`-relative so titles are visually consistent across tiles regardless
  *    of how big or small a given tile is. The "3 %" comes straight from the
  *    user requirement; bumping the constant is a one-line change.
- *  - **Timestamp**: absolutely-positioned in the **top-right corner**,
- *    rendered by the per-role element (the BSC value template tells
- *    callers via `timestampForValue()` whether to show one). Sized in
- *    `vh` so it stays readable at any tile size, and de-emphasised
- *    visually so it doesn't fight with the value for attention.
+ *  - **Timestamp**: absolutely-positioned in the **bottom-right corner**
+ *    (SPEC §17.18 — moved from top-right so the title row keeps the full
+ *    tile width and the date sits below the figure where the eye lands
+ *    after reading the value). Rendered by the per-role element (the
+ *    BSC value template tells callers via `timestampForValue()` whether
+ *    to show one). Sized in `vh` so it stays readable at any tile size,
+ *    and de-emphasised visually so it doesn't fight with the value for
+ *    attention.
  *  - **Value box**: takes the rest of the tile (`flex: 1`) and centers a
  *    big value glyph. Font-size is `cqmin`-driven so the value fills the
  *    *tile* (container query — independent of the title's `vh` scale),
@@ -54,22 +57,25 @@ export const tileLayoutStyles = css`
     font-size: 2vh;
     font-weight: 600;
     /* Fade out long titles instead of wrapping; we have a fixed 3vh
-       height to honour. */
+       height to honour. The timestamp moved to the bottom-right in
+       §17.18, so the title row can use the full tile width. */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    /* Reserve room for the absolute-positioned timestamp on the right. */
-    padding-right: clamp(3.5rem, 14vw, 8rem);
   }
   .timestamp {
     position: absolute;
-    top: 0.4rem;
+    /* SPEC §17.18 — bottom-right (was top-right pre-§17.18). The
+       offsets match the host's inner padding so the date hugs the
+       padded inner edge rather than the raw tile border. */
+    bottom: 0.4rem;
     right: 0.6rem;
     font-size: 1.4vh;
     line-height: 1;
     color: color-mix(in srgb, currentColor 60%, transparent);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
+    pointer-events: none;
   }
   .value-area {
     display: flex;

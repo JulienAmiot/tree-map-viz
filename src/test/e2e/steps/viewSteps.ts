@@ -360,34 +360,41 @@ Then("every child tile has a non-transparent background", async ({ page }) => {
 });
 
 Then(
-  "the focused value-date is in the top-right corner of the tile",
+  "the focused value-date is in the bottom-right corner of the tile",
   async ({ page }) => {
-    // The "tile" host is the per-kind element that the parent-identity
-    // strip mounts inside its `<node-view>` slot. Both BSC and Text
-    // variants expose `data-view-kind` on their `[data-testid="title"]`,
-    // so we walk up from the title to find the host element.
+    // §17.18 — timestamp moved from top-right to bottom-right. We use
+    // the parent-strip host (`<business-score-card-as-parent>` /
+    // `<text-node-as-parent>`) bounding box as the "tile" reference:
+    // it has `width: 100%; height: 100%` so its box matches the slot
+    // it occupies. The title sits at the top of that host; the
+    // timestamp must sit at the bottom-right corner of the same host.
     const kiosk = new TreeGraphPage(page);
     const ts = kiosk.parentStrip().getByTestId("value-date");
     const title = kiosk.parentStrip().getByTestId("title");
     await expect(ts).toHaveCount(1);
     await expect(title).toHaveCount(1);
     const tsBox = await ts.boundingBox();
-    // Use the title's bounding box as the "tile" reference: the title
-    // spans the full width of the per-kind element and sits at the very
-    // top, so its `right` edge is the tile's right edge and its `top`
-    // is the tile's top. That's a reliable proxy without piercing
-    // shadow DOM ourselves.
     const titleBox = await title.boundingBox();
     expect(tsBox).not.toBeNull();
     expect(titleBox).not.toBeNull();
-    // Right of horizontal midpoint:
+    // The title row gives us the tile's left/right and top edges; for
+    // the bottom edge we read the parent-strip host's box (it spans
+    // the same width as the title and reaches down to the tile's
+    // bottom).
+    const stripBox = await kiosk.parentStrip().boundingBox();
+    expect(stripBox).not.toBeNull();
+    // Right half of the tile:
     const titleMidX = titleBox!.x + titleBox!.width / 2;
     expect(tsBox!.x).toBeGreaterThan(titleMidX);
-    // Vertically inside the title row (top of tile, ±a small slack for
-    // the timestamp's own height extending below the title baseline):
-    expect(tsBox!.y).toBeLessThan(titleBox!.y + titleBox!.height);
-    // Hugs the right edge of the tile (within a sensible inset):
+    // Bottom half of the tile (well below the title row):
+    const stripMidY = stripBox!.y + stripBox!.height / 2;
+    expect(tsBox!.y).toBeGreaterThan(stripMidY);
+    // Hugs the right edge of the tile:
     const distFromRight = titleBox!.x + titleBox!.width - (tsBox!.x + tsBox!.width);
     expect(distFromRight).toBeLessThan(64);
+    // Hugs the bottom edge of the tile:
+    const distFromBottom =
+      stripBox!.y + stripBox!.height - (tsBox!.y + tsBox!.height);
+    expect(distFromBottom).toBeLessThan(64);
   },
 );
