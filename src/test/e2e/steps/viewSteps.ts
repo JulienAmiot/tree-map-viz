@@ -284,6 +284,82 @@ Then(
 );
 
 Then(
+  "on every child tile the value font-size is at least {int} times the title font-size",
+  async ({ page }, factor: number) => {
+    // SPEC §17.17 — "the figure should be the biggest possible". With
+    // the cqmin coefficient bumped from 18 → 36, the value font-size
+    // is roughly twice what it was. We assert a behavioural lower
+    // bound (value ≥ N × title) rather than an absolute pixel count,
+    // because the actual pixel size depends on the viewport + the
+    // grid's per-tile cqmin. The factor is supplied by the feature so
+    // the threshold is visible at the spec layer.
+    const titleSizes = await page.$$eval(
+      'children-grid [data-testid="title"]',
+      (els: Element[]) =>
+        els.map((el) => parseFloat(getComputedStyle(el as HTMLElement).fontSize)),
+    );
+    const valueSizes = await page.$$eval(
+      'children-grid [data-testid="value"]',
+      (els: Element[]) =>
+        els.map((el) => parseFloat(getComputedStyle(el as HTMLElement).fontSize)),
+    );
+    expect(titleSizes.length).toBeGreaterThan(0);
+    expect(valueSizes.length).toBe(titleSizes.length);
+    for (let i = 0; i < titleSizes.length; i += 1) {
+      const t = titleSizes[i]!;
+      const v = valueSizes[i]!;
+      expect(v).toBeGreaterThanOrEqual(t * factor);
+    }
+  },
+);
+
+Then("every child tile has a visible border", async ({ page }) => {
+  // SPEC §17.17 — child tiles must be visually distinguishable from
+  // each other; the border is one of the two cues (the other is the
+  // background tint). Read the rendered style from each `[data-slot=
+  // "node"]` wrapper inside `<children-grid>`; the rule is scoped to
+  // that selector exactly to avoid colliding with the plus tile's
+  // dashed look (which lives on its inner button).
+  const widths = await page.$$eval(
+    'children-grid .tile[data-slot="node"]',
+    (els: Element[]) =>
+      els.map((el) => parseFloat(getComputedStyle(el as HTMLElement).borderTopWidth)),
+  );
+  expect(widths.length).toBeGreaterThan(0);
+  for (const w of widths) {
+    expect(w).toBeGreaterThanOrEqual(1);
+  }
+});
+
+Then("every child tile has a non-transparent background", async ({ page }) => {
+  // The background tint is a `color-mix` derived from `currentColor`
+  // mixed with a small alpha. The browser resolves it to a rgba()
+  // with alpha ∈ (0, 1). A fully-transparent default would resolve
+  // to "rgba(0, 0, 0, 0)".
+  const bgs = await page.$$eval(
+    'children-grid .tile[data-slot="node"]',
+    (els: Element[]) =>
+      els.map((el) => getComputedStyle(el as HTMLElement).backgroundColor),
+  );
+  expect(bgs.length).toBeGreaterThan(0);
+  for (const bg of bgs) {
+    expect(bg).not.toBe("rgba(0, 0, 0, 0)");
+    expect(bg).not.toBe("transparent");
+    expect(bg).not.toBe("");
+    // Best-effort alpha check: parse rgba(...).a and confirm it's
+    // strictly between 0 and 1 (a non-zero tint that isn't a solid
+    // wall covering the value below).
+    const m = /rgba?\(([^)]+)\)/.exec(bg);
+    if (m) {
+      const parts = m[1]!.split(",").map((s) => s.trim());
+      const a = parts.length === 4 ? Number(parts[3]) : 1;
+      expect(a).toBeGreaterThan(0);
+      expect(a).toBeLessThan(1);
+    }
+  }
+});
+
+Then(
   "the focused value-date is in the top-right corner of the tile",
   async ({ page }) => {
     // The "tile" host is the per-kind element that the parent-identity

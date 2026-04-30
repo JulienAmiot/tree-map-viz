@@ -37,3 +37,18 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp top-right (
     And I reload the kiosk
     And I focus on node "ChildB"
     Then the focused value-date is in the top-right corner of the tile
+
+  @HE-???? @priority:high
+  Scenario: The figure is substantially bigger than the title on every child tile (§17.17)
+    When I open the kiosk in test mode with empty storage
+    And I seed the "mixedComputed" fixture via the test bridge
+    And I reload the kiosk
+    Then on every child tile the value font-size is at least 3 times the title font-size
+
+  @HE-???? @priority:high
+  Scenario: Child tiles are visually distinguishable from each other (§17.17)
+    When I open the kiosk in test mode with empty storage
+    And I seed the "mixedComputed" fixture via the test bridge
+    And I reload the kiosk
+    Then every child tile has a visible border
+    And every child tile has a non-transparent background

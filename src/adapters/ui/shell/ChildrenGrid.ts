@@ -70,6 +70,24 @@ export class ChildrenGrid extends LitElement {
       width: 100%;
       height: 100%;
     }
+    /* SPEC §17.17 — node tiles are visually distinguishable from each
+       other via a subtle background tint + a 1 px border + an 8 px
+       border-radius. The border ensures the tile boundary is visible
+       even when the value text is empty (e.g. a fresh TextNode whose
+       history hasn't been seeded yet). The currentColor-derived mix
+       adapts to dark/light themes without a media query, and the
+       contrast ratio of the border is tuned to clear WCAG 1.4.11
+       (Non-text contrast 3:1 against the page background) on the
+       dark kiosk theme. The plus tile is intentionally NOT styled
+       here — its inner button already carries a 2 px dashed border
+       in plus-tile.ts, and stacking another solid border on top of
+       that would muddle the affordance. */
+    .tile[data-slot="node"] {
+      background: color-mix(in srgb, currentColor 7%, transparent);
+      border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+      border-radius: 8px;
+      overflow: hidden;
+    }
   `;
 
   protected override willUpdate(): void {

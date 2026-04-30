@@ -16,8 +16,9 @@
  *    big value glyph. Font-size is `cqmin`-driven so the value fills the
  *    *tile* (container query — independent of the title's `vh` scale),
  *    clamped between a readable floor and a ceiling that doesn't blow
- *    out the largest tiles. The clamp range was tuned for 1280×720 –
- *    3840×2160 kiosk panels.
+ *    out the largest tiles. The clamp coefficient was bumped to
+ *    `36cqmin` in §17.17 so the figure is the biggest possible while
+ *    still fitting up to a 4-digit number on a square tile.
  *  - **Unit**: 1/3 of the value's font-size via `font-size: calc(1em / 3)`
  *    on a nested `<span class="unit">`. Because `em` resolves against
  *    the parent's computed font-size, the ratio holds whatever the
@@ -84,12 +85,19 @@ export const tileLayoutStyles = css`
   .value {
     font-weight: 700;
     line-height: 1.05;
-    /* SPEC §17.14 — value occupies the most space possible inside the
-       tile. cqmin scales with the smaller of the tile's own width/
-       height, clamped between a small-tile floor and a large-tile
-       ceiling. The value lives inside .value-area so the flex
-       centering handles the visual balance. */
-    font-size: clamp(1.1rem, 18cqmin, 12rem);
+    /* SPEC §17.17 — "the figure should be the biggest possible". The
+       cqmin coefficient was bumped from 18 → 36 (= roughly 2x the prior
+       size) so a single-digit/short numeric value fills its tile.
+       cqmin scales with the smaller of the tile's own width/height, so
+       the value never overflows horizontally on wide-and-short tiles
+       nor vertically on tall-and-thin ones. The clamp range was tuned
+       so that a 4-digit number (e.g. "1234") still fits the tile width
+       at this coefficient (≈ k = 0.36 → width budget per char of about
+       1/(0.6·N) of cqmin, comfortably above 0.36 for N ≤ 4). The
+       small-tile floor 1.5rem keeps numbers legible on the smallest
+       1/12-floor tiles; the large-tile ceiling 20rem prevents
+       typographic blow-out on giant single-child layouts. */
+    font-size: clamp(1.5rem, 36cqmin, 20rem);
   }
   .value.empty::before {
     content: "";

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import "../../../../../adapters/ui/shell/ChildrenGrid.js";
-import type { ChildrenGrid } from "../../../../../adapters/ui/shell/ChildrenGrid.js";
+import { ChildrenGrid } from "../../../../../adapters/ui/shell/ChildrenGrid.js";
 import type { ChildSlotViewModel } from "../../../../../adapters/ui/views/NodeViewModel.js";
 import { FakeResizeObserver } from "../../../../fixtures/fakeResizeObserver.js";
 import {
@@ -205,5 +205,45 @@ describe("<children-grid>", () => {
       parseFloat(plusWrapper.style.width) * parseFloat(plusWrapper.style.height);
     const childrenArea = 1200 * 600;
     expect(area).toBeGreaterThanOrEqual(childrenArea / 12 - 1);
+  });
+
+  it("node tiles get a distinguishable look: bg tint + 1px border + radius (\u00a717.17)", async () => {
+    // SPEC §17.17 — child tiles must be visually distinguishable from
+    // each other so the operator can tell where one ends and the next
+    // begins, even when the value text is empty. jsdom doesn't compute
+    // styles from <style> tag rules, so we pin the rule at the source:
+    // the static CSS string. (Real-browser behaviour is verified in
+    // `tile_layout.feature` via Playwright getComputedStyle.)
+    const cssText = String(
+      // CSSResult exposes its template as `cssText`.
+      (ChildrenGrid.styles as unknown as { cssText?: string }).cssText ??
+        ChildrenGrid.styles,
+    );
+    expect(cssText).toMatch(/\.tile\[data-slot="node"\][\s\S]*background:/);
+    expect(cssText).toMatch(/\.tile\[data-slot="node"\][\s\S]*border:\s*1px\s*solid/);
+    expect(cssText).toMatch(/\.tile\[data-slot="node"\][\s\S]*border-radius:/);
+    // The plus slot is intentionally NOT covered by the tinted/bordered
+    // rule — its dashed border lives on the inner button (plus-tile.ts).
+    expect(cssText).not.toMatch(/\.tile\[data-slot="plus"\]/);
+  });
+
+  it("renders one tile per slot with the correct data-slot for downstream styling (\u00a717.17)", async () => {
+    // The §17.17 distinction is selected via `[data-slot="node"]`; pin
+    // that the attribute is actually emitted on every node wrapper and
+    // never on a plus wrapper (the plus wrapper carries `data-slot="plus"`).
+    const el = await mountGrid([
+      nodeSlot("a", "A"),
+      nodeSlot("b", "B"),
+      plusSlot("p"),
+    ]);
+    lastObserver().fire([{ target: el, rect: { width: 600, height: 300 } }]);
+    await el.updateComplete;
+
+    for (const tile of childTilesOf(el)) {
+      expect(tile.dataset["slot"]).toBe("node");
+    }
+    for (const tile of plusTilesOf(el)) {
+      expect(tile.dataset["slot"]).toBe("plus");
+    }
   });
 });
