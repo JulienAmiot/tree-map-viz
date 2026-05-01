@@ -614,6 +614,51 @@ describe("<add-child-modal>", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
+  // SPEC §17.29 — every modal in the app carries a top-right close-X
+  // (provided by `modalFrameStyles.renderModalCloseX`). It must fire
+  // the same `add-child-cancel` event the Cancel button / backdrop /
+  // Escape do, so all four close paths are interchangeable.
+  it("renders a top-right close-X button (SPEC §17.29 — shared modal frame)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    const closeX = el.shadowRoot?.querySelector<HTMLButtonElement>(
+      '[data-testid="modal-close-x"]',
+    );
+    expect(closeX).not.toBeNull();
+    expect(closeX?.tagName).toBe("BUTTON");
+    expect(closeX?.getAttribute("aria-label")).toBe("Close modal");
+  });
+
+  it("close-X click fires `add-child-cancel` (SPEC §17.29)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    const handler = vi.fn();
+    el.addEventListener(ADD_CHILD_CANCEL_EVENT, handler);
+    el.shadowRoot
+      ?.querySelector<HTMLButtonElement>('[data-testid="modal-close-x"]')
+      ?.click();
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(
+      (handler.mock.calls[0]?.[0] as CustomEvent | undefined)?.bubbles,
+    ).toBe(true);
+  });
+
+  it("close-X is absent when the modal is closed (SPEC §17.29 — render gate is shared with the rest of the body)", async () => {
+    const el = await mountLitElement<AddChildModal>("add-child-modal");
+    expect(el.open).toBe(false);
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="modal-close-x"]'),
+    ).toBeNull();
+  });
+
   it("opening the modal again resets the form (no leak from a prior unconfirmed session, \u00a717.19)", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",

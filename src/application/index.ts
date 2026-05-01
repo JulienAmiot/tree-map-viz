@@ -1,6 +1,8 @@
 export { AddChildService } from "./AddChildService.js";
 export type { AddChildPayload, Persister } from "./AddChildService.js";
 export { BoardCollectionService } from "./BoardCollectionService.js";
+export { EditNodeService } from "./EditNodeService.js";
+export type { EditNodePayload } from "./EditNodeService.js";
 export { ImportExportService } from "./ImportExportService.js";
 export type {
   Board,

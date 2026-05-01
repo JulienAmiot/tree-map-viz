@@ -184,4 +184,34 @@ describe("TreeNode", () => {
       expect(n.currentValue()).toBe(tv);
     });
   });
+
+  // SPEC §17.28 — explicit mutation surface for in-place edits.
+  describe("setIdentity / setWeight (\u00a717.28)", () => {
+    it("setIdentity swaps the identity reference, preserving id + children", () => {
+      const parent = makeStub("p", idA, w);
+      const child = makeStub("c", idB);
+      parent.attach(child);
+
+      parent.setIdentity(idC);
+
+      expect(parent.identity.equals(idC)).toBe(true);
+      expect(parent.id).toBe("p");
+      expect(parent.children.map((c) => c.id)).toEqual(["c"]);
+      expect(child.parent).toBe(parent);
+    });
+
+    it("setWeight swaps the weight reference without touching identity or children", () => {
+      const n = makeStub("x", idA, Weight.of(2));
+      n.setWeight(Weight.of(7));
+      expect(n.weight.value).toBe(7);
+      expect(n.identity.equals(idA)).toBe(true);
+    });
+
+    it("the new identity reference is the exact instance supplied (structural sharing)", () => {
+      const n = makeStub("x", idA);
+      const next = NodeIdentity.of(Title.of("Z"), Description.of(""));
+      n.setIdentity(next);
+      expect(n.identity).toBe(next);
+    });
+  });
 });

@@ -54,6 +54,9 @@
  *     when the user cancels (Escape, Cancel button, backdrop tap).
  *
  * Close paths (all dispatch `add-child-cancel`):
+ *   - **Close-X button** (top-right corner of the panel, SPEC §17.29).
+ *     Glyph + hit-target supplied by `modalFrameStyles` so every modal
+ *     in the app shares the same affordance.
  *   - Cancel button.
  *   - Escape key.
  *   - Tap on the backdrop (NOT inside the panel — `composedPath()` walks
@@ -62,10 +65,14 @@
  *     kiosk operator UX favours "easy to dismiss" over "hard to leave"
  *     because the modal never persists until Confirm.
  *
- * Layout:
- *   - Wide modal with side margin so the underlying board is visible
- *     through a semi-transparent backdrop (SPEC §7 — "the board is still
- *     behind").
+ * Layout (SPEC §17.29 — system-wide modal frame contract):
+ *   - The shared `modalFrameStyles` flex-centres the panel in the
+ *     viewport and caps it at `100v{w,h} - 4rem` while letting it
+ *     shrink to `max-content` for smaller forms. The two-pane grid
+ *     declares its own `min-width: min(40rem, 100vw - 4rem)` so the
+ *     kind-list rail + form-pane stay legible on a kiosk display.
+ *   - The semi-transparent backdrop (SPEC §7 — "the board is still
+ *     behind") is part of the shared frame.
  *   - The modal renders **nothing** in its DOM body when `open=false`, so
  *     it has zero pointer-event surface in the at-rest state and the
  *     focused parent strip + children grid stay fully interactive.
@@ -109,6 +116,10 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
 import type { AddChildPayload } from "../../../application/AddChildService.js";
+import {
+  modalFrameStyles,
+  renderModalCloseX,
+} from "./modalFrameStyles.js";
 
 export const ADD_CHILD_CONFIRM_EVENT = "add-child-confirm";
 export const ADD_CHILD_CANCEL_EVENT = "add-child-cancel";
@@ -228,47 +239,34 @@ export class AddChildModal extends LitElement {
   @state()
   private eligibleForParentComputation = true;
 
-  static styles = css`
-    :host {
-      position: fixed;
-      inset: 0;
-      z-index: 200;
-      display: none;
-      pointer-events: none;
-      color: var(--text, #e8ecf4);
-      font: 1rem/1.4 system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-        sans-serif;
-    }
-    :host([open]) {
-      display: block;
-      pointer-events: auto;
-    }
-    .backdrop {
-      position: absolute;
-      inset: 0;
-      /* SPEC §7 — semi-transparent so the board behind stays visible. Direct
-         rgba (instead of color-mix(... transparent)) so getComputedStyle
-         returns a parseable alpha to e2e checks. */
-      background: rgba(0, 0, 0, 0.55);
-      backdrop-filter: blur(2px);
-    }
+  static styles = [
+    modalFrameStyles,
+    css`
+    /* §17.25 + §17.29 -- two-pane grid layered on top of the shared
+       modal frame. The shared .panel rule already supplies the
+       sizing contract (max-width / max-height: viewport - 4rem,
+       width / height: max-content) and the visual frame (bg, border,
+       shadow). We only add the grid layout + the panel intrinsic
+       minimum width -- the two-pane form needs ~min(40rem, 90vw) to
+       avoid the kind-list rail collapsing under its 8rem minmax
+       lower bound. minmax(8rem, ...) keeps the kind list legible on
+       narrow viewports without overflowing the panel. */
     .panel {
-      position: absolute;
-      inset: 5vh 8vw;
-      box-sizing: border-box;
-      /* §17.25 — two-pane grid: header spans both columns, then the
-         kind list (left, ~20 %%) and the form (right, ~80 %%) share
-         the second row. minmax(8rem, …) keeps the kind list legible
-         on narrow viewports without overflowing the panel. */
       display: grid;
       grid-template-rows: auto 1fr;
       grid-template-columns: minmax(8rem, 20%) 1fr;
       gap: 1rem 1.25rem;
+      /* Reserve top-padding for the §17.29 close-X corner button so
+         a long header title can't run under its hit zone. */
       padding: 1.5rem 2rem;
-      background: color-mix(in srgb, currentColor 8%, var(--bg, #0c0f14));
-      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
-      border-radius: 12px;
-      box-shadow: 0 24px 64px color-mix(in srgb, #000 60%, transparent);
+      padding-right: clamp(3.5rem, 5vw, 4.25rem);
+      /* §17.29 — keep the two-pane grid wide enough to read on a
+         large kiosk while still respecting the shared viewport cap
+         (max-width: calc(100vw - 4rem)). On a narrow viewport the
+         max-width wins (CSS resolves max < min by clamping the
+         min); on a wide one the min keeps the kind-list rail and
+         form-pane both legible. */
+      min-width: min(40rem, calc(100vw - 4rem));
       min-height: 0;
     }
     .header {
@@ -471,7 +469,8 @@ export class AddChildModal extends LitElement {
       color: #ff8e8e;
       font-size: 0.95em;
     }
-  `;
+  `,
+  ];
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -518,6 +517,7 @@ export class AddChildModal extends LitElement {
         aria-labelledby="add-child-modal-title"
         data-testid="add-child-modal"
       >
+        ${renderModalCloseX(this.cancel)}
         <header class="header">
           <span class="title-row" id="add-child-modal-title"
             >Add a child to the focused node</span

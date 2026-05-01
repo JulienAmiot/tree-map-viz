@@ -44,3 +44,19 @@ Feature: BusinessScoreCard views render the (role × computed) matrix
     And the focused value is "60 %"
     And the focused value has a date
     And the focused node has no computed badge
+
+  @HE-???? @priority:high
+  Scenario: asParent renders the description below the title (SPEC §17.30)
+    # SPEC §17.30 — the focused panel for a BSC shows the metric's
+    # definition (the `description` field) under the title. Read-only
+    # here; the operator edits it through the §17.28 edit modal.
+    When I focus on node "ChildB"
+    Then the focused description is "Recorded child"
+
+  @HE-???? @priority:high
+  Scenario: asChild does NOT render the description (SPEC §17.30 — parent-role only)
+    # SPEC §17.30 — descriptions are intentionally rendered ONLY on
+    # the focused panel. On a child tile a multi-line description
+    # would crowd the figure; the per-tile body stays reserved for
+    # the timestamped value per the unified §17.14 layout.
+    Then the child "ChildB" has no description block

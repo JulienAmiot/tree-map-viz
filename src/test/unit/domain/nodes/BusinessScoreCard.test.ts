@@ -99,4 +99,23 @@ describe("BusinessScoreCard", () => {
       expect(card.history()).toHaveLength(1);
     });
   });
+
+  // SPEC §17.28 — explicit setters used by the edit-node service.
+  describe("setUnit / setObjective (\u00a717.28)", () => {
+    it("setUnit swaps the unit reference, preserving the history", () => {
+      const card = BusinessScoreCard.of(unit, objective, [t2024, t2025]);
+      const next = Unit.of("M\u20ac");
+      card.setUnit(next);
+      expect(card.unit).toBe(next);
+      expect(card.history().map((tv) => tv.value)).toEqual([10, 20]);
+    });
+
+    it("setObjective swaps the objective reference, preserving the history", () => {
+      const card = BusinessScoreCard.of(unit, objective, [t2024]);
+      const nextObj = Objective.of(10, 200, new Date("2030-01-01T00:00:00Z"));
+      card.setObjective(nextObj);
+      expect(card.objective).toBe(nextObj);
+      expect(card.history()).toHaveLength(1);
+    });
+  });
 });

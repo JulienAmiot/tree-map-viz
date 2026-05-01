@@ -80,6 +80,11 @@ import {
 import { OrientationController } from "../controllers/OrientationController.js";
 import "../modal/AddChildModal.js";
 import type { AddChildModal } from "../modal/AddChildModal.js";
+import "../modal/EditNodeModal.js";
+import type {
+  EditNodeModal,
+  EditNodeTarget,
+} from "../modal/EditNodeModal.js";
 import type { PlusTileActivateDetail } from "../views/plus/PlusTile.js";
 import "../views/index.js";
 import type { FocusedTreeViewModel } from "../views/NodeViewModel.js";
@@ -118,6 +123,24 @@ export class TreeGraphScreen extends LitElement {
    * modal can render an inline message (SPEC §7 — never persists on failure). */
   @property({ attribute: false })
   addChildError: string | null = null;
+
+  /**
+   * Whether `<edit-node-modal>` is open (SPEC §17.28). The shell owns
+   * the open state so the trigger (`edit-node-open` from
+   * `<parent-identity-strip>`) is captured locally; the composition
+   * root populates `editTarget` via `openEditNodeModal(target)` and
+   * sees the `edit-node-confirm` event bubble out of the screen.
+   */
+  @state()
+  private editModalOpen = false;
+
+  /** Pre-edit snapshot supplied by the composition root. */
+  @state()
+  private editTarget: EditNodeTarget | null = null;
+
+  /** Inline error from a failed `EditNodeService.editFields(...)`. */
+  @property({ attribute: false })
+  editNodeError: string | null = null;
 
   readonly orientation = new OrientationController(this);
 
@@ -225,6 +248,12 @@ export class TreeGraphScreen extends LitElement {
         .errorMessage=${this.addChildError}
         @add-child-cancel=${this.handleModalClose}
       ></add-child-modal>
+      <edit-node-modal
+        ?open=${this.editModalOpen}
+        .editTarget=${this.editTarget}
+        .errorMessage=${this.editNodeError}
+        @edit-node-cancel=${this.handleEditModalClose}
+      ></edit-node-modal>
     `;
 
     if (!this.view) {
@@ -273,6 +302,11 @@ export class TreeGraphScreen extends LitElement {
     this.addChildError = null;
   };
 
+  private handleEditModalClose = (): void => {
+    this.editModalOpen = false;
+    this.editNodeError = null;
+  };
+
   /** Called by the composition root after a successful `addChild` so the
    * modal closes (preserving any other state the shell owns). Public so
    * `main.ts` can drive it without re-querying the modal element. */
@@ -287,9 +321,40 @@ export class TreeGraphScreen extends LitElement {
     this.addChildError = message;
   }
 
+  /**
+   * SPEC §17.28 — open the edit-node modal with a pre-filled snapshot.
+   * Called by the composition root in response to `edit-node-open`
+   * (the strip's pencil button); the snapshot is built from the focused
+   * domain node so the form opens populated with its current fields.
+   */
+  openEditNodeModal(target: EditNodeTarget): void {
+    this.editTarget = target;
+    this.editModalOpen = true;
+    this.editNodeError = null;
+  }
+
+  /** Called by the composition root after a successful `editFields` to
+   * dismiss the modal and clear the snapshot. */
+  closeEditNodeModal(): void {
+    this.editModalOpen = false;
+    this.editNodeError = null;
+  }
+
+  /** Called after a failed `editFields` to surface the reason inline
+   * while keeping the modal open for retry. */
+  setEditNodeError(message: string): void {
+    this.editNodeError = message;
+  }
+
   /** Read-only accessor used by tests — keeps the `@state` private. */
   get isAddChildModalOpen(): boolean {
     return this.modalOpen;
+  }
+
+  /** Read-only accessor used by tests + composition root for the
+   * §17.28 edit-node modal state. */
+  get isEditNodeModalOpen(): boolean {
+    return this.editModalOpen;
   }
 
   /** Direct accessor to the modal element, useful for the composition root
@@ -297,6 +362,13 @@ export class TreeGraphScreen extends LitElement {
   get addChildModalElement(): AddChildModal | null {
     return (
       this.shadowRoot?.querySelector<AddChildModal>("add-child-modal") ?? null
+    );
+  }
+
+  /** Direct accessor to the edit-node modal element. */
+  get editNodeModalElement(): EditNodeModal | null {
+    return (
+      this.shadowRoot?.querySelector<EditNodeModal>("edit-node-modal") ?? null
     );
   }
 

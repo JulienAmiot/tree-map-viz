@@ -19,12 +19,47 @@ export class NotAChildError extends Error {
 export abstract class TreeNode<T> {
   private _parent: TreeNode<unknown> | null = null;
   private readonly _children: TreeNode<unknown>[] = [];
+  private _identity: NodeIdentity;
+  private _weight: Weight;
 
   constructor(
     readonly id: string,
-    readonly identity: NodeIdentity,
-    readonly weight: Weight,
-  ) {}
+    identity: NodeIdentity,
+    weight: Weight,
+  ) {
+    this._identity = identity;
+    this._weight = weight;
+  }
+
+  /**
+   * `identity` and `weight` are exposed as **getters** (not constructor
+   * `readonly` fields) so the domain has a single, explicit mutation
+   * surface (`setIdentity` / `setWeight`) that the EditNode application
+   * service uses (SPEC §17.28). External readers keep the same property
+   * access path (`node.identity`, `node.weight`) — no caller change.
+   *
+   * Why setters at all: the §17.28 edit flow needs to update a node's
+   * title, description, or weight in place without rebuilding the whole
+   * sub-tree. NodeIdentity / Weight stay immutable value objects; the
+   * setter swaps the *reference* to a freshly-built one, so structural
+   * sharing of the rest of the node (children, card history, …) is
+   * preserved across edits.
+   */
+  get identity(): NodeIdentity {
+    return this._identity;
+  }
+
+  get weight(): Weight {
+    return this._weight;
+  }
+
+  setIdentity(identity: NodeIdentity): void {
+    this._identity = identity;
+  }
+
+  setWeight(weight: Weight): void {
+    this._weight = weight;
+  }
 
   get parent(): TreeNode<unknown> | null {
     return this._parent;

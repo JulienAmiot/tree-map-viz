@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import "../../../../../adapters/ui/shell/ParentIdentityStrip.js";
 import {
+  EDIT_NODE_OPEN_EVENT,
+  type EditNodeOpenDetail,
   FOCUS_CLOSE_TO_PARENT_EVENT,
   type FocusCloseToParentDetail,
   type ParentIdentityStrip,
@@ -211,6 +213,112 @@ describe("<parent-identity-strip>", () => {
       el.parentId = "";
       await el.updateComplete;
       expect(wrap.classList.contains("has-close")).toBe(false);
+    });
+  });
+
+  // -- §17.28 edit-node pencil affordance ------------------------------
+
+  describe("edit-node pencil button (\u00a717.28)", () => {
+    it("renders the pencil whenever a vm is present (root or non-root)", async () => {
+      const el = await mountLitElement<ParentIdentityStrip>(
+        "parent-identity-strip",
+        (e) => {
+          e.vm = textVm;
+          e.parentId = "";
+        },
+      );
+      const pencil = el.shadowRoot?.querySelector('[data-testid="edit-node"]');
+      expect(pencil).not.toBeNull();
+      expect(pencil?.getAttribute("data-node-id")).toBe("uuid-1");
+      expect(pencil?.getAttribute("aria-label")).toBeTruthy();
+    });
+
+    it("does NOT render the pencil when vm is null", async () => {
+      const el = await mountLitElement<ParentIdentityStrip>(
+        "parent-identity-strip",
+      );
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="edit-node"]'),
+      ).toBeNull();
+    });
+
+    it("renders the pencil to the LEFT of the close-X (DOM order in the strip)", async () => {
+      const el = await mountLitElement<ParentIdentityStrip>(
+        "parent-identity-strip",
+        (e) => {
+          e.vm = textVm;
+          e.parentId = "uuid-parent";
+        },
+      );
+      const wrap = el.shadowRoot?.querySelector(
+        '[data-testid="parent-strip"]',
+      ) as HTMLElement;
+      const buttons = Array.from(
+        wrap.querySelectorAll<HTMLButtonElement>("button"),
+      );
+      const pencilIdx = buttons.findIndex(
+        (b) => b.dataset["testid"] === "edit-node",
+      );
+      const closeIdx = buttons.findIndex(
+        (b) => b.dataset["testid"] === "close-to-parent",
+      );
+      expect(pencilIdx).toBeGreaterThanOrEqual(0);
+      expect(closeIdx).toBeGreaterThanOrEqual(0);
+      expect(pencilIdx).toBeLessThan(closeIdx);
+    });
+
+    it(`tap dispatches "${EDIT_NODE_OPEN_EVENT}" with { nodeId } that bubbles + composes`, async () => {
+      const el = await mountLitElement<ParentIdentityStrip>(
+        "parent-identity-strip",
+        (e) => {
+          e.vm = textVm;
+          e.parentId = "uuid-parent";
+        },
+      );
+      const host = el.parentElement as HTMLElement;
+      const handler = vi.fn<(e: Event) => void>();
+      host.addEventListener(EDIT_NODE_OPEN_EVENT, handler);
+
+      const pencil = el.shadowRoot?.querySelector(
+        '[data-testid="edit-node"]',
+      ) as HTMLButtonElement;
+      pencil.click();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      const ev = handler.mock.calls[0]?.[0] as
+        | CustomEvent<EditNodeOpenDetail>
+        | undefined;
+      expect(ev?.detail.nodeId).toBe("uuid-1");
+      expect(ev?.bubbles).toBe(true);
+      expect(ev?.composed).toBe(true);
+    });
+
+    it("flags the strip wrapper with the `has-edit` modifier when the pencil is shown", async () => {
+      const el = await mountLitElement<ParentIdentityStrip>(
+        "parent-identity-strip",
+        (e) => {
+          e.vm = textVm;
+        },
+      );
+      const wrap = el.shadowRoot?.querySelector(
+        '[data-testid="parent-strip"]',
+      ) as HTMLElement;
+      expect(wrap.classList.contains("has-edit")).toBe(true);
+    });
+
+    it("when both buttons render, the wrapper carries BOTH `has-close` AND `has-edit`", async () => {
+      const el = await mountLitElement<ParentIdentityStrip>(
+        "parent-identity-strip",
+        (e) => {
+          e.vm = textVm;
+          e.parentId = "uuid-parent";
+        },
+      );
+      const wrap = el.shadowRoot?.querySelector(
+        '[data-testid="parent-strip"]',
+      ) as HTMLElement;
+      expect(wrap.classList.contains("has-close")).toBe(true);
+      expect(wrap.classList.contains("has-edit")).toBe(true);
     });
   });
 });

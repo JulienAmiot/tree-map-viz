@@ -64,3 +64,26 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And I reload the kiosk
     Then every child tile has a visible border
     And every child tile has a non-transparent background
+
+  @HE-???? @priority:high
+  Scenario: Parent panel timestamp sits at the same offset from its outer edge as a child tile timestamp (§17.30)
+    # SPEC §17.30 — the date on the focused panel must visually hug
+    # the panel's bottom-right corner at the same distance a child
+    # tile's date hugs its tile's bottom-right corner. Pre-§17.30 the
+    # parent strip wrapped the per-view element with extra padding
+    # (~1.25rem) which pushed the parent date ~1.65rem / ~1.85rem from
+    # the panel's outer edge, while the children's dates stayed at
+    # ~0.4rem / ~0.6rem. Post-§17.30 the per-view's `:host { position:
+    # static }` lets the timestamp escape into the strip's positioning
+    # context so both offsets land in the same range.
+    #
+    # Default focus on `mixedComputed` is `Root` (computed=true), whose
+    # children-derived `dateIso` is the most recent of the children's
+    # current-value dates per §17.18 — so the parent strip carries a
+    # date AND there are child tiles with their own dates to compare
+    # against. Focusing on a leaf (e.g. ChildB) would leave only the
+    # plus tile under the strip, with no child date to compare to.
+    When I open the kiosk in test mode with empty storage
+    And I seed the "mixedComputed" fixture via the test bridge
+    And I reload the kiosk
+    Then the focused value-date offset matches a child tile value-date offset within 4 px

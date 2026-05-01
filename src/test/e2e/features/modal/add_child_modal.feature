@@ -107,6 +107,27 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And there are 0 child tiles
 
   @HE-???? @priority:high
+  Scenario: The top-right close-X dismisses the modal without adding a child (SPEC §17.29)
+    # SPEC §17.29 — every modal in the app carries a close-X glyph
+    # in its top-right corner. Tapping it is a fourth close path
+    # alongside Cancel / Escape / backdrop tap; never persists.
+    When I click the plus tile
+    And I pick the kind "TextNode"
+    And I fill in the title with "Should not stick"
+    And I tap the modal close-X
+    Then the add-child modal is closed
+    And there are 0 child tiles
+
+  @HE-???? @priority:high
+  Scenario: Modal panel is content-sized and capped at viewport - 4rem (SPEC §17.29)
+    # SPEC §17.29 — the modal panel never exceeds the viewport (modulo
+    # a 4rem margin) and otherwise shrinks to its content. Pre-§17.29
+    # the panel was pinned to inset:5vh 8vw which forced ~84vw / 90vh
+    # regardless of how little content the modal carried.
+    When I click the plus tile
+    Then the modal panel fits inside the viewport with at least 2rem of margin
+
+  @HE-???? @priority:high
   Scenario: Activating the "+" tile is not a navigation (focused id is unchanged)
     When I click the plus tile
     And I pick the kind "TextNode"

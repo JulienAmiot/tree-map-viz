@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import "../../../../../../adapters/ui/views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import type { BusinessScoreCardNodeAsParent } from "../../../../../../adapters/ui/views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
@@ -35,7 +35,11 @@ function makeVm(
 }
 
 describe("<business-score-card-as-parent>", () => {
-  it("renders Title (\u00a717.14 — description is no longer rendered in the tile)", async () => {
+  it("renders Title and the description (\u00a717.30 \u2014 BSC parent view shows the metric's definition)", async () => {
+    // SPEC §17.30 — the description (the BSC's definition, e.g.
+    // "Quarterly revenue across the EU-North region…") is rendered on
+    // the parent view between the title and the value. Read-only here;
+    // the operator edits it through the §17.28 edit modal.
     const vm = makeVm({ kind: "computedMean", mean: 87.42, unit: "%" });
     const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
       "business-score-card-as-parent",
@@ -47,6 +51,30 @@ describe("<business-score-card-as-parent>", () => {
     expect(
       el.shadowRoot?.querySelector('[data-testid="title"]')?.textContent?.trim(),
     ).toBe("Revenue");
+    const desc = el.shadowRoot?.querySelector('[data-testid="description"]');
+    expect(desc).not.toBeNull();
+    expect(desc?.textContent?.trim()).toBe("Revenue vs plan");
+  });
+
+  it("omits the description block when vm.description is empty (\u00a717.30)", async () => {
+    // §17.30 — only render the description if it carries content.
+    // Whitespace-only descriptions are treated as empty so the focused
+    // panel doesn't grow a vertical gap for nothing.
+    const vm: BusinessScoreCardNodeViewModel = {
+      kind: "BusinessScoreCardNode",
+      id: "bsc-1",
+      title: "Revenue",
+      description: "   ",
+      value: { kind: "computedMean", mean: 87.42, unit: "%" },
+      dateIso: "",
+      dateColor: "",
+    };
+    const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+      "business-score-card-as-parent",
+      (e) => {
+        e.vm = vm;
+      },
+    );
     expect(el.shadowRoot?.querySelector('[data-testid="description"]')).toBeNull();
   });
 
@@ -169,5 +197,154 @@ describe("<business-score-card-as-parent>", () => {
     expect(value?.getAttribute("data-value-kind")).toBe("childrenCount-empty");
     expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).toBeNull();
     expect(el.shadowRoot?.querySelector('[data-testid="value-date"]')).toBeNull();
+  });
+
+  // -- §17.28 inline editing ------------------------------------------
+
+  describe("inline editing (\u00a717.28)", () => {
+    const recordedVm = makeVm({
+      kind: "recordedValue",
+      value: 42,
+      unit: "%",
+      dateIso: "2026-04-23T00:00:00.000Z",
+    });
+
+    it("clicking the title swaps it for an input pre-filled with the current value", async () => {
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = recordedVm;
+        },
+      );
+      el.shadowRoot
+        ?.querySelector<HTMLElement>('[data-testid="title"]')
+        ?.click();
+      await el.updateComplete;
+      const input = el.shadowRoot?.querySelector<HTMLInputElement>(
+        '[data-testid="title-edit"]',
+      );
+      expect(input).not.toBeNull();
+      expect(input?.value).toBe("Revenue");
+    });
+
+    it("Enter on the title input dispatches inline-edit-title", async () => {
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = recordedVm;
+        },
+      );
+      el.shadowRoot
+        ?.querySelector<HTMLElement>('[data-testid="title"]')
+        ?.click();
+      await el.updateComplete;
+      const input = el.shadowRoot?.querySelector<HTMLInputElement>(
+        '[data-testid="title-edit"]',
+      )!;
+      const handler = vi.fn();
+      el.addEventListener("inline-edit-title", handler);
+      input.value = "Revised";
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+      expect(handler).toHaveBeenCalledTimes(1);
+      const ev = handler.mock.calls[0]![0] as CustomEvent<{
+        nodeId: string;
+        title: string;
+      }>;
+      expect(ev.detail).toEqual({ nodeId: "bsc-1", title: "Revised" });
+    });
+
+    it("clicking the recorded value swaps it for a number input pre-filled with the value", async () => {
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = recordedVm;
+        },
+      );
+      el.shadowRoot
+        ?.querySelector<HTMLElement>('[data-testid="value"]')
+        ?.click();
+      await el.updateComplete;
+      const input = el.shadowRoot?.querySelector<HTMLInputElement>(
+        '[data-testid="value-edit"]',
+      );
+      expect(input).not.toBeNull();
+      expect(input?.type).toBe("number");
+      expect(input?.value).toBe("42");
+    });
+
+    it("Enter on the value input dispatches inline-edit-value with a number", async () => {
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = recordedVm;
+        },
+      );
+      el.shadowRoot
+        ?.querySelector<HTMLElement>('[data-testid="value"]')
+        ?.click();
+      await el.updateComplete;
+      const input = el.shadowRoot?.querySelector<HTMLInputElement>(
+        '[data-testid="value-edit"]',
+      )!;
+      const handler = vi.fn();
+      el.addEventListener("inline-edit-value", handler);
+      input.value = "55.5";
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+      expect(handler).toHaveBeenCalledTimes(1);
+      const ev = handler.mock.calls[0]![0] as CustomEvent<{
+        nodeId: string;
+        value: number | string;
+      }>;
+      expect(ev.detail.nodeId).toBe("bsc-1");
+      expect(ev.detail.value).toBe(55.5);
+    });
+
+    it("computed-mean values are NOT click-to-edit (no value-edit affordance)", async () => {
+      const computedVm = makeVm({ kind: "computedMean", mean: 87.4, unit: "%" });
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = computedVm;
+        },
+      );
+      const value = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="value"]',
+      );
+      // No is-editable affordance on a computedMean span
+      expect(value?.classList.contains("is-editable")).toBe(false);
+      // Clicking it does not switch to an input
+      value?.click();
+      await el.updateComplete;
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="value-edit"]'),
+      ).toBeNull();
+    });
+
+    it("blank or non-numeric value commits as a no-op", async () => {
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = recordedVm;
+        },
+      );
+      el.shadowRoot
+        ?.querySelector<HTMLElement>('[data-testid="value"]')
+        ?.click();
+      await el.updateComplete;
+      const input = el.shadowRoot?.querySelector<HTMLInputElement>(
+        '[data-testid="value-edit"]',
+      )!;
+      const handler = vi.fn();
+      el.addEventListener("inline-edit-value", handler);
+      input.value = "";
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+      expect(handler).not.toHaveBeenCalled();
+    });
   });
 });

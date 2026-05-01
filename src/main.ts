@@ -67,18 +67,31 @@ import { decode, encode } from "./adapters/persistence/jsonCodec.js";
 import { HashRouter } from "./adapters/routing/HashRouter.js";
 import type { AddChildConfirmDetail } from "./adapters/ui/modal/AddChildModal.js";
 import type {
+  EditNodeConfirmDetail,
+  EditNodeTarget,
+} from "./adapters/ui/modal/EditNodeModal.js";
+import type {
   BreadcrumbNavigateDetail,
   BreadcrumbSegment,
 } from "./adapters/ui/shell/Breadcrumb.js";
 import type { BurgerMenuActionDetail } from "./adapters/ui/shell/BurgerMenu.js";
 import type { TileDrillDetail } from "./adapters/ui/shell/ChildrenGrid.js";
-import type { FocusCloseToParentDetail } from "./adapters/ui/shell/ParentIdentityStrip.js";
+import type {
+  EditNodeOpenDetail,
+  FocusCloseToParentDetail,
+} from "./adapters/ui/shell/ParentIdentityStrip.js";
 import "./adapters/ui/shell/TreeGraphScreen.js";
 import type { TreeGraphScreen } from "./adapters/ui/shell/TreeGraphScreen.js";
+import type { InlineEditTitleDetail } from "./adapters/ui/views/inlineEditEvents.js";
+import type { InlineEditValueDetail } from "./adapters/ui/views/inlineEditEvents.js";
 import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
 import { AddChildService } from "./application/AddChildService.js";
 import { BoardCollectionService } from "./application/BoardCollectionService.js";
+import { EditNodeService } from "./application/EditNodeService.js";
 import { TreeNavigationService } from "./application/TreeNavigationService.js";
+import { BusinessScoreCardNode } from "./domain/nodes/BusinessScoreCardNode.js";
+import { TextNode } from "./domain/nodes/TextNode.js";
+import type { TreeNode } from "./domain/nodes/TreeNode.js";
 import { findNodeById, walkPath } from "./domain/treeQueries.js";
 import "./index.css";
 
@@ -104,6 +117,7 @@ async function main(): Promise<void> {
     });
   };
   const addChildSvc = new AddChildService(idGen, persistCurrent);
+  const editNodeSvc = new EditNodeService(persistCurrent);
 
   const refresh = (): void => {
     const view = nav.getFocusedView();
@@ -171,6 +185,103 @@ async function main(): Promise<void> {
     refresh();
   });
 
+  // SPEC §17.28 — the pencil button on the focused-panel strip emits
+  // `edit-node-open { nodeId }`. The composition root resolves the
+  // domain node from the current board's tree, builds the pre-edit
+  // snapshot (the modal is a pure consumer that doesn't know about
+  // `TreeNode`), and asks the screen to open `<edit-node-modal>`. A
+  // stale id (the focused id changed between render and tap) silently
+  // no-ops; the strip won't render the pencil for an absent vm.
+  screen.addEventListener("edit-node-open", (e) => {
+    const detail = (e as CustomEvent<EditNodeOpenDetail>).detail;
+    const node = findNodeById(boards.getCurrentBoard().tree, detail.nodeId);
+    if (!node) {
+      return;
+    }
+    const target = buildEditTarget(node);
+    if (!target) {
+      return;
+    }
+    screen.openEditNodeModal(target);
+  });
+
+  // SPEC §17.28 — modal Confirm path. The service is the conversion
+  // boundary: it folds the plain payload into domain value objects,
+  // applies the partial update in place, persists, and rolls back on
+  // failure. On success we close the modal and refresh; on failure
+  // the modal stays open and surfaces the reason inline.
+  screen.addEventListener("edit-node-confirm", (e) => {
+    void (async () => {
+      const detail = (e as CustomEvent<EditNodeConfirmDetail>).detail;
+      const node = findNodeById(boards.getCurrentBoard().tree, detail.nodeId);
+      if (!node) {
+        screen.setEditNodeError(`Node "${detail.nodeId}" not found.`);
+        return;
+      }
+      const result = await editNodeSvc.editFields(node, detail.payload);
+      if (!result.ok) {
+        screen.setEditNodeError(result.reason);
+        return;
+      }
+      screen.closeEditNodeModal();
+      refresh();
+    })();
+  });
+
+  // SPEC §17.28 — inline title edit on the focused-panel views. Same
+  // service path as the modal confirm, but with a one-field payload
+  // (just `title`). Rejection (e.g. empty title trips `Title.of`)
+  // surfaces silently — the view restores the previous title on its
+  // next refresh because we don't call `refresh()` on failure.
+  screen.addEventListener("inline-edit-title", (e) => {
+    void (async () => {
+      const detail = (e as CustomEvent<InlineEditTitleDetail>).detail;
+      const node = findNodeById(boards.getCurrentBoard().tree, detail.nodeId);
+      if (!node) {
+        return;
+      }
+      const kind = inferKind(node);
+      if (!kind) {
+        return;
+      }
+      const result = await editNodeSvc.editFields(node, {
+        kind,
+        title: detail.title,
+      });
+      if (!result.ok) {
+        // Force a refresh anyway so the view re-paints with the
+        // pre-edit title (the local input reverts to whatever the
+        // VM says, which is unchanged because the rollback restored
+        // it).
+        refresh();
+        return;
+      }
+      refresh();
+    })();
+  });
+
+  // SPEC §17.28 — inline value edit on the focused-panel views.
+  // Appends a new `TimestampedValue` to the node's history; the date
+  // defaults to "now" (the inline edit doesn't expose a date field —
+  // the kiosk operator's "I just measured this" flow). The view
+  // re-renders from the latest history entry on `refresh()`.
+  screen.addEventListener("inline-edit-value", (e) => {
+    void (async () => {
+      const detail = (e as CustomEvent<InlineEditValueDetail>).detail;
+      const node = findNodeById(boards.getCurrentBoard().tree, detail.nodeId);
+      if (!node) {
+        return;
+      }
+      const asOf = detail.asOf ?? new Date();
+      const result = await editNodeSvc.appendValue(node, detail.value, asOf);
+      if (!result.ok) {
+        refresh();
+        return;
+      }
+      refresh();
+    })();
+  });
+
   screen.addEventListener("tile-drill", (e) => {
     const detail = (e as CustomEvent<TileDrillDetail>).detail;
     screen.runDrillAnimation(() => {
@@ -220,7 +331,7 @@ async function main(): Promise<void> {
 }
 
 function computeBreadcrumb(
-  root: import("./domain/nodes/TreeNode.js").TreeNode<unknown>,
+  root: TreeNode<unknown>,
   focusedId: string,
 ): readonly BreadcrumbSegment[] {
   const path = walkPath(root, focusedId);
@@ -228,6 +339,60 @@ function computeBreadcrumb(
     return [];
   }
   return path.map((n) => ({ id: n.id, title: n.identity.title.value }));
+}
+
+/**
+ * SPEC §17.28 — build the pre-edit snapshot the modal consumes from a
+ * domain node. Encoded here (not in the modal) because translating
+ * `TreeNode → EditNodeTarget` is the same domain → plain-data boundary
+ * the rest of the composition root crosses; the modal stays a pure
+ * consumer. Returns `null` for unknown subclasses so the caller can
+ * silently no-op (defensive — every TreeNode in the codebase is one
+ * of the two known kinds today).
+ *
+ * `objective.targetDateIso` is the UTC ISO `YYYY-MM-DD` slice expected
+ * by `<input type="date">`; the modal converts it back to a real `Date`
+ * on confirm.
+ */
+function buildEditTarget(node: TreeNode<unknown>): EditNodeTarget | null {
+  const title = node.identity.title.value;
+  const weight = node.weight.value;
+  if (node instanceof TextNode) {
+    return {
+      nodeId: node.id,
+      kind: "TextNode",
+      title,
+      weight,
+    };
+  }
+  if (node instanceof BusinessScoreCardNode) {
+    const objective = node.card.objective;
+    return {
+      nodeId: node.id,
+      kind: "BusinessScoreCardNode",
+      title,
+      description: node.identity.description.value,
+      weight,
+      unit: node.card.unit.value,
+      objective: {
+        initialValue: Number(objective.initialValue),
+        targetValue: Number(objective.targetValue),
+        targetDateIso: objective.targetDate.toISOString().slice(0, 10),
+      },
+      computed: node.computed,
+      eligibleForParentComputation: node.eligibleForParentComputation,
+    };
+  }
+  return null;
+}
+
+/** SPEC §17.28 — per-kind discriminator used by the inline-edit-title path. */
+function inferKind(
+  node: TreeNode<unknown>,
+): "TextNode" | "BusinessScoreCardNode" | null {
+  if (node instanceof TextNode) return "TextNode";
+  if (node instanceof BusinessScoreCardNode) return "BusinessScoreCardNode";
+  return null;
 }
 
 void main().catch((err: unknown) => {

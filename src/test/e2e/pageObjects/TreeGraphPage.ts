@@ -95,6 +95,61 @@ export class TreeGraphPage {
     return this.page.getByTestId("close-to-parent");
   }
 
+  /**
+   * §17.28 edit-node affordance — the pencil button to the LEFT of the
+   * close-X. Always present whenever the focused panel renders a vm
+   * (root or non-root). Carries `data-node-id` mirroring the focused id.
+   */
+  editNodeButton(): Locator {
+    return this.page.getByTestId("edit-node");
+  }
+
+  /** §17.28 edit-node modal host element. */
+  editNodeModalHost(): Locator {
+    return this.page.locator("edit-node-modal");
+  }
+
+  /** §17.28 edit-node modal panel (only in the DOM while open). */
+  editNodeModalPanel(): Locator {
+    return this.page.getByTestId("edit-node-modal");
+  }
+
+  /** §17.28 edit-node modal form. */
+  editNodeModalForm(): Locator {
+    return this.page.getByTestId("edit-modal-form");
+  }
+
+  /** §17.28 Confirm / Cancel buttons on the edit modal. */
+  editNodeModalConfirm(): Locator {
+    return this.page.getByTestId("edit-modal-confirm");
+  }
+  editNodeModalCancel(): Locator {
+    return this.page.getByTestId("edit-modal-cancel");
+  }
+
+  async isEditNodeModalOpen(): Promise<boolean> {
+    const v = await this.editNodeModalHost().getAttribute("open");
+    return v !== null;
+  }
+
+  /**
+   * §17.28 inline-edit affordance on the focused panel. Returns the
+   * `<input data-testid="title-edit">` (when the title is being edited)
+   * or `null` when not. Scoped to the parent strip to avoid colliding
+   * with any future child-tile inline editor.
+   */
+  focusedTitleEditor(): Locator {
+    return this.parentStrip().getByTestId("title-edit");
+  }
+
+  /**
+   * §17.28 inline-edit affordance for the value (text-area for TextNode
+   * / number input for BSC recordedValue).
+   */
+  focusedValueEditor(): Locator {
+    return this.parentStrip().getByTestId("value-edit");
+  }
+
   /** All children tiles in the focused-view grid (excludes the `+` slot). */
   childTiles(): Locator {
     return this.page.getByTestId("child");
@@ -268,6 +323,18 @@ export class TreeGraphPage {
   async isAddChildModalOpen(): Promise<boolean> {
     const v = await this.addChildModalHost().getAttribute("open");
     return v !== null;
+  }
+
+  /**
+   * SPEC §17.29 — the shared close-X button rendered in every
+   * modal's top-right corner via `modalFrameStyles.renderModalCloseX`.
+   * Same `data-testid` on every modal: at most one modal is open at a
+   * time, so the selector is unambiguous. Reaching across the shadow
+   * boundaries via `page.getByTestId` works because Lit shadow roots
+   * are open-mode (Playwright's testid locator pierces them).
+   */
+  modalCloseX(): Locator {
+    return this.page.getByTestId("modal-close-x");
   }
 
   /** Read the currently-rendered focused node id from the parent strip's `data-focused-id`. */

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import "../../../../../../adapters/ui/views/TextNode/TextNodeAsParent.js";
 import { TextNodeAsParent } from "../../../../../../adapters/ui/views/TextNode/TextNodeAsParent.js";
@@ -135,5 +135,198 @@ describe("<text-node-as-parent>", () => {
     const rel = a?.getAttribute("rel") ?? "";
     expect(rel).toContain("noopener");
     expect(rel).toContain("noreferrer");
+  });
+
+  // -- §17.28 inline editing ------------------------------------------
+
+  describe("inline editing (\u00a717.28)", () => {
+    it("clicking the title swaps it for an input pre-filled with the current value", async () => {
+      const el = await mountLitElement<TextNodeAsParent>(
+        "text-node-as-parent",
+        (e) => {
+          e.vm = vmWith();
+        },
+      );
+      const titleEl = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="title"]',
+      );
+      titleEl?.click();
+      await el.updateComplete;
+      const input = el.shadowRoot?.querySelector<HTMLInputElement>(
+        '[data-testid="title-edit"]',
+      );
+      expect(input).not.toBeNull();
+      expect(input?.value).toBe("Quarterly review");
+    });
+
+    it("Enter on the title input dispatches inline-edit-title with the new value", async () => {
+      const el = await mountLitElement<TextNodeAsParent>(
+        "text-node-as-parent",
+        (e) => {
+          e.vm = vmWith({ id: "uuid-x" });
+        },
+      );
+      el.shadowRoot?.querySelector<HTMLElement>('[data-testid="title"]')?.click();
+      await el.updateComplete;
+      const input = el.shadowRoot?.querySelector<HTMLInputElement>(
+        '[data-testid="title-edit"]',
+      )!;
+      const handler = vi.fn();
+      el.addEventListener("inline-edit-title", handler);
+      input.value = "Renamed";
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+      expect(handler).toHaveBeenCalledTimes(1);
+      const ev = handler.mock.calls[0]![0] as CustomEvent<{
+        nodeId: string;
+        title: string;
+      }>;
+      expect(ev.detail).toEqual({ nodeId: "uuid-x", title: "Renamed" });
+      expect(ev.bubbles).toBe(true);
+      expect(ev.composed).toBe(true);
+    });
+
+    it("Escape on the title input cancels without dispatching", async () => {
+      const el = await mountLitElement<TextNodeAsParent>(
+        "text-node-as-parent",
+        (e) => {
+          e.vm = vmWith();
+        },
+      );
+      el.shadowRoot?.querySelector<HTMLElement>('[data-testid="title"]')?.click();
+      await el.updateComplete;
+      const input = el.shadowRoot?.querySelector<HTMLInputElement>(
+        '[data-testid="title-edit"]',
+      )!;
+      const handler = vi.fn();
+      el.addEventListener("inline-edit-title", handler);
+      input.value = "Will Cancel";
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+      await el.updateComplete;
+      expect(handler).not.toHaveBeenCalled();
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="title-edit"]'),
+      ).toBeNull();
+    });
+
+    it("blanking the title commits as a no-op (Title.of would reject empty)", async () => {
+      const el = await mountLitElement<TextNodeAsParent>(
+        "text-node-as-parent",
+        (e) => {
+          e.vm = vmWith();
+        },
+      );
+      el.shadowRoot?.querySelector<HTMLElement>('[data-testid="title"]')?.click();
+      await el.updateComplete;
+      const input = el.shadowRoot?.querySelector<HTMLInputElement>(
+        '[data-testid="title-edit"]',
+      )!;
+      const handler = vi.fn();
+      el.addEventListener("inline-edit-title", handler);
+      input.value = "   ";
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it("clicking the value swaps it for a textarea with the raw markdown source", async () => {
+      const el = await mountLitElement<TextNodeAsParent>(
+        "text-node-as-parent",
+        (e) => {
+          e.vm = vmWith({
+            value: {
+              text: "## Heading\n\nbody",
+              dateIso,
+              dateColor: "rgb(255, 145, 50)",
+            },
+          });
+        },
+      );
+      const valueEl = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="value"]',
+      );
+      valueEl?.click();
+      await el.updateComplete;
+      const ta = el.shadowRoot?.querySelector<HTMLTextAreaElement>(
+        '[data-testid="value-edit"]',
+      );
+      expect(ta).not.toBeNull();
+      expect(ta?.value).toBe("## Heading\n\nbody");
+    });
+
+    it("Ctrl+Enter on the value textarea dispatches inline-edit-value", async () => {
+      const el = await mountLitElement<TextNodeAsParent>(
+        "text-node-as-parent",
+        (e) => {
+          e.vm = vmWith({ id: "uuid-tx" });
+        },
+      );
+      el.shadowRoot?.querySelector<HTMLElement>('[data-testid="value"]')?.click();
+      await el.updateComplete;
+      const ta = el.shadowRoot?.querySelector<HTMLTextAreaElement>(
+        '[data-testid="value-edit"]',
+      )!;
+      const handler = vi.fn();
+      el.addEventListener("inline-edit-value", handler);
+      ta.value = "**Updated** value";
+      ta.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          ctrlKey: true,
+          bubbles: true,
+        }),
+      );
+      expect(handler).toHaveBeenCalledTimes(1);
+      const ev = handler.mock.calls[0]![0] as CustomEvent<{
+        nodeId: string;
+        value: string | number;
+      }>;
+      expect(ev.detail.nodeId).toBe("uuid-tx");
+      expect(ev.detail.value).toBe("**Updated** value");
+    });
+
+    it("plain Enter inside the value textarea does NOT commit (multiline)", async () => {
+      const el = await mountLitElement<TextNodeAsParent>(
+        "text-node-as-parent",
+        (e) => {
+          e.vm = vmWith();
+        },
+      );
+      el.shadowRoot?.querySelector<HTMLElement>('[data-testid="value"]')?.click();
+      await el.updateComplete;
+      const ta = el.shadowRoot?.querySelector<HTMLTextAreaElement>(
+        '[data-testid="value-edit"]',
+      )!;
+      const handler = vi.fn();
+      el.addEventListener("inline-edit-value", handler);
+      ta.value = "first line\nsecond";
+      ta.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it("blur on the value textarea commits the current value", async () => {
+      const el = await mountLitElement<TextNodeAsParent>(
+        "text-node-as-parent",
+        (e) => {
+          e.vm = vmWith({ id: "uuid-tb" });
+        },
+      );
+      el.shadowRoot?.querySelector<HTMLElement>('[data-testid="value"]')?.click();
+      await el.updateComplete;
+      const ta = el.shadowRoot?.querySelector<HTMLTextAreaElement>(
+        '[data-testid="value-edit"]',
+      )!;
+      const handler = vi.fn();
+      el.addEventListener("inline-edit-value", handler);
+      ta.value = "Blur commit";
+      ta.dispatchEvent(new FocusEvent("blur", { bubbles: false }));
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
   });
 });

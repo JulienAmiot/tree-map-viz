@@ -32,6 +32,21 @@
  *     - The strip already knows whether the focus is at root (the shell
  *       derives `parentId` from `breadcrumbPath` and passes it down), so
  *       no extra plumbing is needed in the per-kind VMs.
+ *
+ * §17.28 — edit-node affordance:
+ *   A small circular **pencil** button sits to the **left of the close-X**
+ *   in the same top-right gutter. Tapping it dispatches a bubbling +
+ *   composed `edit-node-open` CustomEvent `{ nodeId }` that the
+ *   composition root maps to opening `<edit-node-modal>` populated with
+ *   the focused node's full pre-edit snapshot. The pencil glyph is drawn
+ *   with two CSS bars (the "shaft" + a 45° "tip") sized in `cqmin` so it
+ *   stays crisp at any size and inherits `currentColor`, matching the X
+ *   styling idiom (no SVG / icon font).
+ *
+ *   The pencil is always rendered when a focused vm is present: editing
+ *   is a node-level operation that's meaningful at root focus too (the
+ *   board's root is editable just like any other node). When `vm` is
+ *   `null` the strip renders neither button.
  */
 
 import { LitElement, css, html, nothing } from "lit";
@@ -46,6 +61,14 @@ export const FOCUS_CLOSE_TO_PARENT_EVENT = "focus-close-to-parent";
 /** Detail payload of {@link FOCUS_CLOSE_TO_PARENT_EVENT}. */
 export type FocusCloseToParentDetail = {
   readonly parentId: string;
+};
+
+/** Event name used by the edit-node pencil button (SPEC §17.28). */
+export const EDIT_NODE_OPEN_EVENT = "edit-node-open";
+
+/** Detail payload of {@link EDIT_NODE_OPEN_EVENT}. */
+export type EditNodeOpenDetail = {
+  readonly nodeId: string;
 };
 
 @customElement("parent-identity-strip")
@@ -76,11 +99,20 @@ export class ParentIdentityStrip extends LitElement {
       padding: clamp(0.5rem, 1.5vw, 1.25rem);
       border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent);
     }
-    /* When the close-X is rendered, reserve right gutter so a long focused
-       title doesn't run into the button's hit zone. The button itself sits
-       in the gutter via absolute positioning. */
-    .strip.has-close {
+    /* When the top-right buttons are rendered, reserve right gutter so
+       a long focused title does not run into the buttons hit zones.
+       The buttons themselves sit in the gutter via absolute positioning.
+       Modifiers (additive, set independently by render()):
+         - has-close (SPEC 17.23) -- the close-X button is rendered.
+         - has-edit  (SPEC 17.28) -- the edit-pencil button is rendered.
+       When both are set the gutter widens to accommodate both buttons;
+       when only one is set the narrower gutter is enough. */
+    .strip.has-close,
+    .strip.has-edit {
       padding-right: clamp(3rem, 4vw, 3.75rem);
+    }
+    .strip.has-close.has-edit {
+      padding-right: clamp(5.5rem, 8vw, 7.5rem);
     }
     node-view {
       display: block;
@@ -92,10 +124,9 @@ export class ParentIdentityStrip extends LitElement {
        so the glyph stays crisp at any size and inherits currentColor from
        the strip. The 2.25rem touch target fits the SPEC §1 "no-keyboard,
        finger-friendly" assumption (>= 36 px on a 16 px root). */
-    .close-x {
+    .strip-action {
       position: absolute;
       top: clamp(0.4rem, 1vw, 0.75rem);
-      right: clamp(0.4rem, 1vw, 0.75rem);
       width: 2.25rem;
       height: 2.25rem;
       padding: 0;
@@ -108,16 +139,19 @@ export class ParentIdentityStrip extends LitElement {
       -webkit-tap-highlight-color: transparent;
       z-index: 1;
     }
-    .close-x:hover {
+    .strip-action:hover {
       background: color-mix(in srgb, currentColor 12%, transparent);
     }
-    .close-x:focus-visible {
+    .strip-action:focus-visible {
       background: color-mix(in srgb, currentColor 12%, transparent);
       outline: 2px solid color-mix(in srgb, currentColor 35%, transparent);
       outline-offset: 1px;
     }
-    .close-x:active {
+    .strip-action:active {
       background: color-mix(in srgb, currentColor 22%, transparent);
+    }
+    .close-x {
+      right: clamp(0.4rem, 1vw, 0.75rem);
     }
     .close-x::before,
     .close-x::after {
@@ -137,22 +171,85 @@ export class ParentIdentityStrip extends LitElement {
     .close-x::after {
       transform: translate(-50%, -50%) rotate(-45deg);
     }
+    /* SPEC 17.28 -- pencil button. Same touch-target footprint as the
+       close-X sitting in a second slot to its left. The glyph is drawn
+       with two CSS bars: a long shaft tilted 45deg and a tiny tip near
+       one end so the silhouette reads as a stylised pencil rather than
+       a plus. Sized in rem (not cqmin) so it stays consistent with the
+       X across viewport sizes -- the strip itself does not establish a
+       containment context. */
+    .edit-pencil {
+      /* Sit immediately to the left of the close-X. The close-x button
+         is 2.25rem wide; we leave a small gap for visual separation. */
+      right: calc(clamp(0.4rem, 1vw, 0.75rem) + 2.25rem + 0.35rem);
+    }
+    /* When the close-X is hidden (root focus), the pencil takes the
+       far-right slot so the gutter does not read as "missing button".
+       Aligned via a modifier set on the button by render(). */
+    .edit-pencil.is-trailing {
+      right: clamp(0.4rem, 1vw, 0.75rem);
+    }
+    .edit-pencil::before,
+    .edit-pencil::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      background: currentColor;
+      border-radius: 1px;
+      transform-origin: center;
+    }
+    /* Shaft -- the long body of the pencil, tilted 45deg so the cap end
+       is at the top-left and the tip end is at the bottom-right. */
+    .edit-pencil::before {
+      width: 1.1rem;
+      height: 2px;
+      transform: translate(-50%, -50%) rotate(-45deg);
+    }
+    /* Tip -- a tiny perpendicular bar near the bottom-right end of the
+       shaft, drawn slightly offset and rotated 90deg from the shaft so
+       it reads as the writing point. */
+    .edit-pencil::after {
+      width: 0.35rem;
+      height: 2px;
+      transform: translate(0.18rem, 0.32rem) rotate(45deg);
+    }
   `;
 
   render() {
     const focusedId = this.vm?.id ?? "";
     const hasClose = this.parentId !== "";
+    const hasEdit = this.vm !== null;
+    // §17.28 — `has-close` and `has-edit` are additive modifiers on the
+    // strip wrapper so each button can independently flag the right
+    // gutter padding it needs. When both are set the CSS widens the
+    // gutter to fit both 2.25 rem buttons + the inter-button gap.
+    const classes = ["strip"];
+    if (hasClose) classes.push("has-close");
+    if (hasEdit) classes.push("has-edit");
+    const stripClass = classes.join(" ");
     return html`<header
-      class=${hasClose ? "strip has-close" : "strip"}
+      class=${stripClass}
       data-testid="parent-strip"
       data-focused-id=${focusedId}
     >
       ${this.vm
         ? html`<node-view view-role="asParent" .vm=${this.vm}></node-view>`
         : nothing}
+      ${hasEdit
+        ? html`<button
+            class=${hasClose ? "strip-action edit-pencil" : "strip-action edit-pencil is-trailing"}
+            type="button"
+            data-testid="edit-node"
+            data-node-id=${focusedId}
+            aria-label="Edit this node"
+            title="Edit this node"
+            @click=${this.handleEditClick}
+          ></button>`
+        : nothing}
       ${hasClose
         ? html`<button
-            class="close-x"
+            class="strip-action close-x"
             type="button"
             data-testid="close-to-parent"
             data-parent-id=${this.parentId}
@@ -176,6 +273,27 @@ export class ParentIdentityStrip extends LitElement {
       }),
     );
   };
+
+  /**
+   * §17.28 — emit `edit-node-open` so the composition root can resolve
+   * the focused node from its id and populate `<edit-node-modal>` with
+   * the full pre-edit snapshot. The strip itself does not have access
+   * to the domain node (it consumes a VM), so it can't build the
+   * snapshot here — the composition root is the only layer that knows
+   * how to map TreeNode → EditNodeTarget.
+   */
+  private handleEditClick = (): void => {
+    if (!this.vm) {
+      return;
+    }
+    this.dispatchEvent(
+      new CustomEvent<EditNodeOpenDetail>(EDIT_NODE_OPEN_EVENT, {
+        bubbles: true,
+        composed: true,
+        detail: { nodeId: this.vm.id },
+      }),
+    );
+  };
 }
 
 declare global {
@@ -184,5 +302,6 @@ declare global {
   }
   interface HTMLElementEventMap {
     "focus-close-to-parent": CustomEvent<FocusCloseToParentDetail>;
+    "edit-node-open": CustomEvent<EditNodeOpenDetail>;
   }
 }

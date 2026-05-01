@@ -18,15 +18,42 @@ export class BusinessScoreCardNode<T>
   extends TreeNode<T>
   implements Historizable<T>, HasObjective<T>, ContributesToParent<T>
 {
+  private _computed: boolean;
+  private _eligibleForParentComputation: boolean;
+
   constructor(
     id: string,
     identity: NodeIdentity,
     weight: Weight,
     readonly card: BusinessScoreCard<T>,
-    readonly computed: boolean,
-    readonly eligibleForParentComputation: boolean,
+    computed: boolean,
+    eligibleForParentComputation: boolean,
   ) {
     super(id, identity, weight);
+    this._computed = computed;
+    this._eligibleForParentComputation = eligibleForParentComputation;
+  }
+
+  /**
+   * `computed` / `eligibleForParentComputation` are exposed via getters
+   * so the §17.28 edit flow can flip them in place through dedicated
+   * setters. Same rationale as `TreeNode.setIdentity` / `setWeight`:
+   * a single explicit mutation surface, identical read access path.
+   */
+  get computed(): boolean {
+    return this._computed;
+  }
+
+  get eligibleForParentComputation(): boolean {
+    return this._eligibleForParentComputation;
+  }
+
+  setComputed(value: boolean): void {
+    this._computed = value;
+  }
+
+  setEligibleForParentComputation(value: boolean): void {
+    this._eligibleForParentComputation = value;
   }
 
   history(): readonly TimestampedValue<T>[] {
@@ -38,7 +65,7 @@ export class BusinessScoreCardNode<T>
   }
 
   isEligible(): boolean {
-    return this.eligibleForParentComputation;
+    return this._eligibleForParentComputation;
   }
 
   contribution(): TimestampedValue<T> {

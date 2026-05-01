@@ -383,3 +383,81 @@ Then("the focused id is unchanged after the modal interaction", async ({ page })
   expect(stripId).not.toBeNull();
   expect(stripId).not.toBe("");
 });
+
+// -- Shared modal frame (SPEC §17.29) -----------------------------------
+
+When("I tap the modal close-X", async ({ page }) => {
+  // SPEC §17.29 -- every modal in the app carries a close-X button in
+  // its top-right corner via `modalFrameStyles.renderModalCloseX`.
+  // The button's testid (`modal-close-x`) is the same across modals,
+  // so a single step covers add-child / edit-node / future modals.
+  // Scenarios assert the resulting "modal closed" state via the per-
+  // modal "is closed" step.
+  const kiosk = new TreeGraphPage(page);
+  await kiosk.modalCloseX().click();
+});
+
+Then(
+  "the modal panel fits inside the viewport with at least 2rem of margin",
+  async ({ page }) => {
+    // SPEC §17.29 -- the modal panel is sized as `width/height:
+    // max-content` and capped at `100vw/100vh - 4rem`. So either:
+    //   (a) the content is small -> the panel is smaller than the cap;
+    //   (b) the content overflows -> the panel hits the cap exactly.
+    // In both cases the panel's bounding box must leave >= 2rem of
+    // margin on every side (4rem total = 2rem on each side, modulo
+    // sub-pixel rounding). Pre-§17.29 the panel was pinned to
+    // `inset:5vh 8vw` which left ~5vh / ~8vw of margin -- this step
+    // would have passed by accident on a small viewport but failed
+    // on a wide one (8vw of 1920px = 154px, well over 2rem).
+    const kiosk = new TreeGraphPage(page);
+    // The shared close-X has the same testid on every modal; we
+    // resolve the panel from whichever modal is currently open.
+    const closeX = kiosk.modalCloseX();
+    await closeX.waitFor({ state: "visible" });
+    // The modals live inside `<tree-graph-screen>`'s shadow root, so
+    // we walk into it from the host element. Both modal hosts are
+    // direct shadow children of the screen.
+    const measured = await page.evaluate(() => {
+      const screen = document.querySelector("tree-graph-screen");
+      const screenRoot = (screen as { shadowRoot?: ShadowRoot } | null)
+        ?.shadowRoot;
+      if (!screenRoot) {
+        throw new Error("expected <tree-graph-screen> with an open shadow root");
+      }
+      const modals = Array.from(
+        screenRoot.querySelectorAll<HTMLElement>(
+          "add-child-modal, edit-node-modal",
+        ),
+      ).filter((el) => el.hasAttribute("open"));
+      if (modals.length === 0) {
+        throw new Error("expected an open modal but found none");
+      }
+      const host = modals[0]!;
+      const panel = host.shadowRoot?.querySelector<HTMLElement>(
+        '[role="dialog"]',
+      );
+      if (!panel) {
+        throw new Error("expected a [role=dialog] panel inside the modal");
+      }
+      const rect = panel.getBoundingClientRect();
+      const remPx = parseFloat(
+        getComputedStyle(document.documentElement).fontSize,
+      );
+      return {
+        top: rect.top,
+        left: rect.left,
+        right: window.innerWidth - rect.right,
+        bottom: window.innerHeight - rect.bottom,
+        viewportW: window.innerWidth,
+        viewportH: window.innerHeight,
+        remPx,
+      };
+    });
+    const minMarginPx = 2 * measured.remPx - 1; // sub-pixel tolerance
+    expect(measured.top).toBeGreaterThanOrEqual(minMarginPx);
+    expect(measured.left).toBeGreaterThanOrEqual(minMarginPx);
+    expect(measured.right).toBeGreaterThanOrEqual(minMarginPx);
+    expect(measured.bottom).toBeGreaterThanOrEqual(minMarginPx);
+  },
+);

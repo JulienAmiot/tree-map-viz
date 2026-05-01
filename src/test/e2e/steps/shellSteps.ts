@@ -166,3 +166,109 @@ Then(
     );
   },
 );
+
+// -- Edit-node pencil + modal (§17.28) -----------------------------------
+
+When("I tap the edit-node pencil", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await kiosk.editNodeButton().click();
+});
+
+Then("the edit-node pencil is visible", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.editNodeButton()).toBeVisible();
+});
+
+Then(
+  "the edit-node pencil targets node {string}",
+  async ({ page }, expected: string) => {
+    const kiosk = new TreeGraphPage(page);
+    await expect(kiosk.editNodeButton()).toHaveAttribute(
+      "data-node-id",
+      expected,
+    );
+  },
+);
+
+Then("the edit-node modal is open", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  expect(await kiosk.isEditNodeModalOpen()).toBe(true);
+  await expect(kiosk.editNodeModalPanel()).toBeVisible();
+});
+
+Then("the edit-node modal is closed", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  expect(await kiosk.isEditNodeModalOpen()).toBe(false);
+});
+
+Then(
+  "the edit-node modal title field shows {string}",
+  async ({ page }, expected: string) => {
+    const kiosk = new TreeGraphPage(page);
+    await expect(kiosk.editNodeModalForm().getByTestId("field-title")).toHaveValue(
+      expected,
+    );
+  },
+);
+
+When(
+  "I set the edit-node modal field {string} to {string}",
+  async ({ page }, fieldId: string, value: string) => {
+    const kiosk = new TreeGraphPage(page);
+    await kiosk.editNodeModalForm().getByTestId(fieldId).fill(value);
+  },
+);
+
+When("I confirm the edit-node modal", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await kiosk.editNodeModalConfirm().click();
+});
+
+When("I cancel the edit-node modal", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await kiosk.editNodeModalCancel().click();
+});
+
+// -- Inline title / value edit (§17.28) ---------------------------------
+
+When("I tap the focused title", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await kiosk.focusedTitle().click();
+});
+
+When("I tap the focused value", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await kiosk.focusedValue().click();
+});
+
+When(
+  "I type {string} in the focused title editor and press Enter",
+  async ({ page }, value: string) => {
+    const kiosk = new TreeGraphPage(page);
+    const editor = kiosk.focusedTitleEditor();
+    await editor.fill(value);
+    await editor.press("Enter");
+  },
+);
+
+When(
+  "I type {string} in the focused value editor and commit",
+  async ({ page }, value: string) => {
+    // Multi-line editors commit on Ctrl+Enter; single-line on Enter.
+    // Probe the editor's tag to decide which key combo to send: a plain
+    // Enter on a textarea would insert a newline (and only Ctrl+Enter
+    // would commit), while a plain Enter on a number input commits the
+    // BSC inline value edit. Probing the tag avoids the "press Enter,
+    // see if it stuck" pattern that pollutes the textarea with stray
+    // newlines before Ctrl+Enter arrives.
+    const kiosk = new TreeGraphPage(page);
+    const editor = kiosk.focusedValueEditor();
+    await editor.fill(value);
+    const tagName = await editor.evaluate((el) => el.tagName);
+    if (tagName === "TEXTAREA") {
+      await editor.press("Control+Enter");
+    } else {
+      await editor.press("Enter");
+    }
+  },
+);

@@ -430,4 +430,92 @@ describe("<tree-graph-screen>", () => {
     // Modal stayed open — the shell does not auto-close:
     expect(el.isAddChildModalOpen).toBe(true);
   });
+
+  // -- §17.28 edit-node modal seam ------------------------------------
+
+  describe("edit-node modal seam (\u00a717.28)", () => {
+    it("renders an <edit-node-modal> overlay (closed by default)", async () => {
+      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const modal = el.shadowRoot?.querySelector("edit-node-modal");
+      expect(modal).not.toBeNull();
+      expect(modal?.hasAttribute("open")).toBe(false);
+      expect(el.isEditNodeModalOpen).toBe(false);
+    });
+
+    it("`openEditNodeModal(target)` opens the modal and seeds editTarget", async () => {
+      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      el.openEditNodeModal({
+        nodeId: "uuid-root",
+        kind: "TextNode",
+        title: "Quarterly review",
+        weight: 2,
+      });
+      await el.updateComplete;
+      const modal = el.editNodeModalElement!;
+      expect(el.isEditNodeModalOpen).toBe(true);
+      expect(modal.hasAttribute("open")).toBe(true);
+      expect(modal.editTarget?.nodeId).toBe("uuid-root");
+    });
+
+    it("`edit-node-cancel` from the modal closes it", async () => {
+      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      el.openEditNodeModal({
+        nodeId: "uuid-root",
+        kind: "TextNode",
+        title: "X",
+        weight: 1,
+      });
+      await el.updateComplete;
+      expect(el.isEditNodeModalOpen).toBe(true);
+
+      const modal = el.editNodeModalElement!;
+      modal.dispatchEvent(
+        new CustomEvent("edit-node-cancel", { bubbles: true, composed: true }),
+      );
+      await el.updateComplete;
+      expect(el.isEditNodeModalOpen).toBe(false);
+    });
+
+    it("`closeEditNodeModal()` + `setEditNodeError(...)` are the public seams for the composition root", async () => {
+      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      el.openEditNodeModal({
+        nodeId: "uuid-root",
+        kind: "TextNode",
+        title: "X",
+        weight: 1,
+      });
+      el.setEditNodeError("nope");
+      expect(el.editNodeError).toBe("nope");
+      el.closeEditNodeModal();
+      expect(el.isEditNodeModalOpen).toBe(false);
+      expect(el.editNodeError).toBeNull();
+    });
+
+    it("`edit-node-confirm` does NOT auto-close the modal -- composition root must call closeEditNodeModal()", async () => {
+      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      el.openEditNodeModal({
+        nodeId: "uuid-root",
+        kind: "TextNode",
+        title: "X",
+        weight: 1,
+      });
+      await el.updateComplete;
+      const modal = el.editNodeModalElement!;
+      const handler = vi.fn();
+      el.addEventListener("edit-node-confirm", handler);
+      modal.dispatchEvent(
+        new CustomEvent("edit-node-confirm", {
+          bubbles: true,
+          composed: true,
+          detail: {
+            nodeId: "uuid-root",
+            payload: { kind: "TextNode", title: "Renamed" },
+          },
+        }),
+      );
+      await el.updateComplete;
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(el.isEditNodeModalOpen).toBe(true);
+    });
+  });
 });

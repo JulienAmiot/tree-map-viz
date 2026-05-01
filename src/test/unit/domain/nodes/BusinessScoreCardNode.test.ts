@@ -166,4 +166,28 @@ describe("BusinessScoreCardNode", () => {
       expect(o).toBe(n);
     });
   });
+
+  // SPEC §17.28 — explicit mutation surface for the edit-node flow.
+  describe("setComputed / setEligibleForParentComputation (\u00a717.28)", () => {
+    it("setComputed flips the computed flag in place", () => {
+      const n = makeNode({ computed: false });
+      n.setComputed(true);
+      expect(n.computed).toBe(true);
+    });
+
+    it("setEligibleForParentComputation flips the flag and isEligible() reflects the new value", () => {
+      const n = makeNode({ eligibleForParentComputation: true });
+      n.setEligibleForParentComputation(false);
+      expect(n.eligibleForParentComputation).toBe(false);
+      expect(n.isEligible()).toBe(false);
+    });
+
+    it("setIdentity (inherited from TreeNode) updates the title in place", () => {
+      const n = makeNode();
+      const next = NodeIdentity.of(Title.of("Renamed"), Description.of("d2"));
+      n.setIdentity(next);
+      expect(n.identity).toBe(next);
+      expect(n.identity.title.value).toBe("Renamed");
+    });
+  });
 });

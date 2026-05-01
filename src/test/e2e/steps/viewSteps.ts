@@ -205,6 +205,18 @@ Then(
 );
 
 Then(
+  "the child {string} has no description block",
+  async ({ page }, id: string) => {
+    // SPEC §17.30 — descriptions are intentionally rendered ONLY on
+    // the focused panel (parent role). Child tiles must NOT carry a
+    // [data-testid="description"] element regardless of whether the
+    // domain node has a non-empty description.
+    const kiosk = new TreeGraphPage(page);
+    await expect(kiosk.childById(id).getByTestId("description")).toHaveCount(0);
+  },
+);
+
+Then(
   "the child {string} has value {string}",
   async ({ page }, id: string, expected: string) => {
     const kiosk = new TreeGraphPage(page);
@@ -474,6 +486,64 @@ Then(
     const distFromBottom =
       stripBox!.y + stripBox!.height - (tsBox!.y + tsBox!.height);
     expect(distFromBottom).toBeLessThan(64);
+  },
+);
+
+Then(
+  "the focused value-date offset matches a child tile value-date offset within {int} px",
+  async ({ page }, tolerancePx: number) => {
+    // SPEC §17.30 — the parent panel's timestamp must sit at the same
+    // visual distance from the strip's outer edge as a child tile's
+    // timestamp from its tile's outer edge. The shared
+    // `tileLayoutStyles` declares `bottom: 0.4rem; right: 0.6rem` for
+    // both — the parity hinges on the per-view's `:host { position:
+    // static }` override letting the timestamp escape the strip's
+    // wrapper padding.
+    //
+    // The check: compute (rightEdge - timestamp.right, bottomEdge -
+    // timestamp.bottom) for both the parent strip and a child tile
+    // that has its own value-date, then assert the deltas match
+    // within `tolerancePx` (sub-rem, generous enough to absorb sub-
+    // pixel rounding + a possible 1-px strip border).
+    //
+    // We look up the child tile by `data-id` rather than walking
+    // `closest('[data-testid="child"]')` from the timestamp because
+    // the timestamp lives inside the per-view's shadow root and
+    // `Element.closest` does not pierce shadow boundaries. Picking a
+    // known-id child (ChildB — recordedValue, always carries a date)
+    // sidesteps the need for a shadow-piercing walk and keeps the
+    // step kiosk-mode agnostic.
+    const kiosk = new TreeGraphPage(page);
+    const parentTs = kiosk.parentStrip().getByTestId("value-date");
+    await expect(parentTs).toHaveCount(1);
+    const parentBox = await parentTs.boundingBox();
+    const stripBox = await kiosk.parentStrip().boundingBox();
+    expect(parentBox).not.toBeNull();
+    expect(stripBox).not.toBeNull();
+
+    const childTile = kiosk.childById("ChildB");
+    const childTs = childTile.getByTestId("value-date");
+    await expect(childTs).toHaveCount(1);
+    const childBox = await childTs.boundingBox();
+    const childTileBox = await childTile.boundingBox();
+    expect(childBox).not.toBeNull();
+    expect(childTileBox).not.toBeNull();
+
+    const parentRightOffset =
+      stripBox!.x + stripBox!.width - (parentBox!.x + parentBox!.width);
+    const parentBottomOffset =
+      stripBox!.y + stripBox!.height - (parentBox!.y + parentBox!.height);
+    const childRightOffset =
+      childTileBox!.x + childTileBox!.width - (childBox!.x + childBox!.width);
+    const childBottomOffset =
+      childTileBox!.y + childTileBox!.height - (childBox!.y + childBox!.height);
+
+    expect(Math.abs(parentRightOffset - childRightOffset)).toBeLessThanOrEqual(
+      tolerancePx,
+    );
+    expect(Math.abs(parentBottomOffset - childBottomOffset)).toBeLessThanOrEqual(
+      tolerancePx,
+    );
   },
 );
 
