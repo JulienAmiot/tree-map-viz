@@ -2,32 +2,35 @@
  * `<add-child-modal>` — wide kiosk modal that captures the payload for
  * `AddChildService.addChild(focusedParent, payload)` (SPEC §7).
  *
- * Single-page flow (SPEC §17.19 — was a two-step flow pre-§17.19):
- *   1. A **kind dropdown** at the top of the panel. Each `<option>`
- *      shows `Name — Description` so the kind's purpose is visible
- *      from the picker alone (same content the pre-§17.19 kind-cards
- *      carried, just in `<select>` form). The first option is a
- *      placeholder ("Select a card type — …") that disables Confirm
- *      until a real kind is picked, mirroring the empty-field
- *      placeholder pattern (§6) for the rest of the form.
- *   2. A **type-specific form** that appears dynamically beneath the
- *      dropdown as soon as a kind is chosen — empty-field placeholder
+ * Two-pane layout (SPEC §17.25 — was a single-column dropdown-then-form
+ * pre-§17.25):
+ *   1. A **kind list** on the left (~20 % of the panel width) — one
+ *      vertical button per kind in `availableKinds`. Each button shows
+ *      the kind's name + a one-line description. The selected button is
+ *      `aria-pressed="true"` and visually highlighted. By default the
+ *      list contains every kind the modal supports; a future caller can
+ *      restrict it via the `availableKinds` property (the "available
+ *      nodes for the current parent" hook — for now the policy is "all
+ *      of them", but the seam is wired so per-parent rules can be
+ *      layered on without touching the modal).
+ *   2. A **type-specific form** on the right (~80 %) that appears as
+ *      soon as a kind is chosen, using the empty-field placeholder
  *      pattern (§6) — every input shows `placeholder` of the form
  *      `<Field name> — e.g. <mock>` so the field's purpose is explicit
  *      AND a concrete example is visible at a glance; no `<label>`
- *      siblings on text/number/date/textarea fields.
+ *      siblings on text/number/date/textarea fields. Before a kind is
+ *      chosen the right pane shows a muted "Pick a card type to start"
+ *      hint.
  *
- * Why a dropdown (vs. the pre-§17.19 two-card picker):
- *   - Collapses the modal into a single screen — the operator sees
- *     the chosen kind AND its form on the same page, which makes
- *     "switching kind mid-edit" a one-click change instead of a
- *     Back-button round-trip.
- *   - The `<select>` is keyboard-native (arrow keys, type-ahead) so
- *     the kiosk works the same with a touch screen, mouse, or
- *     plugged-in keyboard.
- *   - Adding a new kind in the future is a one-line `<option>`
- *     append — extensibility is built into the standard control
- *     instead of needing a layout tweak.
+ * Why a left-rail list (vs. the pre-§17.25 dropdown):
+ *   - The available kinds are visible immediately — the operator
+ *     doesn't have to expand a `<select>` to discover them. That's
+ *     particularly relevant on a kiosk wall where a tap → list-pop
+ *     interaction adds latency that a glance can absorb instead.
+ *   - The list scales naturally to per-parent restriction: a future
+ *     "this parent only accepts BSC children" policy hides options by
+ *     omission, no greying-out gymnastics.
+ *   - Adding a new kind is still a one-line append in `KIND_OPTIONS`.
  *
  * Surface contract:
  *   - `open` (boolean attribute, reflected) — whether the modal is visible.
@@ -38,6 +41,11 @@
  *     focused parent without re-querying. The shell sets it from the most
  *     recent `plus-tile-activate` event (also forwards `view.center.id`
  *     when the modal opens via keyboard).
+ *   - `availableKinds` (property, no attribute) — `readonly AddChildKind[]`
+ *     listing the kinds offered to the operator. Defaults to the full
+ *     set declared by `KIND_OPTIONS`. If the property is set to a list
+ *     that excludes the currently chosen kind, the chosen kind is
+ *     reset on the next render.
  *   - dispatches a bubbling+composed `add-child-confirm`
  *     `CustomEvent<{ parentId, payload }>` when the user confirms a valid
  *     form. The composition root calls `AddChildService.addChild(...)` and
@@ -66,10 +74,15 @@
  *   - Text: title + a **mandatory current value** (the seed
  *     `TimestampedValue<string>` of the otherwise-empty `TextCard`
  *     history, SPEC §17.14) are required. Weight is **pre-filled with
- *     `1`** (§17.16) and stays editable. There is **no** description
- *     field for TextNode — by §17.15 the current value (the latest
- *     entry in the `TextCard`) IS the node's description, so collecting
- *     it twice would be redundant.
+ *     `1`** (§17.16) and stays editable through a slider + numeric
+ *     input pair (§17.26): the slider runs `0..10` step `0.5` (visual,
+ *     touch-friendly, full-width); the numeric input on its right
+ *     mirrors the value in real time and accepts direct keyboard
+ *     input. Editing either input fires `@input` and writes to the
+ *     same `weight` state, so both stay synced one keystroke at a
+ *     time. There is **no** description field for TextNode — by §17.15
+ *     the current value (the latest entry in the `TextCard`) IS the
+ *     node's description, so collecting it twice would be redundant.
  *   - BusinessScoreCard: title + unit + objective + a **mandatory current
  *     value** (the seed `TimestampedValue<number>` of the otherwise-empty
  *     `BusinessScoreCard` history, SPEC §17.13) are all required;
@@ -108,10 +121,11 @@ export type AddChildConfirmDetail = {
 };
 
 /**
- * Dropdown options — kept as a static list so adding a new kind is a
- * one-line append (SPEC §17.19). The `description` mirrors the blurb
- * the pre-§17.19 kind-cards rendered, so the dropdown still tells the
- * operator what each kind is at a glance.
+ * Kind catalogue — kept as a static list so adding a new kind is a
+ * one-line append (since §17.19, layout-agnostic since §17.25). The
+ * `description` mirrors the blurb the pre-§17.19 kind-cards rendered,
+ * so each list entry still tells the operator what each kind is at a
+ * glance.
  */
 type KindOption = {
   readonly kind: AddChildKind;
@@ -124,14 +138,19 @@ const KIND_OPTIONS: readonly KindOption[] = [
     kind: "TextNode",
     name: "Text",
     description:
-      "A note: a free-form text value (latest in its timestamped history); no Σ.",
+      "A note: a free-form text value (latest in its timestamped history); no \u03a3.",
   },
   {
     kind: "BusinessScoreCardNode",
     name: "Business Score Card",
-    description: "A measurable: title, unit, target, history, optional Σ.",
+    description: "A measurable: title, unit, target, history, optional \u03a3.",
   },
 ];
+
+/** Default `availableKinds` — all kinds declared by {@link KIND_OPTIONS}. */
+export const ALL_ADD_CHILD_KINDS: readonly AddChildKind[] = KIND_OPTIONS.map(
+  (o) => o.kind,
+);
 
 @customElement("add-child-modal")
 export class AddChildModal extends LitElement {
@@ -146,6 +165,21 @@ export class AddChildModal extends LitElement {
   /** Free-form error message rendered as `data-error` on the form. */
   @property({ attribute: false })
   errorMessage: string | null = null;
+
+  /**
+   * Kinds offered in the left-rail list (SPEC §17.25). Defaults to the
+   * full catalogue ({@link ALL_ADD_CHILD_KINDS}). A future caller can
+   * narrow it per parent — e.g. `["BusinessScoreCardNode"]` to forbid
+   * Text children under a metrics-only branch. Order is preserved.
+   *
+   * The contract is "no kind in the list ⇒ no form ⇒ Confirm disabled":
+   * the `willUpdate` hook resets `chosenKind` to `null` whenever the
+   * supplied list excludes the previously-chosen kind, so a parent
+   * policy change mid-edit collapses the form rather than leaving a
+   * stale type-specific draft hanging.
+   */
+  @property({ attribute: false })
+  availableKinds: readonly AddChildKind[] = ALL_ADD_CHILD_KINDS;
 
   @state()
   private chosenKind: AddChildKind | null = null;
@@ -222,17 +256,24 @@ export class AddChildModal extends LitElement {
       position: absolute;
       inset: 5vh 8vw;
       box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
+      /* §17.25 — two-pane grid: header spans both columns, then the
+         kind list (left, ~20 %%) and the form (right, ~80 %%) share
+         the second row. minmax(8rem, …) keeps the kind list legible
+         on narrow viewports without overflowing the panel. */
+      display: grid;
+      grid-template-rows: auto 1fr;
+      grid-template-columns: minmax(8rem, 20%) 1fr;
+      gap: 1rem 1.25rem;
       padding: 1.5rem 2rem;
       background: color-mix(in srgb, currentColor 8%, var(--bg, #0c0f14));
       border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
       border-radius: 12px;
       box-shadow: 0 24px 64px color-mix(in srgb, #000 60%, transparent);
-      overflow: auto;
+      min-height: 0;
     }
     .header {
+      grid-column: 1 / -1;
+      grid-row: 1;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -241,6 +282,72 @@ export class AddChildModal extends LitElement {
     .title-row {
       font-size: 1.25rem;
       font-weight: 600;
+    }
+    /* §17.25 — left rail: vertical list of kind buttons.
+       overflow-y:auto so a long catalogue keeps the form pane in view. */
+    .kind-list {
+      grid-column: 1;
+      grid-row: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      min-height: 0;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+      border-right: 1px solid
+        color-mix(in srgb, currentColor 14%, transparent);
+    }
+    .kind-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.2rem;
+      padding: 0.65rem 0.7rem;
+      background: transparent;
+      color: inherit;
+      border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+      border-radius: 6px;
+      font: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+    .kind-btn:hover,
+    .kind-btn:focus-visible {
+      outline: none;
+      background: color-mix(in srgb, currentColor 8%, transparent);
+      border-color: color-mix(in srgb, currentColor 40%, transparent);
+    }
+    .kind-btn[aria-pressed="true"] {
+      background: color-mix(in srgb, currentColor 18%, transparent);
+      border-color: color-mix(in srgb, currentColor 60%, transparent);
+    }
+    .kind-btn-name {
+      font-weight: 600;
+    }
+    .kind-btn-desc {
+      font-size: 0.85em;
+      color: color-mix(in srgb, currentColor 65%, transparent);
+      line-height: 1.3;
+    }
+    /* §17.25 — right pane: the form, or the empty-state hint when no
+       kind is chosen yet. min-height:0 lets nested overflow:auto work
+       inside a grid track. */
+    .form-pane {
+      grid-column: 2;
+      grid-row: 2;
+      min-height: 0;
+      overflow-y: auto;
+      padding-left: 0.25rem;
+    }
+    .form-empty {
+      display: grid;
+      place-items: center;
+      width: 100%;
+      height: 100%;
+      color: color-mix(in srgb, currentColor 55%, transparent);
+      font-style: italic;
+      padding: 2rem 1rem;
+      box-sizing: border-box;
     }
     form {
       display: flex;
@@ -264,12 +371,9 @@ export class AddChildModal extends LitElement {
     /* Empty-field placeholder pattern (SPEC §6): no labels, the placeholder
        carries the field's purpose. The italic + muted styling makes the
        difference between empty (italic, muted) and filled (upright, vivid)
-       legible at a glance. The kind <select> (SPEC §17.19 dropdown)
-       inherits the same visual treatment so it sits in the form like any
-       other input. */
+       legible at a glance. */
     input,
-    textarea,
-    select {
+    textarea {
       box-sizing: border-box;
       width: 100%;
       padding: 0.55rem 0.7rem;
@@ -280,8 +384,7 @@ export class AddChildModal extends LitElement {
       font: inherit;
     }
     input:focus,
-    textarea:focus,
-    select:focus {
+    textarea:focus {
       outline: none;
       border-color: color-mix(in srgb, currentColor 55%, transparent);
       background: color-mix(in srgb, currentColor 8%, transparent);
@@ -291,13 +394,34 @@ export class AddChildModal extends LitElement {
       color: color-mix(in srgb, currentColor 50%, transparent);
       font-style: italic;
     }
-    /* The placeholder option (value="") renders muted/italic to mirror
-       the empty-field placeholder treatment on the surrounding inputs
-       (SPEC §6 + §17.19). When a real kind is chosen the select reads
-       upright/vivid like a filled input. */
-    select.is-empty {
-      color: color-mix(in srgb, currentColor 50%, transparent);
-      font-style: italic;
+    /* §17.26 — weight is a slider + numeric input pair so the kiosk
+       operator can either drag (touch-friendly) or type (precise). The
+       slider is the visual axis (full-width); the numeric input is a
+       narrow companion that mirrors the value in real time. The slider
+       opts out of the global input styling above so it does not pick
+       up the 100 %% width / padded background that suits text fields.
+       Heads-up: input[type=range] has higher specificity than the bare
+       input selector, so its values win for the conflicting properties
+       without needing !important or selector contortions. */
+    .weight-control {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .weight-control input[type="range"] {
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 0;
+      padding: 0;
+      background: transparent;
+      border: none;
+      accent-color: currentColor;
+      height: 1.5rem;
+    }
+    .weight-control input[type="number"] {
+      flex: 0 0 auto;
+      width: 5rem;
+      text-align: center;
     }
     .checkbox-row {
       display: flex;
@@ -363,6 +487,18 @@ export class AddChildModal extends LitElement {
     if (changed.has("open") && this.open) {
       this.resetForm();
     }
+    // §17.25 — if the available-kinds list narrows mid-edit and the
+    // current pick falls outside it, drop the pick so the form
+    // collapses to the "no kind" state. Confirm gating (canConfirm)
+    // already returns false for `chosenKind === null`.
+    if (
+      changed.has("availableKinds") &&
+      this.chosenKind !== null &&
+      !this.availableKinds.includes(this.chosenKind)
+    ) {
+      this.chosenKind = null;
+      this.errorMessage = null;
+    }
   }
 
   render() {
@@ -387,7 +523,86 @@ export class AddChildModal extends LitElement {
             >Add a child to the focused node</span
           >
         </header>
-        ${this.renderForm()}
+        ${this.renderKindList()}
+        <div class="form-pane">${this.renderFormPane()}</div>
+      </div>
+    `;
+  }
+
+  /**
+   * SPEC §17.25 — left-rail kind picker: one button per kind in
+   * `availableKinds`, each showing the kind's name and a one-line
+   * description. The selected button is `aria-pressed="true"` so e2e /
+   * AT can read the current pick without relying on CSS state. Picking
+   * a kind populates the right pane with the corresponding form.
+   */
+  private renderKindList() {
+    const visible = KIND_OPTIONS.filter((opt) =>
+      this.availableKinds.includes(opt.kind),
+    );
+    return html`
+      <div
+        class="kind-list"
+        data-testid="kind-list"
+        role="group"
+        aria-labelledby="add-child-modal-title"
+      >
+        ${visible.map(
+          (opt) => html`
+            <button
+              class="kind-btn"
+              type="button"
+              data-testid="kind-btn"
+              data-kind=${opt.kind}
+              aria-pressed=${this.chosenKind === opt.kind ? "true" : "false"}
+              @click=${() => this.pickKind(opt.kind)}
+            >
+              <span class="kind-btn-name">${opt.name}</span>
+              <span class="kind-btn-desc">${opt.description}</span>
+            </button>
+          `,
+        )}
+      </div>
+    `;
+  }
+
+  /**
+   * Right-pane content. The body switches between an empty-state hint
+   * (no kind chosen) and the type-specific form, but the actions row
+   * (Cancel + Confirm) is rendered in both cases so the operator can
+   * always back out — `<add-child-cancel>` doesn't need a kind picked
+   * to fire, and pre-§17.25 the Cancel button was always available
+   * (the form root rendered before the kind was chosen). Confirm is
+   * disabled until `canConfirm()` returns true; with no kind chosen
+   * that's never, so the gate is preserved.
+   */
+  private renderFormPane() {
+    const body =
+      this.chosenKind === null
+        ? html`<p class="form-empty" data-testid="form-empty">
+            Pick a card type on the left to start.
+          </p>`
+        : this.renderForm();
+    return html`
+      ${body}
+      <div class="actions" data-testid="modal-actions">
+        <button
+          class="btn"
+          type="button"
+          data-testid="modal-cancel"
+          @click=${this.cancel}
+        >
+          Cancel
+        </button>
+        <button
+          class="btn btn--primary"
+          type="button"
+          data-testid="modal-confirm"
+          ?disabled=${!this.canConfirm()}
+          @click=${this.confirm}
+        >
+          Confirm
+        </button>
       </div>
     `;
   }
@@ -395,7 +610,6 @@ export class AddChildModal extends LitElement {
   private renderForm() {
     const isText = this.chosenKind === "TextNode";
     const isBsc = this.chosenKind === "BusinessScoreCardNode";
-    const kindChosen = this.chosenKind !== null;
     return html`
       <form
         data-testid="modal-form"
@@ -403,40 +617,44 @@ export class AddChildModal extends LitElement {
         ?data-error=${this.errorMessage !== null}
         @submit=${this.handleSubmit}
       >
-        ${this.renderKindSelect()}
-        ${kindChosen
-          ? html`
-              <div class="field">
-                <input
-                  data-testid="field-title"
-                  type="text"
-                  placeholder=${'Title — e.g. "North-region revenue"'}
-                  .value=${this.formTitle}
-                  required
-                  maxlength="120"
-                  @input=${(e: Event) => this.bindString(e, "formTitle")}
-                />
-              </div>
-            `
-          : nothing}
+        <div class="field">
+          <input
+            data-testid="field-title"
+            type="text"
+            placeholder=${'Title — e.g. "North-region revenue"'}
+            .value=${this.formTitle}
+            required
+            maxlength="120"
+            @input=${(e: Event) => this.bindString(e, "formTitle")}
+          />
+        </div>
         ${isBsc ? this.renderDescriptionField() : nothing}
-        ${kindChosen
-          ? html`
-              <div class="field-row" data-testid="weight-row">
-                <div class="field">
-                  <input
-                    data-testid="field-weight"
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    placeholder="Weight — e.g. 1"
-                    .value=${this.weight}
-                    @input=${(e: Event) => this.bindString(e, "weight")}
-                  />
-                </div>
-              </div>
-            `
-          : nothing}
+        <div class="field-row" data-testid="weight-row">
+          <div class="field">
+            <div class="weight-control" data-testid="weight-control">
+              <input
+                data-testid="field-weight-slider"
+                type="range"
+                min="0"
+                max="10"
+                step="0.5"
+                aria-label="Weight"
+                .value=${this.weight}
+                @input=${(e: Event) => this.bindString(e, "weight")}
+              />
+              <input
+                data-testid="field-weight"
+                type="number"
+                min="0"
+                max="10"
+                step="0.5"
+                placeholder="Weight — e.g. 1"
+                .value=${this.weight}
+                @input=${(e: Event) => this.bindString(e, "weight")}
+              />
+            </div>
+          </div>
+        </div>
         ${isText ? this.renderTextCurrentValueFields() : nothing}
         ${isBsc ? this.renderBscCurrentValueFields() : nothing}
         ${isBsc ? this.renderObjectiveFields() : nothing}
@@ -446,65 +664,7 @@ export class AddChildModal extends LitElement {
               ${this.errorMessage}
             </p>`
           : nothing}
-        <div class="actions">
-          <button
-            class="btn"
-            type="button"
-            data-testid="modal-cancel"
-            @click=${this.cancel}
-          >
-            Cancel
-          </button>
-          <button
-            class="btn btn--primary"
-            type="submit"
-            data-testid="modal-confirm"
-            ?disabled=${!this.canConfirm()}
-          >
-            Confirm
-          </button>
-        </div>
       </form>
-    `;
-  }
-
-  /**
-   * SPEC §17.19 — the kind picker is a single `<select>` at the top
-   * of the form. The first `<option>` is a placeholder ("Select a
-   * card type — …") that mirrors the empty-field placeholder pattern
-   * (§6) for the rest of the form: while it's selected, no
-   * type-specific fields render and Confirm stays disabled. Each
-   * real `<option>` shows `Name — Description` so the operator sees
-   * what the kind is at a glance, same content as the pre-§17.19
-   * kind-cards carried.
-   */
-  private renderKindSelect() {
-    const empty = this.chosenKind === null;
-    return html`
-      <div class="field" data-testid="kind-row">
-        <select
-          data-testid="kind-select"
-          class=${empty ? "is-empty" : ""}
-          .value=${this.chosenKind ?? ""}
-          required
-          @change=${this.handleKindChange}
-        >
-          <option value="" disabled .selected=${empty}>
-            Card type — e.g. Text, Business Score Card
-          </option>
-          ${KIND_OPTIONS.map(
-            (opt) => html`
-              <option
-                value=${opt.kind}
-                data-kind=${opt.kind}
-                .selected=${this.chosenKind === opt.kind}
-              >
-                ${opt.name} — ${opt.description}
-              </option>
-            `,
-          )}
-        </select>
-      </div>
     `;
   }
 
@@ -674,22 +834,22 @@ export class AddChildModal extends LitElement {
     `;
   }
 
-  private handleKindChange = (e: Event): void => {
-    const target = e.target as HTMLSelectElement;
-    const value = target.value;
-    if (value === "TextNode" || value === "BusinessScoreCardNode") {
-      // SPEC §17.19 — switching kind mid-edit clears the inline error
-      // (it referred to the previous kind's payload) but otherwise
-      // leaves the in-flight values alone. The two kinds share enough
-      // fields (title, weight, current-value, current-value-date) that
-      // the operator's typing is rarely wasted; type-specific fields
-      // that aren't part of the new kind simply stop rendering.
-      this.chosenKind = value;
-      this.errorMessage = null;
-    } else {
-      this.chosenKind = null;
+  /**
+   * SPEC §17.25 — pick a kind from the left-rail list. Switching kind
+   * mid-edit clears the inline error (it referred to the previous
+   * kind's payload) but otherwise leaves the in-flight values alone.
+   * The two kinds share enough fields (title, weight, current-value,
+   * current-value-date) that the operator's typing is rarely wasted;
+   * type-specific fields that aren't part of the new kind simply stop
+   * rendering.
+   */
+  private pickKind(kind: AddChildKind): void {
+    if (!this.availableKinds.includes(kind)) {
+      return;
     }
-  };
+    this.chosenKind = kind;
+    this.errorMessage = null;
+  }
 
   private cancel = (): void => {
     this.dispatchEvent(
@@ -705,7 +865,7 @@ export class AddChildModal extends LitElement {
     this.confirm();
   };
 
-  private confirm(): void {
+  private confirm = (): void => {
     const payload = this.buildPayload();
     if (!payload) {
       return;
@@ -717,7 +877,7 @@ export class AddChildModal extends LitElement {
         detail: { parentId: this.parentId, payload },
       }),
     );
-  }
+  };
 
   private buildPayload(): AddChildPayload | null {
     const title = this.formTitle.trim();
@@ -824,9 +984,9 @@ export class AddChildModal extends LitElement {
 
   private resetForm(): void {
     // SPEC §17.19 — single-page flow: no `step` to reset, just the
-    // chosen kind + the field state. The dropdown reverts to the
-    // placeholder option (`chosenKind === null`), the form below
-    // disappears, and the next render shows just the picker.
+    // chosen kind + the field state. SPEC §17.25 — the left-rail list
+    // un-highlights (no aria-pressed=true), the right pane shows the
+    // empty-state hint, and Confirm stays disabled.
     this.chosenKind = null;
     this.formTitle = "";
     this.description = "";

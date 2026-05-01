@@ -138,3 +138,31 @@ Then("the burger menu has {int} items", async ({ page }, n: number) => {
   const kiosk = new TreeGraphPage(page);
   await expect(kiosk.burgerMenuItems()).toHaveCount(n);
 });
+
+// -- Close-to-parent X (§17.23) -----------------------------------------
+
+When("I tap the close-to-parent button", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await kiosk.closeToParentButton().click();
+});
+
+Then("the close-to-parent button is visible", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.closeToParentButton()).toBeVisible();
+});
+
+Then("the close-to-parent button is not rendered", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.closeToParentButton()).toHaveCount(0);
+});
+
+Then(
+  "the close-to-parent button targets node {string}",
+  async ({ page }, expected: string) => {
+    const kiosk = new TreeGraphPage(page);
+    await expect(kiosk.closeToParentButton()).toHaveAttribute(
+      "data-parent-id",
+      expected,
+    );
+  },
+);

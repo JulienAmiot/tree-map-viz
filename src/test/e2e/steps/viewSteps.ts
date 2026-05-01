@@ -57,6 +57,37 @@ When("I click the plus tile", async ({ page }) => {
   await kiosk.plusTileButtons().first().click();
 });
 
+When("I dismiss animations via the test bridge", async ({ page }) => {
+  // SPEC §14.4 — the bridge sets `<html class="test-no-anim">` so the drill
+  // helper short-circuits its CSS transition and commits navigation
+  // synchronously. Without this step a Playwright drill scenario would have
+  // to wait out `DRILL_SETTLE_MS` (250 ms) per drill.
+  const kiosk = new TreeGraphPage(page);
+  await kiosk.dismissAnimations();
+});
+
+When(
+  "I tap the child tile for {string}",
+  async ({ page }, nodeId: string) => {
+    // SPEC §4 — tapping a child tile drills into it. The wrapper carries
+    // `data-testid="child"` + `data-id="<uuid>"`; clicking the wrapper bubbles
+    // a `tile-drill` `CustomEvent` that the composition root translates into
+    // `nav.focusByUuid + router.push + refresh`.
+    const kiosk = new TreeGraphPage(page);
+    await kiosk.childById(nodeId).click();
+  },
+);
+
+Then(
+  "the URL hash includes {string}",
+  async ({ page }, fragment: string) => {
+    // The hash router pushes `#/b/<boardId>/n/<focusNodeUuid>`; assert the
+    // tail fragment so the boardId remains free to vary.
+    const url = new URL(page.url());
+    expect(url.hash).toContain(fragment);
+  },
+);
+
 Then(
   "the focused description is {string}",
   async ({ page }, expected: string) => {
@@ -69,6 +100,53 @@ Then("the focused value is {string}", async ({ page }, expected: string) => {
   const kiosk = new TreeGraphPage(page);
   await expect(kiosk.focusedValue()).toHaveText(expected);
 });
+
+// SPEC §17.27 — TextNode value is rendered through a small markdown
+// pipeline (escape-first, then bold/italic/code/links/headings/lists).
+// These steps verify the *DOM shape* (semantic elements) the renderer
+// emits, and the bidirectional contract between source and rendered
+// text (textContent stays markdown-stripped, so existing
+// `the focused value is "..."` style assertions keep working).
+Then(
+  "the focused value contains a {string} element",
+  async ({ page }, tagName: string) => {
+    const kiosk = new TreeGraphPage(page);
+    const value = kiosk.focusedValue();
+    await expect(value.locator(tagName)).toHaveCount(1, {
+      // Some scenarios assert two list items + one ul; callers use
+      // the dedicated *count* step for that. Here we keep the
+      // simple "exactly one" contract.
+      timeout: 2000,
+    });
+  },
+);
+
+Then(
+  "the focused value contains {int} {string} elements",
+  async ({ page }, n: number, tagName: string) => {
+    const kiosk = new TreeGraphPage(page);
+    const value = kiosk.focusedValue();
+    await expect(value.locator(tagName)).toHaveCount(n);
+  },
+);
+
+Then(
+  "the focused value's body font-size is between {int} and {int} pixels",
+  async ({ page }, lo: number, hi: number) => {
+    // SPEC §17.27 — the markdown body uses a tile-relative `cqmin`
+    // baseline tightened by a JS shrink-to-fit pass. We don't pin a
+    // specific px value (it depends on the browser's viewport at
+    // test-time) but we DO pin a sane range so the rendering can't
+    // silently regress to "0 px" (broken) or "movie-theatre" sizes.
+    const kiosk = new TreeGraphPage(page);
+    const px = await kiosk.focusedValue().evaluate((el: Element) => {
+      const cs = getComputedStyle(el);
+      return parseFloat(cs.fontSize);
+    });
+    expect(px).toBeGreaterThanOrEqual(lo);
+    expect(px).toBeLessThanOrEqual(hi);
+  },
+);
 
 Then("the focused value area is empty", async ({ page }) => {
   const kiosk = new TreeGraphPage(page);
@@ -402,30 +480,30 @@ Then(
 Then(
   "the focused value-date colour is on the warm-to-cold age gradient",
   async ({ page }) => {
-    // §17.18 — the corner timestamp's colour is set via `--age-color`
-    // (a custom property) → `color: var(--age-color, currentColor)`.
-    // We read the resolved `color` and confirm it lies in the convex
-    // hull of the warm-orange / cold-pale-blue endpoints (i.e. the
-    // gradient is actually being applied — not falling through to
-    // `currentColor`).
+    // §17.18 + §17.21 — the corner timestamp's colour is set via
+    // `--age-color` (a custom property) → `color: var(--age-color,
+    // currentColor)`. We read the resolved `color` and confirm it
+    // lies in the convex hull of the *default* fresh endpoint
+    // (`rgb(255, 145, 50)`) and its dynamically-computed desaturated
+    // counterpart (HSL same-hue, S≈6%, L≈70% → ≈ `rgb(183, 178, 174)`),
+    // i.e. the gradient is actually being applied — not falling
+    // through to `currentColor`.
     const kiosk = new TreeGraphPage(page);
     const ts = kiosk.parentStrip().getByTestId("value-date");
     await expect(ts).toHaveCount(1);
     const color = await ts.evaluate((el) => getComputedStyle(el).color);
-    // Expect rgb(...) — the timestamp picks one of the gradient stops
-    // (or any lerp between them), all of which serialise as `rgb(r, g, b)`.
     expect(color).toMatch(/^rgb\(\d+,\s*\d+,\s*\d+\)$/);
     const m = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(color);
     expect(m).not.toBeNull();
     const [r, g, b] = [Number(m![1]), Number(m![2]), Number(m![3])];
-    // Endpoints (see `dateAgeColor.ts`): rgb(255, 145, 50) — warm
-    // orange, rgb(140, 180, 220) — cold pale blue. Any convex
-    // combination lands in: 140 ≤ r ≤ 255, 145 ≤ g ≤ 180, 50 ≤ b ≤ 220.
-    expect(r).toBeGreaterThanOrEqual(140);
+    // Convex combination of (255, 145, 50) and ≈(183, 178, 174):
+    //   r ∈ [183, 255], g ∈ [145, 178], b ∈ [50, 174].
+    // Bounds widened by ±2 to absorb HSL→RGB rounding.
+    expect(r).toBeGreaterThanOrEqual(181);
     expect(r).toBeLessThanOrEqual(255);
-    expect(g).toBeGreaterThanOrEqual(145);
+    expect(g).toBeGreaterThanOrEqual(143);
     expect(g).toBeLessThanOrEqual(180);
-    expect(b).toBeGreaterThanOrEqual(50);
-    expect(b).toBeLessThanOrEqual(220);
+    expect(b).toBeGreaterThanOrEqual(48);
+    expect(b).toBeLessThanOrEqual(176);
   },
 );

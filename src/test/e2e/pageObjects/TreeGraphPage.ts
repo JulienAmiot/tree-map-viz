@@ -84,6 +84,17 @@ export class TreeGraphPage {
     return this.page.getByTestId("parent-strip");
   }
 
+  /**
+   * §17.23 close-to-parent affordance — the small "X" button overlaid on
+   * the top-right of the focused panel. Only present in the DOM when the
+   * focus has a parent (root focus omits it entirely). The button carries
+   * `data-parent-id` matching the ancestor it navigates to, so e2e can
+   * assert the target without touching the URL.
+   */
+  closeToParentButton(): Locator {
+    return this.page.getByTestId("close-to-parent");
+  }
+
   /** All children tiles in the focused-view grid (excludes the `+` slot). */
   childTiles(): Locator {
     return this.page.getByTestId("child");
@@ -213,12 +224,25 @@ export class TreeGraphPage {
   }
 
   /**
-   * SPEC §17.19 — single-page flow with a `<select>` dropdown for the
-   * kind. The pre-§17.19 step indicator + kind-card helpers are gone;
-   * the dropdown is the single picker now.
+   * SPEC §17.25 — left-rail kind list. Replaces the §17.19 `<select>`
+   * dropdown: kinds are now visible buttons in a 20 %-wide column on
+   * the left side of the modal panel. `addChildModalKindList()` returns
+   * the container; `addChildModalKindButton(kind)` returns a specific
+   * picker button.
    */
-  addChildModalKindSelect(): Locator {
-    return this.page.getByTestId("kind-select");
+  addChildModalKindList(): Locator {
+    return this.page.getByTestId("kind-list");
+  }
+
+  addChildModalKindButton(kind: string): Locator {
+    return this.page.locator(
+      `[data-testid="kind-btn"][data-kind="${kind}"]`,
+    );
+  }
+
+  /** All kind buttons (one per available kind). */
+  addChildModalKindButtons(): Locator {
+    return this.page.getByTestId("kind-btn");
   }
 
   /** The form (always rendered while open; type-specific fields appear
@@ -276,6 +300,21 @@ export class TreeGraphPage {
       const boardId = w.__appTestApi__.currentBoardId();
       await w.__appTestApi__.navigateTo(`#/b/${boardId}/n/${uuid}`);
     }, nodeUuid);
+  }
+
+  /**
+   * Force the kiosk to treat the user as preferring reduced motion (SPEC §14.4).
+   * Phase 9 — the drill animation's reduced-motion path commits the navigation
+   * synchronously, so e2e scenarios don't need to wait for `DRILL_SETTLE_MS`.
+   */
+  async dismissAnimations(): Promise<void> {
+    await this.page.evaluate(() => {
+      const w = window as BridgedWindow;
+      if (!w.__appTestApi__) {
+        throw new Error("test bridge not installed; was the page opened with ?test=1?");
+      }
+      w.__appTestApi__.dismissAnimations();
+    });
   }
 
   /**

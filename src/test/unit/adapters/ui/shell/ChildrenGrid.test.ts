@@ -1,7 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import "../../../../../adapters/ui/shell/ChildrenGrid.js";
-import { ChildrenGrid } from "../../../../../adapters/ui/shell/ChildrenGrid.js";
+import {
+  ChildrenGrid,
+  TILE_DRILL_EVENT,
+  type TileDrillDetail,
+} from "../../../../../adapters/ui/shell/ChildrenGrid.js";
 import type { ChildSlotViewModel } from "../../../../../adapters/ui/views/NodeViewModel.js";
 import { FakeResizeObserver } from "../../../../fixtures/fakeResizeObserver.js";
 import {
@@ -29,8 +33,20 @@ afterEach(() => {
 });
 
 function lastObserver(): FakeResizeObserver {
-  const o = FakeResizeObserver.instances.at(-1);
-  if (!o) throw new Error("no FakeResizeObserver instance was created");
+  // SPEC §17.27 — TextNode tiles also install a `ResizeObserver` (one
+  // per tile, for the markdown-body shrink-to-fit). The bare
+  // `instances.at(-1)` picks up the most recently constructed
+  // observer, which post-§17.27 is a per-tile observer rather than
+  // the children-grid's own. Filter to the observer that's watching
+  // a `<children-grid>` host so this helper keeps returning the
+  // grid's resize observer.
+  const candidates = FakeResizeObserver.instances.filter((obs) =>
+    Array.from(obs.observed).some(
+      (el) => el.tagName.toLowerCase() === "children-grid",
+    ),
+  );
+  const o = candidates.at(-1);
+  if (!o) throw new Error("no <children-grid> ResizeObserver was registered");
   return o;
 }
 
@@ -42,7 +58,11 @@ function nodeSlot(id: string, title: string, weight = 1): ChildSlotViewModel {
       kind: "TextNode",
       id,
       title,
-      value: { text: title, dateIso: "2026-04-23T00:00:00.000Z" },
+      value: {
+        text: title,
+        dateIso: "2026-04-23T00:00:00.000Z",
+        dateColor: "rgb(255, 145, 50)",
+      },
     },
   };
 }
@@ -225,6 +245,45 @@ describe("<children-grid>", () => {
     // The plus slot is intentionally NOT covered by the tinted/bordered
     // rule — its dashed border lives on the inner button (plus-tile.ts).
     expect(cssText).not.toMatch(/\.tile\[data-slot="plus"\]/);
+  });
+
+  it("clicking a node tile dispatches a bubbling+composed `tile-drill` carrying the nodeId (\u00a717.20)", async () => {
+    const el = await mountGrid([nodeSlot("uuid-a", "A"), nodeSlot("uuid-b", "B")]);
+    lastObserver().fire([{ target: el, rect: { width: 600, height: 300 } }]);
+    await el.updateComplete;
+
+    const tiles = childTilesOf(el);
+    expect(tiles).toHaveLength(2);
+
+    const seen: TileDrillDetail[] = [];
+    el.addEventListener(TILE_DRILL_EVENT, (e) => {
+      seen.push((e as CustomEvent<TileDrillDetail>).detail);
+    });
+    tiles[1]!.click();
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.nodeId).toBe("uuid-b");
+  });
+
+  it("clicking the plus tile does NOT dispatch `tile-drill` (the `+` is not a navigation target, \u00a74)", async () => {
+    const el = await mountGrid([nodeSlot("a", "A"), plusSlot("focused-parent")]);
+    lastObserver().fire([{ target: el, rect: { width: 600, height: 300 } }]);
+    await el.updateComplete;
+
+    const handler = vi.fn();
+    el.addEventListener(TILE_DRILL_EVENT, handler);
+
+    const plusWrapper = plusTilesOf(el)[0]!;
+    plusWrapper.click(); // the wrapper itself has no @click; sanity that the wrapper is not a drill source.
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("the cursor hint on node tiles signals tap-to-drill (\u00a717.20)", () => {
+    const cssText = String(
+      (ChildrenGrid.styles as unknown as { cssText?: string }).cssText ??
+        ChildrenGrid.styles,
+    );
+    expect(cssText).toMatch(/\.tile\[data-slot="node"\][\s\S]*cursor:\s*pointer/);
   });
 
   it("renders one tile per slot with the correct data-slot for downstream styling (\u00a717.17)", async () => {

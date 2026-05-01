@@ -128,6 +128,49 @@ describe("LocalStorageBoardCollectionRepository — adapter-specific", () => {
       expect(snapshot.boards[0]!.name).toBe("Custom");
     });
 
+    it("default seed lands on the showcase board (\u00a717.21)", async () => {
+      const repo = new LocalStorageBoardCollectionRepository({ storage });
+      const snapshot = await repo.load();
+      expect(snapshot.boards).toHaveLength(1);
+      const board = snapshot.boards[0]!;
+      expect(board.id).toBe("showcase-board");
+      expect(board.name).toBe("Showcase");
+      // Board-level fresh date colour is set on the showcase seed and
+      // round-trips through the codec.
+      expect(board.freshDateColor).toBe("#743089");
+      // Sanity: the root has more than one direct child (the rich
+      // showcase exercises every visible UI branch).
+      expect(board.tree.children.length).toBeGreaterThanOrEqual(3);
+    });
+
+    it("round-trips Board.freshDateColor through save() + load() (\u00a717.21)", async () => {
+      const repo = new LocalStorageBoardCollectionRepository({ storage });
+      const snapshot: BoardCollectionSnapshot = {
+        boards: [
+          {
+            id: "themed",
+            name: "Themed",
+            tree: tn("t-root"),
+            freshDateColor: "rgb(30, 167, 106)",
+          },
+          {
+            id: "untheme",
+            name: "Default colour",
+            tree: tn("u-root"),
+          },
+        ],
+        currentBoardId: "themed",
+      };
+      await repo.save(snapshot);
+
+      const reloaded = await repo.load();
+      expect(reloaded.boards).toHaveLength(2);
+      expect(reloaded.boards[0]!.freshDateColor).toBe("rgb(30, 167, 106)");
+      // A board without `freshDateColor` decodes without the key
+      // present (UI falls back to the default warm orange).
+      expect(reloaded.boards[1]!.freshDateColor).toBeUndefined();
+    });
+
     it("does NOT re-seed on subsequent loads after the first save", async () => {
       const repo = new LocalStorageBoardCollectionRepository({ storage });
       await repo.load();

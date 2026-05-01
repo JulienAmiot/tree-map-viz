@@ -80,7 +80,14 @@ export class BoardCollectionService {
       return { ok: false, reason: "Board not found." };
     }
     const existing = this.boards[idx]!;
-    this.boards[idx] = { id: existing.id, name: trimmed, tree: existing.tree };
+    this.boards[idx] = {
+      id: existing.id,
+      name: trimmed,
+      tree: existing.tree,
+      ...(existing.freshDateColor !== undefined
+        ? { freshDateColor: existing.freshDateColor }
+        : {}),
+    };
     await this.persist();
     return { ok: true };
   }
@@ -88,13 +95,19 @@ export class BoardCollectionService {
   async createBoard(
     name: string,
     tree: TreeNode<unknown>,
+    freshDateColor?: string,
   ): Promise<{ ok: true; board: Board } | { ok: false; reason: string }> {
     const trimmed = name.trim();
     if (trimmed.length === 0) {
       return { ok: false, reason: "Board name cannot be empty." };
     }
     const id = this.idGen();
-    const board: Board = { id, name: trimmed, tree };
+    const board: Board = {
+      id,
+      name: trimmed,
+      tree,
+      ...(freshDateColor !== undefined ? { freshDateColor } : {}),
+    };
     this.boards.push(board);
     this.currentBoardId = id;
     await this.persist();

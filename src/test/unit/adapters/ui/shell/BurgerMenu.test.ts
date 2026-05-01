@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import "../../../../../adapters/ui/shell/BurgerMenu.js";
 import {
   BURGER_MENU_ACTION_EVENT,
-  type BurgerMenu,
+  BurgerMenu,
   type BurgerMenuActionDetail,
 } from "../../../../../adapters/ui/shell/BurgerMenu.js";
 import {
@@ -137,6 +137,94 @@ describe("<burger-menu>", () => {
       | CustomEvent<BurgerMenuActionDetail>
       | undefined;
     expect(evt?.detail.action).toBe("import");
+  });
+
+  it("popup uses position: fixed and is anchored to the trigger on open (\u00a717.21)", async () => {
+    // SPEC §17.21 — the popup must escape the drawer panel's overflow:
+    // hidden, which we achieve by switching from absolute → fixed
+    // positioning and computing top/right from the trigger's bbox on
+    // open. jsdom doesn't run a layout engine, so getBoundingClientRect
+    // returns zeroes by default; we stub it to a realistic position to
+    // pin the contract.
+    const el = await mountLitElement<BurgerMenu>("burger-menu");
+    const trigger = triggerOf(el);
+    trigger.getBoundingClientRect = (): DOMRect =>
+      ({
+        top: 16,
+        right: 1264,
+        bottom: 56,
+        left: 1226,
+        width: 38,
+        height: 40,
+        x: 1226,
+        y: 16,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    Object.defineProperty(window, "innerWidth", {
+      value: 1280,
+      configurable: true,
+    });
+
+    trigger.click();
+    await el.updateComplete;
+
+    const menu = menuOf(el);
+    // jsdom doesn't compute styles from <style> rules inside a shadow
+    // root (same constraint §17.17 documented). Pin the position rule
+    // at the source: read BurgerMenu.styles.cssText.
+    const cssText = String(
+      (BurgerMenu.styles as unknown as { cssText?: string }).cssText ??
+        BurgerMenu.styles,
+    );
+    expect(cssText).toMatch(/\.menu\b[\s\S]*position:\s*fixed/);
+    // top is the trigger's bottom + the 4 px gap; right is viewport - trigger.right.
+    expect(menu.style.top).toBe("60px");
+    expect(menu.style.right).toBe("16px");
+  });
+
+  it("re-anchors the popup on viewport resize while open (kiosk rotation)", async () => {
+    const el = await mountLitElement<BurgerMenu>("burger-menu");
+    const trigger = triggerOf(el);
+    let rect: DOMRect = {
+      top: 16,
+      right: 1264,
+      bottom: 56,
+      left: 1226,
+      width: 38,
+      height: 40,
+      x: 1226,
+      y: 16,
+      toJSON: () => ({}),
+    } as DOMRect;
+    trigger.getBoundingClientRect = (): DOMRect => rect;
+    Object.defineProperty(window, "innerWidth", {
+      value: 1280,
+      configurable: true,
+    });
+    trigger.click();
+    await el.updateComplete;
+    expect(menuOf(el).style.right).toBe("16px");
+
+    // Simulate the kiosk rotating to portrait — the trigger now sits at
+    // a different screen X.
+    rect = {
+      top: 16,
+      right: 700,
+      bottom: 56,
+      left: 662,
+      width: 38,
+      height: 40,
+      x: 662,
+      y: 16,
+      toJSON: () => ({}),
+    } as DOMRect;
+    Object.defineProperty(window, "innerWidth", {
+      value: 720,
+      configurable: true,
+    });
+    window.dispatchEvent(new Event("resize"));
+    await el.updateComplete;
+    expect(menuOf(el).style.right).toBe("20px");
   });
 
   it("Escape closes the menu when open and is a no-op when closed", async () => {

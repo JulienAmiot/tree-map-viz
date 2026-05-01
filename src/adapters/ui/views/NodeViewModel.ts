@@ -50,6 +50,14 @@ export type TextNodeViewModel = {
   readonly value: {
     readonly text: string;
     readonly dateIso: string;
+    /**
+     * SPEC §17.21 — pre-computed `rgb(r, g, b)` (or `currentColor`)
+     * string for the bottom-right timestamp's age-gradient. Baked
+     * here by the mapper using the focused board's `freshDateColor`
+     * so the view layer stays a pure consumer (no JS colour math).
+     * Empty when `dateIso` is empty.
+     */
+    readonly dateColor: string;
   };
 };
 
@@ -101,6 +109,13 @@ export type BusinessScoreCardNodeViewModel = {
    * children, or a recorded BSC with an empty history).
    */
   readonly dateIso: string;
+  /**
+   * SPEC §17.21 — pre-computed `rgb(r, g, b)` (or `currentColor`)
+   * string for the bottom-right timestamp's age-gradient. Same
+   * contract as `TextNodeViewModel.value.dateColor`. Empty when
+   * `dateIso` is empty.
+   */
+  readonly dateColor: string;
 };
 
 export type NodeViewModel = TextNodeViewModel | BusinessScoreCardNodeViewModel;

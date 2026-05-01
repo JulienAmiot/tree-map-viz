@@ -1,0 +1,14 @@
+{
+	"nodeType": "TextNode",
+	"id": "MD-ROOT",
+	"title": "Markdown demo",
+	"description": "",
+	"weight": 1,
+	"historizedValues": [
+		{
+			"value": "## Status\n\nOn track **for Q2** with *minor* slippage.\n\n- Ship `v2`\n- Migrate cache",
+			"date": "2026-04-23T18:25:43.511Z"
+		}
+	],
+	"childrenNodes": []
+}

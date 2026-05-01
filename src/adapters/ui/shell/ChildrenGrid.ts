@@ -45,6 +45,14 @@ import type { ChildSlotViewModel } from "../views/NodeViewModel.js";
 
 const TILE_PADDING_PX = 4;
 
+/** Bubbling+composed event fired when a node tile is activated (SPEC §4 — drill). */
+export const TILE_DRILL_EVENT = "tile-drill";
+
+export type TileDrillDetail = {
+  /** Uuid of the node the user wants to drill into. */
+  readonly nodeId: string;
+};
+
 @customElement("children-grid")
 export class ChildrenGrid extends LitElement {
   @property({ attribute: false })
@@ -87,6 +95,11 @@ export class ChildrenGrid extends LitElement {
       border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
       border-radius: 8px;
       overflow: hidden;
+      /* §17.20 — node tiles are navigation targets (tap → drill).
+         The cursor hint is the only on-grid affordance for that;
+         the actual drill animation lives on the shell's layout
+         wrapper (encap--drill in TreeGraphScreen). */
+      cursor: pointer;
     }
   `;
 
@@ -120,22 +133,47 @@ export class ChildrenGrid extends LitElement {
         </div>`;
       }
 
+      const nodeId = slot.vm.id;
       return html`<div
         class="tile"
         data-testid="child"
         data-slot="node"
-        data-id=${slot.vm.id}
+        data-id=${nodeId}
         data-view-kind=${slot.vm.kind}
         style=${style}
+        @click=${(): void => this.dispatchTileDrill(nodeId)}
       >
         <node-view view-role="asChild" .vm=${slot.vm}></node-view>
       </div>`;
     })}`;
+  }
+
+  /**
+   * SPEC §4 — "Activating a real child tile → drill into it." The grid
+   * dispatches a bubbling+composed event; the composition root (via the
+   * shell) owns the navigation commit + the optional CSS drill animation.
+   * The plus tile is intentionally NOT a `tile-drill` source: its wrapper
+   * carries `data-slot="plus"` (no `@click=` listener attached here), and
+   * `<plus-tile>` itself stops propagation on the inner-button click so
+   * the event never reaches a sibling node tile either.
+   */
+  private dispatchTileDrill(nodeId: string): void {
+    const detail: TileDrillDetail = { nodeId };
+    this.dispatchEvent(
+      new CustomEvent(TILE_DRILL_EVENT, {
+        bubbles: true,
+        composed: true,
+        detail,
+      }),
+    );
   }
 }
 
 declare global {
   interface HTMLElementTagNameMap {
     "children-grid": ChildrenGrid;
+  }
+  interface HTMLElementEventMap {
+    "tile-drill": CustomEvent<TileDrillDetail>;
   }
 }

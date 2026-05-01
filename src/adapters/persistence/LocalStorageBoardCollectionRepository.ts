@@ -30,14 +30,8 @@ import type {
   BoardCollectionRepository,
   BoardCollectionSnapshot,
 } from "../../application/ports/BoardCollectionRepository.js";
-import { TextCard } from "../../domain/nodes/TextCard.js";
-import { TextNode } from "../../domain/nodes/TextNode.js";
 import type { TreeNode } from "../../domain/nodes/TreeNode.js";
-import { Description } from "../../domain/values/Description.js";
-import { NodeIdentity } from "../../domain/values/NodeIdentity.js";
-import { TimestampedValue } from "../../domain/values/TimestampedValue.js";
-import { Title } from "../../domain/values/Title.js";
-import { Weight } from "../../domain/values/Weight.js";
+import { buildShowcaseBoard } from "../showcaseSeed.js";
 
 import { decode, encode } from "./jsonCodec.js";
 
@@ -57,7 +51,13 @@ export class StorageFullError extends Error {
   }
 }
 
-type WireBoard = { id: string; name: string; tree: unknown };
+type WireBoard = {
+  id: string;
+  name: string;
+  tree: unknown;
+  /** SPEC §17.21 — board-level fresh-end colour for the date-age gradient. */
+  freshDateColor?: string;
+};
 type WireEnvelope = { v: number; currentBoardId: string; boards: WireBoard[] };
 
 export type LocalStorageBoardCollectionRepositoryOptions = {
@@ -105,11 +105,17 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
     const envelope: WireEnvelope = {
       v: ENVELOPE_VERSION,
       currentBoardId: snapshot.currentBoardId,
-      boards: snapshot.boards.map((b) => ({
-        id: b.id,
-        name: b.name,
-        tree: JSON.parse(encode(b.tree)) as unknown,
-      })),
+      boards: snapshot.boards.map((b) => {
+        const wire: WireBoard = {
+          id: b.id,
+          name: b.name,
+          tree: JSON.parse(encode(b.tree)) as unknown,
+        };
+        if (b.freshDateColor !== undefined) {
+          wire.freshDateColor = b.freshDateColor;
+        }
+        return wire;
+      }),
     };
     return JSON.stringify(envelope);
   }
@@ -122,11 +128,17 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
     if (typeof parsed.currentBoardId !== "string" || !Array.isArray(parsed.boards)) {
       throw new Error("LocalStorageBoardCollectionRepository: stored payload is missing required fields");
     }
-    const boards: Board[] = parsed.boards.map((b) => ({
-      id: b.id,
-      name: b.name,
-      tree: decode(JSON.stringify(b.tree)) as TreeNode<unknown>,
-    }));
+    const boards: Board[] = parsed.boards.map((b) => {
+      const board: Board = {
+        id: b.id,
+        name: b.name,
+        tree: decode(JSON.stringify(b.tree)) as TreeNode<unknown>,
+        ...(typeof b.freshDateColor === "string"
+          ? { freshDateColor: b.freshDateColor }
+          : {}),
+      };
+      return board;
+    });
     return { boards, currentBoardId: parsed.currentBoardId };
   }
 
@@ -152,19 +164,15 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
 }
 
 function defaultSeed(): BoardCollectionSnapshot {
-  // SPEC §17.14 — every TextNode now boots with a non-empty history; the
-  // default seed records the operator's "blank kiosk" value as today's
-  // observation so the view layer renders cleanly out of the box.
-  const seedDate = new Date();
-  const card = TextCard.of([TimestampedValue.of("", seedDate)]);
-  const root = new TextNode(
-    "default-root",
-    NodeIdentity.of(Title.of("Root"), Description.of("")),
-    Weight.of(1),
-    card,
-  );
+  // SPEC §17.21 — first-boot kiosk lands on the showcase board, which
+  // exercises every visible UI branch (TextNode + BSC, all three
+  // computed-value branches, eligible/non-eligible mix, dates spanning
+  // the colour-age gradient). Pre-§17.21 callers that relied on the
+  // empty single-TextNode "Default Board" should inject a custom
+  // `seed` factory through the constructor options.
+  const board = buildShowcaseBoard();
   return {
-    boards: [{ id: "default-board", name: "Default Board", tree: root }],
-    currentBoardId: "default-board",
+    boards: [board],
+    currentBoardId: board.id,
   };
 }

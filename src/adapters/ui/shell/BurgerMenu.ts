@@ -29,9 +29,12 @@
  */
 
 import { LitElement, css, html } from "lit";
-import { customElement, state } from "lit/decorators.js";
+import { customElement, query, state } from "lit/decorators.js";
 
 export const BURGER_MENU_ACTION_EVENT = "burger-menu-action";
+
+/** Vertical gap between the trigger and the popup (px). */
+const POPUP_GAP_PX = 4;
 
 export type BurgerMenuAction = "import" | "export" | "boards";
 
@@ -50,6 +53,12 @@ const ITEMS: readonly { readonly action: BurgerMenuAction; readonly label: strin
 export class BurgerMenu extends LitElement {
   @state()
   private menuOpen = false;
+
+  @query(".trigger")
+  private readonly triggerEl!: HTMLElement;
+
+  @query(".menu")
+  private readonly menuEl!: HTMLElement;
 
   static styles = css`
     :host {
@@ -86,10 +95,19 @@ export class BurgerMenu extends LitElement {
       border-radius: 2px;
     }
     .menu {
-      position: absolute;
-      top: 100%;
+      /* SPEC §17.21 — popup uses position: fixed so it escapes the
+         drawer panel's overflow: hidden (which is required for the
+         max-height collapse animation). The top / right are set
+         imperatively from the trigger's getBoundingClientRect() on open
+         and on viewport resize. position: fixed only escapes overflow
+         clipping; it does NOT escape transform / will-change: transform
+         containing blocks, but the drawer does not use those.
+         (Backticks omitted in this CSS comment per §17.14 — they would
+          terminate the surrounding css tagged-template literal.) */
+      position: fixed;
+      top: 0;
       right: 0;
-      margin: 0.25rem 0 0;
+      margin: 0;
       padding: 0.25rem 0;
       list-style: none;
       background: color-mix(in srgb, currentColor 10%, var(--bg, #0c0f14));
@@ -134,12 +152,20 @@ export class BurgerMenu extends LitElement {
     super.connectedCallback();
     document.addEventListener("click", this.handleDocClick, true);
     document.addEventListener("keydown", this.handleKeydown);
+    window.addEventListener("resize", this.handleResize);
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     document.removeEventListener("click", this.handleDocClick, true);
     document.removeEventListener("keydown", this.handleKeydown);
+    window.removeEventListener("resize", this.handleResize);
+  }
+
+  protected override updated(changed: Map<string, unknown>): void {
+    if (changed.has("menuOpen") && this.menuOpen) {
+      this.positionMenu();
+    }
   }
 
   render() {
@@ -185,6 +211,31 @@ export class BurgerMenu extends LitElement {
 
   private toggle = (): void => {
     this.menuOpen = !this.menuOpen;
+  };
+
+  /**
+   * Anchor the popup right-aligned to the trigger, just below it. The
+   * popup uses `position: fixed`, so coordinates are viewport-relative.
+   * Idempotent — safe to call any number of times while open (we
+   * re-call on viewport resize so a kiosk rotation re-anchors cleanly).
+   */
+  private positionMenu(): void {
+    const trigger = this.triggerEl;
+    const menu = this.menuEl;
+    if (!trigger || !menu) {
+      return;
+    }
+    const r = trigger.getBoundingClientRect();
+    const viewportWidth =
+      window.innerWidth || document.documentElement.clientWidth;
+    menu.style.top = `${r.bottom + POPUP_GAP_PX}px`;
+    menu.style.right = `${Math.max(viewportWidth - r.right, 0)}px`;
+  }
+
+  private readonly handleResize = (): void => {
+    if (this.menuOpen) {
+      this.positionMenu();
+    }
   };
 
   private handleAction(action: BurgerMenuAction): void {

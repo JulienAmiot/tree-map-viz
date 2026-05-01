@@ -17,7 +17,8 @@ function vmWith(opts: Partial<TextNodeViewModel> = {}): TextNodeViewModel {
     kind: "TextNode",
     id: "p1",
     title: "Quarterly review",
-    value: { text: "On track for Q2", dateIso },
+    // SPEC §17.21 — see sibling AsChild test for rationale.
+    value: { text: "On track for Q2", dateIso, dateColor: "rgb(255, 145, 50)" },
     ...opts,
   } as TextNodeViewModel;
 }
@@ -69,7 +70,7 @@ describe("<text-node-as-parent>", () => {
 
   it("renders an empty value (no text) and omits the timestamp when the history is empty", async () => {
     const el = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => {
-      e.vm = vmWith({ value: { text: "", dateIso: "" } });
+      e.vm = vmWith({ value: { text: "", dateIso: "", dateColor: "" } });
     });
 
     const value = el.shadowRoot?.querySelector('[data-testid="value"]');
@@ -86,5 +87,53 @@ describe("<text-node-as-parent>", () => {
     const title = el.shadowRoot?.querySelector('[data-testid="title"]');
     expect(title?.getAttribute("data-view-kind")).toBe("TextNode");
     expect(title?.getAttribute("data-id")).toBe("p4");
+  });
+
+  // SPEC §17.27 — markdown rendering on the parent strip mirrors the
+  // child tile's contract. We test heading + list because the parent
+  // strip's bigger value-area is where the operator is most likely to
+  // author a multi-section note.
+  it("parses ## heading + ordered list into <h4>/<ol>/<li> elements", async () => {
+    const el = await mountLitElement<TextNodeAsParent>(
+      "text-node-as-parent",
+      (e) => {
+        e.vm = vmWith({
+          value: {
+            text: "## Status\n\n1. Ship v2\n2. Migrate cache",
+            dateIso,
+            dateColor: "rgb(255, 145, 50)",
+          },
+        });
+      },
+    );
+    const value = el.shadowRoot?.querySelector('[data-testid="value"]');
+    expect(value?.querySelector("h4")?.textContent).toBe("Status");
+    expect(value?.querySelectorAll("ol > li")).toHaveLength(2);
+  });
+
+  it("renders [label](url) as a sandboxed external link", async () => {
+    const el = await mountLitElement<TextNodeAsParent>(
+      "text-node-as-parent",
+      (e) => {
+        e.vm = vmWith({
+          value: {
+            text: "see [docs](https://example.com)",
+            dateIso,
+            dateColor: "rgb(255, 145, 50)",
+          },
+        });
+      },
+    );
+    const a = el.shadowRoot?.querySelector<HTMLAnchorElement>(
+      '[data-testid="value"] a',
+    );
+    expect(a).not.toBeNull();
+    expect(a?.getAttribute("href")).toBe("https://example.com");
+    // §17.27 — every external link is forced to open in a new tab
+    // and is hardened against tab-nabbing via rel=noopener noreferrer.
+    expect(a?.getAttribute("target")).toBe("_blank");
+    const rel = a?.getAttribute("rel") ?? "";
+    expect(rel).toContain("noopener");
+    expect(rel).toContain("noreferrer");
   });
 });

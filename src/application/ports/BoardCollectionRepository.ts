@@ -6,11 +6,19 @@ import type { TreeNode } from "../../domain/nodes/TreeNode.js";
  * Application-layer value type — `tree` is a live aggregate root, so callers
  * mutate it through domain methods (`attach`, `detach`, ...) and re-persist
  * the whole snapshot via the repository.
+ *
+ * SPEC §17.21 — `freshDateColor` is a board-level theming hint used by the
+ * adapter's date-age gradient (see `adapters/ui/views/dateAgeColor.ts`).
+ * Optional for back-compat with pre-§17.21 wire payloads; when absent the
+ * UI falls back to the §17.18 default (warm orange `rgb(255, 145, 50)`).
+ * The string is passed through verbatim to the colour helper, which
+ * accepts `#rgb`, `#rrggbb`, and `rgb(r, g, b)` formats.
  */
 export type Board = {
   readonly id: string;
   readonly name: string;
   readonly tree: TreeNode<unknown>;
+  readonly freshDateColor?: string;
 };
 
 /**

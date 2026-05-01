@@ -49,6 +49,17 @@
  *     child + the now-correctly-budgeted plus-tile slot, per
  *     `shouldRenderPlusTile`). On failure the screen renders an inline
  *     error and the modal stays open for retry.
+ *
+ * Phase 9 wiring (drill animation):
+ *   + `tile-drill` `{ nodeId }` from `<children-grid>` triggers
+ *     `screen.runDrillAnimation(commit)` where `commit` runs the same
+ *     `nav.focusByUuid + router.push + refresh` triple that the breadcrumb
+ *     handler uses. The shell is the only place that knows the
+ *     `encap--drill` class lives on `.layout`; this listener stays a
+ *     thin glue between the event source and the navigation commit.
+ *     Reduced-motion (or testBridge `dismissAnimations`) makes the helper
+ *     short-circuit the animation and commit synchronously, so the e2e
+ *     suite doesn't need to wait for the settle window.
  */
 
 import { LocalStorageBoardCollectionRepository } from "./adapters/persistence/LocalStorageBoardCollectionRepository.js";
@@ -60,6 +71,8 @@ import type {
   BreadcrumbSegment,
 } from "./adapters/ui/shell/Breadcrumb.js";
 import type { BurgerMenuActionDetail } from "./adapters/ui/shell/BurgerMenu.js";
+import type { TileDrillDetail } from "./adapters/ui/shell/ChildrenGrid.js";
+import type { FocusCloseToParentDetail } from "./adapters/ui/shell/ParentIdentityStrip.js";
 import "./adapters/ui/shell/TreeGraphScreen.js";
 import type { TreeGraphScreen } from "./adapters/ui/shell/TreeGraphScreen.js";
 import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
@@ -94,8 +107,17 @@ async function main(): Promise<void> {
 
   const refresh = (): void => {
     const view = nav.getFocusedView();
-    screen.view = view ? mapFocusedToViewModel(view.center, view.childrenNodes) : null;
     const current = boards.getCurrentBoard();
+    // SPEC §17.21 — every refresh threads the board's `freshDateColor`
+    // through the mapper so each tile's pre-baked `dateColor` reflects
+    // the current board's theme. Boards without a colour fall back to
+    // the §17.18 default warm orange inside `dateAgeColor`.
+    const mapperOptions = current.freshDateColor
+      ? { freshDateColor: current.freshDateColor }
+      : {};
+    screen.view = view
+      ? mapFocusedToViewModel(view.center, view.childrenNodes, mapperOptions)
+      : null;
     screen.boardName = current.name;
     screen.breadcrumbPath = computeBreadcrumb(current.tree, nav.getFocusedId());
   };
@@ -129,6 +151,39 @@ async function main(): Promise<void> {
       focusNodeUuid: detail.nodeId,
     });
     refresh();
+  });
+
+  // SPEC §17.23 — the close-X on the focused-panel strip emits this event
+  // with the parent's id. Same commit triple as breadcrumb-navigate; we
+  // intentionally do NOT animate (the §17.20 drill-out cue `encap--leave`
+  // is deferred). If `focusByUuid` rejects (stale id), we silently
+  // ignore — the strip won't render the X next refresh anyway.
+  screen.addEventListener("focus-close-to-parent", (e) => {
+    const detail = (e as CustomEvent<FocusCloseToParentDetail>).detail;
+    const r = nav.focusByUuid(detail.parentId);
+    if (!r.ok) {
+      return;
+    }
+    router.push({
+      boardId: boards.getCurrentBoardId(),
+      focusNodeUuid: detail.parentId,
+    });
+    refresh();
+  });
+
+  screen.addEventListener("tile-drill", (e) => {
+    const detail = (e as CustomEvent<TileDrillDetail>).detail;
+    screen.runDrillAnimation(() => {
+      const r = nav.focusByUuid(detail.nodeId);
+      if (!r.ok) {
+        return;
+      }
+      router.push({
+        boardId: boards.getCurrentBoardId(),
+        focusNodeUuid: detail.nodeId,
+      });
+      refresh();
+    });
   });
 
   screen.addEventListener("burger-menu-action", (e) => {

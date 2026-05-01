@@ -1,0 +1,272 @@
+{
+	"nodeType": "TextNode",
+	"id": "showcase-root",
+	"title": "Quarterly OKRs",
+	"description": "Top-level board for the quarter",
+	"weight": 1,
+	"historizedValues": [
+		{
+			"value": "Q1 closed strong: revenue *up* 18 %, NPS at `42`.",
+			"date": "2026-03-17T12:00:00.000Z"
+		},
+		{
+			"value": "## Q2 status\n\nOn track — watch the **Sales** pipeline.\n\n- Engineering shipping on plan\n- Product NPS recovering\n- Sales win-rate above target",
+			"date": "2026-05-01T12:00:00.000Z"
+		}
+	],
+	"childrenNodes": [
+		{
+			"nodeType": "BusinessScoreCard",
+			"id": "engineering",
+			"title": "Engineering",
+			"description": "Delivery + quality KPIs",
+			"targetValue": 100,
+			"minimalValue": 80,
+			"unit": "%",
+			"historizedValues": [
+				{
+					"value": 82,
+					"date": "2026-03-02T12:00:00.000Z"
+				},
+				{
+					"value": 88,
+					"date": "2026-04-01T12:00:00.000Z"
+				}
+			],
+			"computed": true,
+			"eligibleForParentComputation": true,
+			"weight": 2,
+			"childrenNodes": [
+				{
+					"nodeType": "BusinessScoreCard",
+					"id": "eng-velocity",
+					"title": "Velocity",
+					"description": "Story points shipped per sprint",
+					"targetValue": 90,
+					"minimalValue": 60,
+					"unit": "pts",
+					"historizedValues": [
+						{
+							"value": 70,
+							"date": "2026-04-01T12:00:00.000Z"
+						},
+						{
+							"value": 82,
+							"date": "2026-04-17T12:00:00.000Z"
+						}
+					],
+					"computed": false,
+					"eligibleForParentComputation": true,
+					"weight": 2,
+					"childrenNodes": [],
+					"targetDate": "2026-12-31T23:59:59.000Z"
+				},
+				{
+					"nodeType": "BusinessScoreCard",
+					"id": "eng-review-sla",
+					"title": "Code review SLA",
+					"description": "% of PRs reviewed within 24 h",
+					"targetValue": 95,
+					"minimalValue": 75,
+					"unit": "%",
+					"historizedValues": [
+						{
+							"value": 91,
+							"date": "2026-04-17T12:00:00.000Z"
+						},
+						{
+							"value": 96,
+							"date": "2026-04-29T12:00:00.000Z"
+						}
+					],
+					"computed": false,
+					"eligibleForParentComputation": true,
+					"weight": 1,
+					"childrenNodes": [],
+					"targetDate": "2026-12-31T23:59:59.000Z"
+				},
+				{
+					"nodeType": "BusinessScoreCard",
+					"id": "eng-coverage",
+					"title": "Test coverage",
+					"description": "Branch coverage across all packages",
+					"targetValue": 85,
+					"minimalValue": 70,
+					"unit": "%",
+					"historizedValues": [
+						{
+							"value": 78,
+							"date": "2026-05-01T12:00:00.000Z"
+						}
+					],
+					"computed": false,
+					"eligibleForParentComputation": true,
+					"weight": 1,
+					"childrenNodes": [],
+					"targetDate": "2026-12-31T23:59:59.000Z"
+				},
+				{
+					"nodeType": "TextNode",
+					"id": "eng-notes",
+					"title": "Eng notes",
+					"description": "",
+					"weight": 1,
+					"historizedValues": [
+						{
+							"value": "Backend rewrite in flight — **due end of quarter**. Cut over via `feature-flag-v2`.",
+							"date": "2026-05-01T12:00:00.000Z"
+						}
+					],
+					"childrenNodes": []
+				}
+			],
+			"targetDate": "2026-12-31T23:59:59.000Z"
+		},
+		{
+			"nodeType": "BusinessScoreCard",
+			"id": "product",
+			"title": "Product",
+			"description": "NPS + active-user trend",
+			"targetValue": 50,
+			"minimalValue": 20,
+			"unit": "NPS",
+			"historizedValues": [
+				{
+					"value": 28,
+					"date": "2026-01-01T12:00:00.000Z"
+				},
+				{
+					"value": 35,
+					"date": "2026-03-02T12:00:00.000Z"
+				},
+				{
+					"value": 42,
+					"date": "2026-05-01T12:00:00.000Z"
+				}
+			],
+			"computed": false,
+			"eligibleForParentComputation": true,
+			"weight": 2,
+			"childrenNodes": [],
+			"targetDate": "2026-12-31T23:59:59.000Z"
+		},
+		{
+			"nodeType": "BusinessScoreCard",
+			"id": "sales",
+			"title": "Sales",
+			"description": "Pipeline + win-rate roll-up",
+			"targetValue": 110,
+			"minimalValue": 60,
+			"unit": "%",
+			"historizedValues": [
+				{
+					"value": 95,
+					"date": "2026-03-02T12:00:00.000Z"
+				}
+			],
+			"computed": true,
+			"eligibleForParentComputation": true,
+			"weight": 2,
+			"childrenNodes": [
+				{
+					"nodeType": "BusinessScoreCard",
+					"id": "sales-pipeline",
+					"title": "Pipeline",
+					"description": "Qualified opportunities ($M)",
+					"targetValue": 12,
+					"minimalValue": 5,
+					"unit": "$M",
+					"historizedValues": [
+						{
+							"value": 8.4,
+							"date": "2026-01-31T12:00:00.000Z"
+						},
+						{
+							"value": 9.1,
+							"date": "2026-03-17T12:00:00.000Z"
+						}
+					],
+					"computed": false,
+					"eligibleForParentComputation": true,
+					"weight": 3,
+					"childrenNodes": [],
+					"targetDate": "2026-12-31T23:59:59.000Z"
+				},
+				{
+					"nodeType": "BusinessScoreCard",
+					"id": "sales-winrate",
+					"title": "Win rate",
+					"description": "Closed-won / qualified",
+					"targetValue": 35,
+					"minimalValue": 20,
+					"unit": "%",
+					"historizedValues": [
+						{
+							"value": 31,
+							"date": "2026-05-01T12:00:00.000Z"
+						}
+					],
+					"computed": false,
+					"eligibleForParentComputation": true,
+					"weight": 2,
+					"childrenNodes": [],
+					"targetDate": "2026-12-31T23:59:59.000Z"
+				},
+				{
+					"nodeType": "BusinessScoreCard",
+					"id": "sales-lost",
+					"title": "Lost deals",
+					"description": "Audit trail — not a roll-up KPI",
+					"targetValue": 5,
+					"minimalValue": 0,
+					"unit": "count",
+					"historizedValues": [
+						{
+							"value": 4,
+							"date": "2026-04-01T12:00:00.000Z"
+						},
+						{
+							"value": 6,
+							"date": "2026-05-01T12:00:00.000Z"
+						}
+					],
+					"computed": false,
+					"eligibleForParentComputation": false,
+					"weight": 1,
+					"childrenNodes": [],
+					"targetDate": "2026-12-31T23:59:59.000Z"
+				}
+			],
+			"targetDate": "2026-12-31T23:59:59.000Z"
+		},
+		{
+			"nodeType": "TextNode",
+			"id": "operations",
+			"title": "Operations",
+			"description": "",
+			"weight": 1,
+			"historizedValues": [
+				{
+					"value": "Cloud migration **paused**; vendor renegotiation in progress.\n\nNext steps:\n1. Re-baseline the contract terms\n2. Re-run the cost projection\n3. Decision review at the next ops sync",
+					"date": "2026-04-10T12:00:00.000Z"
+				}
+			],
+			"childrenNodes": []
+		},
+		{
+			"nodeType": "BusinessScoreCard",
+			"id": "bench",
+			"title": "Bench",
+			"description": "Reserved for next quarter",
+			"targetValue": 100,
+			"minimalValue": 0,
+			"unit": "%",
+			"historizedValues": [],
+			"computed": true,
+			"eligibleForParentComputation": true,
+			"weight": 1,
+			"childrenNodes": [],
+			"targetDate": "2026-12-31T23:59:59.000Z"
+		}
+	]
+}

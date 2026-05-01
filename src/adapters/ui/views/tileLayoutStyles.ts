@@ -73,8 +73,9 @@ export const tileLayoutStyles = css`
     right: 0.6rem;
     font-size: 1.4vh;
     line-height: 1;
-    /* Per-tile colour driven by --age-color (warm orange to cold
-       pale blue, lerped by age in days; see dateAgeColor.ts). The
+    /* Per-tile colour driven by --age-color (board-level fresh
+       endpoint -> dynamically-desaturated grey of the same hue,
+       lerped by age in days; see dateAgeColor.ts and §17.21). The
        fallback currentColor keeps tests / unit fixtures readable
        even when no inline style is set. We deliberately drop the
        prior color-mix transparent dimming so the picked gradient

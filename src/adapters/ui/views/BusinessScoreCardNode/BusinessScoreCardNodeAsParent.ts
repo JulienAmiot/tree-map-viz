@@ -25,7 +25,6 @@ import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
-import { dateAgeColor } from "../dateAgeColor.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import {
   formatDate,
@@ -53,7 +52,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
       return html``;
     }
     const dateIso = timestampForValue(this.vm);
-    const ageColor = dateIso ? dateAgeColor(dateIso) : null;
+    const dateColor = this.vm.dateColor;
     return html`
       <h1
         class="title"
@@ -68,7 +67,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
             class="timestamp"
             data-testid="value-date"
             datetime=${dateIso}
-            style=${ageColor ? `--age-color: ${ageColor}` : ""}
+            style=${dateColor ? `--age-color: ${dateColor}` : ""}
             >${formatDate(dateIso)}</time
           >`
         : html``}

@@ -24,6 +24,24 @@
  *     `screen.setAddChildError(reason)` so the modal renders an inline
  *     error and stays open (SPEC §7 — never persists on failure).
  *
+ * Phase 9 (animations) addition:
+ *   - `tile-drill` events from `<children-grid>` bubble out unmolested. The
+ *     composition root listens for them on the screen, then calls
+ *     `screen.runDrillAnimation(commit)` to flip `encap--drill` on the
+ *     `.layout` wrapper, and the helper schedules the navigation `commit`
+ *     after the CSS transition has settled. `prefers-reduced-motion: reduce`
+ *     (or the testBridge `dismissAnimations` sentinel) short-circuits the
+ *     class flip and commits synchronously, per SPEC §4 last bullet.
+ *
+ * §17.23 polish (close-to-parent):
+ *   - The shell derives the focused node's `parentId` from `breadcrumbPath`
+ *     (the second-to-last segment) and threads it into
+ *     `<parent-identity-strip>`. The strip uses that to conditionally
+ *     render a top-right "X" button which dispatches
+ *     `focus-close-to-parent { parentId }`. The composition root binds
+ *     that event to the same triple the breadcrumb uses; the shell stays
+ *     a pure pass-through.
+ *
  * The shell is purely view: it accepts plain view models through the
  * `view`, `boardName`, and `breadcrumbPath` properties and never reaches
  * into domain types. `main.ts` is the only caller that knows about
@@ -55,6 +73,10 @@
 import { LitElement, css, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
+import {
+  DRILL_CLASS,
+  runDrillTransition,
+} from "../animations/drillTransitions.js";
 import { OrientationController } from "../controllers/OrientationController.js";
 import "../modal/AddChildModal.js";
 import type { AddChildModal } from "../modal/AddChildModal.js";
@@ -117,6 +139,33 @@ export class TreeGraphScreen extends LitElement {
       height: 100%;
       /* §4: parent strip ≈ 22 % (mid of 20–25 %), children grid ≈ 78 %. */
       grid-template-rows: 22fr 78fr;
+      /* §17.20 — drill-into transition target. transform-origin sits at the
+         centre of the tile that was tapped; we don't have access to the
+         tap coordinate from CSS, so we use the centre of the layout. The
+         visual is a slight scale-up + opacity dip — enough to imply
+         "the focus is pulling forward" without being kinetic. JS only
+         flips the class (encap--drill) on the .layout wrapper; CSS owns
+         the keyframes. */
+      transform-origin: 50% 50%;
+    }
+    .layout.encap--drill {
+      animation: encap-drill-in var(--encap-drill-ms, 250ms) ease-in;
+      will-change: transform, opacity;
+    }
+    @keyframes encap-drill-in {
+      from {
+        transform: scale(1);
+        opacity: 1;
+      }
+      to {
+        transform: scale(1.04);
+        opacity: 0.85;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .layout.encap--drill {
+        animation: none;
+      }
     }
     parent-identity-strip {
       min-height: 0;
@@ -186,6 +235,14 @@ export class TreeGraphScreen extends LitElement {
       `;
     }
     const { center, children } = this.view;
+    // §17.23 — the parent of the focused node is the second-to-last
+    // breadcrumb segment (the last one being the focus itself). When the
+    // path has < 2 segments the focus is at root → no parent → empty
+    // string → strip omits the close-X button.
+    const parentId =
+      this.breadcrumbPath.length >= 2
+        ? (this.breadcrumbPath[this.breadcrumbPath.length - 2]?.id ?? "")
+        : "";
     return html`
       ${drawer}
       <div
@@ -194,7 +251,10 @@ export class TreeGraphScreen extends LitElement {
         data-orientation=${this.orientation.orientation}
         @plus-tile-activate=${this.handlePlusTileActivate}
       >
-        <parent-identity-strip .vm=${center}></parent-identity-strip>
+        <parent-identity-strip
+          .vm=${center}
+          parent-id=${parentId}
+        ></parent-identity-strip>
         <children-grid .slots=${children}></children-grid>
       </div>
       ${modal}
@@ -239,6 +299,33 @@ export class TreeGraphScreen extends LitElement {
       this.shadowRoot?.querySelector<AddChildModal>("add-child-modal") ?? null
     );
   }
+
+  /**
+   * SPEC §4 — drill into a child. The composition root catches `tile-drill`
+   * on the screen and calls this method with a commit closure that runs
+   * `nav.focusByUuid` + `router.push` + `refresh`.
+   *
+   * The shell is the only place that knows the `encap--drill` class lives
+   * on `.layout`. The actual class-flipping + `prefers-reduced-motion`
+   * detection lives in the pure helper `runDrillTransition` so unit tests
+   * for both the shell and the helper can stay independent.
+   *
+   * If the layout wrapper isn't rendered yet (`view === null`), commit
+   * fires immediately — there's no pending visual state to animate.
+   */
+  runDrillAnimation(commit: () => void): void {
+    const layout = this.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="layout"]',
+    );
+    if (!layout) {
+      commit();
+      return;
+    }
+    runDrillTransition({ host: layout, commit });
+  }
+
+  /** Re-export the drill class so tests can pin the contract symbolically. */
+  static readonly DRILL_CLASS = DRILL_CLASS;
 }
 
 declare global {

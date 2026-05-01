@@ -24,6 +24,10 @@ function makeVm(
     description: "Region",
     value,
     dateIso: resolvedDateIso,
+    // SPEC §17.21 — pin a representative dateColor since tests
+    // fabricate VMs directly without going through the mapper. Empty
+    // dateIso → empty dateColor (mirrors mapper behaviour).
+    dateColor: resolvedDateIso ? "rgb(255, 145, 50)" : "",
   };
 }
 

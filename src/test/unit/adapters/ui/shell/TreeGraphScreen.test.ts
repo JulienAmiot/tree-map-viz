@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DRILL_CLASS } from "../../../../../adapters/ui/animations/drillTransitions.js";
 import "../../../../../adapters/ui/shell/TreeGraphScreen.js";
-import type { TreeGraphScreen } from "../../../../../adapters/ui/shell/TreeGraphScreen.js";
+import { TreeGraphScreen } from "../../../../../adapters/ui/shell/TreeGraphScreen.js";
 import type { AddChildModal } from "../../../../../adapters/ui/modal/AddChildModal.js";
 import type { FocusBreadcrumb } from "../../../../../adapters/ui/shell/Breadcrumb.js";
 import type { ChildrenGrid } from "../../../../../adapters/ui/shell/ChildrenGrid.js";
@@ -44,7 +45,11 @@ const textVm: NodeViewModel = {
   kind: "TextNode",
   id: "uuid-root",
   title: "Quarterly review",
-  value: { text: "Quarterly review", dateIso: "2026-04-23T00:00:00.000Z" },
+  value: {
+    text: "Quarterly review",
+    dateIso: "2026-04-23T00:00:00.000Z",
+    dateColor: "rgb(255, 145, 50)",
+  },
 };
 
 function nodeSlot(id: string, title: string, weight = 1): ChildSlotViewModel {
@@ -55,7 +60,11 @@ function nodeSlot(id: string, title: string, weight = 1): ChildSlotViewModel {
       kind: "TextNode",
       id,
       title,
-      value: { text: title, dateIso: "2026-04-23T00:00:00.000Z" },
+      value: {
+        text: title,
+        dateIso: "2026-04-23T00:00:00.000Z",
+        dateColor: "rgb(255, 145, 50)",
+      },
     },
   };
 }
@@ -109,7 +118,11 @@ describe("<tree-graph-screen>", () => {
       kind: "TextNode",
       id: "uuid-other",
       title: "Other",
-      value: { text: "Other", dateIso: "2026-04-23T00:00:00.000Z" },
+      value: {
+        text: "Other",
+        dateIso: "2026-04-23T00:00:00.000Z",
+        dateColor: "rgb(255, 145, 50)",
+      },
     };
     el.view = focusedView(next, [nodeSlot("b", "B"), nodeSlot("c", "C")]);
     await el.updateComplete;
@@ -287,6 +300,98 @@ describe("<tree-graph-screen>", () => {
     el.closeAddChildModal();
     expect(el.addChildError).toBeNull();
     expect(el.isAddChildModalOpen).toBe(false);
+  });
+
+  it("`runDrillAnimation` commits immediately when the layout wrapper isn't rendered (view=null)", async () => {
+    // Without a view, `.layout` doesn't exist; the helper has no host to
+    // animate against, so commit fires synchronously. Pinned so a future
+    // refactor doesn't accidentally swallow the commit on the loading path.
+    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+    const commit = vi.fn();
+    el.runDrillAnimation(commit);
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+
+  it("`runDrillAnimation` flips `encap--drill` on `.layout` and commits after the settle window", async () => {
+    vi.useFakeTimers();
+    try {
+      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+        e.view = focusedView(textVm, [nodeSlot("a", "A")]);
+      });
+      const layout = el.shadowRoot?.querySelector(
+        '[data-testid="layout"]',
+      ) as HTMLElement;
+      expect(layout).not.toBeNull();
+      expect(layout.classList.contains(DRILL_CLASS)).toBe(false);
+
+      const commit = vi.fn();
+      el.runDrillAnimation(commit);
+      // While in flight: class is on, commit not yet.
+      expect(layout.classList.contains(DRILL_CLASS)).toBe(true);
+      expect(commit).not.toHaveBeenCalled();
+
+      vi.runAllTimers();
+      expect(commit).toHaveBeenCalledTimes(1);
+      expect(layout.classList.contains(DRILL_CLASS)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("re-exports `DRILL_CLASS` so callers/tests can pin the class name symbolically", () => {
+    // Catches a future rename of the drill class without forcing every
+    // test to reach into the helper.
+    expect(TreeGraphScreen.DRILL_CLASS).toBe(DRILL_CLASS);
+  });
+
+  // -- §17.23 close-to-parent propagation -------------------------------
+
+  it("threads the second-to-last breadcrumb segment into <parent-identity-strip>.parentId (§17.23)", async () => {
+    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+      e.view = focusedView(textVm, [nodeSlot("a", "A")]);
+      e.breadcrumbPath = [
+        { id: "uuid-root", title: "Root" },
+        { id: "uuid-parent", title: "Eng" },
+        { id: "uuid-root", title: "Quarterly review" }, // focus
+      ];
+    });
+    const strip = el.shadowRoot?.querySelector(
+      "parent-identity-strip",
+    ) as ParentIdentityStrip | null;
+    expect(strip?.parentId).toBe("uuid-parent");
+  });
+
+  it("at root focus (path length \u2264 1) the strip's parentId is empty (no close-X) (§17.23)", async () => {
+    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+      e.view = focusedView(textVm, []);
+      e.breadcrumbPath = [{ id: "uuid-root", title: "Root" }];
+    });
+    const strip = el.shadowRoot?.querySelector(
+      "parent-identity-strip",
+    ) as ParentIdentityStrip | null;
+    expect(strip?.parentId).toBe("");
+  });
+
+  it("recomputes the strip's parentId when breadcrumbPath updates (§17.23)", async () => {
+    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+      e.view = focusedView(textVm, []);
+      e.breadcrumbPath = [{ id: "uuid-root", title: "Root" }];
+    });
+    let strip = el.shadowRoot?.querySelector(
+      "parent-identity-strip",
+    ) as ParentIdentityStrip | null;
+    expect(strip?.parentId).toBe("");
+
+    el.breadcrumbPath = [
+      { id: "uuid-root", title: "Root" },
+      { id: "uuid-eng", title: "Eng" },
+      { id: "uuid-deep", title: "Deep" },
+    ];
+    await el.updateComplete;
+    strip = el.shadowRoot?.querySelector(
+      "parent-identity-strip",
+    ) as ParentIdentityStrip | null;
+    expect(strip?.parentId).toBe("uuid-eng");
   });
 
   it("`add-child-confirm` does NOT auto-close the modal — the composition root must call `closeAddChildModal()`", async () => {

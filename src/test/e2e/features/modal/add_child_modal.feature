@@ -3,17 +3,24 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
 
   SPEC §7: activating the "+" tile opens a wide modal with a
   semi-transparent backdrop so the underlying board is still partially
-  visible. SPEC §17.19 — the modal is a single page: a kind dropdown at
-  the top picks the node kind (each option shows "Name — Description",
-  same content the pre-§17.19 kind-cards carried), and the type-specific
-  form (using the empty-field placeholder pattern, §6) appears
-  dynamically beneath the dropdown as soon as a kind is chosen. Confirm
-  appends a child to the focused parent and persists; cancel never
-  persists. Activating the "+" tile is never a navigation; the focused
-  id stays put through the whole interaction.
+  visible. SPEC §17.25 — the modal is a two-pane layout: a kind list on
+  the left (~20 % width, one button per available kind) picks the node
+  kind (each button shows "Name" + "Description", same content the
+  pre-§17.19 kind-cards carried), and the type-specific form (using
+  the empty-field placeholder pattern, §6) appears in the right pane
+  (~80 % width) as soon as a kind is chosen. Confirm appends a child
+  to the focused parent and persists; cancel never persists.
+  Activating the "+" tile is never a navigation; the focused id stays
+  put through the whole interaction.
 
   Background:
+    # SPEC §17.21 — the default seed is the showcase tree (with 5 root
+    # children). These scenarios need a baseline where the focused
+    # parent has zero children, so we explicitly seed an empty single-
+    # TextNode tree via the test bridge instead of relying on the seed.
     When I open the kiosk in test mode with empty storage
+    And I seed the "emptyRoot" fixture via the test bridge
+    And I reload the kiosk
 
   @HE-???? @priority:high
   Scenario: At rest the modal is closed
@@ -22,15 +29,15 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And there is exactly one plus tile
 
   @HE-???? @priority:high
-  Scenario: Clicking the "+" tile opens the modal with a kind dropdown (§17.19)
+  Scenario: Clicking the "+" tile opens the modal with a left-rail kind list (§17.25)
     When I click the plus tile
     Then the add-child modal is open
-    And the modal kind dropdown shows "2" options labelled with name and description
+    And the modal kind list shows "2" options labelled with name and description
     And the modal offers a "Text" kind
     And the modal offers a "Business Score Card" kind
 
   @HE-???? @priority:high
-  Scenario: Before a kind is chosen, no type-specific fields render below the dropdown (§17.19)
+  Scenario: Before a kind is chosen, no type-specific fields render in the right pane (§17.25)
     When I click the plus tile
     Then the add-child modal is open
     And the modal has no title field
@@ -70,7 +77,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has the eligible-for-parent-computation toggle
 
   @HE-???? @priority:high
-  Scenario: Switching the dropdown from Text to BusinessScoreCard swaps in the BSC form (§17.19)
+  Scenario: Switching the kind from Text to BusinessScoreCard swaps in the BSC form (§17.25)
     When I click the plus tile
     And I pick the kind "TextNode"
     Then the modal has no unit field
@@ -107,3 +114,11 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And I fill in the current value with "Today's update"
     And I confirm the add-child modal
     Then the focused id is unchanged after the modal interaction
+
+  @HE-???? @priority:high
+  Scenario: Weight is a slider + numeric input pair, bidirectionally synced (§17.26)
+    When I click the plus tile
+    And I pick the kind "TextNode"
+    Then the weight slider runs 0..10 step 0.5 and mirrors the number input
+    When I set the weight slider to "3.5"
+    Then the weight number input shows the value "3.5"

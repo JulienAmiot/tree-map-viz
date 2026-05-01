@@ -17,7 +17,10 @@ function vmWith(opts: Partial<TextNodeViewModel> = {}): TextNodeViewModel {
     kind: "TextNode",
     id: "c1",
     title: "Region",
-    value: { text: "North-east region", dateIso },
+    // SPEC §17.21 — `dateColor` is normally baked by the mapper; tests
+    // that fabricate a VM directly pin a representative `rgb(...)` so
+    // the inline style assertion sees a real colour.
+    value: { text: "North-east region", dateIso, dateColor: "rgb(255, 145, 50)" },
     ...opts,
   } as TextNodeViewModel;
 }
@@ -69,12 +72,72 @@ describe("<text-node-as-child>", () => {
 
   it("renders an empty value and omits the timestamp when the history is empty", async () => {
     const el = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => {
-      e.vm = vmWith({ value: { text: "", dateIso: "" } });
+      e.vm = vmWith({ value: { text: "", dateIso: "", dateColor: "" } });
     });
 
     const value = el.shadowRoot?.querySelector('[data-testid="value"]');
     expect(value?.textContent?.trim()).toBe("");
     expect(value?.classList.contains("empty")).toBe(true);
     expect(el.shadowRoot?.querySelector('[data-testid="value-date"]')).toBeNull();
+  });
+
+  // SPEC §17.27 — TextNode value strings are rendered through the
+  // markdown pipeline. The text content stays the same (markdown
+  // markers are stripped), but the DOM gains the corresponding
+  // semantic elements (<strong>, <em>, <code>, <ul>/<li>, <p>, ...)
+  // so a kiosk operator can compose richer notes than a single line
+  // of plain text. Empty values stay empty (no <p> wrapper).
+  it("parses **bold** + *italic* markdown into <strong>/<em> elements", async () => {
+    const el = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => {
+      e.vm = vmWith({
+        value: {
+          text: "On track **for Q2** with *minor* slippage",
+          dateIso,
+          dateColor: "rgb(255, 145, 50)",
+        },
+      });
+    });
+    const value = el.shadowRoot?.querySelector('[data-testid="value"]');
+    expect(value?.querySelector("strong")?.textContent).toBe("for Q2");
+    expect(value?.querySelector("em")?.textContent).toBe("minor");
+    // The visible text content keeps the markdown stripped, so e2e
+    // `toHaveText` assertions on `[data-testid="value"]` keep working.
+    expect(value?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "On track for Q2 with minor slippage",
+    );
+  });
+
+  it("renders a `-` list as <ul><li> + inline `code`", async () => {
+    const el = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => {
+      e.vm = vmWith({
+        value: {
+          text: "- Ship `v2`\n- Migrate cache",
+          dateIso,
+          dateColor: "rgb(255, 145, 50)",
+        },
+      });
+    });
+    const value = el.shadowRoot?.querySelector('[data-testid="value"]');
+    expect(value?.querySelector("ul")).not.toBeNull();
+    expect(value?.querySelectorAll("li")).toHaveLength(2);
+    expect(value?.querySelector("li code")?.textContent).toBe("v2");
+  });
+
+  it("escapes embedded HTML in the source (defence-in-depth XSS gate)", async () => {
+    const el = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => {
+      e.vm = vmWith({
+        value: {
+          text: "<script>alert(1)</script> ok",
+          dateIso,
+          dateColor: "rgb(255, 145, 50)",
+        },
+      });
+    });
+    const value = el.shadowRoot?.querySelector('[data-testid="value"]');
+    // The DOM must not contain a real <script> element (the escape
+    // happens in markdownToHtml before unsafeHTML reaches Lit).
+    expect(value?.querySelector("script")).toBeNull();
+    // The literal characters are still readable as text.
+    expect(value?.textContent).toContain("<script>");
   });
 });

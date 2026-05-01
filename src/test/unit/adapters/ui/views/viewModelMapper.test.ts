@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { dateAgeColor } from "../../../../../adapters/ui/views/dateAgeColor.js";
 import {
   mapFocusedToViewModel,
   mapNodeToViewModel,
@@ -79,6 +80,8 @@ describe("mapNodeToViewModel", () => {
       value: {
         text: "newest",
         dateIso: DEFAULT_TEXT_DATE.toISOString(),
+        // SPEC §17.21 — mapper bakes the per-tile dateColor.
+        dateColor: dateAgeColor(DEFAULT_TEXT_DATE.toISOString()),
       },
     });
     expect(vm).not.toHaveProperty("description");
@@ -88,7 +91,7 @@ describe("mapNodeToViewModel", () => {
     const node = makeText("t-empty", "Empty", "", []);
     const vm = mapNodeToViewModel(node);
     if (vm.kind !== "TextNode") throw new Error("expected TextNode VM");
-    expect(vm.value).toEqual({ text: "", dateIso: "" });
+    expect(vm.value).toEqual({ text: "", dateIso: "", dateColor: "" });
   });
 
   it("maps computed=false BSC to recordedValue VM with the latest TimestampedValue", () => {
@@ -119,6 +122,8 @@ describe("mapNodeToViewModel", () => {
       },
       // SPEC §17.18 — top-level dateIso mirrors the recorded value's date.
       dateIso: "2026-04-23T18:25:43.511Z",
+      // SPEC §17.21 — mapper bakes the per-tile dateColor next to dateIso.
+      dateColor: dateAgeColor("2026-04-23T18:25:43.511Z"),
     });
   });
 
@@ -320,7 +325,11 @@ describe("mapFocusedToViewModel", () => {
         kind: "TextNode",
         id: "c1",
         title: "Sales",
-        value: { text: "Sales", dateIso: DEFAULT_TEXT_DATE.toISOString() },
+        value: {
+          text: "Sales",
+          dateIso: DEFAULT_TEXT_DATE.toISOString(),
+          dateColor: dateAgeColor(DEFAULT_TEXT_DATE.toISOString()),
+        },
       },
     });
     expect(vm.children[2]).toEqual({ slot: "plus", weight: 1, parentId: "center" });
@@ -365,6 +374,32 @@ describe("mapFocusedToViewModel", () => {
 
     expect(vm.children[0]?.weight).toBe(7);
     expect(vm.children[1]?.weight).toBe(2);
+  });
+
+  it("propagates options.freshDateColor to every node's baked dateColor (\u00a717.21)", () => {
+    // Pin both `now` and the historized dates to exactly the same instant so
+    // the gradient lerp resolves to the fresh endpoint with no rounding
+    // drift — the test asserts the *propagation* of the option, not the
+    // gradient maths (which is covered by dateAgeColor.test.ts).
+    const now = new Date("2026-04-30T12:00:00.000Z");
+    const center = makeText("c", "Org", "", [
+      { value: "Org", date: new Date("2026-04-30T12:00:00.000Z") },
+    ]);
+    const child = makeText("k", "Child", "", [
+      { value: "Child", date: new Date("2026-04-30T12:00:00.000Z") },
+    ]);
+
+    const vm = mapFocusedToViewModel(center, [child], {
+      now,
+      freshDateColor: "#1ea76a",
+    });
+
+    if (vm.center.kind !== "TextNode") throw new Error("centre is TextNode");
+    expect(vm.center.value.dateColor).toBe("rgb(30, 167, 106)");
+    const first = vm.children[0];
+    if (!first || first.slot !== "node") throw new Error("expected node slot");
+    if (first.vm.kind !== "TextNode") throw new Error("expected TextNode VM");
+    expect(first.vm.value.dateColor).toBe("rgb(30, 167, 106)");
   });
 
   it("plus slot weight is fixed at 1 even when children have heavier weights (§4 — '+' tile = 1)", () => {

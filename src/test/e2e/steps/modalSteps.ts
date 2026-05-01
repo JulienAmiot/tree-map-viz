@@ -24,12 +24,12 @@ const { When, Then } = createBdd();
 // -- Modal lifecycle -----------------------------------------------------
 
 When("I pick the kind {string}", async ({ page }, kind: string) => {
-  // SPEC §17.19 — single-page flow: pick the kind by selecting the
-  // matching `<option>` in the kind dropdown (was two large buttons
-  // pre-§17.19). Playwright's `selectOption` dispatches `change`,
-  // which the modal listens to.
+  // SPEC §17.25 — pick the kind by clicking the matching button in the
+  // left-rail kind list (was a `<select>` dropdown in §17.19, two large
+  // cards pre-§17.19). The modal listens to the click and updates
+  // `chosenKind` + flips `aria-pressed` on the picked button.
   const kiosk = new TreeGraphPage(page);
-  await kiosk.addChildModalKindSelect().selectOption(kind);
+  await kiosk.addChildModalKindButton(kind).click();
 });
 
 When("I fill in the title with {string}", async ({ page }, title: string) => {
@@ -78,48 +78,47 @@ Then("the add-child modal is closed", async ({ page }) => {
 Then(
   "the modal offers a {string} kind",
   async ({ page }, kindLabel: string) => {
-    // SPEC §17.19 — the modal lists the available kinds as `<option>`
-    // entries inside the kind dropdown, each labelled
-    // "Name — Description". `evaluate` reads the live `select.options`
-    // collection (avoids Playwright's quirks around `<select>` light
-    // children inside a shadow root).
+    // SPEC §17.25 — the modal lists the available kinds as `<button>`
+    // entries inside the left-rail kind list, each labelled with the
+    // kind's name (top) + description (bottom). The button's full
+    // text content concatenates both, so a `startsWith(kindLabel)`
+    // check identifies the right entry.
     const kiosk = new TreeGraphPage(page);
-    const sel = kiosk.addChildModalKindSelect();
-    await expect(sel).toHaveCount(1);
-    const optionTexts = await sel.evaluate((node: Element) => {
-      const select = node as HTMLSelectElement;
-      return Array.from(select.options).map(
-        (o) => o.textContent?.trim() ?? "",
-      );
-    });
-    const matching = optionTexts.filter((t) =>
-      t.startsWith(`${kindLabel} \u2014`),
+    const buttons = kiosk.addChildModalKindButtons();
+    const buttonTexts = await buttons.evaluateAll((nodes: Element[]) =>
+      nodes.map((n) => (n as HTMLElement).innerText.trim()),
     );
+    const matching = buttonTexts.filter((t) => t.startsWith(kindLabel));
     expect(matching).toHaveLength(1);
   },
 );
 
 Then(
-  "the modal kind dropdown shows {string} options labelled with name and description",
+  "the modal kind list shows {string} options labelled with name and description",
   async ({ page }, expected: string) => {
-    // SPEC §17.19 — dropdown shape: `<expected>` real options (the
-    // placeholder option is excluded from the count); each carries a
-    // dash-separated "Name — Description" label. We `evaluate` against
-    // the `<select>` so we can read its `<option>` children directly
-    // through the live DOM API (Playwright's `locator("option")` does
-    // not always traverse `<select>` children as expected when the
-    // select sits inside an open shadow root).
+    // SPEC §17.25 — the kind list shape: one `kind-btn` per available
+    // kind, each rendering a "Name" line + a "Description" line. We
+    // assert the count matches and that every button visually exposes
+    // both halves (the description is wrapped in `.kind-btn-desc`).
     const kiosk = new TreeGraphPage(page);
-    const sel = kiosk.addChildModalKindSelect();
-    const optionTexts = await sel.evaluate((node: Element) => {
-      const select = node as HTMLSelectElement;
-      return Array.from(select.options)
-        .filter((o) => !o.disabled)
-        .map((o) => o.textContent?.trim() ?? "");
-    });
-    expect(optionTexts).toHaveLength(Number(expected));
-    for (const t of optionTexts) {
-      expect(t).toMatch(/^[A-Z][^\u2014]+ \u2014 .+/);
+    const buttons = kiosk.addChildModalKindButtons();
+    await expect(buttons).toHaveCount(Number(expected));
+    const buttonTexts = await buttons.evaluateAll((nodes: Element[]) =>
+      nodes.map((n) => {
+        const name = n
+          .querySelector(".kind-btn-name")
+          ?.textContent?.trim() ?? "";
+        const desc = n
+          .querySelector(".kind-btn-desc")
+          ?.textContent?.trim() ?? "";
+        return { name, desc };
+      }),
+    );
+    for (const { name, desc } of buttonTexts) {
+      // Name starts with a capital letter (real kind name) and the
+      // description is non-empty (mirrors the §17.19 dropdown contract).
+      expect(name).toMatch(/^[A-Z]/);
+      expect(desc.length).toBeGreaterThan(0);
     }
   },
 );
@@ -168,6 +167,62 @@ Then("the modal has a weight field", async ({ page }) => {
   const kiosk = new TreeGraphPage(page);
   await expect(kiosk.addChildModalField("field-weight")).toHaveCount(1);
 });
+
+// SPEC §17.26 — weight is a slider + numeric input pair. The slider
+// runs 0..10 step 0.5; both halves share the same `weight` state and
+// stay in sync one keystroke at a time. We pin the contract from the
+// e2e side so a future regression that drops one half (or breaks the
+// sync) trips the gate.
+Then(
+  "the weight slider runs 0..10 step 0.5 and mirrors the number input",
+  async ({ page }) => {
+    const kiosk = new TreeGraphPage(page);
+    const slider = kiosk.addChildModalField("field-weight-slider");
+    await expect(slider).toHaveCount(1);
+    await expect(slider).toHaveAttribute("type", "range");
+    await expect(slider).toHaveAttribute("min", "0");
+    await expect(slider).toHaveAttribute("max", "10");
+    await expect(slider).toHaveAttribute("step", "0.5");
+    // The numeric half mirrors the same axis so direct typing snaps
+    // to the same step grid as the slider drag.
+    const num = kiosk.addChildModalField("field-weight");
+    await expect(num).toHaveAttribute("type", "number");
+    await expect(num).toHaveAttribute("min", "0");
+    await expect(num).toHaveAttribute("max", "10");
+    await expect(num).toHaveAttribute("step", "0.5");
+    // Both halves carry the same value at rest (the §17.16 default `1`).
+    await expect(slider).toHaveValue("1");
+    await expect(num).toHaveValue("1");
+  },
+);
+
+When(
+  "I set the weight slider to {string}",
+  async ({ page }, value: string) => {
+    // SPEC §17.26 — drive the slider via a `fill`-equivalent input
+    // event. Playwright's native `fill` doesn't work on `<input
+    // type="range">`, so we set the value imperatively and dispatch
+    // `input` (the same event the modal listens to). This mirrors the
+    // user's drag interaction at the contract level.
+    const kiosk = new TreeGraphPage(page);
+    const slider = kiosk.addChildModalField("field-weight-slider");
+    await slider.evaluate((node: Element, v: string) => {
+      const input = node as HTMLInputElement;
+      input.value = v;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }, value);
+  },
+);
+
+Then(
+  "the weight number input shows the value {string}",
+  async ({ page }, expected: string) => {
+    const kiosk = new TreeGraphPage(page);
+    await expect(kiosk.addChildModalField("field-weight")).toHaveValue(
+      expected,
+    );
+  },
+);
 
 Then("the modal has no unit field", async ({ page }) => {
   const kiosk = new TreeGraphPage(page);

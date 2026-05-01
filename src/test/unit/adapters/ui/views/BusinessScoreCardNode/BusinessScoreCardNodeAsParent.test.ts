@@ -28,6 +28,9 @@ function makeVm(
     description: "Revenue vs plan",
     value,
     dateIso: resolvedDateIso,
+    // SPEC §17.21 — pin a representative dateColor; empty dateIso →
+    // empty dateColor (mirrors mapper behaviour).
+    dateColor: resolvedDateIso ? "rgb(255, 145, 50)" : "",
   };
 }
 
