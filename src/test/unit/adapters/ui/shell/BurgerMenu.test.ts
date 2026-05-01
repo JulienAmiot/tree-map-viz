@@ -44,7 +44,10 @@ describe("<burger-menu>", () => {
     expect(triggerOf(el).getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("renders exactly three items: import, export, boards (in order)", async () => {
+  it("renders the four items in order: import, export, boards, settings (\u00a717.31)", async () => {
+    // SPEC §17.31 — Settings… joins Import / Export / Boards as the
+    // fourth burger-menu item. It opens `<board-settings-modal>` for
+    // the current board (name / fresh-date colour / delete-board).
     const el = await mountLitElement<BurgerMenu>("burger-menu");
     triggerOf(el).click();
     await el.updateComplete;
@@ -53,12 +56,36 @@ describe("<burger-menu>", () => {
       "import",
       "export",
       "boards",
+      "settings",
     ]);
     expect(items.map((i) => i.textContent?.trim())).toEqual([
       "Import…",
       "Export…",
       "Boards…",
+      "Settings…",
     ]);
+  });
+
+  it("clicking the Settings\u2026 item dispatches burger-menu-action with action='settings' (\u00a717.31)", async () => {
+    const el = await mountLitElement<BurgerMenu>("burger-menu");
+    const handler = vi.fn();
+    el.addEventListener(BURGER_MENU_ACTION_EVENT, handler);
+    triggerOf(el).click();
+    await el.updateComplete;
+
+    const settingsItem = itemsOf(el).find(
+      (i) => i.dataset["action"] === "settings",
+    )!;
+    expect(settingsItem).not.toBeUndefined();
+    settingsItem.click();
+    await el.updateComplete;
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    const evt = handler.mock.calls[0]?.[0] as
+      | CustomEvent<BurgerMenuActionDetail>
+      | undefined;
+    expect(evt?.detail.action).toBe("settings");
+    expect(menuOf(el).hasAttribute("hidden")).toBe(true);
   });
 
   it("clicking the trigger toggles the menu open / closed", async () => {

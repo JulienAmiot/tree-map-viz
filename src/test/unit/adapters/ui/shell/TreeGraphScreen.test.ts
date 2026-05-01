@@ -308,31 +308,124 @@ describe("<tree-graph-screen>", () => {
     // refactor doesn't accidentally swallow the commit on the loading path.
     const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
     const commit = vi.fn();
-    el.runDrillAnimation(commit);
+    el.runDrillAnimation("uuid-anything", commit);
     expect(commit).toHaveBeenCalledTimes(1);
   });
 
-  it("`runDrillAnimation` flips `encap--drill` on `.layout` and commits after the settle window", async () => {
+  it("`runDrillAnimation` commits immediately when the tapped tile cannot be located (no children rendered)", async () => {
+    // The shell falls through to a synchronous commit if the queried
+    // `[data-id="<nodeId>"]` returns nothing — for instance after a
+    // focus that has no real children, where the grid only renders a
+    // plus tile. The navigation must still land; we just skip the
+    // animation.
+    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+      e.view = focusedView(textVm, [plusSlot("uuid-root")]);
+    });
+    const commit = vi.fn();
+    el.runDrillAnimation("uuid-missing", commit);
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+
+  it("`runDrillAnimation` morphs the tapped tile into the parent strip's geometry and commits after the settle window (\u00a717.32)", async () => {
+    // jsdom returns 0/0 from getBoundingClientRect by default which would
+    // trip the helper's degenerate-rect guard, so we stub both rects on
+    // the live shell DOM. The assertion is that the `tile--drilling`
+    // class lands on the tapped tile (not the layout wrapper) and the
+    // commit fires after the settle window — i.e. the FLIP morph took
+    // the place of the legacy `encap--drill` keyframe.
+    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+      e.view = focusedView(textVm, [nodeSlot("uuid-a", "A"), nodeSlot("uuid-b", "B")]);
+    });
+    const grid = el.shadowRoot?.querySelector("children-grid") as ChildrenGrid;
+    // ChildrenGrid renders 0 tiles until its `ResizeObserver` callback
+    // seeds non-zero dimensions (jsdom defaults are 0×0). Pick the
+    // most recent observer that's watching this grid host and fire
+    // a synthetic resize so the squarify layout produces tile
+    // elements with `data-id="..."`.
+    const gridObserver = FakeResizeObserver.instances
+      .filter((obs) =>
+        Array.from(obs.observed).some(
+          (target) => target.tagName.toLowerCase() === "children-grid",
+        ),
+      )
+      .at(-1);
+    expect(gridObserver).toBeDefined();
+    gridObserver!.fire([{ target: grid, rect: { width: 600, height: 300 } }]);
+    await grid.updateComplete;
+
     vi.useFakeTimers();
     try {
-      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
-        e.view = focusedView(textVm, [nodeSlot("a", "A")]);
-      });
-      const layout = el.shadowRoot?.querySelector(
-        '[data-testid="layout"]',
-      ) as HTMLElement;
-      expect(layout).not.toBeNull();
-      expect(layout.classList.contains(DRILL_CLASS)).toBe(false);
+      const tile = grid.shadowRoot?.querySelector<HTMLElement>(
+        '[data-id="uuid-a"]',
+      );
+      const strip = el.shadowRoot?.querySelector<HTMLElement>(
+        "parent-identity-strip",
+      );
+      expect(tile).not.toBeNull();
+      expect(strip).not.toBeNull();
+      // Stub rects so the FLIP math has real numbers to work with.
+      tile!.getBoundingClientRect = (): DOMRect =>
+        ({
+          x: 100,
+          y: 400,
+          left: 100,
+          top: 400,
+          width: 200,
+          height: 150,
+          right: 300,
+          bottom: 550,
+          toJSON: () => "",
+        }) as DOMRect;
+      strip!.getBoundingClientRect = (): DOMRect =>
+        ({
+          x: 0,
+          y: 0,
+          left: 0,
+          top: 0,
+          width: 800,
+          height: 200,
+          right: 800,
+          bottom: 200,
+          toJSON: () => "",
+        }) as DOMRect;
 
       const commit = vi.fn();
-      el.runDrillAnimation(commit);
-      // While in flight: class is on, commit not yet.
-      expect(layout.classList.contains(DRILL_CLASS)).toBe(true);
+      el.runDrillAnimation("uuid-a", commit);
+
+      // While in flight: drill class on the tapped tile, translate
+      // applied, custom-prop set so .title recolours (NOT a direct
+      // `color` write that would cascade to every text node), strip
+      // faded to 0 so the morphed tile owns the strip's slot during
+      // the morph, commit not yet called.
+      expect(tile!.classList.contains(DRILL_CLASS)).toBe(true);
+      expect(tile!.style.transform).toContain("translate(-100px, -400px)");
+      expect(tile!.style.getPropertyValue("--drill-title-color")).toBe(
+        "var(--board-fresh)",
+      );
+      expect(tile!.style.color).toBe("");
+      expect(strip!.style.opacity).toBe("0");
       expect(commit).not.toHaveBeenCalled();
+      // §17.32 — the grid host's :host { overflow: hidden } would
+      // otherwise clip the morphed tile's painted pixels at the
+      // grid's top edge; the shell flips it to `visible` for the
+      // duration of the drill so the tile is visible above the
+      // grid's box (i.e. landing in the parent strip's territory).
+      expect((grid as HTMLElement).style.overflow).toBe("visible");
 
       vi.runAllTimers();
+      // updateComplete resolves on the microtask queue; flush.
+      await Promise.resolve();
       expect(commit).toHaveBeenCalledTimes(1);
-      expect(layout.classList.contains(DRILL_CLASS)).toBe(false);
+      expect(tile!.classList.contains(DRILL_CLASS)).toBe(false);
+      // The inline overflow override is restored after commit so the
+      // grid host's :host clipping rule resumes for normal renders.
+      expect((grid as HTMLElement).style.overflow).toBe("");
+      // §17.32 follow-up: the strip is the SAME element across focus
+      // changes (Lit just updates its `vm` property), so the inline
+      // `opacity: 0` we wrote during the drill MUST be cleared after
+      // commit or the freshly-rendered parent pane stays invisible.
+      expect(strip!.style.opacity).toBe("");
+      expect(strip!.style.transition).toBe("");
     } finally {
       vi.useRealTimers();
     }

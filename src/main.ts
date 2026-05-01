@@ -50,15 +50,15 @@
  *     `shouldRenderPlusTile`). On failure the screen renders an inline
  *     error and the modal stays open for retry.
  *
- * Phase 9 wiring (drill animation):
+ * Phase 9 wiring (drill animation), rewritten in §17.32:
  *   + `tile-drill` `{ nodeId }` from `<children-grid>` triggers
- *     `screen.runDrillAnimation(commit)` where `commit` runs the same
- *     `nav.focusByUuid + router.push + refresh` triple that the breadcrumb
- *     handler uses. The shell is the only place that knows the
- *     `encap--drill` class lives on `.layout`; this listener stays a
- *     thin glue between the event source and the navigation commit.
- *     Reduced-motion (or testBridge `dismissAnimations`) makes the helper
- *     short-circuit the animation and commit synchronously, so the e2e
+ *     `screen.runDrillAnimation(nodeId, commit)` where `commit` runs the
+ *     same `nav.focusByUuid + router.push + refresh` triple that the
+ *     breadcrumb handler uses. The `nodeId` lets the shell locate the
+ *     tapped tile and morph it (FLIP-style) into the parent-identity-
+ *     strip's bounding rect while siblings fade out. Reduced-motion
+ *     (or testBridge `dismissAnimations`) makes the helper short-
+ *     circuit the animation and commit synchronously, so the e2e
  *     suite doesn't need to wait for the settle window.
  */
 
@@ -66,6 +66,10 @@ import { LocalStorageBoardCollectionRepository } from "./adapters/persistence/Lo
 import { decode, encode } from "./adapters/persistence/jsonCodec.js";
 import { HashRouter } from "./adapters/routing/HashRouter.js";
 import type { AddChildConfirmDetail } from "./adapters/ui/modal/AddChildModal.js";
+import type {
+  BoardSettingsConfirmDetail,
+  BoardSettingsDeleteDetail,
+} from "./adapters/ui/modal/BoardSettingsModal.js";
 import type {
   EditNodeConfirmDetail,
   EditNodeTarget,
@@ -84,6 +88,7 @@ import "./adapters/ui/shell/TreeGraphScreen.js";
 import type { TreeGraphScreen } from "./adapters/ui/shell/TreeGraphScreen.js";
 import type { InlineEditTitleDetail } from "./adapters/ui/views/inlineEditEvents.js";
 import type { InlineEditValueDetail } from "./adapters/ui/views/inlineEditEvents.js";
+import { DEFAULT_FRESH_COLOR } from "./adapters/ui/views/dateAgeColor.js";
 import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
 import { AddChildService } from "./application/AddChildService.js";
 import { BoardCollectionService } from "./application/BoardCollectionService.js";
@@ -126,9 +131,21 @@ async function main(): Promise<void> {
     // through the mapper so each tile's pre-baked `dateColor` reflects
     // the current board's theme. Boards without a colour fall back to
     // the §17.18 default warm orange inside `dateAgeColor`.
+    const freshColor = current.freshDateColor ?? DEFAULT_FRESH_COLOR;
     const mapperOptions = current.freshDateColor
       ? { freshDateColor: current.freshDateColor }
       : {};
+    // SPEC §17.31 — also expose the resolved fresh-colour as a CSS
+    // custom property on the screen host so non-timestamp surfaces
+    // (focused-panel title) can paint themselves with the same board
+    // accent. Custom properties cascade through shadow boundaries
+    // downward, so setting `--board-fresh` once on the screen host
+    // is visible to every per-view shadow tree without further
+    // plumbing. The fallback applies for boards that have no
+    // `freshDateColor` set, mirroring the mapper's
+    // `dateAgeColor` fallback so the title and the timestamp's fresh
+    // endpoint always agree.
+    screen.style.setProperty("--board-fresh", freshColor);
     screen.view = view
       ? mapFocusedToViewModel(view.center, view.childrenNodes, mapperOptions)
       : null;
@@ -284,7 +301,11 @@ async function main(): Promise<void> {
 
   screen.addEventListener("tile-drill", (e) => {
     const detail = (e as CustomEvent<TileDrillDetail>).detail;
-    screen.runDrillAnimation(() => {
+    // §17.32 — the screen needs the tapped nodeId so it can locate the
+    // tile element + drive the FLIP morph from its current position to
+    // the parent-identity-strip's bounding rect. The commit closure is
+    // unchanged from §17.20.
+    screen.runDrillAnimation(detail.nodeId, () => {
       const r = nav.focusByUuid(detail.nodeId);
       if (!r.ok) {
         return;
@@ -299,9 +320,63 @@ async function main(): Promise<void> {
 
   screen.addEventListener("burger-menu-action", (e) => {
     const detail = (e as CustomEvent<BurgerMenuActionDetail>).detail;
+    if (detail.action === "settings") {
+      // SPEC §17.31 — open the board-settings modal pre-filled with
+      // the current board. `canDelete` is false when the collection
+      // holds a single board (the `getCurrentBoard` invariant).
+      const current = boards.getCurrentBoard();
+      screen.openBoardSettingsModal({
+        boardId: current.id,
+        name: current.name,
+        freshDateColor: current.freshDateColor ?? "",
+        canDelete: boards.list().length > 1,
+      });
+      return;
+    }
     // Placeholder: the real Import / Export / Boards consumers land in
     // Phase 10 (Persistence + Routing), per SPEC §15.4 + §17.3.
     console.info("[main] burger-menu-action (placeholder)", detail.action);
+  });
+
+  screen.addEventListener("board-settings-confirm", (e) => {
+    void (async () => {
+      const detail = (e as CustomEvent<BoardSettingsConfirmDetail>).detail;
+      const result = await boards.updateSettings(detail.boardId, {
+        name: detail.name,
+        freshDateColor: detail.freshDateColor,
+      });
+      if (!result.ok) {
+        screen.setBoardSettingsError(result.reason);
+        return;
+      }
+      screen.closeBoardSettingsModal();
+      refresh();
+    })();
+  });
+
+  screen.addEventListener("board-settings-delete", (e) => {
+    void (async () => {
+      const detail = (e as CustomEvent<BoardSettingsDeleteDetail>).detail;
+      const result = await boards.deleteBoard(detail.boardId);
+      if (!result.ok) {
+        screen.setBoardSettingsError(result.reason);
+        return;
+      }
+      // After a delete the current board may have changed; refresh
+      // the tree (router stays on the old board id but the focus
+      // resolves to the new current's root via the fallback path).
+      const newCurrent = boards.getCurrentBoard();
+      const newRootId = newCurrent.tree.id;
+      // Re-seat the navigation service to the (now-current) board's
+      // tree root so the next refresh resolves valid focus.
+      nav.replaceTree(newCurrent.tree);
+      router.replace({
+        boardId: newCurrent.id,
+        focusNodeUuid: newRootId,
+      });
+      screen.closeBoardSettingsModal();
+      refresh();
+    })();
   });
 
   const startRoute = router.current();

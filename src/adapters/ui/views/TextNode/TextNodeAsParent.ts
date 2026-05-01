@@ -90,6 +90,14 @@ export class TextNodeAsParent extends LitElement {
       .title {
         font-size: 2.4vh;
         font-weight: 700;
+        /* SPEC 17.31 -- the focused-panel title is painted with the
+           board's fresh-date colour (the same accent that drives the
+           timestamp's age gradient). The --board-fresh custom
+           property is set on the tree-graph-screen host by the
+           composition root on every refresh and inherits through the
+           shadow boundaries down to here. The currentColor fallback
+           keeps unit fixtures readable without the prop being set. */
+        color: var(--board-fresh, currentColor);
       }
       /* SPEC 17.28 -- click-to-edit affordances. The cursor flip on
          hover signals the click target is editable; the value body

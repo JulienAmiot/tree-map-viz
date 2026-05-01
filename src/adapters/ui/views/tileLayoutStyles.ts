@@ -63,6 +63,22 @@ export const tileLayoutStyles = css`
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    /* SPEC §17.32 — drill-into morph paints ONLY the title with
+       var(--board-fresh) during the FLIP transition (operator's
+       requirement: the value / timestamp / unit must keep their
+       own colours). The mechanism is a custom CSS property the
+       drill helper sets on the tapped tile element; CSS custom
+       properties cascade through shadow DOM boundaries, so
+       --drill-title-color propagates from the tile down through
+       node-view and the per-view shadow into this rule.
+       --drill-title-color is unset outside the drill, so the
+       fallback currentColor reproduces the pre-§17.32 inherited
+       title colour for static rendering. The transition on the
+       color property is what makes the recolour animate smoothly;
+       the duration matches DRILL_SETTLE_MS in
+       drillTransitions.ts. */
+    color: var(--drill-title-color, currentColor);
+    transition: color 320ms ease;
   }
   .timestamp {
     position: absolute;

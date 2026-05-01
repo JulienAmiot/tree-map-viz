@@ -110,6 +110,14 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
         font-size: 2.4vh;
         font-weight: 700;
         flex: 0 0 auto;
+        /* SPEC 17.31 -- the focused-panel title is painted with the
+           board's fresh-date colour (the same accent that drives the
+           timestamp's age gradient). The --board-fresh custom
+           property is set on the tree-graph-screen host by the
+           composition root on every refresh and inherits through the
+           shadow boundaries down to here. The currentColor fallback
+           keeps unit fixtures readable without the prop being set. */
+        color: var(--board-fresh, currentColor);
       }
       /* SPEC 17.30 -- the metric's definition. vh-relative so it
          matches the title's typographic scale; muted colour so the

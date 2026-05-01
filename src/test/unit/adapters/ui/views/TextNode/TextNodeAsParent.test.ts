@@ -329,4 +329,27 @@ describe("<text-node-as-parent>", () => {
       expect(handler).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("title colour (\u00a717.31)", () => {
+    // SPEC §17.31 — the focused-panel title is painted with the
+    // board's fresh-date colour. The composition root sets a
+    // `--board-fresh` custom property on `<tree-graph-screen>` that
+    // cascades into this view's shadow tree; the `.title` rule
+    // resolves it via `var(--board-fresh, currentColor)`.
+    //
+    // jsdom can't compute shadow-scoped CSS, so we read the static
+    // CSS text directly (same pattern §17.18 uses for the
+    // timestamp). The shape we pin: the `.title` block carries
+    // `color: var(--board-fresh, currentColor)`. Children-tile
+    // titles (TextNodeAsChild + BSC AsChild) intentionally do NOT
+    // carry this rule — only the focused panel.
+    it("the .title carries `color: var(--board-fresh, currentColor)`", () => {
+      const cssText = (TextNodeAsParent.styles as readonly { cssText?: string }[])
+        .map((s) => String(s.cssText ?? s))
+        .join("\n");
+      expect(cssText).toMatch(
+        /\.title\s*\{[\s\S]*?color:\s*var\(--board-fresh,\s*currentColor\)/,
+      );
+    });
+  });
 });

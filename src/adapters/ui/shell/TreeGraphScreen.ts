@@ -24,14 +24,23 @@
  *     `screen.setAddChildError(reason)` so the modal renders an inline
  *     error and stays open (SPEC §7 — never persists on failure).
  *
- * Phase 9 (animations) addition:
+ * Phase 9 (animations) addition, rewritten in §17.32:
  *   - `tile-drill` events from `<children-grid>` bubble out unmolested. The
  *     composition root listens for them on the screen, then calls
- *     `screen.runDrillAnimation(commit)` to flip `encap--drill` on the
- *     `.layout` wrapper, and the helper schedules the navigation `commit`
- *     after the CSS transition has settled. `prefers-reduced-motion: reduce`
- *     (or the testBridge `dismissAnimations` sentinel) short-circuits the
- *     class flip and commits synchronously, per SPEC §4 last bullet.
+ *     `screen.runDrillAnimation(nodeId, commit)`. The shell resolves the
+ *     tapped tile (`[data-id="<nodeId>"]` inside the grid's shadow root)
+ *     and the destination element (`<parent-identity-strip>`) and hands
+ *     them to `runDrillTransition`, which performs a FLIP-style morph:
+ *     the tapped tile translates + scales to the strip's bounding rect
+ *     while every other child + the old strip fade out, with the title
+ *     colour transitioning to `var(--board-fresh)` along the way. After
+ *     the morph settles the helper invokes `commit` (the navigation
+ *     swap), and the shell follows up with a brief opacity fade-in on
+ *     the freshly-rendered children-grid so the new tiles "appear"
+ *     rather than blink in. `prefers-reduced-motion: reduce` (or the
+ *     testBridge `dismissAnimations` sentinel) short-circuits both the
+ *     morph and the post-commit fade-in and commits synchronously, per
+ *     SPEC §4 last bullet.
  *
  * §17.23 polish (close-to-parent):
  *   - The shell derives the focused node's `parentId` from `breadcrumbPath`
@@ -80,6 +89,11 @@ import {
 import { OrientationController } from "../controllers/OrientationController.js";
 import "../modal/AddChildModal.js";
 import type { AddChildModal } from "../modal/AddChildModal.js";
+import "../modal/BoardSettingsModal.js";
+import type {
+  BoardSettingsModal,
+  BoardSettingsTarget,
+} from "../modal/BoardSettingsModal.js";
 import "../modal/EditNodeModal.js";
 import type {
   EditNodeModal,
@@ -142,6 +156,26 @@ export class TreeGraphScreen extends LitElement {
   @property({ attribute: false })
   editNodeError: string | null = null;
 
+  /**
+   * SPEC §17.31 — `<board-settings-modal>` open state. Driven by the
+   * "Settings…" item on `<burger-menu>`; the composition root catches
+   * `burger-menu-action { action: "settings" }` and calls
+   * `openBoardSettingsModal(target)` here. Confirm / Delete events
+   * bubble out of the screen for the composition root to consume.
+   */
+  @state()
+  private boardSettingsModalOpen = false;
+
+  /** Pre-edit snapshot supplied by the composition root. */
+  @state()
+  private boardSettingsTarget: BoardSettingsTarget | null = null;
+
+  /** Inline error from a failed `BoardCollectionService.updateSettings` /
+   * `deleteBoard`. The composition root sets it via
+   * `setBoardSettingsError(reason)` so the modal stays open for retry. */
+  @property({ attribute: false })
+  boardSettingsError: string | null = null;
+
   readonly orientation = new OrientationController(this);
 
   static styles = css`
@@ -162,34 +196,17 @@ export class TreeGraphScreen extends LitElement {
       height: 100%;
       /* §4: parent strip ≈ 22 % (mid of 20–25 %), children grid ≈ 78 %. */
       grid-template-rows: 22fr 78fr;
-      /* §17.20 — drill-into transition target. transform-origin sits at the
-         centre of the tile that was tapped; we don't have access to the
-         tap coordinate from CSS, so we use the centre of the layout. The
-         visual is a slight scale-up + opacity dip — enough to imply
-         "the focus is pulling forward" without being kinetic. JS only
-         flips the class (encap--drill) on the .layout wrapper; CSS owns
-         the keyframes. */
-      transform-origin: 50% 50%;
     }
-    .layout.encap--drill {
-      animation: encap-drill-in var(--encap-drill-ms, 250ms) ease-in;
-      will-change: transform, opacity;
-    }
-    @keyframes encap-drill-in {
-      from {
-        transform: scale(1);
-        opacity: 1;
-      }
-      to {
-        transform: scale(1.04);
-        opacity: 0.85;
-      }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .layout.encap--drill {
-        animation: none;
-      }
-    }
+    /* §17.32 — drill-into transition. The previous (§17.20) "zoom the
+       whole layout" effect was replaced by a FLIP-style morph driven
+       from runDrillTransition: the tapped tile translates + scales
+       to the parent-identity-strip's geometry while siblings fade
+       out. The grid needs position:relative so the morphed tile's
+       z-index 10 actually layers above its siblings; the strip
+       above it inherits the same coordinate space (the layout
+       wrapper is the FLIP origin). All transforms / opacities are
+       written by JS as inline styles; no keyframes live here
+       anymore. */
     parent-identity-strip {
       min-height: 0;
       min-width: 0;
@@ -197,6 +214,7 @@ export class TreeGraphScreen extends LitElement {
     children-grid {
       min-height: 0;
       min-width: 0;
+      position: relative;
     }
     .drawer-content {
       display: flex;
@@ -254,6 +272,12 @@ export class TreeGraphScreen extends LitElement {
         .errorMessage=${this.editNodeError}
         @edit-node-cancel=${this.handleEditModalClose}
       ></edit-node-modal>
+      <board-settings-modal
+        ?open=${this.boardSettingsModalOpen}
+        .target=${this.boardSettingsTarget}
+        .errorMessage=${this.boardSettingsError}
+        @board-settings-cancel=${this.handleBoardSettingsModalClose}
+      ></board-settings-modal>
     `;
 
     if (!this.view) {
@@ -307,6 +331,11 @@ export class TreeGraphScreen extends LitElement {
     this.editNodeError = null;
   };
 
+  private handleBoardSettingsModalClose = (): void => {
+    this.boardSettingsModalOpen = false;
+    this.boardSettingsError = null;
+  };
+
   /** Called by the composition root after a successful `addChild` so the
    * modal closes (preserving any other state the shell owns). Public so
    * `main.ts` can drive it without re-querying the modal element. */
@@ -346,6 +375,32 @@ export class TreeGraphScreen extends LitElement {
     this.editNodeError = message;
   }
 
+  /**
+   * SPEC §17.31 — open the board-settings modal with a pre-filled
+   * snapshot. Called by the composition root in response to
+   * `burger-menu-action { action: "settings" }`; the snapshot is
+   * built from `BoardCollectionService.getCurrentBoard()` plus the
+   * collection size (`canDelete = list().length > 1`).
+   */
+  openBoardSettingsModal(target: BoardSettingsTarget): void {
+    this.boardSettingsTarget = target;
+    this.boardSettingsModalOpen = true;
+    this.boardSettingsError = null;
+  }
+
+  /** Called after a successful `updateSettings` / `deleteBoard` to
+   * dismiss the modal. */
+  closeBoardSettingsModal(): void {
+    this.boardSettingsModalOpen = false;
+    this.boardSettingsError = null;
+  }
+
+  /** Called after a failed `updateSettings` / `deleteBoard` to surface
+   * the reason inline while keeping the modal open. */
+  setBoardSettingsError(message: string): void {
+    this.boardSettingsError = message;
+  }
+
   /** Read-only accessor used by tests — keeps the `@state` private. */
   get isAddChildModalOpen(): boolean {
     return this.modalOpen;
@@ -355,6 +410,12 @@ export class TreeGraphScreen extends LitElement {
    * §17.28 edit-node modal state. */
   get isEditNodeModalOpen(): boolean {
     return this.editModalOpen;
+  }
+
+  /** Read-only accessor used by tests + composition root for the
+   * §17.31 board-settings modal state. */
+  get isBoardSettingsModalOpen(): boolean {
+    return this.boardSettingsModalOpen;
   }
 
   /** Direct accessor to the modal element, useful for the composition root
@@ -372,32 +433,189 @@ export class TreeGraphScreen extends LitElement {
     );
   }
 
+  /** Direct accessor to the §17.31 board-settings modal element. */
+  get boardSettingsModalElement(): BoardSettingsModal | null {
+    return (
+      this.shadowRoot?.querySelector<BoardSettingsModal>(
+        "board-settings-modal",
+      ) ?? null
+    );
+  }
+
   /**
-   * SPEC §4 — drill into a child. The composition root catches `tile-drill`
-   * on the screen and calls this method with a commit closure that runs
+   * SPEC §4 / §17.32 — drill into a child. The composition root catches
+   * `tile-drill` on the screen and calls this method with the tapped
+   * `nodeId` plus a commit closure that runs
    * `nav.focusByUuid` + `router.push` + `refresh`.
    *
-   * The shell is the only place that knows the `encap--drill` class lives
-   * on `.layout`. The actual class-flipping + `prefers-reduced-motion`
-   * detection lives in the pure helper `runDrillTransition` so unit tests
-   * for both the shell and the helper can stay independent.
+   * The shell is the only place that knows where the tapped tile, the
+   * parent-identity-strip, and the sibling tiles live in the shadow
+   * tree. The pure helper `runDrillTransition` does the FLIP geometry +
+   * `prefers-reduced-motion` detection so unit tests for both the shell
+   * and the helper can stay independent.
    *
-   * If the layout wrapper isn't rendered yet (`view === null`), commit
-   * fires immediately — there's no pending visual state to animate.
+   * If the layout wrapper isn't rendered yet (`view === null`) or the
+   * tapped tile cannot be located, commit fires immediately — there's
+   * no pending visual state to animate.
    */
-  runDrillAnimation(commit: () => void): void {
-    const layout = this.shadowRoot?.querySelector<HTMLElement>(
-      '[data-testid="layout"]',
-    );
+  runDrillAnimation(nodeId: string, commit: () => void): void {
+    const root = this.shadowRoot;
+    const layout = root?.querySelector<HTMLElement>('[data-testid="layout"]');
     if (!layout) {
       commit();
       return;
     }
-    runDrillTransition({ host: layout, commit });
+
+    const grid = root?.querySelector("children-grid");
+    const strip = root?.querySelector<HTMLElement>("parent-identity-strip");
+    // The tile lives one shadow boundary deeper, inside <children-grid>'s
+    // own shadow root. We query through `.shadowRoot` deliberately rather
+    // than via a slot/light DOM lookup so the grid can keep encapsulation.
+    const tile = grid?.shadowRoot?.querySelector<HTMLElement>(
+      `[data-id="${cssEscape(nodeId)}"]`,
+    );
+
+    if (!tile || !strip) {
+      // Either the tile isn't rendered (race with a refresh) or the
+      // strip isn't on screen yet. Commit synchronously — the navigation
+      // is more important than the polish.
+      commit();
+      return;
+    }
+
+    // Collect every other tile in the grid (real children + the plus
+    // tile) so the helper can fade them out while the tapped tile
+    // morphs. Using `[data-testid="child"]` plus the plus-tile slot
+    // marker so we don't pick up internals of `<node-view>`.
+    const fadeOut: HTMLElement[] = [];
+    const otherTiles =
+      grid?.shadowRoot?.querySelectorAll<HTMLElement>(
+        '[data-testid="child"], [data-slot="plus"]',
+      ) ?? [];
+    for (const el of Array.from(otherTiles)) {
+      if (el !== tile) fadeOut.push(el);
+    }
+    // Fade the old parent strip out too — the morphed tile is about to
+    // overlay it and become the new strip after commit; without fading
+    // the old strip the user briefly sees two stacked headers.
+    fadeOut.push(strip);
+
+    // §17.32 — `<children-grid>` carries `:host { overflow: hidden }` to
+    // keep the squarify layout from spilling out during resize jank.
+    // The drill morph translates the tapped tile UP into the parent-
+    // strip's territory (often by hundreds of pixels), which would
+    // otherwise be clipped at the grid host's top edge — leaving "an
+    // empty strip" while the morph is in flight (the user-visible bug
+    // §17.32 first shipped with). We open up the grid's overflow for
+    // the duration of the drill and restore it on commit. Inline
+    // style override keeps the static `:host` rule untouched for
+    // every other code path.
+    const gridHost = grid as HTMLElement | null;
+    const prevGridOverflow = gridHost?.style.overflow ?? "";
+    if (gridHost) gridHost.style.overflow = "visible";
+
+    // §17.32 follow-up — Lit doesn't recreate the
+    // `<parent-identity-strip>` element on focus change (it just
+    // updates its `vm` property), so any inline styles we write to
+    // the strip during the drill (opacity: 0 + transition) would
+    // leak into the post-commit render and leave the *new* parent
+    // pane invisible. Snapshot the strip's inline `opacity` and
+    // `transition` here so the commit closure can snap them back to
+    // their pre-drill values the moment Lit has re-rendered the
+    // strip with the new vm. Same idea for the grid host's
+    // `overflow` above; the two restorations are sibling concerns.
+    const prevStripOpacity = strip.style.opacity;
+    const prevStripTransition = strip.style.transition;
+
+    runDrillTransition({
+      tile,
+      target: strip,
+      fadeOut,
+      commit: () => {
+        try {
+          commit();
+        } finally {
+          // Restore the grid's overflow before the post-commit fade-
+          // in runs. The grid HOST element survives the post-commit
+          // re-render (Lit doesn't recreate custom-element children
+          // when their template position is stable), so the inline
+          // style would otherwise leak into the next render.
+          if (gridHost) gridHost.style.overflow = prevGridOverflow;
+          // Snap the strip back to its pre-drill inline state so the
+          // freshly-rendered parent pane is visible immediately. We
+          // restore `transition` first so the `opacity` write that
+          // follows snaps instead of animating from 0 → 1; the
+          // post-commit experience is intentionally instant on the
+          // strip side, with the children grid owning the only
+          // post-commit fade.
+          strip.style.transition = prevStripTransition;
+          strip.style.opacity = prevStripOpacity;
+          this.fadeInChildrenGridAfterCommit();
+        }
+      },
+    });
+  }
+
+  /**
+   * SPEC §17.32 — after the post-commit re-render the children grid
+   * holds an entirely new set of tiles (the children of the just-
+   * focused node). Fading the host's opacity from 0 → 1 over a short
+   * window makes the new tiles "appear" gracefully instead of
+   * blinking in at full opacity. The fade is intentionally shorter
+   * than the morph (≈ half the settle window) so the perceived
+   * sequence is "tile flies up → new children appear" rather than
+   * one continuous slow transition.
+   *
+   * The opacity transition is set as an inline style and cleaned up
+   * after the animation completes; we cannot hang it on the host's
+   * `static styles` because the pre-commit grid (still rendered
+   * during the morph) must keep its full opacity.
+   */
+  private fadeInChildrenGridAfterCommit(): void {
+    // Schedule on a microtask so Lit has a chance to flush the post-
+    // commit render before we read back the new grid.
+    void this.updateComplete.then(() => {
+      const grid = this.shadowRoot?.querySelector<HTMLElement>(
+        "children-grid",
+      );
+      if (!grid) return;
+      grid.style.opacity = "0";
+      grid.style.transition = `opacity ${DRILL_FADEIN_MS}ms ease`;
+      // Force a reflow so the 0 → 1 transition actually runs (without
+      // this both writes are coalesced and the grid jumps straight
+      // to opacity 1).
+      void grid.offsetWidth;
+      grid.style.opacity = "1";
+      window.setTimeout(() => {
+        grid.style.opacity = "";
+        grid.style.transition = "";
+      }, DRILL_FADEIN_MS + 20);
+    });
   }
 
   /** Re-export the drill class so tests can pin the contract symbolically. */
   static readonly DRILL_CLASS = DRILL_CLASS;
+}
+
+/**
+ * Post-commit fade-in window for the new children-grid. Kept small
+ * (half the morph) so the staircase "fly → appear" reads as two
+ * distinct steps; tuning lives here rather than in the helper because
+ * only the shell knows about the post-commit render.
+ */
+const DRILL_FADEIN_MS = 160;
+
+/**
+ * CSS.escape polyfill / identity wrapper. Node IDs are already UUIDs
+ * (no special CSS chars), but escaping defensively keeps the selector
+ * safe if a future fixture ships an id with a `:` or a `.` and avoids
+ * silent zero-result `querySelector` calls.
+ */
+function cssEscape(value: string): string {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(value);
+  }
+  return value.replace(/["\\]/g, "\\$&");
 }
 
 declare global {

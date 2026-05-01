@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import "../../../../../../adapters/ui/views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
-import type { BusinessScoreCardNodeAsParent } from "../../../../../../adapters/ui/views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
+import { BusinessScoreCardNodeAsParent } from "../../../../../../adapters/ui/views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import type { BusinessScoreCardNodeViewModel } from "../../../../../../adapters/ui/views/NodeViewModel.js";
 import {
   cleanupLitFixtures,
@@ -345,6 +345,25 @@ describe("<business-score-card-as-parent>", () => {
         new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
       );
       expect(handler).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("title colour (\u00a717.31)", () => {
+    // SPEC §17.31 — see TextNodeAsParent.test.ts for the full
+    // rationale. Pinned independently here because BSC and TextNode
+    // are sibling per-views with their own scoped styles; a future
+    // theme refactor that drops the rule from one but keeps it in
+    // the other would silently desynchronise the focused-panel
+    // appearance across kinds.
+    it("the .title carries `color: var(--board-fresh, currentColor)`", () => {
+      const cssText = (
+        BusinessScoreCardNodeAsParent.styles as readonly { cssText?: string }[]
+      )
+        .map((s) => String(s.cssText ?? s))
+        .join("\n");
+      expect(cssText).toMatch(
+        /\.title\s*\{[\s\S]*?color:\s*var\(--board-fresh,\s*currentColor\)/,
+      );
     });
   });
 });

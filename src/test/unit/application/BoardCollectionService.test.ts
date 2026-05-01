@@ -202,6 +202,145 @@ describe("BoardCollectionService", () => {
     });
   });
 
+  describe("updateSettings (\u00a717.31)", () => {
+    // SPEC §17.31 — single round-trip patch for the board's mutable
+    // settings (name + freshDateColor). The settings modal needs both
+    // in one call so a name-and-colour edit doesn't fan out to two
+    // independent persistence writes.
+
+    it("patches the freshDateColor and persists", async () => {
+      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
+
+      const r = await svc.updateSettings("b1", { freshDateColor: "#743089" });
+
+      expect(r).toEqual({ ok: true });
+      expect(svc.list().find((b) => b.id === "b1")?.freshDateColor).toBe("#743089");
+      expect(repo.saveCallCount).toBe(1);
+      expect(repo.lastSaved?.boards.find((b) => b.id === "b1")?.freshDateColor).toBe(
+        "#743089",
+      );
+    });
+
+    it("patches name and freshDateColor in a single round-trip", async () => {
+      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
+
+      const r = await svc.updateSettings("b1", {
+        name: "Alpha-themed",
+        freshDateColor: "#1ea76a",
+      });
+
+      expect(r).toEqual({ ok: true });
+      const updated = svc.list().find((b) => b.id === "b1");
+      expect(updated?.name).toBe("Alpha-themed");
+      expect(updated?.freshDateColor).toBe("#1ea76a");
+      expect(repo.saveCallCount).toBe(1);
+    });
+
+    it("leaves a field unchanged when its key is omitted", async () => {
+      // §17.31 — partial patches: passing only `name` must NOT clear
+      // an existing freshDateColor (and vice versa).
+      const repoWithColor = new FakeBoardCollectionRepository(
+        makeSnapshot(
+          [
+            { ...makeBoard("b1", "Alpha"), freshDateColor: "#743089" },
+            makeBoard("b2", "Beta"),
+          ],
+          "b1",
+        ),
+      );
+      const svc = await BoardCollectionService.create(repoWithColor, sequentialIdGen());
+
+      await svc.updateSettings("b1", { name: "Alpha 2" });
+
+      const after = svc.list().find((b) => b.id === "b1");
+      expect(after?.name).toBe("Alpha 2");
+      expect(after?.freshDateColor).toBe("#743089");
+    });
+
+    it("trims the name and rejects empty / whitespace-only", async () => {
+      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
+
+      const r1 = await svc.updateSettings("b1", { name: "" });
+      const r2 = await svc.updateSettings("b1", { name: "   " });
+      const r3 = await svc.updateSettings("b1", { name: "  Trimmed  " });
+
+      expect(r1.ok).toBe(false);
+      expect(r2.ok).toBe(false);
+      expect(r3).toEqual({ ok: true });
+      expect(svc.list().find((b) => b.id === "b1")?.name).toBe("Trimmed");
+    });
+
+    it("rejects an empty freshDateColor", async () => {
+      // §17.31 — empty colour is rejected; the modal's color picker
+      // never emits empty so this is the defence-in-depth contract.
+      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
+      const r = await svc.updateSettings("b1", { freshDateColor: "   " });
+      expect(r.ok).toBe(false);
+      expect(repo.saveCallCount).toBe(0);
+    });
+
+    it("rejects an unknown board id", async () => {
+      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
+      const r = await svc.updateSettings("nope", { name: "X" });
+      expect(r.ok).toBe(false);
+      expect(repo.saveCallCount).toBe(0);
+    });
+  });
+
+  describe("deleteBoard (\u00a717.31)", () => {
+    // SPEC §17.31 — remove a board from the collection. Refuses on
+    // the last-remaining board (the `getCurrentBoard` invariant
+    // assumes ≥ 1 board exists). Deleting the current board promotes
+    // the first remaining board to current.
+
+    it("removes a non-current board and keeps the current id put", async () => {
+      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
+
+      const r = await svc.deleteBoard("b2");
+
+      expect(r).toEqual({ ok: true });
+      expect(svc.list().map((b) => b.id)).toEqual(["b1"]);
+      expect(svc.getCurrentBoardId()).toBe("b1");
+      expect(repo.saveCallCount).toBe(1);
+    });
+
+    it("removes the current board and promotes the first remaining as current", async () => {
+      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
+
+      const r = await svc.deleteBoard("b1");
+
+      expect(r).toEqual({ ok: true });
+      expect(svc.list().map((b) => b.id)).toEqual(["b2"]);
+      expect(svc.getCurrentBoardId()).toBe("b2");
+    });
+
+    it("refuses to delete the last remaining board", async () => {
+      // §17.31 — `getCurrentBoard` requires ≥ 1 board. Settings UI
+      // disables the Delete button at 1 board; the service-side
+      // guard is defence-in-depth.
+      const lonely = new FakeBoardCollectionRepository(
+        makeSnapshot([makeBoard("only", "Solo")], "only"),
+      );
+      const svc = await BoardCollectionService.create(lonely, sequentialIdGen());
+
+      const r = await svc.deleteBoard("only");
+
+      expect(r.ok).toBe(false);
+      expect(svc.list().map((b) => b.id)).toEqual(["only"]);
+      expect(svc.getCurrentBoardId()).toBe("only");
+    });
+
+    it("rejects an unknown board id without persisting", async () => {
+      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
+
+      const r = await svc.deleteBoard("nope");
+
+      expect(r.ok).toBe(false);
+      expect(svc.list().map((b) => b.id)).toEqual(["b1", "b2"]);
+      expect(repo.saveCallCount).toBe(0);
+    });
+  });
+
   describe("repository boundary (hexagonal)", () => {
     it("forwards every save through the port (no direct storage knowledge)", async () => {
       const svc = await BoardCollectionService.create(repo, sequentialIdGen("uuid"));

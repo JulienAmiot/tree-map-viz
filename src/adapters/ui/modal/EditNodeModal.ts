@@ -393,7 +393,7 @@ export class EditNodeModal extends LitElement {
               <input
                 data-testid="field-weight-slider"
                 type="range"
-                min="0"
+                min="0.5"
                 max="10"
                 step="0.5"
                 aria-label="Weight"
@@ -403,7 +403,7 @@ export class EditNodeModal extends LitElement {
               <input
                 data-testid="field-weight"
                 type="number"
-                min="0"
+                min="0.5"
                 max="10"
                 step="0.5"
                 placeholder="Weight — e.g. 1"

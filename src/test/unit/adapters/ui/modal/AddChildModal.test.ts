@@ -747,7 +747,11 @@ describe("<add-child-modal> weight slider + numeric pair (SPEC §17.26)", () => 
     expect(wrapper?.contains(num!)).toBe(true);
   });
 
-  it("slider runs 0..10 with step 0.5 (the user-facing weight range)", async () => {
+  it("slider runs 0.5..10 with step 0.5 (the user-facing weight range, \u00a717.31)", async () => {
+    // SPEC §17.31 — slider min bumped from 0 to 0.5 (the smallest
+    // valid Weight per the relaxed domain validator). Pre-§17.31
+    // the slider advertised min=0 but the domain rejected 0 at
+    // confirm time — a UX trap the operator only hit on confirm.
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {
@@ -756,12 +760,12 @@ describe("<add-child-modal> weight slider + numeric pair (SPEC §17.26)", () => 
     );
     await pickText(el);
     const slider = fieldOf(el, "field-weight-slider") as HTMLInputElement;
-    expect(slider.min).toBe("0");
+    expect(slider.min).toBe("0.5");
     expect(slider.max).toBe("10");
     expect(slider.step).toBe("0.5");
   });
 
-  it("number input mirrors the slider's range + step (so direct typing snaps to the same axis)", async () => {
+  it("number input mirrors the slider's range + step (so direct typing snaps to the same axis, \u00a717.31)", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {
@@ -770,7 +774,7 @@ describe("<add-child-modal> weight slider + numeric pair (SPEC §17.26)", () => 
     );
     await pickText(el);
     const num = fieldOf(el, "field-weight") as HTMLInputElement;
-    expect(num.min).toBe("0");
+    expect(num.min).toBe("0.5");
     expect(num.max).toBe("10");
     expect(num.step).toBe("0.5");
   });

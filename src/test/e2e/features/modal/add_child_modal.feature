@@ -140,6 +140,6 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
   Scenario: Weight is a slider + numeric input pair, bidirectionally synced (§17.26)
     When I click the plus tile
     And I pick the kind "TextNode"
-    Then the weight slider runs 0..10 step 0.5 and mirrors the number input
+    Then the weight slider runs 0.5..10 step 0.5 and mirrors the number input
     When I set the weight slider to "3.5"
     Then the weight number input shows the value "3.5"

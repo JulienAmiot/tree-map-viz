@@ -337,6 +337,45 @@ export class TreeGraphPage {
     return this.page.getByTestId("modal-close-x");
   }
 
+  // ----- §17.31 board-settings modal ------------------------------------
+
+  /** The `<board-settings-modal>` host element. */
+  boardSettingsModalHost(): Locator {
+    return this.page.locator("board-settings-modal");
+  }
+
+  /** The settings panel (`role="dialog"`) — only present in the DOM while open. */
+  boardSettingsModalPanel(): Locator {
+    return this.page.getByTestId("board-settings-modal");
+  }
+
+  /** Form field by data-testid (`field-name`, `field-color`, …). */
+  boardSettingsModalField(testId: string): Locator {
+    return this.page.getByTestId(testId);
+  }
+
+  boardSettingsModalConfirm(): Locator {
+    return this.page.getByTestId("modal-confirm");
+  }
+
+  boardSettingsModalCancel(): Locator {
+    return this.page.getByTestId("modal-cancel");
+  }
+
+  boardSettingsModalDeleteBtn(): Locator {
+    return this.page.getByTestId("delete-board");
+  }
+
+  boardSettingsModalConfirmDeleteBtn(): Locator {
+    return this.page.getByTestId("confirm-delete");
+  }
+
+  /** Read the modal host's reflected `open` attribute. */
+  async isBoardSettingsModalOpen(): Promise<boolean> {
+    const v = await this.boardSettingsModalHost().getAttribute("open");
+    return v !== null;
+  }
+
   /** Read the currently-rendered focused node id from the parent strip's `data-focused-id`. */
   async focusedId(): Promise<string | null> {
     return this.parentStrip().getAttribute("data-focused-id");

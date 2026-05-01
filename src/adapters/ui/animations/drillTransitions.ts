@@ -1,14 +1,53 @@
 /**
- * Drill transition helper (SPEC §2 / §4 / §12.2 — Phase 9).
+ * Drill transition helper (SPEC §2 / §4 / §12.2 — Phase 9, rewritten in
+ * §17.32).
  *
  * "JS only sets classes and timeouts." This module is the single place that
- * orchestrates the CSS-driven drill-into animation: it flips a class on the
- * caller-supplied host, schedules the navigation `commit` after the CSS
- * transition has had time to land, then removes the class.
+ * orchestrates the CSS-driven drill-into animation.
+ *
+ * § 17.20 (replaced) shipped a layout-wide *zoom* effect: the entire
+ * `.layout` wrapper got an `encap--drill` class that scaled it from 1.0 →
+ * 1.04 with a slight opacity dip while the navigation commit was pending.
+ * The visual implied "the focus is pulling forward" but did not
+ * communicate the spatial relationship between the tapped tile and the
+ * focused-panel strip.
+ *
+ * §17.32 replaces that with a **FLIP-style morph**: the tapped child tile
+ * translates + grows to the parent-identity-strip's bounding rect (so it
+ * literally flies up to take the parent's place) while every other child
+ * tile fades out. The old parent strip fades out at the same time so the
+ * morphed tile becomes the sole occupant of the strip's position when the
+ * navigation commits. After the commit (data swap), the freshly-rendered
+ * children grid re-mounts at opacity 0 → 1 so the new children "appear"
+ * rather than blink in. A custom CSS property `--drill-title-color` is
+ * also set on the tapped tile so the .title rule (in tileLayoutStyles)
+ * recolours to `var(--board-fresh)` during the morph — the rest of the
+ * tile (value, timestamp, unit) deliberately keeps its own colours.
+ *
+ * Why translate + width/height instead of `transform: scale()`:
+ *   - The tile's destination geometry is **layout-dependent**: the parent
+ *     strip is 22 % of the viewport, but the tile's starting position is
+ *     wherever the squarified treemap put it. A CSS keyframe can only
+ *     animate from a known to a known; the destination here changes
+ *     every frame.
+ *   - `transform: scale(sx, sy)` with non-uniform factors (the parent
+ *     strip is wide-and-short, the tile is roughly square or tall) would
+ *     stretch every text node inside the tile — title, value, timestamp,
+ *     unit — into a deformed rectangle. The earlier §17.32 build did
+ *     exactly that, and the operator's feedback was unambiguous: the
+ *     content must NOT deform during the morph.
+ *   - Animating `width` and `height` directly lets the inner content
+ *     reflow naturally (the title stays at `2vh` font-size, the value's
+ *     `cqmin` clamp re-resolves against the new tile dimensions each
+ *     frame, the bottom-right timestamp follows its own absolute
+ *     positioning rules). The cost is one layout per frame for one
+ *     element — cheap on a kiosk-class machine and worth it for the
+ *     undistorted content. The position delta still uses
+ *     `transform: translate()` (compositor-only, no layout cost).
  *
  * Reduced-motion contract (SPEC §4 last bullet):
- *   prefers-reduced-motion: reduce  →  commit fires immediately, the class
- *                                       is NEVER added.
+ *   prefers-reduced-motion: reduce  →  commit fires immediately, NO
+ *                                       transforms or fades are applied.
  *   testBridge.dismissAnimations()  →  same path (sentinel class
  *                                       `test-no-anim` on `<html>` per
  *                                       SPEC §14.4).
@@ -24,11 +63,11 @@
  * setTimeout) are seam-overridable; production callers use the defaults,
  * unit tests inject deterministic stubs.
  *
- * The helper does NOT track in-flight transitions: a re-drill while a prior
- * timer is pending fires a second commit + a second class re-add, which is
- * harmless (the class is idempotent and the second commit's focus wins). If
- * cancellation becomes a real UX concern, upgrade to a controller that
- * tracks the latest pending commit; today's contract is fire-and-forget.
+ * The helper does NOT track in-flight transitions: a re-drill while a
+ * prior timer is pending fires a second commit + a second transform
+ * application; the most recent commit's focus wins. If cancellation
+ * becomes a real UX concern, upgrade to a controller that tracks the
+ * latest pending commit; today's contract is fire-and-forget.
  */
 
 /**
@@ -39,39 +78,70 @@
  */
 const TEST_NO_ANIM_CLASS = "test-no-anim";
 
-/** Default settle window for the drill CSS transition. Tunable per call. */
-export const DRILL_SETTLE_MS = 250;
+/** Default settle window for the FLIP morph + sibling fade. */
+export const DRILL_SETTLE_MS = 320;
 
-/** CSS class added to the host while the drill animation is in flight. */
-export const DRILL_CLASS = "encap--drill";
+/**
+ * CSS class added to the tapped tile while the morph is in flight so
+ * tests (and any future cosmetic CSS hook) can target the active drill
+ * tile without a brittle inline-style probe. The class is cleaned up
+ * synchronously when the commit closure runs — by which point the
+ * tile is about to be unmounted as part of the post-commit re-render
+ * anyway, but a clean class list makes the intermediate state easier
+ * to reason about in the inspector.
+ */
+export const DRILL_CLASS = "tile--drilling";
 
 export interface RunDrillTransitionOptions {
-  /** Element on which the `encap--drill` class is flipped. */
-  readonly host: HTMLElement;
-  /** Navigation commit — invoked once the CSS transition has settled. */
+  /**
+   * The tapped child tile. Receives a `transform: translate(...)` plus
+   * a `width`/`height` transition that morphs it into the `target`
+   * element's bounding rect, and a `--drill-title-color` custom-prop
+   * write that recolours its `.title` (only) to the focused-panel
+   * accent.
+   */
+  readonly tile: HTMLElement;
+
+  /**
+   * The destination element — the parent-identity-strip. Read for its
+   * `getBoundingClientRect()` only; never mutated.
+   */
+  readonly target: HTMLElement;
+
+  /**
+   * Other elements to fade out in parallel with the morph: the
+   * non-tapped child tiles, the plus tile, and the old parent strip.
+   * The morphed tile becomes the visible "new parent" when the commit
+   * lands, so anything else that sits in the strip's position must
+   * make way.
+   */
+  readonly fadeOut: readonly HTMLElement[];
+
+  /** Navigation commit — invoked once the morph has settled. */
   readonly commit: () => void;
-  /** Override the class name (defaults to `DRILL_CLASS`). */
-  readonly className?: string;
+
   /** Override the settle window (defaults to `DRILL_SETTLE_MS`). */
   readonly settleMs?: number;
+
   /**
-   * Test seam — replaces the default reduced-motion detection (matchMedia
-   * + the testBridge sentinel). Production callers omit this and get the
-   * default behaviour.
+   * Test seam — replaces the default reduced-motion detection
+   * (matchMedia + the testBridge sentinel). Production callers omit
+   * this and get the default behaviour.
    */
   readonly shouldReduceMotion?: () => boolean;
+
   /**
-   * Test seam — replaces `setTimeout`. Returning value is ignored; tests
-   * use Vitest fake timers and don't need cancellation.
+   * Test seam — replaces `setTimeout`. Returning value is ignored;
+   * tests use Vitest fake timers and don't need cancellation.
    */
   readonly schedule?: (cb: () => void, ms: number) => void;
 }
 
 /**
- * Run the drill-into animation, then commit the navigation.
+ * Run the FLIP-style drill-into morph, then commit the navigation.
  *
  * On reduced-motion (system-level OR test-bridge sentinel), commit fires
- * synchronously and the host's class list is never touched.
+ * synchronously and no styles are applied to any element.
  */
 export function runDrillTransition(opts: RunDrillTransitionOptions): void {
   const reduce = (opts.shouldReduceMotion ?? defaultShouldReduceMotion)();
@@ -79,15 +149,88 @@ export function runDrillTransition(opts: RunDrillTransitionOptions): void {
     opts.commit();
     return;
   }
-  const className = opts.className ?? DRILL_CLASS;
   const settleMs = opts.settleMs ?? DRILL_SETTLE_MS;
-  const host = opts.host;
-  host.classList.add(className);
+  const { tile, target, fadeOut } = opts;
+
+  const tileRect = tile.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+
+  // Guard against zero-sized rects (jsdom / hidden elements / a stale
+  // call after the layout has been torn down). Without this the scale
+  // factor below would be NaN/Infinity and the transform would silently
+  // hide the tile. Falling through to the synchronous commit keeps the
+  // navigation responsive even when the morph cannot be staged.
+  if (tileRect.width <= 0 || tileRect.height <= 0) {
+    opts.commit();
+    return;
+  }
+
+  const dx = targetRect.left - tileRect.left;
+  const dy = targetRect.top - tileRect.top;
+  const targetW = targetRect.width;
+  const targetH = targetRect.height;
+
+  // Stage the tile for the morph. transform-origin: top left so a
+  // pure translate (without scale) lands the tile's top-left corner
+  // on the target's top-left corner; the bottom-right corner follows
+  // as `width` and `height` grow to the target's dimensions.
+  // zIndex: 10 so the tile draws above its siblings inside the grid
+  // (the document-order rule already puts the grid's stacking context
+  // above the parent-identity-strip's, but the explicit z-index keeps
+  // the contract robust against future structural changes).
+  tile.classList.add(DRILL_CLASS);
+  tile.style.transformOrigin = "top left";
+  tile.style.willChange = "transform, width, height";
+  tile.style.zIndex = "10";
+  tile.style.transition =
+    `transform ${settleMs}ms ease, ` +
+    `width ${settleMs}ms ease, ` +
+    `height ${settleMs}ms ease`;
+  // Custom CSS property scoped to .title (see tileLayoutStyles).
+  // CSS custom properties cascade through shadow DOM boundaries, so
+  // setting it here propagates two shadow boundaries deep
+  // (children-grid → node-view → text-node-as-child / bsc-as-child)
+  // without a multi-shadow-pierce query. The .title rule reads
+  // `color: var(--drill-title-color, currentColor)`, so setting it
+  // recolours the title alone — value, timestamp, unit, and any
+  // future tile glyph keep their own colours.
+  tile.style.setProperty("--drill-title-color", "var(--board-fresh)");
+
+  // Stage every fade-out element with a uniform transition so the
+  // optical centre of the animation lands at the same moment as the
+  // tile's settle.
+  for (const sib of fadeOut) {
+    sib.style.transition = `opacity ${settleMs}ms ease`;
+    sib.style.willChange = "opacity";
+  }
+
+  // Force a single synchronous reflow so the browser commits the
+  // initial state (transform: none, original width/height, opacity:
+  // 1) before we apply the target state. Without this both reads and
+  // writes get coalesced into the same frame and the transitions
+  // collapse to an instantaneous jump.
+  void tile.offsetWidth;
+
+  // Trigger the morph + fades on the next frame.
+  tile.style.transform = `translate(${dx}px, ${dy}px)`;
+  tile.style.width = `${targetW}px`;
+  tile.style.height = `${targetH}px`;
+  for (const sib of fadeOut) {
+    sib.style.opacity = "0";
+  }
+
   (opts.schedule ?? defaultSchedule)(() => {
     try {
       opts.commit();
     } finally {
-      host.classList.remove(className);
+      // The post-commit re-render unmounts the morphed tile and
+      // re-creates the children-grid contents, so the inline styles
+      // we set above evaporate with the elements that carry them.
+      // The `tile.classList.remove` call is defensive — if a future
+      // refactor reuses the same tile element across renders the
+      // class won't leak into the next frame.
+      tile.classList.remove(DRILL_CLASS);
+      tile.style.willChange = "";
     }
   }, settleMs);
 }

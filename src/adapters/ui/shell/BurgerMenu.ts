@@ -1,13 +1,17 @@
 /**
  * `<burger-menu>` — small triple-bar trigger that opens a popup menu with
- * the three top-level kiosk actions (SPEC §4 Drawer + §12.3
- * `shell/burger_menu.feature`):
+ * the top-level kiosk actions (SPEC §4 Drawer + §12.3
+ * `shell/burger_menu.feature`, extended in §17.31):
  *
- *   - Import…  → caller is expected to seed a tree from a JSON file
- *                (Phase 10 wiring; the menu just emits the action).
- *   - Export…  → caller is expected to serialize the current board.
- *   - Boards…  → caller is expected to open the boards panel
- *                (rename / switch / create — also Phase 10 wiring).
+ *   - Import…    → caller is expected to seed a tree from a JSON file
+ *                  (Phase 10 wiring; the menu just emits the action).
+ *   - Export…    → caller is expected to serialize the current board.
+ *   - Boards…    → caller is expected to open the boards panel
+ *                  (rename / switch / create — also Phase 10 wiring).
+ *   - Settings…  → §17.31. Caller is expected to open the
+ *                  `<board-settings-modal>` (board name + fresh-date
+ *                  colour + delete-board, with delete refused on the
+ *                  last remaining board). Wired today.
  *
  * Surface contract:
  *  - dispatches a bubbling + composed `burger-menu-action`
@@ -36,7 +40,7 @@ export const BURGER_MENU_ACTION_EVENT = "burger-menu-action";
 /** Vertical gap between the trigger and the popup (px). */
 const POPUP_GAP_PX = 4;
 
-export type BurgerMenuAction = "import" | "export" | "boards";
+export type BurgerMenuAction = "import" | "export" | "boards" | "settings";
 
 export type BurgerMenuActionDetail = {
   readonly action: BurgerMenuAction;
@@ -47,6 +51,12 @@ const ITEMS: readonly { readonly action: BurgerMenuAction; readonly label: strin
     { action: "import", label: "Import…" },
     { action: "export", label: "Export…" },
     { action: "boards", label: "Boards…" },
+    // SPEC §17.31 — board-level theme settings (name + fresh-date
+    // colour + delete-board). Sits below "Boards…" because Boards
+    // is collection-level (rename / switch / create) and Settings
+    // is single-board-level. Wired today; a Phase 10 redesign may
+    // merge the two surfaces.
+    { action: "settings", label: "Settings…" },
   ] as const;
 
 @customElement("burger-menu")

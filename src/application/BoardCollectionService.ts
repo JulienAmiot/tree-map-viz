@@ -114,6 +114,99 @@ export class BoardCollectionService {
     return { ok: true, board };
   }
 
+  /**
+   * SPEC §17.31 — patch a board's mutable settings (name + fresh-date
+   * colour). A single round-trip through the repo so the UI's settings
+   * panel doesn't have to call `rename` and a hypothetical
+   * `updateColour` separately. Either field is optional; passing
+   * `undefined` for a field leaves it unchanged. Passing
+   * `freshDateColor: ""` or any falsy non-undefined value is rejected
+   * (the wire format expects either `undefined` for absent or a
+   * non-empty CSS colour string).
+   *
+   * Validation:
+   *   - `name`, when supplied, is trimmed and must be non-empty (same
+   *     rule as `rename` and `createBoard`).
+   *   - `freshDateColor`, when supplied, is trimmed and must be
+   *     non-empty (any further "is this a real CSS colour?" check is
+   *     deliberately out of scope — the modal uses
+   *     `<input type="color">` which only emits valid hex strings).
+   *   - The board must exist; the same `Board not found` reason as
+   *     `rename` / `switchTo` is returned otherwise.
+   */
+  async updateSettings(
+    boardId: string,
+    settings: {
+      readonly name?: string;
+      readonly freshDateColor?: string;
+    },
+  ): Promise<{ ok: true } | { ok: false; reason: string }> {
+    const idx = this.boards.findIndex((b) => b.id === boardId);
+    if (idx === -1) {
+      return { ok: false, reason: "Board not found." };
+    }
+    const existing = this.boards[idx]!;
+    let nextName = existing.name;
+    if (settings.name !== undefined) {
+      const trimmed = settings.name.trim();
+      if (trimmed.length === 0) {
+        return { ok: false, reason: "Board name cannot be empty." };
+      }
+      nextName = trimmed;
+    }
+    let nextColor: string | undefined = existing.freshDateColor;
+    if (settings.freshDateColor !== undefined) {
+      const trimmed = settings.freshDateColor.trim();
+      if (trimmed.length === 0) {
+        return { ok: false, reason: "Fresh-date colour cannot be empty." };
+      }
+      nextColor = trimmed;
+    }
+    this.boards[idx] = {
+      id: existing.id,
+      name: nextName,
+      tree: existing.tree,
+      ...(nextColor !== undefined ? { freshDateColor: nextColor } : {}),
+    };
+    await this.persist();
+    return { ok: true };
+  }
+
+  /**
+   * SPEC §17.31 — remove a board from the collection. If the deleted
+   * board was the current one, the first remaining board becomes
+   * current; if the user deletes a non-current board the current id
+   * stays put.
+   *
+   * Refuses when the board is the **only** one in the collection:
+   * `getCurrentBoard` enforces an "at least one board exists"
+   * invariant, and the showcase / default-seed flow assumes a board
+   * is always available. The settings UI is expected to disable the
+   * Delete button accordingly; the service-side guard is the
+   * defence-in-depth contract.
+   */
+  async deleteBoard(
+    boardId: string,
+  ): Promise<{ ok: true } | { ok: false; reason: string }> {
+    const idx = this.boards.findIndex((b) => b.id === boardId);
+    if (idx === -1) {
+      return { ok: false, reason: "Board not found." };
+    }
+    if (this.boards.length <= 1) {
+      return {
+        ok: false,
+        reason: "Cannot delete the last remaining board.",
+      };
+    }
+    const wasCurrent = boardId === this.currentBoardId;
+    this.boards.splice(idx, 1);
+    if (wasCurrent) {
+      this.currentBoardId = this.boards[0]!.id;
+    }
+    await this.persist();
+    return { ok: true };
+  }
+
   private async persist(): Promise<void> {
     const snapshot: BoardCollectionSnapshot = {
       boards: [...this.boards],

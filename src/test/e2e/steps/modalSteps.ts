@@ -174,20 +174,22 @@ Then("the modal has a weight field", async ({ page }) => {
 // e2e side so a future regression that drops one half (or breaks the
 // sync) trips the gate.
 Then(
-  "the weight slider runs 0..10 step 0.5 and mirrors the number input",
+  "the weight slider runs 0.5..10 step 0.5 and mirrors the number input",
   async ({ page }) => {
+    // SPEC §17.31 — slider min was bumped from 0 to 0.5 so the
+    // smallest reachable slider value matches the relaxed
+    // `Weight.of` floor. Pre-§17.31 the slider advertised min=0 but
+    // the domain rejected 0 at confirm time (a UX trap).
     const kiosk = new TreeGraphPage(page);
     const slider = kiosk.addChildModalField("field-weight-slider");
     await expect(slider).toHaveCount(1);
     await expect(slider).toHaveAttribute("type", "range");
-    await expect(slider).toHaveAttribute("min", "0");
+    await expect(slider).toHaveAttribute("min", "0.5");
     await expect(slider).toHaveAttribute("max", "10");
     await expect(slider).toHaveAttribute("step", "0.5");
-    // The numeric half mirrors the same axis so direct typing snaps
-    // to the same step grid as the slider drag.
     const num = kiosk.addChildModalField("field-weight");
     await expect(num).toHaveAttribute("type", "number");
-    await expect(num).toHaveAttribute("min", "0");
+    await expect(num).toHaveAttribute("min", "0.5");
     await expect(num).toHaveAttribute("max", "10");
     await expect(num).toHaveAttribute("step", "0.5");
     // Both halves carry the same value at rest (the §17.16 default `1`).

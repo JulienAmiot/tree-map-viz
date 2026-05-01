@@ -229,6 +229,110 @@ When("I cancel the edit-node modal", async ({ page }) => {
   await kiosk.editNodeModalCancel().click();
 });
 
+// -- Burger menu item activation (§17.31 — Settings\u2026 wiring) ------------
+
+When(
+  "I tap the burger menu item with action {string}",
+  async ({ page }, action: string) => {
+    const kiosk = new TreeGraphPage(page);
+    await kiosk.burgerMenuItemByAction(action).click();
+  },
+);
+
+// -- Board-settings modal (§17.31) --------------------------------------
+
+Then("the board-settings modal is open", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  expect(await kiosk.isBoardSettingsModalOpen()).toBe(true);
+  await expect(kiosk.boardSettingsModalPanel()).toBeVisible();
+});
+
+Then("the board-settings modal is closed", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  expect(await kiosk.isBoardSettingsModalOpen()).toBe(false);
+});
+
+Then(
+  "the board-settings modal name field shows the current board's name",
+  async ({ page }) => {
+    const kiosk = new TreeGraphPage(page);
+    const drawerName = (await kiosk.boardNameLabel().textContent())?.trim() ?? "";
+    await expect(
+      kiosk.boardSettingsModalField("field-name"),
+    ).toHaveValue(drawerName);
+  },
+);
+
+When(
+  "I set the board-settings modal field {string} to {string}",
+  async ({ page }, fieldId: string, value: string) => {
+    const kiosk = new TreeGraphPage(page);
+    await kiosk.boardSettingsModalField(fieldId).fill(value);
+  },
+);
+
+When("I confirm the board-settings modal", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await kiosk.boardSettingsModalConfirm().click();
+});
+
+When("I cancel the board-settings modal", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await kiosk.boardSettingsModalCancel().click();
+});
+
+Then("the drawer board name is {string}", async ({ page }, expected: string) => {
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.boardNameLabel()).toHaveText(expected);
+});
+
+Then(
+  "the drawer board name is unchanged from the seed default",
+  async ({ page }) => {
+    // §17.31 — the empty-storage seed plants the showcase board
+    // (`SHOWCASE_BOARD_NAME`). Cancelling the settings modal must
+    // not have touched it.
+    const kiosk = new TreeGraphPage(page);
+    const text = (await kiosk.boardNameLabel().textContent())?.trim() ?? "";
+    expect(text.length).toBeGreaterThan(0);
+    expect(text).not.toBe("Should be discarded");
+  },
+);
+
+Then("the board-settings delete button is disabled", async ({ page }) => {
+  // §17.31 — the empty-storage seed plants exactly one board (the
+  // showcase). The delete button is disabled because deleting the
+  // sole board would violate the `getCurrentBoard` invariant.
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.boardSettingsModalDeleteBtn()).toBeDisabled();
+});
+
+Then(
+  "the board-settings inline delete confirm prompt is not visible",
+  async ({ page }) => {
+    await expect(page.getByTestId("delete-confirm-prompt")).toHaveCount(0);
+  },
+);
+
+Then(
+  "the focused-panel title colour is {string}",
+  async ({ page }, expected: string) => {
+    // SPEC §17.31 — verifying the rendered colour requires the
+    // browser's computed style (the rule resolves
+    // `var(--board-fresh, currentColor)` against the cascaded
+    // custom property installed on `<tree-graph-screen>`'s host).
+    // The focused panel's `[data-testid="title"]` is reachable
+    // through the open shadow trees via Playwright's testid
+    // locator. We pierce the shadow tree by scoping to
+    // `parent-identity-strip` first.
+    const title = page
+      .locator("parent-identity-strip")
+      .getByTestId("title")
+      .first();
+    await expect(title).toHaveCSS("color", expected);
+  },
+);
+
 // -- Inline title / value edit (§17.28) ---------------------------------
 
 When("I tap the focused title", async ({ page }) => {

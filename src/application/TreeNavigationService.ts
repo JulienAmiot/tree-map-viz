@@ -66,4 +66,19 @@ export class TreeNavigationService implements TreeNavigationPort {
     this.focusedId = target.id;
     return { ok: true };
   }
+
+  /**
+   * SPEC §17.31 — re-seat the navigation service over a different
+   * tree. Used by the composition root when the **current board
+   * changes** (delete-current-board promotes a sibling, future
+   * Boards… switch flow). The focus snaps to the supplied id (or
+   * the new root when omitted) because the prior `focusedId`
+   * almost certainly does not exist in the new tree, and a stale
+   * focus would silently break `getFocusedView` (`findNodeById`
+   * would return `null`).
+   */
+  replaceTree(root: TreeNode<unknown>, focusedId?: string): void {
+    this.root = root;
+    this.focusedId = focusedId ?? root.id;
+  }
 }
