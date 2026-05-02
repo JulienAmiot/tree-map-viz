@@ -91,13 +91,38 @@ export class ParentIdentityStrip extends LitElement {
       width: 100%;
       height: 100%;
     }
+    /* SPEC §17.36 — the parent strip is now a panel, not a divider.
+       Pre-§17.36 the strip carried only a 1 px border-bottom to
+       delineate it from the children grid below. Operator feedback
+       was that the focused panel and the child tiles read as two
+       different visual languages: rounded, bordered, tinted cards
+       below; a flush band on top. The strip now mirrors the child
+       tile's panel aesthetic — same border colour, same radius,
+       same family of bg tint — so the focus surface and the
+       children read as one consistent layout.
+       The bg uses --panel-strip-bg (~12 %) where children use
+       --panel-tile-bg (~7 %): same border, slightly stronger fill
+       so the eye still reads the parent strip as the focused panel
+       (it would otherwise blend with a single large child tile).
+       The drill-into morph (drillTransitions.ts) transitions the
+       tapped tile's bg from --panel-tile-bg to --panel-strip-bg
+       as it flies up, making the parent-promotion read smoothly. */
     .strip {
       position: relative;
       box-sizing: border-box;
       width: 100%;
       height: 100%;
       padding: clamp(0.5rem, 1.5vw, 1.25rem);
-      border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+      background: var(
+        --panel-strip-bg,
+        color-mix(in srgb, currentColor 12%, transparent)
+      );
+      border: 1px solid
+        var(
+          --panel-border-color,
+          color-mix(in srgb, currentColor 28%, transparent)
+        );
+      border-radius: var(--panel-border-radius, 8px);
     }
     /* When the top-right buttons are rendered, reserve right gutter so
        a long focused title does not run into the buttons hit zones.

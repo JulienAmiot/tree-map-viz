@@ -213,6 +213,27 @@ export class TreeGraphScreen extends LitElement {
       color: var(--text, #e8ecf4);
       font: 1rem/1.4 system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial,
         sans-serif;
+      /* SPEC §17.36 — shared panel aesthetic for the parent-identity-strip
+         and every child tile. Defined once here so both elements (each in
+         its own shadow root) read from the same source of truth, the
+         drill-into FLIP morph can write the strip's destination values
+         on the tapped tile, and a future tweak is a one-place edit.
+           - tile-bg   (~7 %) is the children's background tint;
+           - strip-bg  (~12 %) is the focused panel's slightly stronger
+             tint — same border, distinct fill so the eye reads the
+             parent panel as the focused surface and the drill morph
+             has a visible bg delta to bridge as the tile flies up.
+           - border-color / border-radius are identical on both surfaces
+             so the parent strip's frame matches the child tile's
+             frame ("same border look") at every viewport size.
+         The values are CSS custom properties — they cascade through
+         shadow boundaries, so consumers pick them up via var() with
+         a redundant color-mix fallback for standalone rendering
+         (e.g. unit tests that mount a strip outside the shell). */
+      --panel-tile-bg: color-mix(in srgb, currentColor 7%, transparent);
+      --panel-strip-bg: color-mix(in srgb, currentColor 12%, transparent);
+      --panel-border-color: color-mix(in srgb, currentColor 28%, transparent);
+      --panel-border-radius: 8px;
     }
     .layout {
       display: grid;
@@ -221,6 +242,13 @@ export class TreeGraphScreen extends LitElement {
       height: 100%;
       /* §4: parent strip ≈ 22 % (mid of 20–25 %), children grid ≈ 78 %. */
       grid-template-rows: 22fr 78fr;
+      /* SPEC §17.36 — small breathing room around and between the strip
+         and the grid so the strip's rounded corners (and the grid's
+         outer tile gutters) read as a panel rather than two flush
+         bands. Matches the 4 px inter-tile gutter (TILE_PADDING_PX
+         in ChildrenGrid.ts) for visual rhythm. */
+      padding: 4px;
+      gap: 4px;
     }
     /* §17.32 — drill-into transition. The previous (§17.20) "zoom the
        whole layout" effect was replaced by a FLIP-style morph driven

@@ -89,11 +89,26 @@ export class ChildrenGrid extends LitElement {
        dark kiosk theme. The plus tile is intentionally NOT styled
        here — its inner button already carries a 2 px dashed border
        in plus-tile.ts, and stacking another solid border on top of
-       that would muddle the affordance. */
+       that would muddle the affordance.
+
+       SPEC §17.36 — the bg / border / radius read from the screen-
+       level panel custom properties so the parent-identity-strip
+       and every child tile share the same source of truth (and so
+       the drill-into morph can transition smoothly between the
+       two). The color-mix fallbacks are kept for standalone unit
+       tests (a grid mounted outside <tree-graph-screen> won't
+       inherit the vars). */
     .tile[data-slot="node"] {
-      background: color-mix(in srgb, currentColor 7%, transparent);
-      border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
-      border-radius: 8px;
+      background: var(
+        --panel-tile-bg,
+        color-mix(in srgb, currentColor 7%, transparent)
+      );
+      border: 1px solid
+        var(
+          --panel-border-color,
+          color-mix(in srgb, currentColor 28%, transparent)
+        );
+      border-radius: var(--panel-border-radius, 8px);
       overflow: hidden;
       /* §17.20 — node tiles are navigation targets (tap → drill).
          The cursor hint is the only on-grid affordance for that;

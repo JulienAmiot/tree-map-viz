@@ -14,7 +14,7 @@
  * each lookup is cached so repeated scenarios don't re-read from disk.
  */
 
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -448,6 +448,125 @@ Then("every child tile has a non-transparent background", async ({ page }) => {
     }
   }
 });
+
+/**
+ * SPEC §17.36 helpers — read the rendered panel-surface properties
+ * (border colour, border radius, background colour) from either the
+ * parent-identity-strip's inner `.strip` element (inside its shadow
+ * root) or from a child tile in the children-grid's shadow root. Both
+ * surfaces draw their border + radius + bg on the OUTER element of
+ * the panel (the inner `.strip` for the strip; the `.tile[data-slot=
+ * "node"]` div for the child); reading getComputedStyle on those
+ * elements gives us the resolved rgba()/px values so we can compare
+ * them numerically.
+ */
+function readStripPanelStyle(page: Page) {
+  return page.evaluate(() => {
+    const screen = document.querySelector("tree-graph-screen");
+    const strip = screen?.shadowRoot?.querySelector("parent-identity-strip");
+    const inner = strip?.shadowRoot?.querySelector(".strip") as
+      | HTMLElement
+      | null;
+    if (!inner) return null;
+    const cs = getComputedStyle(inner);
+    return {
+      borderColor: cs.borderTopColor,
+      borderWidth: parseFloat(cs.borderTopWidth),
+      borderRadius: cs.borderTopLeftRadius,
+      backgroundColor: cs.backgroundColor,
+    };
+  });
+}
+
+function readFirstChildTilePanelStyle(page: Page) {
+  return page.evaluate(() => {
+    const screen = document.querySelector("tree-graph-screen");
+    const grid = screen?.shadowRoot?.querySelector("children-grid");
+    const tile = grid?.shadowRoot?.querySelector(
+      '.tile[data-slot="node"]',
+    ) as HTMLElement | null;
+    if (!tile) return null;
+    const cs = getComputedStyle(tile);
+    return {
+      borderColor: cs.borderTopColor,
+      borderWidth: parseFloat(cs.borderTopWidth),
+      borderRadius: cs.borderTopLeftRadius,
+      backgroundColor: cs.backgroundColor,
+    };
+  });
+}
+
+Then("the parent panel has a visible border", async ({ page }) => {
+  const s = await readStripPanelStyle(page);
+  expect(s).not.toBeNull();
+  expect(s!.borderWidth).toBeGreaterThanOrEqual(1);
+});
+
+Then("the parent panel has a non-transparent background", async ({ page }) => {
+  const s = await readStripPanelStyle(page);
+  expect(s).not.toBeNull();
+  const bg = s!.backgroundColor;
+  expect(bg).not.toBe("rgba(0, 0, 0, 0)");
+  expect(bg).not.toBe("transparent");
+  expect(bg).not.toBe("");
+  // Modern Chromium serialises `color-mix(in srgb, ...)` outputs as
+  // `color(srgb r g b / a)`, while older paths still emit
+  // `rgba(r, g, b, a)`. Accept both shapes; either way the bg has a
+  // visible alpha strictly between 0 and 1 (a non-zero tint that
+  // isn't a solid wall over the focused value).
+  const rgba = /rgba?\(([^)]+)\)/.exec(bg);
+  const colorFn = /color\([^)]*\/\s*([0-9.]+)\s*\)/.exec(bg);
+  let a: number | undefined;
+  if (rgba) {
+    const parts = rgba[1]!.split(",").map((s) => s.trim());
+    a = parts.length === 4 ? Number(parts[3]) : 1;
+  } else if (colorFn) {
+    a = Number(colorFn[1]);
+  }
+  expect(a).toBeDefined();
+  expect(a!).toBeGreaterThan(0);
+  expect(a!).toBeLessThan(1);
+});
+
+Then(
+  "the parent panel border colour matches a child tile border colour",
+  async ({ page }) => {
+    const strip = await readStripPanelStyle(page);
+    const tile = await readFirstChildTilePanelStyle(page);
+    expect(strip).not.toBeNull();
+    expect(tile).not.toBeNull();
+    expect(strip!.borderColor).toBe(tile!.borderColor);
+  },
+);
+
+Then(
+  "the parent panel border-radius matches a child tile border-radius",
+  async ({ page }) => {
+    const strip = await readStripPanelStyle(page);
+    const tile = await readFirstChildTilePanelStyle(page);
+    expect(strip).not.toBeNull();
+    expect(tile).not.toBeNull();
+    expect(strip!.borderRadius).toBe(tile!.borderRadius);
+  },
+);
+
+Then(
+  "the parent panel background tint differs from a child tile background tint",
+  async ({ page }) => {
+    // §17.36 — the parent strip uses --panel-strip-bg (~12 %) while a
+    // child tile uses --panel-tile-bg (~7 %). The exact resolved
+    // rgba() depends on the kiosk theme's currentColor, but the two
+    // alpha components must NOT match — that's the visible delta the
+    // drill morph bridges. Both must still be non-transparent (the
+    // separate "non-transparent background" steps cover that
+    // invariant individually).
+    const strip = await readStripPanelStyle(page);
+    const tile = await readFirstChildTilePanelStyle(page);
+    expect(strip).not.toBeNull();
+    expect(tile).not.toBeNull();
+    expect(strip!.backgroundColor).not.toBe(tile!.backgroundColor);
+  },
+);
 
 Then(
   "the focused value-date is in the bottom-right corner of the tile",

@@ -24,6 +24,20 @@
  * recolours to `var(--board-fresh)` during the morph — the rest of the
  * tile (value, timestamp, unit) deliberately keeps its own colours.
  *
+ * §17.36 — panel surface continuity:
+ *   The parent strip and child tiles now share a panel aesthetic
+ *   (same border-color, same border-radius) but use different bg
+ *   tints (--panel-strip-bg ≈ 12 % vs --panel-tile-bg ≈ 7 %).
+ *   The morph extends its transition list with `background-color`,
+ *   `border-color`, and `border-radius`, and writes the strip's
+ *   destination panel-bg / border-radius onto the morphing tile so
+ *   the tile's surface visually drifts from the child tint to the
+ *   parent-panel tint as it flies up. With border-color identical
+ *   on both surfaces today the border-color transition is a no-op
+ *   visually, but the property is in the transition list so a
+ *   future divergence (e.g. a "focused" border colour) animates
+ *   automatically without a second helper edit.
+ *
  * Why translate + width/height instead of `transform: scale()`:
  *   - The tile's destination geometry is **layout-dependent**: the parent
  *     strip is 22 % of the viewport, but the tile's starting position is
@@ -180,12 +194,22 @@ export function runDrillTransition(opts: RunDrillTransitionOptions): void {
   // the contract robust against future structural changes).
   tile.classList.add(DRILL_CLASS);
   tile.style.transformOrigin = "top left";
-  tile.style.willChange = "transform, width, height";
+  tile.style.willChange =
+    "transform, width, height, background-color, border-color, border-radius";
   tile.style.zIndex = "10";
+  // §17.36 — `background-color`, `border-color`, and `border-radius`
+  // are part of the morph transition list so the tile's panel surface
+  // drifts smoothly into the parent strip's surface as it flies up
+  // (different bg tints today; identical border-color and border-
+  // radius — the latter two transition as no-ops but stay in the list
+  // so a future divergence animates without a helper edit).
   tile.style.transition =
     `transform ${settleMs}ms ease, ` +
     `width ${settleMs}ms ease, ` +
-    `height ${settleMs}ms ease`;
+    `height ${settleMs}ms ease, ` +
+    `background-color ${settleMs}ms ease, ` +
+    `border-color ${settleMs}ms ease, ` +
+    `border-radius ${settleMs}ms ease`;
   // Custom CSS property scoped to .title (see tileLayoutStyles).
   // CSS custom properties cascade through shadow DOM boundaries, so
   // setting it here propagates two shadow boundaries deep
@@ -215,6 +239,21 @@ export function runDrillTransition(opts: RunDrillTransitionOptions): void {
   tile.style.transform = `translate(${dx}px, ${dy}px)`;
   tile.style.width = `${targetW}px`;
   tile.style.height = `${targetH}px`;
+  // §17.36 — write the parent strip's panel surface onto the morphing
+  // tile. The tile starts with --panel-tile-bg (≈ 7 %) inherited from
+  // the children-grid CSS and with --panel-border-radius (8 px) on the
+  // border. Setting these inline pulls the tile to --panel-strip-bg
+  // (≈ 12 %) and to the same radius value (still 8 px today) — the
+  // resolved start/end values flow into the transitions registered
+  // above so the tile's surface visually drifts to the parent panel's
+  // surface as it flies up. Inline `var()` values resolve at compute
+  // time and inherit through shadow DOM, so the helper does not need
+  // to know the literal mix percentages.
+  tile.style.backgroundColor =
+    "var(--panel-strip-bg, color-mix(in srgb, currentColor 12%, transparent))";
+  tile.style.borderColor =
+    "var(--panel-border-color, color-mix(in srgb, currentColor 28%, transparent))";
+  tile.style.borderRadius = "var(--panel-border-radius, 8px)";
   for (const sib of fadeOut) {
     sib.style.opacity = "0";
   }

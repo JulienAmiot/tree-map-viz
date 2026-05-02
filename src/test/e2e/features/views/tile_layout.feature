@@ -65,6 +65,29 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     Then every child tile has a visible border
     And every child tile has a non-transparent background
 
+  @HE-2592 @priority:high
+  Scenario: Parent panel and child tiles share the same panel surface (§17.36)
+    # SPEC §17.36 — the parent-identity-strip and every child tile read
+    # from the same screen-level CSS custom properties:
+    #   --panel-border-color      (identical on both surfaces)
+    #   --panel-border-radius     (identical on both surfaces)
+    #   --panel-tile-bg           (≈ 7 % currentColor — children only)
+    #   --panel-strip-bg          (≈ 12 % currentColor — strip only)
+    # The contract is "same border look" (border colour + radius
+    # identical, both visible at ≥ 1 px) with a deliberately distinct
+    # bg tint so the focused panel still reads as the focused panel.
+    # The drill-into morph (§17.36 amendment to §17.32) bridges the
+    # 7 % → 12 % bg delta so the tile's surface visually flows into
+    # the parent panel as it flies up.
+    When I open the kiosk in test mode with empty storage
+    And I seed the "mixedComputed" fixture via the test bridge
+    And I reload the kiosk
+    Then the parent panel has a visible border
+    And the parent panel has a non-transparent background
+    And the parent panel border colour matches a child tile border colour
+    And the parent panel border-radius matches a child tile border-radius
+    And the parent panel background tint differs from a child tile background tint
+
   @HE-???? @priority:high
   Scenario: Parent panel timestamp sits at the same offset from its outer edge as a child tile timestamp (§17.30)
     # SPEC §17.30 — the date on the focused panel must visually hug

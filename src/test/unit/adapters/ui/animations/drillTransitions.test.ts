@@ -89,6 +89,13 @@ describe("runDrillTransition (FLIP morph — §17.32)", () => {
       expect(tile.style.height).toBe("");
       expect(tile.style.transition).toBe("");
       expect(tile.style.getPropertyValue("--drill-title-color")).toBe("");
+      // §17.36 — the panel-surface writes (background-color / border-
+      // color / border-radius) MUST be skipped on reduced-motion too:
+      // the operator opted out of motion, so the morph does not stage
+      // any transition target on the tile either.
+      expect(tile.style.backgroundColor).toBe("");
+      expect(tile.style.borderColor).toBe("");
+      expect(tile.style.borderRadius).toBe("");
       expect(tile.classList.contains(DRILL_CLASS)).toBe(false);
       expect(sib.style.opacity).toBe("");
       expect(sib.style.transition).toBe("");
@@ -174,6 +181,45 @@ describe("runDrillTransition (FLIP morph — §17.32)", () => {
       expect(tile.style.transition).toContain("height");
       expect(tile.style.transition).toContain("transform");
       expect(tile.style.transition).toContain(`${DRILL_SETTLE_MS}ms`);
+    });
+
+    it("transitions the tile's panel surface (background-color, border-color, border-radius) to the parent strip's panel vars (\u00a717.36)", () => {
+      // §17.36 — the parent strip and child tiles share a panel
+      // aesthetic (border-color + border-radius identical) but
+      // different bg tints (--panel-strip-bg ≈ 12 % vs
+      // --panel-tile-bg ≈ 7 %). The morph must extend its transition
+      // list with `background-color`, `border-color`, and
+      // `border-radius` AND write the strip's destination values onto
+      // the tile so the registered transitions resolve start/end
+      // values and the surface visually drifts.
+      const tile = makeTile({ x: 100, y: 400, w: 200, h: 150 });
+      const target = makeTile({ x: 0, y: 0, w: 800, h: 200 });
+      runDrillTransition({
+        tile,
+        target,
+        fadeOut: [],
+        commit: vi.fn(),
+        shouldReduceMotion: () => false,
+      });
+      // Transition list contains all three panel properties so the
+      // browser actually animates them; without this the writes
+      // below would land instantaneously on the same frame.
+      expect(tile.style.transition).toContain("background-color");
+      expect(tile.style.transition).toContain("border-color");
+      expect(tile.style.transition).toContain("border-radius");
+      // Destination values are written via CSS custom properties so
+      // a single source of truth (the screen's :host vars) drives
+      // both the resting panel styling and the morph target. The
+      // helper does not inline the literal mix percentages — they
+      // live in TreeGraphScreen.ts.
+      expect(tile.style.backgroundColor).toContain("--panel-strip-bg");
+      expect(tile.style.borderColor).toContain("--panel-border-color");
+      expect(tile.style.borderRadius).toContain("--panel-border-radius");
+      // willChange covers the new properties too so the compositor
+      // can hoist them onto its own layer alongside transform / size.
+      expect(tile.style.willChange).toContain("background-color");
+      expect(tile.style.willChange).toContain("border-color");
+      expect(tile.style.willChange).toContain("border-radius");
     });
 
     it("recolours ONLY the title via the --drill-title-color custom property (\u00a717.32 — value/timestamp keep own colours)", () => {
