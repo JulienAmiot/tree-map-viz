@@ -38,6 +38,29 @@
  *   future divergence (e.g. a "focused" border colour) animates
  *   automatically without a second helper edit.
  *
+ * §17.38 — title font-size morph:
+ *   The child-role title is `2vh`, the parent-role title `2.4vh`
+ *   (a `~20 %` size delta + a `600 → 700` weight bump baked into
+ *   `*AsParent.ts`). Pre-§17.38 the morph held the title at the
+ *   child's `2vh` for the full settle and then snapped to `2.4vh`
+ *   the moment Lit re-rendered the strip with the morphed tile's
+ *   per-view in the parent role — a visible "size pop" at
+ *   commit. With the §17.37 position alignment fixing the
+ *   simultaneous top-left jump, the size pop became the only
+ *   remaining commit-artifact. §17.38 pipes the parent role's
+ *   font-size through a custom CSS property: `tileLayoutStyles`'
+ *   base `.title { font-size: var(--drill-title-font-size, 2vh) }`
+ *   reads it (with `2vh` as the static-render fallback), the
+ *   helper writes `--drill-title-font-size: 2.4vh` onto the
+ *   morphing tile (cascades through shadow DOM, like
+ *   `--drill-title-color`), and the existing `transition` list
+ *   on `.title` gains `font-size 320ms ease` so the growth lands
+ *   on the same curve as the colour recolour. At commit the strip
+ *   re-mounts with the parent role's `font-size: 2.4vh` literal
+ *   (which `*AsParent.ts` overrides with at higher source-order
+ *   precedence than the var rule), so the visual continues at
+ *   `2.4vh` without a pop.
+ *
  * Why translate + width/height instead of `transform: scale()`:
  *   - The tile's destination geometry is **layout-dependent**: the parent
  *     strip is 22 % of the viewport, but the tile's starting position is
@@ -94,6 +117,20 @@ const TEST_NO_ANIM_CLASS = "test-no-anim";
 
 /** Default settle window for the FLIP morph + sibling fade. */
 export const DRILL_SETTLE_MS = 320;
+
+/**
+ * SPEC §17.38 — the parent-role title's font-size, mirrored here so the
+ * drill helper can write it onto the morphing tile via the
+ * `--drill-title-font-size` custom property. The literal lives in
+ * `TextNodeAsParent.ts` / `BusinessScoreCardNodeAsParent.ts` as the
+ * `.title { font-size: 2.4vh }` override; this constant keeps the two
+ * call sites in lock-step. If the parent-role title size ever changes,
+ * both `*AsParent.ts` overrides AND this constant must be updated
+ * together (a single-source-of-truth refactor through a CSS custom
+ * property at `<tree-graph-screen>` :host level is a candidate
+ * follow-up).
+ */
+export const DRILL_PARENT_TITLE_FONT_SIZE = "2.4vh";
 
 /**
  * CSS class added to the tapped tile while the morph is in flight so
@@ -219,6 +256,18 @@ export function runDrillTransition(opts: RunDrillTransitionOptions): void {
   // recolours the title alone — value, timestamp, unit, and any
   // future tile glyph keep their own colours.
   tile.style.setProperty("--drill-title-color", "var(--board-fresh)");
+  // SPEC §17.38 — pipe the parent-role title font-size onto the
+  // morphing tile through the same cascade. The .title rule in
+  // tileLayoutStyles reads `font-size: var(--drill-title-font-size,
+  // 2vh)` and lists font-size in its transition, so writing the
+  // parent-role literal here triggers a smooth 2vh → 2.4vh growth
+  // over the settle window. At commit the strip re-mounts with the
+  // parent-role override (literal 2.4vh) and the visual lands at
+  // the same size — no pop.
+  tile.style.setProperty(
+    "--drill-title-font-size",
+    DRILL_PARENT_TITLE_FONT_SIZE,
+  );
 
   // Stage every fade-out element with a uniform transition so the
   // optical centre of the animation lands at the same moment as the

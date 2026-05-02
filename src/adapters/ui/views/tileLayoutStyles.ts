@@ -55,7 +55,18 @@ export const tileLayoutStyles = css`
     margin: 0;
     height: 3vh;
     line-height: 3vh;
-    font-size: 2vh;
+    /* SPEC 17.38 -- the child-role base font-size is 2vh; the
+       parent-role overrides to 2.4vh in *AsParent.ts. During the
+       drill-into FLIP morph (drillTransitions.ts) the helper sets
+       --drill-title-font-size: 2.4vh on the tapped tile element,
+       and CSS custom properties cascade through shadow DOM, so
+       the morphing tile's title smoothly grows from 2vh to 2.4vh
+       over the settle window. At commit Lit re-renders the strip
+       with the per-view in the parent role (which carries the
+       same 2.4vh literal), so there is no visible size pop on
+       hand-off. The fallback (2vh) preserves the pre-17.38 child-
+       tile rendering for every non-drilling tile. */
+    font-size: var(--drill-title-font-size, 2vh);
     font-weight: 600;
     /* Fade out long titles instead of wrapping; we have a fixed 3vh
        height to honour. The timestamp moved to the bottom-right in
@@ -76,9 +87,12 @@ export const tileLayoutStyles = css`
        title colour for static rendering. The transition on the
        color property is what makes the recolour animate smoothly;
        the duration matches DRILL_SETTLE_MS in
-       drillTransitions.ts. */
+       drillTransitions.ts. SPEC 17.38 -- the same transition list
+       gains font-size so the drill-into morph's font-size growth
+       (2vh -> 2.4vh) animates on the same 320ms ease curve as the
+       colour recolour. */
     color: var(--drill-title-color, currentColor);
-    transition: color 320ms ease;
+    transition: color 320ms ease, font-size 320ms ease;
   }
   .timestamp {
     position: absolute;

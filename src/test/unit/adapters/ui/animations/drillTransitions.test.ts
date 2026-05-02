@@ -26,6 +26,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   DRILL_CLASS,
+  DRILL_PARENT_TITLE_FONT_SIZE,
   DRILL_SETTLE_MS,
   runDrillTransition,
 } from "../../../../../adapters/ui/animations/drillTransitions.js";
@@ -89,6 +90,12 @@ describe("runDrillTransition (FLIP morph — §17.32)", () => {
       expect(tile.style.height).toBe("");
       expect(tile.style.transition).toBe("");
       expect(tile.style.getPropertyValue("--drill-title-color")).toBe("");
+      // §17.38 — the title font-size morph custom property MUST be
+      // skipped on reduced-motion too. The operator opted out of
+      // motion, so the morph does not stage any transition target —
+      // the title stays at the static-render fallback (2vh) and the
+      // post-commit re-render hands off to the parent role's literal.
+      expect(tile.style.getPropertyValue("--drill-title-font-size")).toBe("");
       // §17.36 — the panel-surface writes (background-color / border-
       // color / border-radius) MUST be skipped on reduced-motion too:
       // the operator opted out of motion, so the morph does not stage
@@ -244,6 +251,38 @@ describe("runDrillTransition (FLIP morph — §17.32)", () => {
       // Crucial: the tile's own `color` is NOT set — that would
       // have cascaded to every descendant.
       expect(tile.style.color).toBe("");
+    });
+
+    it("morphs ONLY the title's font-size via the --drill-title-font-size custom property (\u00a717.38 — no commit-time size pop)", () => {
+      // §17.38 — pre-fix the title held the child role's 2vh through
+      // the full settle and then snapped to 2.4vh the moment Lit
+      // re-rendered the strip with the parent role. The helper now
+      // pipes the parent-role font-size onto the morphing tile via a
+      // custom property the .title rule reads in tileLayoutStyles
+      // (with a transition on font-size on the same 320ms ease curve
+      // as the colour recolour). The exported DRILL_PARENT_TITLE_FONT_SIZE
+      // constant mirrors the `*AsParent.ts` literal (2.4vh today) so
+      // a future theme tweak surfaces here as a single edit.
+      const tile = makeTile({ x: 0, y: 0, w: 100, h: 100 });
+      const target = makeTile({ x: 0, y: 0, w: 800, h: 200 });
+      runDrillTransition({
+        tile,
+        target,
+        fadeOut: [],
+        commit: vi.fn(),
+        shouldReduceMotion: () => false,
+      });
+      expect(tile.style.getPropertyValue("--drill-title-font-size")).toBe(
+        DRILL_PARENT_TITLE_FONT_SIZE,
+      );
+      // Today's contract: the parent-role title size is 2.4vh; pin
+      // the constant value too so a change in either *AsParent.ts
+      // or the helper without the matching twin update fails fast.
+      expect(DRILL_PARENT_TITLE_FONT_SIZE).toBe("2.4vh");
+      // Crucial: the tile's own `font-size` is NOT set — that would
+      // have cascaded to every text node in the tile (value /
+      // timestamp / unit), each of which has its own size rules.
+      expect(tile.style.fontSize).toBe("");
     });
 
     it("fades every fadeOut element to opacity 0 and registers their opacity transition", () => {
