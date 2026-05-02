@@ -32,10 +32,14 @@
  *     `router.onChange` listener wouldn't see internal navigation; we drive
  *     the state update locally and let `router.onChange` cover external
  *     changes (browser back/forward, manual hash edits, the test bridge).
- *   + `burger-menu-action` `{ action }` is logged today as a placeholder;
- *     the real Import / Export / Boards consumers (`ImportExportService`,
- *     `BoardCollectionService` mutation surface) wire in Phase 10
- *     per SPEC §15.4 + §17.3.
+ *   + `burger-menu-action` `{ action }`:
+ *     - `import` / `export` wire to `ImportExportService` (SPEC §17.33).
+ *       Export streams a JSON download via a transient `<a>`; Import
+ *       opens a native file picker, decodes, then replaces the
+ *       current board's tree atomically (validate-before-replace).
+ *     - `boards` lands in §17.34 (boards-panel modal); placeholder
+ *       log today.
+ *     - `settings` opens `<board-settings-modal>` (§17.31).
  *
  * Phase 8 wiring (DT-7 — Add-child modal):
  *   + `AddChildService` lands here. Its `Persister` callback re-saves the
@@ -93,6 +97,7 @@ import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
 import { AddChildService } from "./application/AddChildService.js";
 import { BoardCollectionService } from "./application/BoardCollectionService.js";
 import { EditNodeService } from "./application/EditNodeService.js";
+import { ImportExportService } from "./application/ImportExportService.js";
 import { TreeNavigationService } from "./application/TreeNavigationService.js";
 import { BusinessScoreCardNode } from "./domain/nodes/BusinessScoreCardNode.js";
 import { TextNode } from "./domain/nodes/TextNode.js";
@@ -123,6 +128,21 @@ async function main(): Promise<void> {
   };
   const addChildSvc = new AddChildService(idGen, persistCurrent);
   const editNodeSvc = new EditNodeService(persistCurrent);
+  // SPEC §17.33 — Phase 10 wiring half A. The Import / Export menu items
+  // ride on `ImportExportService`'s validate-before-replace contract:
+  // a successful decode replaces the current board's tree atomically
+  // through `boards.replaceCurrentTree` (which preserves the board's
+  // name + freshDateColor); a failed decode never touches the in-memory
+  // tree. Surfacing follows the §17.33 decision: `window.alert(reason)`
+  // for the rare error path, kiosk-acceptable for an op operators
+  // rarely hit.
+  const importExportSvc = new ImportExportService(
+    codec,
+    () => boards.getCurrentBoard().tree,
+    async (tree) => {
+      await boards.replaceCurrentTree(tree);
+    },
+  );
 
   const refresh = (): void => {
     const view = nav.getFocusedView();
@@ -333,10 +353,118 @@ async function main(): Promise<void> {
       });
       return;
     }
-    // Placeholder: the real Import / Export / Boards consumers land in
-    // Phase 10 (Persistence + Routing), per SPEC §15.4 + §17.3.
+    if (detail.action === "export") {
+      // SPEC §17.33 — write the current board's tree to a JSON file
+      // the operator can save somewhere else (USB stick / cloud).
+      // Synchronous code path: encode into a string, wrap in a Blob,
+      // and trigger a download via a transient `<a download>`. The
+      // navigation, persistence, and view layer are not touched.
+      runExport();
+      return;
+    }
+    if (detail.action === "import") {
+      // SPEC §17.33 — open a native file picker, read the chosen
+      // JSON, run it through `ImportExportService.importIntoCurrentBoard`
+      // which validates with the codec BEFORE replacing the in-memory
+      // tree. On success the navigation service is re-seated over the
+      // new tree (the prior `focusedId` almost certainly does not
+      // exist in the imported tree), the URL is replaced (not pushed
+      // — destructive ops don't accumulate history), and the view
+      // refreshes. On failure `window.alert(reason)` surfaces the
+      // codec's error message; the existing tree stays put.
+      void runImport();
+      return;
+    }
+    // Placeholder: `boards` lands in §17.34 (boards-panel modal).
     console.info("[main] burger-menu-action (placeholder)", detail.action);
   });
+
+  /**
+   * SPEC §17.33 — export the current board's tree to a JSON file.
+   * The download is triggered via a transient `<a>` so the browser
+   * uses its native "Save as…" mechanism; no new modal, no kiosk
+   * chrome. The blob URL is revoked after a short delay so the
+   * download has time to start (revoking immediately can race the
+   * kick-off in some browsers).
+   */
+  function runExport(): void {
+    const json = importExportSvc.exportCurrentTree();
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = exportFileName(boards.getCurrentBoard().name);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  /**
+   * SPEC §17.33 — open a native file picker for JSON, decode the
+   * chosen file, and replace the current board's tree on success.
+   * Uses a transient `<input type="file">` (appended to the body,
+   * removed after the change handler runs) so production gets a
+   * standard file picker and Playwright e2e can intercept the
+   * `filechooser` event for deterministic seeding.
+   *
+   * Error handling honours the §17.33 decision: a decode failure
+   * (or an empty selection / read error) becomes a `window.alert`;
+   * the import never replaces the tree on failure (the
+   * validate-before-replace contract from §17.3 is preserved by
+   * `ImportExportService`).
+   */
+  async function runImport(): Promise<void> {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json,.json";
+    input.style.display = "none";
+    document.body.appendChild(input);
+    try {
+      await new Promise<void>((resolve) => {
+        input.addEventListener(
+          "change",
+          () => {
+            void (async () => {
+              try {
+                const file = input.files?.[0];
+                if (!file) {
+                  return;
+                }
+                const text = await file.text();
+                const result = await importExportSvc.importIntoCurrentBoard(text);
+                if (!result.ok) {
+                  window.alert(`Import failed: ${result.reason}`);
+                  return;
+                }
+                // Re-seat the navigation service over the new tree —
+                // the old `focusedId` almost certainly does not exist
+                // in the freshly-decoded tree, and a stale focus
+                // would silently break `getFocusedView` (`findNodeById`
+                // would return null). `replaceTree(...)` snaps the
+                // focus to the new root.
+                const newCurrent = boards.getCurrentBoard();
+                nav.replaceTree(newCurrent.tree);
+                router.replace({
+                  boardId: newCurrent.id,
+                  focusNodeUuid: newCurrent.tree.id,
+                });
+                refresh();
+              } finally {
+                resolve();
+              }
+            })();
+          },
+          { once: true },
+        );
+        input.click();
+      });
+    } finally {
+      if (input.parentNode === document.body) {
+        document.body.removeChild(input);
+      }
+    }
+  }
 
   screen.addEventListener("board-settings-confirm", (e) => {
     void (async () => {
@@ -459,6 +587,27 @@ function buildEditTarget(node: TreeNode<unknown>): EditNodeTarget | null {
     };
   }
   return null;
+}
+
+/**
+ * SPEC §17.33 — derive a filesystem-friendly download name from
+ * the current board's user-visible name. Lower-cases, replaces
+ * whitespace + filesystem-illegal chars with `-`, collapses runs,
+ * and trims to a sane length. Falls back to `board` if the cleaned
+ * string is empty (e.g. a board named with only emoji on a
+ * platform whose filesystem rejects non-ASCII filenames).
+ *
+ * The browser's "Save as…" dialog still lets the operator rename
+ * the file, so this is just a sensible default — not a contract.
+ */
+function exportFileName(boardName: string): string {
+  const slug = boardName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return `${slug || "board"}.json`;
 }
 
 /** SPEC §17.28 — per-kind discriminator used by the inline-edit-title path. */

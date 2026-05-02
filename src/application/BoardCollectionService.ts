@@ -173,6 +173,40 @@ export class BoardCollectionService {
   }
 
   /**
+   * SPEC §17.33 — atomically swap the current board's tree for a
+   * different one. Used by the Import flow (`ImportExportService`'s
+   * `replaceCurrentTree` callable) so a successful decode replaces
+   * the current board's tree in one persistence round-trip; the
+   * other boards in the collection are untouched (SPEC §13.2:
+   * "Import behaviour: replace the **current board**; other boards
+   * in the collection are untouched.").
+   *
+   * The new tree is taken at face value — no validation on shape,
+   * id uniqueness, etc., because the codec already enforced that
+   * before this method is reached. The `freshDateColor` of the
+   * current board is preserved (theme is a board-level concern,
+   * not a tree-level one).
+   */
+  async replaceCurrentTree(tree: TreeNode<unknown>): Promise<void> {
+    const idx = this.boards.findIndex((b) => b.id === this.currentBoardId);
+    if (idx === -1) {
+      throw new Error(
+        `BoardCollectionService invariant violated: currentBoardId='${this.currentBoardId}' has no matching board.`,
+      );
+    }
+    const existing = this.boards[idx]!;
+    this.boards[idx] = {
+      id: existing.id,
+      name: existing.name,
+      tree,
+      ...(existing.freshDateColor !== undefined
+        ? { freshDateColor: existing.freshDateColor }
+        : {}),
+    };
+    await this.persist();
+  }
+
+  /**
    * SPEC §17.31 — remove a board from the collection. If the deleted
    * board was the current one, the first remaining board becomes
    * current; if the user deletes a non-current board the current id

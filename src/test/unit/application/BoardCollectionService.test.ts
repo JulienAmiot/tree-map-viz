@@ -341,6 +341,79 @@ describe("BoardCollectionService", () => {
     });
   });
 
+  describe("replaceCurrentTree (§17.33)", () => {
+    // SPEC §17.33 — atomic swap of the current board's tree, used by
+    // the Import flow. Other boards stay untouched; the freshDateColor
+    // of the current board is preserved across the swap.
+
+    it("swaps the current board's tree and persists", async () => {
+      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
+      const incoming = freshTree("imported");
+
+      await svc.replaceCurrentTree(incoming);
+
+      expect(svc.getCurrentBoard().tree).toBe(incoming);
+      expect(svc.getCurrentBoard().id).toBe("b1");
+      expect(repo.saveCallCount).toBe(1);
+      expect(repo.lastSaved?.boards.find((b) => b.id === "b1")?.tree).toBe(
+        incoming,
+      );
+    });
+
+    it("leaves other boards in the collection untouched", async () => {
+      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
+      const otherTreeBefore = svc.list().find((b) => b.id === "b2")?.tree;
+      const incoming = freshTree("imported");
+
+      await svc.replaceCurrentTree(incoming);
+
+      // Pre-§17.33 contract: import replaces the CURRENT board only; sibling
+      // boards' trees are preserved by reference.
+      expect(svc.list().find((b) => b.id === "b2")?.tree).toBe(otherTreeBefore);
+      expect(svc.list().map((b) => b.id)).toEqual(["b1", "b2"]);
+    });
+
+    it("preserves the board's freshDateColor across the swap", async () => {
+      // §17.33 — theme is a board-level field, not a tree-level one;
+      // an import that replaces the tree must NOT clear the colour.
+      const repoWithColor = new FakeBoardCollectionRepository(
+        makeSnapshot(
+          [
+            { ...makeBoard("b1", "Alpha"), freshDateColor: "#743089" },
+            makeBoard("b2", "Beta"),
+          ],
+          "b1",
+        ),
+      );
+      const svc = await BoardCollectionService.create(
+        repoWithColor,
+        sequentialIdGen(),
+      );
+
+      await svc.replaceCurrentTree(freshTree("imported"));
+
+      const after = svc.list().find((b) => b.id === "b1");
+      expect(after?.freshDateColor).toBe("#743089");
+    });
+
+    it("preserves the board's name across the swap", async () => {
+      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
+
+      await svc.replaceCurrentTree(freshTree("imported"));
+
+      expect(svc.getCurrentBoard().name).toBe("Alpha");
+    });
+
+    it("triggers exactly one persistence round-trip", async () => {
+      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
+      const before = repo.saveCallCount;
+
+      await svc.replaceCurrentTree(freshTree("imported"));
+
+      expect(repo.saveCallCount - before).toBe(1);
+    });
+  });
+
   describe("repository boundary (hexagonal)", () => {
     it("forwards every save through the port (no direct storage knowledge)", async () => {
       const svc = await BoardCollectionService.create(repo, sequentialIdGen("uuid"));
