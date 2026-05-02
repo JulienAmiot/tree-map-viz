@@ -94,6 +94,11 @@ import type {
   BoardSettingsModal,
   BoardSettingsTarget,
 } from "../modal/BoardSettingsModal.js";
+import "../modal/BoardsPanelModal.js";
+import type {
+  BoardsPanelModal,
+  BoardsPanelTarget,
+} from "../modal/BoardsPanelModal.js";
 import "../modal/EditNodeModal.js";
 import type {
   EditNodeModal,
@@ -175,6 +180,26 @@ export class TreeGraphScreen extends LitElement {
    * `setBoardSettingsError(reason)` so the modal stays open for retry. */
   @property({ attribute: false })
   boardSettingsError: string | null = null;
+
+  /**
+   * SPEC §17.34 — `<boards-panel-modal>` open state. Driven by the
+   * "Boards…" item on `<burger-menu>`; the composition root catches
+   * `burger-menu-action { action: "boards" }` and calls
+   * `openBoardsPanelModal(target)` here. Switch / Create events
+   * bubble out of the screen for the composition root to consume.
+   */
+  @state()
+  private boardsPanelModalOpen = false;
+
+  /** Snapshot supplied by the composition root (collection list + current id). */
+  @state()
+  private boardsPanelTarget: BoardsPanelTarget | null = null;
+
+  /** Inline error from a failed `BoardCollectionService.switchTo` /
+   * `createBoard`. The composition root sets it via
+   * `setBoardsPanelError(reason)` so the modal stays open for retry. */
+  @property({ attribute: false })
+  boardsPanelError: string | null = null;
 
   readonly orientation = new OrientationController(this);
 
@@ -278,6 +303,12 @@ export class TreeGraphScreen extends LitElement {
         .errorMessage=${this.boardSettingsError}
         @board-settings-cancel=${this.handleBoardSettingsModalClose}
       ></board-settings-modal>
+      <boards-panel-modal
+        ?open=${this.boardsPanelModalOpen}
+        .target=${this.boardsPanelTarget}
+        .errorMessage=${this.boardsPanelError}
+        @boards-panel-cancel=${this.handleBoardsPanelModalClose}
+      ></boards-panel-modal>
     `;
 
     if (!this.view) {
@@ -334,6 +365,11 @@ export class TreeGraphScreen extends LitElement {
   private handleBoardSettingsModalClose = (): void => {
     this.boardSettingsModalOpen = false;
     this.boardSettingsError = null;
+  };
+
+  private handleBoardsPanelModalClose = (): void => {
+    this.boardsPanelModalOpen = false;
+    this.boardsPanelError = null;
   };
 
   /** Called by the composition root after a successful `addChild` so the
@@ -401,6 +437,32 @@ export class TreeGraphScreen extends LitElement {
     this.boardSettingsError = message;
   }
 
+  /**
+   * SPEC §17.34 — open the boards-panel modal with the collection
+   * snapshot pre-filled. Called by the composition root in response
+   * to `burger-menu-action { action: "boards" }`; the snapshot is
+   * built from `BoardCollectionService.list()` (id + name only) +
+   * `getCurrentBoardId()`.
+   */
+  openBoardsPanelModal(target: BoardsPanelTarget): void {
+    this.boardsPanelTarget = target;
+    this.boardsPanelModalOpen = true;
+    this.boardsPanelError = null;
+  }
+
+  /** Called after a successful `switchTo` / `createBoard` to dismiss
+   * the modal. */
+  closeBoardsPanelModal(): void {
+    this.boardsPanelModalOpen = false;
+    this.boardsPanelError = null;
+  }
+
+  /** Called after a failed `switchTo` / `createBoard` to surface the
+   * reason inline while keeping the modal open for retry. */
+  setBoardsPanelError(message: string): void {
+    this.boardsPanelError = message;
+  }
+
   /** Read-only accessor used by tests — keeps the `@state` private. */
   get isAddChildModalOpen(): boolean {
     return this.modalOpen;
@@ -416,6 +478,12 @@ export class TreeGraphScreen extends LitElement {
    * §17.31 board-settings modal state. */
   get isBoardSettingsModalOpen(): boolean {
     return this.boardSettingsModalOpen;
+  }
+
+  /** Read-only accessor used by tests + composition root for the
+   * §17.34 boards-panel modal state. */
+  get isBoardsPanelModalOpen(): boolean {
+    return this.boardsPanelModalOpen;
   }
 
   /** Direct accessor to the modal element, useful for the composition root
@@ -438,6 +506,15 @@ export class TreeGraphScreen extends LitElement {
     return (
       this.shadowRoot?.querySelector<BoardSettingsModal>(
         "board-settings-modal",
+      ) ?? null
+    );
+  }
+
+  /** Direct accessor to the §17.34 boards-panel modal element. */
+  get boardsPanelModalElement(): BoardsPanelModal | null {
+    return (
+      this.shadowRoot?.querySelector<BoardsPanelModal>(
+        "boards-panel-modal",
       ) ?? null
     );
   }

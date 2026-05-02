@@ -75,6 +75,10 @@ import type {
   BoardSettingsDeleteDetail,
 } from "./adapters/ui/modal/BoardSettingsModal.js";
 import type {
+  BoardsPanelCreateDetail,
+  BoardsPanelSwitchDetail,
+} from "./adapters/ui/modal/BoardsPanelModal.js";
+import type {
   EditNodeConfirmDetail,
   EditNodeTarget,
 } from "./adapters/ui/modal/EditNodeModal.js";
@@ -100,9 +104,15 @@ import { EditNodeService } from "./application/EditNodeService.js";
 import { ImportExportService } from "./application/ImportExportService.js";
 import { TreeNavigationService } from "./application/TreeNavigationService.js";
 import { BusinessScoreCardNode } from "./domain/nodes/BusinessScoreCardNode.js";
+import { TextCard } from "./domain/nodes/TextCard.js";
 import { TextNode } from "./domain/nodes/TextNode.js";
 import type { TreeNode } from "./domain/nodes/TreeNode.js";
 import { findNodeById, walkPath } from "./domain/treeQueries.js";
+import { Description } from "./domain/values/Description.js";
+import { NodeIdentity } from "./domain/values/NodeIdentity.js";
+import { TimestampedValue } from "./domain/values/TimestampedValue.js";
+import { Title } from "./domain/values/Title.js";
+import { Weight } from "./domain/values/Weight.js";
 import "./index.css";
 
 async function main(): Promise<void> {
@@ -375,8 +385,18 @@ async function main(): Promise<void> {
       void runImport();
       return;
     }
-    // Placeholder: `boards` lands in §17.34 (boards-panel modal).
-    console.info("[main] burger-menu-action (placeholder)", detail.action);
+    if (detail.action === "boards") {
+      // SPEC §17.34 — open the collection-level boards panel. The
+      // composition root assembles a plain snapshot from
+      // `BoardCollectionService.list()` (id + name only — domain
+      // `tree`s never cross the modal boundary) so the modal stays a
+      // pure consumer.
+      screen.openBoardsPanelModal({
+        boards: boards.list().map((b) => ({ id: b.id, name: b.name })),
+        currentBoardId: boards.getCurrentBoardId(),
+      });
+      return;
+    }
   });
 
   /**
@@ -478,6 +498,61 @@ async function main(): Promise<void> {
         return;
       }
       screen.closeBoardSettingsModal();
+      refresh();
+    })();
+  });
+
+  // SPEC §17.34 — boards-panel switch. The service's same-id guard
+  // makes this a no-op when the row matches the current board, but
+  // the modal already filters those out by rendering the `(current)`
+  // badge instead of a Switch button. On success we re-seat the
+  // navigation service over the newly-current board's tree and
+  // `replace` the URL (destructive jump — no history entry); on
+  // failure surface the reason inline.
+  screen.addEventListener("boards-panel-switch", (e) => {
+    void (async () => {
+      const detail = (e as CustomEvent<BoardsPanelSwitchDetail>).detail;
+      const result = await boards.switchTo(detail.boardId);
+      if (!result.ok) {
+        screen.setBoardsPanelError(result.reason);
+        return;
+      }
+      const newCurrent = boards.getCurrentBoard();
+      nav.replaceTree(newCurrent.tree);
+      router.replace({
+        boardId: newCurrent.id,
+        focusNodeUuid: newCurrent.tree.id,
+      });
+      screen.closeBoardsPanelModal();
+      refresh();
+    })();
+  });
+
+  // SPEC §17.34 — boards-panel create. We seed every brand-new
+  // board with a one-node TextNode root titled with the board's
+  // name (a single welcome `TimestampedValue` so `currentValue()`
+  // doesn't throw `EmptyHistoryError` on the first render). The
+  // service is the conversion boundary — it generates the board id
+  // through `idGen` and persists. After a successful create the
+  // collection's `currentBoardId` already points at the new board
+  // (per `BoardCollectionService.createBoard`), so re-seating
+  // navigation + URL is the same triple as `switchTo`.
+  screen.addEventListener("boards-panel-create", (e) => {
+    void (async () => {
+      const detail = (e as CustomEvent<BoardsPanelCreateDetail>).detail;
+      const seedTree = makeNewBoardSeedTree(detail.name, idGen);
+      const result = await boards.createBoard(detail.name, seedTree, undefined);
+      if (!result.ok) {
+        screen.setBoardsPanelError(result.reason);
+        return;
+      }
+      const newCurrent = boards.getCurrentBoard();
+      nav.replaceTree(newCurrent.tree);
+      router.replace({
+        boardId: newCurrent.id,
+        focusNodeUuid: newCurrent.tree.id,
+      });
+      screen.closeBoardsPanelModal();
       refresh();
     })();
   });
@@ -617,6 +692,31 @@ function inferKind(
   if (node instanceof TextNode) return "TextNode";
   if (node instanceof BusinessScoreCardNode) return "BusinessScoreCardNode";
   return null;
+}
+
+/**
+ * SPEC §17.34 — build a minimal, non-empty tree for a freshly-created
+ * board. The new board lands on a single `TextNode` root titled with
+ * the board's name, weight 1, and a one-entry history dated "now"
+ * carrying a friendly welcome message. Why not an empty `TextCard`?
+ * `TextNode.currentValue()` throws `EmptyHistoryError` for an empty
+ * history (per §3); the focused-panel view tolerates that today, but
+ * shipping a brand-new board with a visible value gives the operator
+ * something to drill on top of (and exercises the rendering path on
+ * day one). The text content is intentionally short — operators will
+ * inline-edit it (§17.28) within minutes.
+ */
+function makeNewBoardSeedTree(
+  boardName: string,
+  idGen: () => string,
+): TreeNode<unknown> {
+  const id = idGen();
+  const trimmed = boardName.trim() || "New board";
+  const identity = NodeIdentity.of(Title.of(trimmed), Description.of(""));
+  const card = TextCard.of([
+    TimestampedValue.of(`Welcome to **${trimmed}**.`, new Date()),
+  ]);
+  return new TextNode(id, identity, Weight.of(1), card);
 }
 
 void main().catch((err: unknown) => {

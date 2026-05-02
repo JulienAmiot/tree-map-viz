@@ -376,6 +376,63 @@ export class TreeGraphPage {
     return v !== null;
   }
 
+  // ----- §17.34 boards-panel modal --------------------------------------
+
+  /** The `<boards-panel-modal>` host element. */
+  boardsPanelModalHost(): Locator {
+    return this.page.locator("boards-panel-modal");
+  }
+
+  /** The boards panel (`role="dialog"`) — only present in the DOM while open. */
+  boardsPanelModalPanel(): Locator {
+    return this.page.getByTestId("boards-panel-modal");
+  }
+
+  /** All board rows inside the panel (one per board in the collection). */
+  boardsPanelRows(): Locator {
+    return this.page.getByTestId("board-row");
+  }
+
+  /** A specific row by `data-board-id`. */
+  boardsPanelRowById(boardId: string): Locator {
+    return this.page.locator(
+      `[data-testid="board-row"][data-board-id="${boardId}"]`,
+    );
+  }
+
+  /** A specific row's name span (the user-visible label). */
+  boardsPanelRowNameByBoardId(boardId: string): Locator {
+    return this.boardsPanelRowById(boardId).getByTestId("row-name");
+  }
+
+  /** A specific row's Switch button (only present on non-current rows). */
+  boardsPanelSwitchByBoardId(boardId: string): Locator {
+    return this.page.locator(
+      `[data-testid="row-switch"][data-board-id="${boardId}"]`,
+    );
+  }
+
+  /** The Create form's name input. */
+  boardsPanelNewNameField(): Locator {
+    return this.page.getByTestId("field-new-name");
+  }
+
+  /** The Create form's submit button. */
+  boardsPanelCreateBtn(): Locator {
+    return this.page.getByTestId("create-board");
+  }
+
+  /** Cancel button on the boards panel. */
+  boardsPanelCancelBtn(): Locator {
+    return this.page.getByTestId("modal-cancel");
+  }
+
+  /** Read the modal host's reflected `open` attribute. */
+  async isBoardsPanelModalOpen(): Promise<boolean> {
+    const v = await this.boardsPanelModalHost().getAttribute("open");
+    return v !== null;
+  }
+
   /** Read the currently-rendered focused node id from the parent strip's `data-focused-id`. */
   async focusedId(): Promise<string | null> {
     return this.parentStrip().getAttribute("data-focused-id");

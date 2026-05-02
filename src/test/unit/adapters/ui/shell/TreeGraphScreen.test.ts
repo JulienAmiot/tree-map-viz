@@ -611,4 +611,112 @@ describe("<tree-graph-screen>", () => {
       expect(el.isEditNodeModalOpen).toBe(true);
     });
   });
+
+  // -- §17.34 boards-panel modal seam ---------------------------------
+
+  describe("boards-panel modal seam (\u00a717.34)", () => {
+    it("renders a <boards-panel-modal> overlay (closed by default)", async () => {
+      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const modal = el.shadowRoot?.querySelector("boards-panel-modal");
+      expect(modal).not.toBeNull();
+      expect(modal?.hasAttribute("open")).toBe(false);
+      expect(el.isBoardsPanelModalOpen).toBe(false);
+    });
+
+    it("`openBoardsPanelModal(target)` opens the modal and seeds the target", async () => {
+      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      el.openBoardsPanelModal({
+        boards: [
+          { id: "uuid-A", name: "Showcase" },
+          { id: "uuid-B", name: "Personal" },
+        ],
+        currentBoardId: "uuid-A",
+      });
+      await el.updateComplete;
+      const modal = el.boardsPanelModalElement!;
+      expect(el.isBoardsPanelModalOpen).toBe(true);
+      expect(modal.hasAttribute("open")).toBe(true);
+      expect(modal.target?.currentBoardId).toBe("uuid-A");
+      expect(modal.target?.boards).toHaveLength(2);
+    });
+
+    it("`boards-panel-cancel` from the modal closes it", async () => {
+      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      el.openBoardsPanelModal({
+        boards: [{ id: "uuid-A", name: "Showcase" }],
+        currentBoardId: "uuid-A",
+      });
+      await el.updateComplete;
+      expect(el.isBoardsPanelModalOpen).toBe(true);
+      const modal = el.boardsPanelModalElement!;
+      modal.dispatchEvent(
+        new CustomEvent("boards-panel-cancel", {
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await el.updateComplete;
+      expect(el.isBoardsPanelModalOpen).toBe(false);
+    });
+
+    it("`closeBoardsPanelModal()` + `setBoardsPanelError(...)` are the public seams for the composition root", async () => {
+      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      el.openBoardsPanelModal({
+        boards: [{ id: "uuid-A", name: "Showcase" }],
+        currentBoardId: "uuid-A",
+      });
+      el.setBoardsPanelError("Board name cannot be empty.");
+      expect(el.boardsPanelError).toBe("Board name cannot be empty.");
+      el.closeBoardsPanelModal();
+      expect(el.isBoardsPanelModalOpen).toBe(false);
+      expect(el.boardsPanelError).toBeNull();
+    });
+
+    it("`boards-panel-switch` does NOT auto-close the modal -- composition root must call closeBoardsPanelModal()", async () => {
+      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      el.openBoardsPanelModal({
+        boards: [
+          { id: "uuid-A", name: "Showcase" },
+          { id: "uuid-B", name: "Personal" },
+        ],
+        currentBoardId: "uuid-A",
+      });
+      await el.updateComplete;
+      const modal = el.boardsPanelModalElement!;
+      const handler = vi.fn();
+      el.addEventListener("boards-panel-switch", handler);
+      modal.dispatchEvent(
+        new CustomEvent("boards-panel-switch", {
+          bubbles: true,
+          composed: true,
+          detail: { boardId: "uuid-B" },
+        }),
+      );
+      await el.updateComplete;
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(el.isBoardsPanelModalOpen).toBe(true);
+    });
+
+    it("`boards-panel-create` does NOT auto-close the modal -- composition root must call closeBoardsPanelModal()", async () => {
+      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      el.openBoardsPanelModal({
+        boards: [{ id: "uuid-A", name: "Showcase" }],
+        currentBoardId: "uuid-A",
+      });
+      await el.updateComplete;
+      const modal = el.boardsPanelModalElement!;
+      const handler = vi.fn();
+      el.addEventListener("boards-panel-create", handler);
+      modal.dispatchEvent(
+        new CustomEvent("boards-panel-create", {
+          bubbles: true,
+          composed: true,
+          detail: { name: "Roadmap" },
+        }),
+      );
+      await el.updateComplete;
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(el.isBoardsPanelModalOpen).toBe(true);
+    });
+  });
 });

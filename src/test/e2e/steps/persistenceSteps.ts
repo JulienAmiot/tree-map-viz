@@ -194,3 +194,107 @@ Then(
       .not.toBe("");
   },
 );
+
+// -- Boards-panel modal (§17.34) ---------------------------------------
+
+Then("the boards-panel modal is open", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  expect(await kiosk.isBoardsPanelModalOpen()).toBe(true);
+  await expect(kiosk.boardsPanelModalPanel()).toBeVisible();
+});
+
+Then("the boards-panel modal is closed", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  expect(await kiosk.isBoardsPanelModalOpen()).toBe(false);
+});
+
+Then(
+  "the boards-panel lists {int} board(s)",
+  async ({ page }, n: number) => {
+    const kiosk = new TreeGraphPage(page);
+    await expect(kiosk.boardsPanelRows()).toHaveCount(n);
+  },
+);
+
+Then(
+  "the boards-panel has a board named {string} marked as current",
+  async ({ page }, name: string) => {
+    const kiosk = new TreeGraphPage(page);
+    const rows = kiosk.boardsPanelRows();
+    // Find the row whose name matches; assert its `data-current` is "true".
+    const row = rows.filter({ hasText: name }).first();
+    await expect(row).toHaveAttribute("data-current", "true");
+    await expect(row.getByTestId("row-current-badge")).toBeVisible();
+  },
+);
+
+Then(
+  "the boards-panel has a board named {string} not marked as current",
+  async ({ page }, name: string) => {
+    const kiosk = new TreeGraphPage(page);
+    const row = kiosk.boardsPanelRows().filter({ hasText: name }).first();
+    await expect(row).toHaveAttribute("data-current", "false");
+    // Non-current rows expose a Switch button.
+    await expect(row.getByTestId("row-switch")).toBeVisible();
+  },
+);
+
+When(
+  "I tap the boards-panel switch button for {string}",
+  async ({ page }, name: string) => {
+    // Find the row by user-visible name, then click its Switch button.
+    const kiosk = new TreeGraphPage(page);
+    const row = kiosk.boardsPanelRows().filter({ hasText: name }).first();
+    // The composition root's switch handler runs `nav.replaceTree` +
+    // `router.replace` + `refresh` synchronously, then closes the
+    // modal. Wait for the modal to disappear so the next Then step
+    // sees the refreshed view.
+    const beforeHash = await page.evaluate(() => window.location.hash);
+    await row.getByTestId("row-switch").click();
+    await page.waitForFunction(
+      (prev) => window.location.hash !== prev,
+      beforeHash,
+      { timeout: 5000 },
+    );
+  },
+);
+
+When(
+  "I type {string} into the new-board name field",
+  async ({ page }, name: string) => {
+    const kiosk = new TreeGraphPage(page);
+    await kiosk.boardsPanelNewNameField().fill(name);
+  },
+);
+
+When("I tap the boards-panel Create button", async ({ page }) => {
+  // Same wait-for-hash pattern as switch — `createBoard` flips the
+  // current id to the freshly-minted board, the composition root
+  // re-seats nav + replaces the URL, then closes the modal.
+  const kiosk = new TreeGraphPage(page);
+  const beforeHash = await page.evaluate(() => window.location.hash);
+  await kiosk.boardsPanelCreateBtn().click();
+  await page.waitForFunction(
+    (prev) => window.location.hash !== prev,
+    beforeHash,
+    { timeout: 5000 },
+  );
+});
+
+When("I cancel the boards-panel modal", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await kiosk.boardsPanelCancelBtn().click();
+});
+
+Then("the boards-panel Create button is disabled", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.boardsPanelCreateBtn()).toBeDisabled();
+});
+
+Then(
+  "the boards-panel Create button is enabled",
+  async ({ page }) => {
+    const kiosk = new TreeGraphPage(page);
+    await expect(kiosk.boardsPanelCreateBtn()).toBeEnabled();
+  },
+);
