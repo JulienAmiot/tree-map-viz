@@ -316,6 +316,16 @@ Then("every tile title has the same font-size", async ({ page }) => {
   // tile; it's allowed to scale up its title for the focused-context
   // emphasis). All child-tile titles must therefore agree pixel-for-
   // pixel modulo sub-pixel rounding.
+  //
+  // Auto-wait for at least one child tile to render before reading
+  // computed styles. The `evaluateAll` below is a one-shot DOM read
+  // and would otherwise race the kiosk's first render after a
+  // `reload`. Asserting on the locator first piggy-backs on
+  // playwright's built-in retry until a match exists; ChildA is the
+  // first child of every fixture used by this scenario so it is a
+  // safe pin.
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.childTiles().first()).toBeVisible();
   const sizes = await page
     .locator('children-grid [data-testid="title"]')
     .evaluateAll((els: Element[]) =>
@@ -335,6 +345,8 @@ Then("every tile title's font-size is approximately 2vh", async ({ page }) => {
   // AsParent variant overrides with `2.4vh`. We assert the AsChild
   // (children grid) titles to ensure the §17.14 baseline holds; the
   // AsParent variant is allowed to scale up slightly per role.
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.childTiles().first()).toBeVisible();
   const sizes = await page.$$eval(
     'children-grid [data-testid="title"]',
     (els: Element[]) =>
@@ -661,6 +673,55 @@ Then(
       tolerancePx,
     );
     expect(Math.abs(parentBottomOffset - childBottomOffset)).toBeLessThanOrEqual(
+      tolerancePx,
+    );
+  },
+);
+
+Then(
+  "the focused title offset matches a child tile title offset within {int} px",
+  async ({ page }, tolerancePx: number) => {
+    // SPEC §17.37 — the focused panel's title must sit at the same
+    // visual distance from the strip's outer top-left as a child
+    // tile's title from its tile's outer top-left. Pre-§17.37 the
+    // strip's wrapper carried `padding: clamp(0.5rem, 1.5vw,
+    // 1.25rem)` which pushed the parent title ~0.5–1.25rem further
+    // down and to the right than the child title. Post-§17.37 the
+    // strip's outer padding is 0; the inner per-view's
+    // `:host { padding: 0.4rem 0.6rem }` (from `tileLayoutStyles`)
+    // is the only padding in play on either surface, so both
+    // titles land at the same `1px (border) + 0.4rem` top inset
+    // and `1px (border) + 0.6rem` left inset.
+    //
+    // Mirror of the §17.30 timestamp-parity check (above). Same
+    // ChildB tile choice: it always renders a title and is part of
+    // the `mixedComputed` fixture, so this scenario can be chained
+    // against the same setup as the timestamp parity scenario.
+    const kiosk = new TreeGraphPage(page);
+    const parentTitle = kiosk.parentStrip().getByTestId("title");
+    await expect(parentTitle).toHaveCount(1);
+    const parentBox = await parentTitle.boundingBox();
+    const stripBox = await kiosk.parentStrip().boundingBox();
+    expect(parentBox).not.toBeNull();
+    expect(stripBox).not.toBeNull();
+
+    const childTile = kiosk.childById("ChildB");
+    const childTitle = childTile.getByTestId("title");
+    await expect(childTitle).toHaveCount(1);
+    const childBox = await childTitle.boundingBox();
+    const childTileBox = await childTile.boundingBox();
+    expect(childBox).not.toBeNull();
+    expect(childTileBox).not.toBeNull();
+
+    const parentTopOffset = parentBox!.y - stripBox!.y;
+    const parentLeftOffset = parentBox!.x - stripBox!.x;
+    const childTopOffset = childBox!.y - childTileBox!.y;
+    const childLeftOffset = childBox!.x - childTileBox!.x;
+
+    expect(Math.abs(parentTopOffset - childTopOffset)).toBeLessThanOrEqual(
+      tolerancePx,
+    );
+    expect(Math.abs(parentLeftOffset - childLeftOffset)).toBeLessThanOrEqual(
       tolerancePx,
     );
   },

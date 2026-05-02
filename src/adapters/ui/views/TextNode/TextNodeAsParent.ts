@@ -128,6 +128,29 @@ export class TextNodeAsParent extends LitElement {
         font-size: inherit;
         font-weight: inherit;
       }
+      /* SPEC 17.37 -- the inline title-edit fits exactly within the
+         3vh title row (no vertical overflow). Pre-17.37 the input
+         inherited the value-edit's 0.25rem top + 0.25rem bottom
+         padding, which combined with the 2.4vh font-size and the
+         1px border made the input ~5-6px taller than the title
+         row, visibly bulging into the value area whenever the
+         operator clicked the title to edit. Post-17.37 the input
+         occupies the full title-row height (height: 100%) with
+         no vertical padding and a line-height of 1, so it sits
+         flush with where the static title sat -- entering edit
+         mode no longer shifts the focused panel's layout
+         downward. min-width: 0 + max-width: 100% defeat the
+         input's intrinsic min-content so a narrow title row
+         still constrains the input to the row width and the
+         input never extends past the strip (and therefore never
+         past the viewport). */
+      .title-edit {
+        height: 100%;
+        padding: 0 0.4rem;
+        line-height: 1;
+        min-width: 0;
+        max-width: 100%;
+      }
       .value-edit {
         min-height: 6rem;
         height: 100%;

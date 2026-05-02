@@ -106,13 +106,32 @@ export class ParentIdentityStrip extends LitElement {
        (it would otherwise blend with a single large child tile).
        The drill-into morph (drillTransitions.ts) transitions the
        tapped tile's bg from --panel-tile-bg to --panel-strip-bg
-       as it flies up, making the parent-promotion read smoothly. */
+       as it flies up, making the parent-promotion read smoothly.
+
+       SPEC §17.37 -- padding 0 (was clamp(0.5rem, 1.5vw, 1.25rem)
+       pre-§17.37). Operator feedback after §17.36: the title on the
+       focused panel sat noticeably lower-and-more-indented than the
+       title on a child tile, and the drill-into FLIP morph made the
+       discrepancy visible as a vertical+horizontal jump at the moment
+       the tile re-rendered as the strip's per-view (the morphed tile
+       had its title at the per-view's 0.4rem 0.6rem host-padding
+       inset; the strip's content rendered the same per-view but
+       offset by an extra clamp(0.5rem, 1.5vw, 1.25rem) on every
+       side). Removing the outer padding aligns the title (and every
+       inner element) at exactly the same 0.4rem top / 0.6rem
+       left inset on both surfaces -- the morph now lands cleanly with
+       no visible jump. The inner per-view's own :host { padding:
+       0.4rem 0.6rem } (from tileLayoutStyles) is the only padding
+       in play on either surface; the strip is now a pure visual
+       frame. The right-side gutter for the close-X / pencil buttons
+       moves to a class modifier below so the gutter does not pollute
+       the symmetric padding-0 defaults. */
     .strip {
       position: relative;
       box-sizing: border-box;
       width: 100%;
       height: 100%;
-      padding: clamp(0.5rem, 1.5vw, 1.25rem);
+      padding: 0;
       background: var(
         --panel-strip-bg,
         color-mix(in srgb, currentColor 12%, transparent)

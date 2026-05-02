@@ -110,3 +110,26 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And I seed the "mixedComputed" fixture via the test bridge
     And I reload the kiosk
     Then the focused value-date offset matches a child tile value-date offset within 4 px
+
+  @HE-???? @priority:high
+  Scenario: Parent panel title sits at the same offset from its outer edge as a child tile title (§17.37)
+    # SPEC §17.37 — the title on the focused panel must align with
+    # the title on a child tile so the drill-into FLIP morph
+    # (`drillTransitions.ts`) lands without a visible jump at commit.
+    # Pre-§17.37 the parent strip wrapped the per-view in
+    # `padding: clamp(0.5rem, 1.5vw, 1.25rem)`, pushing the parent
+    # title ~0.5–1.25rem further down and to the right than the
+    # child title (which had no `.tile` outer padding, only the
+    # per-view's own `:host { padding: 0.4rem 0.6rem }` from
+    # `tileLayoutStyles`). Post-§17.37 the strip's outer padding
+    # is 0, so both surfaces share the same `1px border + 0.4rem
+    # top / 0.6rem left` inset for the title — the morph commits
+    # cleanly.
+    #
+    # Same `mixedComputed` setup as the §17.30 scenario above so
+    # both parities can be diagnosed against the same kiosk state
+    # (Root focused, ChildB present as a recordedValue child).
+    When I open the kiosk in test mode with empty storage
+    And I seed the "mixedComputed" fixture via the test bridge
+    And I reload the kiosk
+    Then the focused title offset matches a child tile title offset within 4 px
