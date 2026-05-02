@@ -144,6 +144,35 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
         height: auto;
         flex: 1 1 auto;
         min-height: 0;
+        /* SPEC 17.39 -- escape the parent strip's right-side gutter so
+           the centered .value lands at the strip's full-width center
+           (matching the drill morph's end-state) instead of at the
+           padding-right-shrunk content-area's center.
+
+           Pre-§17.39 path: when the strip carried both close-X and
+           pencil buttons, .strip { padding-right: clamp(5.5rem, 8vw,
+           7.5rem) } shrunk the per-view's content area to
+           strip-width - gutter. .value-area inherits that width;
+           justify-content: center centered the .value span inside
+           the shrunken value-area. The morphing tile, however, is
+           positioned outside the strip's shadow DOM and so does NOT
+           inherit the strip's padding -- it fills the strip's full
+           rect, with the centered .value span at full-width center.
+           At commit Lit re-rendered the strip with the per-view in
+           the parent role and the .value snapped left by gutter / 2
+           (~60 px on a 1280 px viewport) -- the operator's "centered
+           value jumping to the left in the end" feedback.
+
+           Post-§17.39 fix: a negative margin-right exactly cancels
+           the strip's padding-right via the --strip-gutter-right
+           custom property the strip publishes (single source of
+           truth for the gutter literal). The .value-area's effective
+           width becomes (content-area-width + gutter-right) =
+           strip-width, so the centered .value lands at the strip's
+           full-width center -- same as the morph end-state, no jump.
+           The fallback (0px) makes the rule a no-op when the strip
+           carries no buttons (root focus or VM=null). */
+        margin-right: calc(0px - var(--strip-gutter-right, 0px));
       }
       .title.is-editable,
       .value.is-editable {

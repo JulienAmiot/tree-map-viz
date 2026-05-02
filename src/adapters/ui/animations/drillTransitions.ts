@@ -61,6 +61,64 @@
  *   precedence than the var rule), so the visual continues at
  *   `2.4vh` without a pop.
  *
+ * §17.39 — title font-weight morph + BSC value re-centering:
+ *   Operator feedback at the post-§17.38 demo: the size growth
+ *   was now smooth, but a residual "jump" remained at commit.
+ *   Two distinct artifacts shared the same complaint:
+ *
+ *   (1) Font-weight: child role `600` → parent role `700`. §17.38
+ *       deliberately skipped weight smoothing on the rationale
+ *       "system fonts step at integer hundreds, browser support
+ *       inconsistent". That rationale was wrong for the kiosk's
+ *       actual environment: the font stack starts with
+ *       `system-ui`, which on every modern desktop / mobile OS
+ *       resolves to a variable system font (Segoe UI Variable on
+ *       Windows 10+, SF Pro on Mac / iOS, Roboto on Android),
+ *       and Chromium interpolates `wght` smoothly across the
+ *       axis. Even the worst-case non-variable fallback steps at
+ *       the 50 %-progress midpoint instead of at 100 %, still a
+ *       smoother result than the pre-§17.39 commit-time step.
+ *       The plumbing mirrors §17.38: a `--drill-title-font-weight`
+ *       custom property on the morphing tile, read by
+ *       `tileLayoutStyles`' `.title` rule via
+ *       `font-weight: var(--drill-title-font-weight, 600)`, and
+ *       `font-weight 320ms ease` added to the existing transition
+ *       list. This module exports `DRILL_PARENT_TITLE_FONT_WEIGHT`
+ *       alongside `DRILL_PARENT_TITLE_FONT_SIZE`; the helper
+ *       writes both onto the tile in the same step.
+ *
+ *   (2) BSC value horizontal jump: the parent-identity-strip's
+ *       `.strip` wrapper carries `padding-right` clamp(...) when
+ *       its right-side gutter holds the close-X / pencil buttons
+ *       (§17.37). That padding shrinks the per-view's content area
+ *       to `strip-width - gutter`, so a centered value (BSC's
+ *       `.value` span) sits at the center of that shrunken area
+ *       instead of at the strip's full-width center. The morphing
+ *       tile, however, fills the strip's *full* rect (it is
+ *       absolutely positioned outside the strip's shadow DOM and
+ *       so does not inherit the strip's padding), so the centered
+ *       value sits at the full-width center while in flight, then
+ *       snaps left by `gutter / 2` at commit. The fix lives in
+ *       `BusinessScoreCardNodeAsParent.ts` (a negative
+ *       `margin-right` on `.value-area` that exactly cancels the
+ *       strip's `padding-right`) and `ParentIdentityStrip.ts`
+ *       (publishes `--strip-gutter-right` matching the
+ *       `padding-right` clamp value, so the per-view's negative-
+ *       margin reads the literal from a single source). The
+ *       drill helper itself does not change for this — the fix
+ *       is a static CSS contract on the post-commit DOM, asserted
+ *       by an e2e check (parent BSC value's center-x within
+ *       `2 px` of the strip's center-x).
+ *
+ *       TextNode parent role does NOT need this fix: `.md-body`
+ *       is `text-align: left`, so the text always sits at the
+ *       left padding-edge regardless of the value-area's right
+ *       edge — extending the box to the right would just leave
+ *       more empty space on the right, not move the visible
+ *       text. The pre-§17.39 TextNode parent rendering is
+ *       therefore already jump-free for the value, and is left
+ *       untouched.
+ *
  * Why translate + width/height instead of `transform: scale()`:
  *   - The tile's destination geometry is **layout-dependent**: the parent
  *     strip is 22 % of the viewport, but the tile's starting position is
@@ -131,6 +189,20 @@ export const DRILL_SETTLE_MS = 320;
  * follow-up).
  */
 export const DRILL_PARENT_TITLE_FONT_SIZE = "2.4vh";
+
+/**
+ * SPEC §17.39 — the parent-role title's font-weight, mirrored here for
+ * the same reason as `DRILL_PARENT_TITLE_FONT_SIZE`. Today's value is
+ * `700` (heavy / bold); the literal lives in `*AsParent.ts` as the
+ * `.title { font-weight: 700 }` override. The helper writes this
+ * constant via `--drill-title-font-weight`, the `.title` rule reads it
+ * via `font-weight: var(--drill-title-font-weight, 600)`, and the
+ * `transition: ..., font-weight 320ms ease` clause in
+ * `tileLayoutStyles` makes the growth animate (smooth on variable
+ * fonts, midpoint-stepped on non-variable fallbacks). Lock-step
+ * unit-tested below alongside the size constant.
+ */
+export const DRILL_PARENT_TITLE_FONT_WEIGHT = "700";
 
 /**
  * CSS class added to the tapped tile while the morph is in flight so
@@ -267,6 +339,19 @@ export function runDrillTransition(opts: RunDrillTransitionOptions): void {
   tile.style.setProperty(
     "--drill-title-font-size",
     DRILL_PARENT_TITLE_FONT_SIZE,
+  );
+  // SPEC §17.39 — same pattern for the font-weight bump. The .title
+  // rule reads `font-weight: var(--drill-title-font-weight, 600)`
+  // and lists font-weight in its transition, so writing 700 here
+  // animates the weight over the settle. Variable system fonts (the
+  // kiosk's font stack starts with system-ui) interpolate the wght
+  // axis smoothly; non-variable fallbacks step at the midpoint
+  // instead of at 100 %, still better than the pre-§17.39 commit-
+  // time step. At commit the parent-role override (literal 700)
+  // wins by source-order at the same value — no weight pop.
+  tile.style.setProperty(
+    "--drill-title-font-weight",
+    DRILL_PARENT_TITLE_FONT_WEIGHT,
   );
 
   // Stage every fade-out element with a uniform transition so the

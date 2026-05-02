@@ -133,3 +133,33 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And I seed the "mixedComputed" fixture via the test bridge
     And I reload the kiosk
     Then the focused title offset matches a child tile title offset within 4 px
+
+  @HE-???? @priority:high
+  Scenario: Parent BSC value is horizontally centered to the strip's full width (§17.39)
+    # SPEC §17.39 — when the focused panel renders a BSC node, the
+    # centered `.value` span must sit at the strip's full-width
+    # horizontal center, NOT at the padding-right-shrunk content-
+    # area's center. Pre-§17.39 the strip's `.strip` wrapper
+    # carried `padding-right: clamp(5.5rem, 8vw, 7.5rem)` whenever
+    # both the close-X and the edit-pencil were present (§17.37);
+    # the per-view's value-area inherited the shrunken width and
+    # the centered `.value` snapped left by `gutter / 2` at commit
+    # vs. the morph's full-rect end-state — the operator's "value
+    # jumping to the left" feedback. Post-§17.39 the BSC parent's
+    # `.value-area` carries a negative `margin-right` that exactly
+    # cancels the strip's `padding-right` (via the
+    # `--strip-gutter-right` custom property the strip publishes),
+    # so the centered value lands at the strip's full-width center
+    # — same as the morph end-state, no jump at commit.
+    #
+    # Focus on `ChildB` (recordedValue BSC, always present in
+    # `mixedComputed`) so the strip carries a numeric `.value`
+    # span. Tolerance `2 px` absorbs sub-pixel rounding from the
+    # negative-margin / clamp arithmetic without admitting a 60-
+    # px-class regression (the pre-fix offset was ~half the
+    # gutter).
+    When I open the kiosk in test mode with empty storage
+    And I seed the "mixedComputed" fixture via the test bridge
+    And I reload the kiosk
+    And I focus on node "ChildB"
+    Then the focused BSC value is horizontally centered to the parent strip within 2 px

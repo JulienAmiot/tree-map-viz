@@ -67,7 +67,19 @@ export const tileLayoutStyles = css`
        hand-off. The fallback (2vh) preserves the pre-17.38 child-
        tile rendering for every non-drilling tile. */
     font-size: var(--drill-title-font-size, 2vh);
-    font-weight: 600;
+    /* SPEC 17.39 -- same plumbing as 17.38's font-size morph,
+       applied to font-weight. Child role is 600 (the fallback),
+       parent role overrides to 700 in *AsParent.ts. The drill
+       helper writes --drill-title-font-weight: 700 onto the
+       morphing tile so the cascade lifts the resolved weight
+       to 700, the transition list below smooths the growth, and
+       at commit the parent-role override wins by source-order
+       at the same value -- no weight pop. Modern variable system
+       fonts (Segoe UI Variable on Windows 10+, SF Pro on Mac /
+       iOS, Roboto on Android) interpolate the weight smoothly
+       along the wght axis; non-variable fallbacks step at the
+       midpoint, still better than the pre-17.39 step at 100 %. */
+    font-weight: var(--drill-title-font-weight, 600);
     /* Fade out long titles instead of wrapping; we have a fixed 3vh
        height to honour. The timestamp moved to the bottom-right in
        §17.18, so the title row can use the full tile width. */
@@ -90,9 +102,14 @@ export const tileLayoutStyles = css`
        drillTransitions.ts. SPEC 17.38 -- the same transition list
        gains font-size so the drill-into morph's font-size growth
        (2vh -> 2.4vh) animates on the same 320ms ease curve as the
-       colour recolour. */
+       colour recolour. SPEC 17.39 -- font-weight is added to the
+       same list so the 600 -> 700 promotion animates on the same
+       curve too (smooth on variable fonts, midpoint-stepped on
+       non-variable fallbacks; either way better than the post-
+       commit step pre-17.39). */
     color: var(--drill-title-color, currentColor);
-    transition: color 320ms ease, font-size 320ms ease;
+    transition: color 320ms ease, font-size 320ms ease,
+      font-weight 320ms ease;
   }
   .timestamp {
     position: absolute;

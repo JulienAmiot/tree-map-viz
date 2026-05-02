@@ -150,13 +150,34 @@ export class ParentIdentityStrip extends LitElement {
          - has-close (SPEC 17.23) -- the close-X button is rendered.
          - has-edit  (SPEC 17.28) -- the edit-pencil button is rendered.
        When both are set the gutter widens to accommodate both buttons;
-       when only one is set the narrower gutter is enough. */
+       when only one is set the narrower gutter is enough.
+
+       SPEC 17.39 -- the same gutter value is republished as a custom
+       property (--strip-gutter-right) so the per-view inside the strip
+       can selectively *escape* the gutter for content that would
+       otherwise jump-on-commit. CSS custom properties cascade through
+       shadow DOM, so the per-view's BusinessScoreCardNodeAsParent reads
+       the var on its .value-area and applies a negative margin-right
+       to extend the value-area back to the strip's full inner width.
+       The result: the centered BSC value lands at the strip's full-
+       width center (same as the morph end-state), instead of at the
+       padding-right-shrunk content-area's center. The title and
+       description inside the per-view do NOT read the var, so they
+       stay constrained to the content-area and continue to keep clear
+       of the buttons -- the gutter still does its job for the rows
+       that share Y-coords with the buttons; the value-area below
+       does not (the buttons are 2.25rem tall, anchored at the strip's
+       top, so the value-area sits below the buttons regardless).
+       Single source of truth: the literal clamp value lives once
+       per modifier; the var simply mirrors it. */
     .strip.has-close,
     .strip.has-edit {
       padding-right: clamp(3rem, 4vw, 3.75rem);
+      --strip-gutter-right: clamp(3rem, 4vw, 3.75rem);
     }
     .strip.has-close.has-edit {
       padding-right: clamp(5.5rem, 8vw, 7.5rem);
+      --strip-gutter-right: clamp(5.5rem, 8vw, 7.5rem);
     }
     node-view {
       display: block;

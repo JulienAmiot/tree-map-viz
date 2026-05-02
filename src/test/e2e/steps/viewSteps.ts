@@ -728,6 +728,49 @@ Then(
 );
 
 Then(
+  "the focused BSC value is horizontally centered to the parent strip within {int} px",
+  async ({ page }, tolerancePx: number) => {
+    // SPEC §17.39 — the centered BSC `.value` span on the focused
+    // panel must sit at the strip's full-width horizontal center.
+    // Pre-§17.39 the strip's `padding-right` (clamp(5.5rem, 8vw,
+    // 7.5rem) when both close-X and pencil are rendered) shrunk the
+    // per-view's content area by ~120 px on a 1280 px viewport, so
+    // a `justify-content: center` layout placed the value at the
+    // shrunken-area center rather than the strip's full center —
+    // ~60 px to the left of where the morph end-state had it.
+    //
+    // The fix is a negative `margin-right` on the BSC parent's
+    // `.value-area` that cancels the strip's `padding-right` via
+    // the `--strip-gutter-right` custom property. The check here
+    // computes the value's center-x and asserts it matches the
+    // strip's center-x within `tolerancePx`. We deliberately
+    // measure against the strip (the visual frame), not the per-
+    // view's shadow root host (which would be the shrunken
+    // content-area) — the operator's mental model is "the value
+    // is centered in the focused panel".
+    //
+    // Focus must be on a BSC node with a recordedValue (so the
+    // `.value` is a non-empty span the bounding box is well-defined
+    // for). `ChildB` in `mixedComputed` satisfies that — the
+    // scenario above seeds and focuses accordingly.
+    const kiosk = new TreeGraphPage(page);
+    const parentValue = kiosk.parentStrip().getByTestId("value");
+    await expect(parentValue).toHaveCount(1);
+    const valueBox = await parentValue.boundingBox();
+    const stripBox = await kiosk.parentStrip().boundingBox();
+    expect(valueBox).not.toBeNull();
+    expect(stripBox).not.toBeNull();
+
+    const valueCenterX = valueBox!.x + valueBox!.width / 2;
+    const stripCenterX = stripBox!.x + stripBox!.width / 2;
+
+    expect(Math.abs(valueCenterX - stripCenterX)).toBeLessThanOrEqual(
+      tolerancePx,
+    );
+  },
+);
+
+Then(
   "the focused value-date colour is on the warm-to-cold age gradient",
   async ({ page }) => {
     // §17.18 + §17.21 — the corner timestamp's colour is set via
