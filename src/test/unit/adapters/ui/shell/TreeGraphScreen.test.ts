@@ -168,7 +168,7 @@ describe("<tree-graph-screen>", () => {
     expect(el.shadowRoot?.querySelector('[data-testid="loading"]')).toBeNull();
   });
 
-  it("renders the drawer + drawer-content (board name, breadcrumb, burger) at all times — even before view is set", async () => {
+  it("renders the permanent top bar (board name, breadcrumb, burger) at all times — even before view is set (\u00a717.43)", async () => {
     const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
       e.boardName = "Quarterly OKRs";
       e.breadcrumbPath = [
@@ -177,14 +177,20 @@ describe("<tree-graph-screen>", () => {
       ];
     });
 
-    const drawer = el.shadowRoot?.querySelector('[data-testid="drawer"]');
+    const topBar = el.shadowRoot?.querySelector('[data-testid="top-bar"]');
     const boardName = el.shadowRoot?.querySelector('[data-testid="board-name"]');
     const crumb = el.shadowRoot?.querySelector(
       "focus-breadcrumb",
     ) as FocusBreadcrumb | null;
     const burger = el.shadowRoot?.querySelector("burger-menu");
 
-    expect(drawer).not.toBeNull();
+    expect(topBar).not.toBeNull();
+    // \u00a717.43 — the top bar is always present, never carries an
+    // `open` attribute, and has no `<app-drawer>` ancestor / handle.
+    expect(el.shadowRoot?.querySelector("app-drawer")).toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="drawer-handle"]'),
+    ).toBeNull();
     expect(boardName?.textContent?.trim()).toBe("Quarterly OKRs");
     expect(burger).not.toBeNull();
     expect(crumb?.path).toHaveLength(2);
@@ -399,8 +405,11 @@ describe("<tree-graph-screen>", () => {
       // the morph, commit not yet called.
       expect(tile!.classList.contains(DRILL_CLASS)).toBe(true);
       expect(tile!.style.transform).toContain("translate(-100px, -400px)");
+      // §17.42 \u2014 the morph lands the title at the parent-role
+      // bright off-white; the prior `var(--board-fresh)` look-up is
+      // gone alongside the per-board fresh-date colour.
       expect(tile!.style.getPropertyValue("--drill-title-color")).toBe(
-        "var(--board-fresh)",
+        "rgb(245, 245, 245)",
       );
       expect(tile!.style.color).toBe("");
       expect(strip!.style.opacity).toBe("0");

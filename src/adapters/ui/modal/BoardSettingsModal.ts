@@ -1,17 +1,13 @@
 /**
- * `<board-settings-modal>` — board-level theme settings (SPEC §17.31).
+ * `<board-settings-modal>` — board-level settings (SPEC §17.31, simplified
+ * by §17.42).
  *
- * Reached from the `<burger-menu>` "Settings…" item (added in §17.31
- * alongside the existing Import / Export / Boards entries). Lets the
- * operator edit the **mutable** board fields:
+ * Reached from the `<burger-menu>` "Settings…" item alongside the
+ * existing Import / Export / Boards entries. Lets the operator edit
+ * the **mutable** board fields:
  *
  *   - `name` — text input, required, trimmed (same rule as
  *     `BoardCollectionService.rename` / `createBoard`).
- *   - `freshDateColor` — `<input type="color">` paired with a read-only
- *     hex display. The colour drives both the per-tile timestamp's
- *     fresh endpoint (`dateAgeColor`) and the focused-panel title
- *     colour (§17.31), so a change here ripples to every coloured
- *     surface on the next refresh.
  *   - **Delete board** — destructive action with an **inline
  *     confirmation step** (no nested modal). Disabled when the
  *     collection holds a single board (the
@@ -20,17 +16,25 @@
  *     `BoardCollectionService.deleteBoard` is the defence-in-depth
  *     contract.
  *
+ * §17.42 retired the per-board "fresh date colour" picker the
+ * §17.31 design carried. The kiosk's dark theme already gives the
+ * timestamp + parent-title enough emphasis with a flat near-white
+ * (now hard-coded into `dateAgeColor` and `*AsParent.ts`); the
+ * operator-facing colour picker added a personalisation surface
+ * that nobody used. Removing it shrinks the modal to "name + delete"
+ * and lets the wire payload, service, and downstream colour
+ * pipeline collapse to a single source of truth.
+ *
  * Surface contract:
  *   - `open` (boolean attribute, reflected) — modal visible.
  *   - `target` (property) — the pre-edit snapshot for the current
- *     board (`{ boardId, name, freshDateColor, canDelete }`). The
- *     composition root populates this from
- *     `BoardCollectionService.getCurrentBoard()` + `list().length > 1`
- *     before flipping `open` to true. When `open=false` the modal
- *     renders nothing.
+ *     board (`{ boardId, name, canDelete }`). The composition root
+ *     populates this from `BoardCollectionService.getCurrentBoard()`
+ *     + `list().length > 1` before flipping `open` to true. When
+ *     `open=false` the modal renders nothing.
  *   - dispatches **three** event types, all bubbling + composed:
- *     - `board-settings-confirm` `{ boardId, name, freshDateColor }`
- *       on Confirm. The composition root calls
+ *     - `board-settings-confirm` `{ boardId, name }` on Confirm. The
+ *       composition root calls
  *       `BoardCollectionService.updateSettings(...)` and on success
  *       calls `screen.closeBoardSettingsModal()`.
  *     - `board-settings-delete` `{ boardId }` on the **second** tap
@@ -69,13 +73,6 @@ export type BoardSettingsTarget = {
   readonly boardId: string;
   readonly name: string;
   /**
-   * The board's current fresh-date colour, or empty string if
-   * unset. The modal seeds the colour picker from this value (or
-   * from the application-wide default fallback if empty — which the
-   * composition root resolves before passing the snapshot in).
-   */
-  readonly freshDateColor: string;
-  /**
    * `false` when the collection holds a single board (delete would
    * violate the `getCurrentBoard` invariant). The Delete button is
    * disabled in that case.
@@ -86,7 +83,6 @@ export type BoardSettingsTarget = {
 export type BoardSettingsConfirmDetail = {
   readonly boardId: string;
   readonly name: string;
-  readonly freshDateColor: string;
 };
 
 export type BoardSettingsDeleteDetail = {
@@ -109,32 +105,6 @@ export class BoardSettingsModal extends LitElement {
   private formName = "";
 
   /**
-   * The **canonical resolved colour**, always a valid 7-char `#rrggbb`
-   * hex once the modal has opened (or empty before first open). The
-   * Save button dispatches this exact string. The native colour
-   * picker's `.value` is bound to this; any picker drag overwrites
-   * both `formColor` and `formColorHex` so they stay in lockstep.
-   */
-  @state()
-  private formColor = "";
-
-  /**
-   * The **editable hex text** — what the operator is typing in the
-   * paired `<input type="text">`. May be partial / invalid
-   * mid-typing (e.g. `"#90"`). When the input matches the
-   * `^#[0-9a-fA-F]{6}$` shape we mirror it into `formColor` (which
-   * repaints the picker thumb). When it doesn't, `formColor` stays
-   * put (picker thumb doesn't lurch around) and the Save button is
-   * gated until the operator either fixes the typo or clears the
-   * field back to a valid hex. Keeping the two in lockstep on
-   * picker drags is essential — the picker emits a 7-char hex on
-   * every `input`, so we always have a known-valid ground truth to
-   * fall back to.
-   */
-  @state()
-  private formColorHex = "";
-
-  /**
    * §17.31 — inline-armed state for the destructive Delete action.
    * `false` → renders "Delete board" (single tap arms). `true` →
    * renders "Are you sure? Confirm delete" + "Keep board"; a second
@@ -154,10 +124,10 @@ export class BoardSettingsModal extends LitElement {
         padding: 1.5rem 2rem;
         /* §17.29 -- room for the top-right close-X corner button. */
         padding-right: clamp(3.5rem, 5vw, 4.25rem);
-        /* Settings is a small form (name + colour + delete); the
-           min-width is narrower than EditNodeModal's 28rem because
-           a fresh-colour picker is naturally compact. */
-        min-width: min(24rem, calc(100vw - 4rem));
+        /* Settings is a small form (name + delete); §17.42 retired
+           the colour picker so the panel is narrower than the §17.31
+           original. */
+        min-width: min(22rem, calc(100vw - 4rem));
         min-height: 0;
       }
       .header {
@@ -173,14 +143,6 @@ export class BoardSettingsModal extends LitElement {
       .form-pane {
         min-height: 0;
         overflow-y: auto;
-        /* SPEC 17.31 -- force the cross-axis to stay clipped.
-           Per the CSS spec, setting overflow-y: auto computes
-           overflow-x to auto as well when the other axis is left
-           visible; that produced a horizontal scrollbar whenever
-           the inline-help span pushed the colour-control row past
-           the panel width. The form is single-column at fixed
-           gaps so there is nothing legitimate to scroll
-           horizontally. */
         overflow-x: hidden;
       }
       form {
@@ -211,55 +173,6 @@ export class BoardSettingsModal extends LitElement {
         outline: none;
         border-color: color-mix(in srgb, currentColor 55%, transparent);
         background: color-mix(in srgb, currentColor 8%, transparent);
-      }
-      .color-control {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        /* SPEC 17.31 -- wrap when the optional help span on
-           invalid hex makes the row too wide for the panel.
-           Picker + hex input always share the first row; help
-           wraps below if needed. Without this the row would
-           force the form-pane to scroll horizontally. */
-        flex-wrap: wrap;
-      }
-      .color-control input[type="color"] {
-        flex: 0 0 auto;
-        width: 3rem;
-        height: 2.4rem;
-        padding: 0;
-        background: transparent;
-        border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
-        border-radius: 6px;
-        cursor: pointer;
-      }
-      /* SPEC 17.31 -- compound selector to beat the
-         input[type=text] rule above (attribute selectors carry
-         specificity 11; a bare class is 10, so the generic
-         width: 100% rule was winning the cascade and the hex
-         input rendered full-width). Adding the type attribute
-         to our selector lifts specificity to 21 so the explicit
-         7ch width actually applies. The hex input is sized to
-         exactly fit its maxlength=7 monospace characters: 7ch
-         of content area plus the 0.4rem horizontal padding
-         (each side) and 1px border. No wasted space, and the
-         maxlength=7 cap means the operator never types past
-         the visible edge. */
-      input[type="text"].color-hex-input {
-        flex: 0 0 auto;
-        width: calc(7ch + 0.8rem + 2px);
-        padding: 0.55rem 0.4rem;
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 0.9rem;
-        text-transform: lowercase;
-      }
-      input[type="text"].color-hex-input.is-invalid {
-        border-color: #ff8e8e;
-      }
-      .color-hex-help {
-        flex: 1 1 100%;
-        font-size: 0.85em;
-        color: #ff8e8e;
       }
       .danger-zone {
         margin-top: 0.5rem;
@@ -342,15 +255,6 @@ export class BoardSettingsModal extends LitElement {
     // from a previous open doesn't leak into a fresh edit).
     if (changed.has("open") && this.open && this.target) {
       this.formName = this.target.name;
-      // Seed both hex slots from the target. If the target stores a
-      // non-hex colour (legacy `rgb(...)` / named colour), the
-      // canonical `formColor` falls back to a sensible default for
-      // the picker thumb while the editable text input shows the
-      // raw stored value so the operator can see what's persisted
-      // and edit it explicitly.
-      const seedHex = this.target.freshDateColor;
-      this.formColorHex = seedHex;
-      this.formColor = normalizeHexForPicker(seedHex);
       this.deleteArmed = false;
     }
   }
@@ -360,14 +264,7 @@ export class BoardSettingsModal extends LitElement {
       return nothing;
     }
     const trimmed = this.formName.trim();
-    const hexValid = isValidHexColor(this.formColorHex);
-    // §17.31 — Save is gated on BOTH a non-empty trimmed name AND a
-    // valid hex. The picker only ever emits valid hex, so the gate
-    // is reachable only via a malformed text-input edit; surfacing
-    // the issue at the form level (disabled button + per-field
-    // colouring) is more discoverable than waiting for a confirm-
-    // time error from the service.
-    const canConfirm = trimmed.length > 0 && hexValid;
+    const canConfirm = trimmed.length > 0;
     return html`
       <div
         class="backdrop"
@@ -398,37 +295,6 @@ export class BoardSettingsModal extends LitElement {
                 @input=${(e: Event) =>
                   (this.formName = (e.target as HTMLInputElement).value)}
               />
-            </div>
-            <div class="field">
-              <label for="bsm-color">Fresh date colour</label>
-              <div class="color-control" data-testid="color-control">
-                <input
-                  id="bsm-color"
-                  data-testid="field-color"
-                  type="color"
-                  .value=${this.formColor}
-                  @input=${this.onPickerInput}
-                />
-                <input
-                  data-testid="field-color-hex"
-                  class="color-hex-input ${hexValid ? "" : "is-invalid"}"
-                  type="text"
-                  maxlength="7"
-                  spellcheck="false"
-                  autocomplete="off"
-                  placeholder="#9000ff"
-                  aria-label="Hex colour"
-                  .value=${this.formColorHex}
-                  @input=${this.onHexInput}
-                />
-                ${hexValid
-                  ? nothing
-                  : html`<span
-                      class="color-hex-help"
-                      data-testid="color-hex-help"
-                      >Enter a 7-character hex (e.g. #9000ff)</span
-                    >`}
-              </div>
             </div>
             <div class="danger-zone" data-testid="danger-zone">
               <span class="label">Danger zone</span>
@@ -517,41 +383,11 @@ export class BoardSettingsModal extends LitElement {
     );
   };
 
-  /**
-   * Picker drag → overwrite both hex slots. The native picker
-   * always emits a 7-char `#rrggbb` so we can treat its value as
-   * known-valid. Lower-case for canonical form (the picker already
-   * lower-cases on every browser we target, but we re-normalise
-   * defensively).
-   */
-  private onPickerInput = (e: Event): void => {
-    const v = (e.target as HTMLInputElement).value.toLowerCase();
-    this.formColor = v;
-    this.formColorHex = v;
-  };
-
-  /**
-   * Hex text input → update the editable slot unconditionally so
-   * the operator's typing reflects in the field. If the typed
-   * value matches the strict 7-char hex shape, also mirror it into
-   * `formColor` (which repaints the picker thumb on the next
-   * render). Otherwise leave the picker thumb where it was — a
-   * partial value like `#90` shouldn't make the picker lurch.
-   */
-  private onHexInput = (e: Event): void => {
-    const raw = (e.target as HTMLInputElement).value;
-    this.formColorHex = raw;
-    if (isValidHexColor(raw)) {
-      this.formColor = raw.toLowerCase();
-    }
-  };
-
   private onSubmit = (e: Event): void => {
     e.preventDefault();
     if (!this.target) return;
     const trimmed = this.formName.trim();
     if (trimmed.length === 0) return;
-    if (!isValidHexColor(this.formColorHex)) return;
     this.dispatchEvent(
       new CustomEvent<BoardSettingsConfirmDetail>(BOARD_SETTINGS_CONFIRM_EVENT, {
         bubbles: true,
@@ -559,11 +395,6 @@ export class BoardSettingsModal extends LitElement {
         detail: {
           boardId: this.target.boardId,
           name: trimmed,
-          // Dispatch the canonical lower-case hex so both the
-          // service and the persisted JSON see a normalised value
-          // regardless of whether the operator typed `#9000FF`,
-          // `#9000ff`, or dragged the picker.
-          freshDateColor: this.formColorHex.toLowerCase(),
         },
       }),
     );
@@ -584,34 +415,6 @@ export class BoardSettingsModal extends LitElement {
       this.cancel();
     }
   };
-}
-
-/**
- * `<input type="color">` only accepts 7-character `#rrggbb` hex
- * strings. Boards may carry `rgb(r, g, b)`, named colours, or
- * 4-digit shorthand from older saves; in those cases we fall back
- * to a sensible default so the picker has a starting position. The
- * editable hex `<input type="text">` continues to show the raw
- * stored value so the operator can see what's persisted and edit
- * it explicitly.
- */
-function normalizeHexForPicker(raw: string): string {
-  if (isValidHexColor(raw)) {
-    return raw.toLowerCase();
-  }
-  return "#743089";
-}
-
-/**
- * Strict 7-char `#rrggbb` hex match (case-insensitive). 3-digit
- * shorthand (`#abc`) is intentionally rejected: the native colour
- * picker doesn't emit it, the wire format would benefit from a
- * single canonical shape, and the operator who types `#9000FF`
- * gets a known-good full hex anyway. The empty string is invalid
- * (we want to gate Save on the field actually carrying a colour).
- */
-function isValidHexColor(raw: string): boolean {
-  return /^#[0-9a-fA-F]{6}$/.test(raw);
 }
 
 declare global {

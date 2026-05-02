@@ -16,8 +16,7 @@ Feature: Import / Export the current board's tree as JSON (§17.33)
 
   @HE-???? @priority:high
   Scenario: Export downloads a JSON file matching the seeded tree
-    When I tap the drawer handle
-    And I tap the burger trigger
+    When I tap the burger trigger
     And I trigger a download via the burger menu item with action "export"
     Then the downloaded JSON has root id "UUID1"
     And the downloaded JSON has root title "UUID1 Title"
@@ -27,8 +26,7 @@ Feature: Import / Export the current board's tree as JSON (§17.33)
     # Empty-storage seed = the showcase tree (root title varies). Re-seed
     # a known fixture, then import the textTree fixture and assert the
     # focus moved to the imported tree's root.
-    When I tap the drawer handle
-    And I tap the burger trigger
+    When I tap the burger trigger
     And I import the "textTree" fixture via the burger menu
     Then the focused id is "TXT-ROOT"
     And the URL hash includes "/n/TXT-ROOT"
@@ -36,8 +34,7 @@ Feature: Import / Export the current board's tree as JSON (§17.33)
   @HE-???? @priority:high
   Scenario: Import of malformed JSON surfaces a window.alert and leaves the tree put
     Given I capture window.alert messages
-    When I tap the drawer handle
-    And I tap the burger trigger
+    When I tap the burger trigger
     And I import the literal "not actually json" via the burger menu
     Then a window.alert was shown matching "/import failed/i"
     And the focused id is "UUID1"

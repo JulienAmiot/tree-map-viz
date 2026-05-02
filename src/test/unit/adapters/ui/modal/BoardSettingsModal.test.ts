@@ -20,7 +20,6 @@ afterEach(cleanupLitFixtures);
 const baseTarget: BoardSettingsTarget = {
   boardId: "uuid-board-1",
   name: "Showcase",
-  freshDateColor: "#743089",
   canDelete: true,
 };
 
@@ -50,7 +49,12 @@ async function setText(
   await el.updateComplete;
 }
 
-describe("<board-settings-modal> (SPEC \u00a717.31)", () => {
+describe("<board-settings-modal> (SPEC \u00a717.31, simplified by \u00a717.42)", () => {
+  // §17.42 retired the per-board fresh-date colour. The modal's only
+  // editable field is now `name`; the colour picker, hex text input,
+  // and their validation flow are gone. Delete-with-inline-confirm
+  // (§17.31) is unchanged.
+
   it("renders nothing when closed", async () => {
     const el = await mountLitElement<BoardSettingsModal>(
       "board-settings-modal",
@@ -58,13 +62,7 @@ describe("<board-settings-modal> (SPEC \u00a717.31)", () => {
     expect(maybe(el, "board-settings-modal")).toBeNull();
   });
 
-  it("renders the form pre-filled from the target when open (name + picker + hex input)", async () => {
-    // §17.31 — the modal seeds its inputs from the target on every
-    // open so the operator sees the current board's settings rather
-    // than blank fields. The hex value lands in BOTH the native
-    // colour picker (so the thumb starts at the right hue) AND the
-    // editable hex `<input type="text">` (so the operator can type
-    // a full hex like `#9000ff`).
+  it("renders the form pre-filled from the target when open (name only)", async () => {
     const el = await mountLitElement<BoardSettingsModal>(
       "board-settings-modal",
       (e) => {
@@ -76,15 +74,13 @@ describe("<board-settings-modal> (SPEC \u00a717.31)", () => {
     expect((fieldOf(el, "field-name") as HTMLInputElement).value).toBe(
       "Showcase",
     );
-    expect((fieldOf(el, "field-color") as HTMLInputElement).value).toBe(
-      "#743089",
-    );
-    expect((fieldOf(el, "field-color-hex") as HTMLInputElement).value).toBe(
-      "#743089",
-    );
+    // §17.42 — colour controls are no longer rendered.
+    expect(maybe(el, "field-color")).toBeNull();
+    expect(maybe(el, "field-color-hex")).toBeNull();
+    expect(maybe(el, "color-control")).toBeNull();
   });
 
-  it("Save dispatches `board-settings-confirm` with the trimmed name and current colour", async () => {
+  it("Save dispatches `board-settings-confirm` with the trimmed name", async () => {
     const el = await mountLitElement<BoardSettingsModal>(
       "board-settings-modal",
       (e) => {
@@ -105,124 +101,17 @@ describe("<board-settings-modal> (SPEC \u00a717.31)", () => {
       | undefined;
     expect(evt?.detail.boardId).toBe("uuid-board-1");
     expect(evt?.detail.name).toBe("Renamed Showcase");
-    expect(evt?.detail.freshDateColor).toBe("#743089");
+    // §17.42 — payload no longer carries a colour.
+    expect((evt?.detail as Record<string, unknown>).freshDateColor).toBeUndefined();
     expect(evt?.bubbles).toBe(true);
     expect(evt?.composed).toBe(true);
-  });
-
-  describe("hex colour text input (\u00a717.31)", () => {
-    // SPEC §17.31 — the colour control is a paired native picker +
-    // editable hex `<input type="text">`. Both bind to the same
-    // canonical state; typing a valid hex repaints the picker, and
-    // dragging the picker overwrites the hex field. Save dispatches
-    // the canonical lower-case hex regardless of how it was set.
-
-    it("typing a valid hex updates the picker AND dispatches the typed colour", async () => {
-      const el = await mountLitElement<BoardSettingsModal>(
-        "board-settings-modal",
-        (e) => {
-          e.target = baseTarget;
-          e.open = true;
-        },
-      );
-      const handler = vi.fn();
-      el.addEventListener(BOARD_SETTINGS_CONFIRM_EVENT, handler);
-
-      await setText(el, "field-color-hex", "#9000FF");
-
-      // Picker thumb follows the typed value (lower-cased
-      // canonical form so the picker accepts it).
-      expect((fieldOf(el, "field-color") as HTMLInputElement).value).toBe(
-        "#9000ff",
-      );
-
-      (fieldOf(el, "modal-confirm") as HTMLButtonElement).click();
-      await el.updateComplete;
-
-      expect(handler).toHaveBeenCalledTimes(1);
-      const evt = handler.mock.calls[0]?.[0] as
-        | CustomEvent<BoardSettingsConfirmDetail>
-        | undefined;
-      // Dispatched as the canonical lower-case hex regardless of
-      // the operator's casing.
-      expect(evt?.detail.freshDateColor).toBe("#9000ff");
-    });
-
-    it("dragging the picker overwrites the hex text input", async () => {
-      const el = await mountLitElement<BoardSettingsModal>(
-        "board-settings-modal",
-        (e) => {
-          e.target = baseTarget;
-          e.open = true;
-        },
-      );
-      // Simulate a picker drag (browsers emit `input` events on
-      // picker changes with a 7-char hex value).
-      await setText(el, "field-color", "#1ea76a");
-      expect((fieldOf(el, "field-color-hex") as HTMLInputElement).value).toBe(
-        "#1ea76a",
-      );
-    });
-
-    it("typing an invalid hex disables Save and surfaces an inline help message", async () => {
-      // §17.31 — a partial value like `#90` shouldn't reach the
-      // service. Save is gated and the input is flagged red so the
-      // operator can see why.
-      const el = await mountLitElement<BoardSettingsModal>(
-        "board-settings-modal",
-        (e) => {
-          e.target = baseTarget;
-          e.open = true;
-        },
-      );
-      await setText(el, "field-color-hex", "#90");
-      const btn = fieldOf(el, "modal-confirm") as HTMLButtonElement;
-      expect(btn.disabled).toBe(true);
-      expect(maybe(el, "color-hex-help")).not.toBeNull();
-    });
-
-    it("typing an invalid hex does NOT lurch the picker (last-known-valid colour stays)", async () => {
-      const el = await mountLitElement<BoardSettingsModal>(
-        "board-settings-modal",
-        (e) => {
-          e.target = baseTarget;
-          e.open = true;
-        },
-      );
-      const pickerBefore = (fieldOf(el, "field-color") as HTMLInputElement)
-        .value;
-      await setText(el, "field-color-hex", "not a colour");
-      // Picker still shows the seeded colour — the malformed text
-      // input doesn't overwrite the canonical `formColor`.
-      expect((fieldOf(el, "field-color") as HTMLInputElement).value).toBe(
-        pickerBefore,
-      );
-    });
-
-    it("clears help / re-enables Save when the typo is fixed", async () => {
-      const el = await mountLitElement<BoardSettingsModal>(
-        "board-settings-modal",
-        (e) => {
-          e.target = baseTarget;
-          e.open = true;
-        },
-      );
-      await setText(el, "field-color-hex", "#90");
-      expect(
-        (fieldOf(el, "modal-confirm") as HTMLButtonElement).disabled,
-      ).toBe(true);
-      await setText(el, "field-color-hex", "#9000ff");
-      expect(maybe(el, "color-hex-help")).toBeNull();
-      expect(
-        (fieldOf(el, "modal-confirm") as HTMLButtonElement).disabled,
-      ).toBe(false);
-    });
   });
 
   it("Save is disabled when the name is blanked", async () => {
     // §17.31 — empty name is the only required-field gate. Mirrors
     // `BoardCollectionService.updateSettings` which rejects an empty
-    // `name`.
+    // `name`. §17.42 removed the second gate (valid hex colour) so
+    // name is now the *only* required field.
     const el = await mountLitElement<BoardSettingsModal>(
       "board-settings-modal",
       (e) => {
@@ -250,8 +139,6 @@ describe("<board-settings-modal> (SPEC \u00a717.31)", () => {
   });
 
   it("close-X dispatches `board-settings-cancel` (SPEC \u00a717.29 shared frame)", async () => {
-    // §17.29 — every shipping modal carries a top-right close-X via
-    // `renderModalCloseX`. The shared testid is `modal-close-x`.
     const el = await mountLitElement<BoardSettingsModal>(
       "board-settings-modal",
       (e) => {
@@ -280,9 +167,6 @@ describe("<board-settings-modal> (SPEC \u00a717.31)", () => {
     });
 
     it("Delete button is disabled when canDelete=false (last remaining board)", async () => {
-      // §17.31 — `BoardCollectionService.deleteBoard` refuses on
-      // the last-remaining board; the modal also disables the
-      // button so the operator never reaches the confirm step.
       const el = await mountLitElement<BoardSettingsModal>(
         "board-settings-modal",
         (e) => {
@@ -295,9 +179,6 @@ describe("<board-settings-modal> (SPEC \u00a717.31)", () => {
     });
 
     it("a single tap arms the inline confirm prompt; second tap dispatches `board-settings-delete`", async () => {
-      // §17.31 — destructive action takes two explicit taps. The
-      // first arms the inline prompt (no nested modal), the second
-      // commits.
       const el = await mountLitElement<BoardSettingsModal>(
         "board-settings-modal",
         (e) => {
@@ -344,9 +225,6 @@ describe("<board-settings-modal> (SPEC \u00a717.31)", () => {
     });
 
     it("re-opening the modal disarms the inline confirm prompt", async () => {
-      // §17.31 — `deleteArmed` is reset on every open so a stale
-      // armed state from a previous interaction can't leak into a
-      // fresh open.
       const el = await mountLitElement<BoardSettingsModal>(
         "board-settings-modal",
         (e) => {

@@ -1,18 +1,22 @@
 /**
  * `<tree-graph-screen>` — Lit shell custom element (SPEC §4 / §5 / §7 / §17).
  *
- * Phase 7 (DT-6) body:
- *   - **Layout half** (already shipped): a 2-row CSS grid composition of
- *     `<parent-identity-strip>` (≈ 22 % of the viewport, top in both
- *     orientations per §4 + locked option c1) bound to `view.center`, and
- *     `<children-grid>` (≈ 78 %) bound to `view.children`, which itself
- *     drives the squarified treemap layout via its internal
- *     `TreemapController`.
- *   - **Shell-chrome half** (already shipped): an absolutely-positioned
- *     `<app-drawer>` overlays the top of the host. The drawer's body
- *     contains the **board name** + `<focus-breadcrumb>` + `<burger-menu>`
- *     (SPEC §4: drawer holds board name, breadcrumb of focus path, burger
- *     menu — Import / Export / Boards / future admin).
+ * Phase 7 (DT-6) body, post-§17.43:
+ *   - **Top bar** (permanent, no longer auto-hidden behind a handle): a
+ *     `<header data-testid="top-bar">` rendered as the first row of the
+ *     host's CSS grid, holding **board name** + `<focus-breadcrumb>` +
+ *     `<burger-menu>`. Pre-§17.43 this content lived inside an
+ *     auto-hidden `<app-drawer>` overlay that the operator pulled down
+ *     by tapping a top-edge handle; §17.43 retired the drawer entirely
+ *     because the operator wanted the board name + breadcrumb + burger
+ *     visible at all times (kiosk operators do not want to remember a
+ *     gesture to reach the menu).
+ *   - **Layout half**: a 3-row CSS grid composition with the top bar
+ *     above `<parent-identity-strip>` (≈ 22 % of the remaining height,
+ *     top in both orientations per §4 + locked option c1) bound to
+ *     `view.center`, and `<children-grid>` (≈ 78 %) bound to
+ *     `view.children`, which itself drives the squarified treemap
+ *     layout via its internal `TreemapController`.
  *
  * Phase 8 (DT-7) addition:
  *   - `<add-child-modal>` is rendered as a sibling overlay (`z-index: 200`)
@@ -62,8 +66,6 @@
  *   - `burger-menu-action` `{ action }` — composition root dispatches to
  *     the relevant service (Import / Export / Boards) — wiring lands in
  *     Phase 10 (Persistence + Routing) per SPEC §15.4 + §17.3.
- *   - `drawer-toggle` `{ open }` — currently informational; future
- *     persistence can opt in.
  *
  * Orientation:
  *   - An `OrientationController` observes the host's content rect and
@@ -111,7 +113,6 @@ import type { BreadcrumbSegment } from "./Breadcrumb.js";
 import "./Breadcrumb.js";
 import "./BurgerMenu.js";
 import "./ChildrenGrid.js";
-import "./Drawer.js";
 import "./ParentIdentityStrip.js";
 
 @customElement("tree-graph-screen")
@@ -119,7 +120,7 @@ export class TreeGraphScreen extends LitElement {
   @property({ attribute: false })
   view: FocusedTreeViewModel | null = null;
 
-  /** Board name shown at the leading edge of the drawer (SPEC §4). */
+  /** Board name shown at the leading edge of the top bar (SPEC §4 / §17.43). */
   @property({ type: String })
   boardName = "";
 
@@ -205,7 +206,15 @@ export class TreeGraphScreen extends LitElement {
 
   static styles = css`
     :host {
-      display: block;
+      /* SPEC §17.43 — 2-row grid: the permanent top bar (auto-sized
+         to its content) sits above the layout wrapper, which absorbs
+         whatever height remains. Pre-§17.43 the host was a plain
+         block with the layout filling 100 % and the drawer overlaid
+         absolutely on top; the new shape is simpler (no overlay,
+         no z-index gymnastics) and naturally pushes the parent
+         strip + children grid down by exactly the bar's height. */
+      display: grid;
+      grid-template-rows: auto 1fr;
       box-sizing: border-box;
       width: 100%;
       height: 100%;
@@ -235,6 +244,27 @@ export class TreeGraphScreen extends LitElement {
       --panel-border-color: color-mix(in srgb, currentColor 28%, transparent);
       --panel-border-radius: 8px;
     }
+    /* SPEC §17.43 — the permanent top bar that replaced the
+       auto-hidden app-drawer. Holds board-name + breadcrumb +
+       burger trigger and is always visible (no handle, no toggle,
+       no auto-hide). Tinted background + bottom border carry over
+       from the drawer panel so the visual separation between the
+       bar and the parent strip below it stays the same; the burger
+       menu's position: fixed popup (§17.21) renders outside the
+       bar so overflow: visible is intentional.
+       (Backticks omitted in this CSS comment per §17.14 — they
+        would terminate the surrounding css tagged-template literal.) */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.6rem 1rem;
+      box-sizing: border-box;
+      background: color-mix(in srgb, currentColor 8%, var(--bg, #0c0f14));
+      border-bottom: 1px solid
+        color-mix(in srgb, currentColor 18%, transparent);
+      overflow: visible;
+    }
     .layout {
       display: grid;
       box-sizing: border-box;
@@ -249,6 +279,7 @@ export class TreeGraphScreen extends LitElement {
          in ChildrenGrid.ts) for visual rhythm. */
       padding: 4px;
       gap: 4px;
+      min-height: 0;
     }
     /* §17.32 — drill-into transition. The previous (§17.20) "zoom the
        whole layout" effect was replaced by a FLIP-style morph driven
@@ -268,13 +299,6 @@ export class TreeGraphScreen extends LitElement {
       min-height: 0;
       min-width: 0;
       position: relative;
-    }
-    .drawer-content {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 0.6rem 1rem;
-      box-sizing: border-box;
     }
     .board-name {
       flex: 0 0 auto;
@@ -302,14 +326,12 @@ export class TreeGraphScreen extends LitElement {
   `;
 
   render() {
-    const drawer = html`
-      <app-drawer data-testid="drawer">
-        <div class="drawer-content">
-          <span class="board-name" data-testid="board-name">${this.boardName}</span>
-          <focus-breadcrumb .path=${this.breadcrumbPath}></focus-breadcrumb>
-          <burger-menu></burger-menu>
-        </div>
-      </app-drawer>
+    const topBar = html`
+      <header class="top-bar" data-testid="top-bar">
+        <span class="board-name" data-testid="board-name">${this.boardName}</span>
+        <focus-breadcrumb .path=${this.breadcrumbPath}></focus-breadcrumb>
+        <burger-menu></burger-menu>
+      </header>
     `;
 
     const modal = html`
@@ -341,7 +363,7 @@ export class TreeGraphScreen extends LitElement {
 
     if (!this.view) {
       return html`
-        ${drawer}
+        ${topBar}
         <p class="empty" data-testid="loading">Loading…</p>
         ${modal}
       `;
@@ -356,7 +378,7 @@ export class TreeGraphScreen extends LitElement {
         ? (this.breadcrumbPath[this.breadcrumbPath.length - 2]?.id ?? "")
         : "";
     return html`
-      ${drawer}
+      ${topBar}
       <div
         class="layout"
         data-testid="layout"

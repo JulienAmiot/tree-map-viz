@@ -17,7 +17,6 @@ Feature: Boards panel — list / switch / create (§17.34)
 
   Background:
     When I open the kiosk in test mode with empty storage
-    And I tap the drawer handle
     And I tap the burger trigger
     And I tap the burger menu item with action "boards"
 
@@ -44,12 +43,12 @@ Feature: Boards panel — list / switch / create (§17.34)
   Scenario: Creating a new board switches to it and updates the URL
     # SPEC §17.34 — `createBoard` flips `currentBoardId` to the new
     # board; the composition root re-seats nav + replaces the URL
-    # hash so the route reflects the new board. The drawer's board
+    # hash so the route reflects the new board. The top bar's board
     # name label re-paints from `boards.getCurrentBoard().name`.
     When I type "Roadmap" into the new-board name field
     And I tap the boards-panel Create button
     Then the boards-panel modal is closed
-    And the drawer board name is "Roadmap"
+    And the top-bar board name is "Roadmap"
     And the URL hash includes "/b/"
 
   @HE-???? @priority:high
@@ -59,8 +58,7 @@ Feature: Boards panel — list / switch / create (§17.34)
     Then the boards-panel modal is closed
     # Re-open the panel to confirm the persisted collection now has
     # both boards, with the new one marked as current.
-    When I tap the drawer handle
-    And I tap the burger trigger
+    When I tap the burger trigger
     And I tap the burger menu item with action "boards"
     Then the boards-panel modal is open
     And the boards-panel lists 2 boards
@@ -73,13 +71,12 @@ Feature: Boards panel — list / switch / create (§17.34)
     # re-open the panel and switch back to the original "Showcase".
     When I type "Roadmap" into the new-board name field
     And I tap the boards-panel Create button
-    Then the drawer board name is "Roadmap"
-    When I tap the drawer handle
-    And I tap the burger trigger
+    Then the top-bar board name is "Roadmap"
+    When I tap the burger trigger
     And I tap the burger menu item with action "boards"
     And I tap the boards-panel switch button for "Showcase"
     Then the boards-panel modal is closed
-    And the drawer board name is "Showcase"
+    And the top-bar board name is "Showcase"
 
   @HE-???? @priority:medium
   Scenario: Newly-created board persists across reload
@@ -89,11 +86,10 @@ Feature: Boards panel — list / switch / create (§17.34)
     # still current.
     When I type "Roadmap" into the new-board name field
     And I tap the boards-panel Create button
-    Then the drawer board name is "Roadmap"
+    Then the top-bar board name is "Roadmap"
     When I reload the kiosk
-    Then the drawer board name is "Roadmap"
-    When I tap the drawer handle
-    And I tap the burger trigger
+    Then the top-bar board name is "Roadmap"
+    When I tap the burger trigger
     And I tap the burger menu item with action "boards"
     Then the boards-panel lists 2 boards
     And the boards-panel has a board named "Roadmap" marked as current

@@ -8,13 +8,15 @@
  * colour gradient (`dateAgeColor`).
  */
 
-import { LitElement, css, html } from "lit";
+import { LitElement, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import {
   formatDate,
+  renderTargetRow,
+  renderTrendArrow,
   renderValueTemplate,
   timestampForValue,
 } from "./valueTemplate.js";
@@ -24,14 +26,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
   @property({ attribute: false })
   vm: BusinessScoreCardNodeViewModel | null = null;
 
-  static styles = [
-    tileLayoutStyles,
-    css`
-      .title {
-        font-weight: 600;
-      }
-    `,
-  ];
+  static styles = [tileLayoutStyles];
 
   render() {
     if (!this.vm) {
@@ -58,7 +53,11 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
           >`
         : html``}
       <div class="value-area" data-testid="value-row">
-        ${renderValueTemplate(this.vm.value)}
+        <div class="value-row">
+          ${renderValueTemplate(this.vm)}
+          ${renderTrendArrow(this.vm)}
+        </div>
+        ${renderTargetRow(this.vm)}
       </div>
     `;
   }

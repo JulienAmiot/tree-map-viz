@@ -5,10 +5,10 @@
  * Designed to exercise every visible UI branch in one focused view:
  *
  *  - **TextNode root** with a non-empty history → text body + corner
- *    timestamp coloured by the §17.21 board-level fresh colour. The
- *    root's current value uses §17.27 markdown (heading + bullets +
- *    bold) so the kiosk landing tile shows what the markdown
- *    rendering looks like at a glance.
+ *    timestamp coloured by the §17.42 fixed white → dark-grey age
+ *    gradient. The root's current value uses §17.27 markdown
+ *    (heading + bullets + bold) so the kiosk landing tile shows what
+ *    the markdown rendering looks like at a glance.
  *  - **Five direct children** mixing TextNode + BusinessScoreCard, all
  *    three `computedValue` branches, and an `eligibleForParentComputation
  *    = false` BSC under the computed-mean branch:
@@ -59,8 +59,6 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 /** Board id for the showcase seed; stable so the URL is stable across refreshes. */
 export const SHOWCASE_BOARD_ID = "showcase-board";
 export const SHOWCASE_BOARD_NAME = "Showcase";
-/** Fresh-end colour for the date-age gradient (a deep purple). */
-export const SHOWCASE_FRESH_DATE_COLOR = "#743089";
 
 /**
  * Build the showcase tree. Takes an explicit `now` so e2e fixtures can
@@ -322,7 +320,6 @@ export function buildShowcaseBoard(now: Date = new Date()): Board {
     id: SHOWCASE_BOARD_ID,
     name: SHOWCASE_BOARD_NAME,
     tree: buildShowcaseTree(now),
-    freshDateColor: SHOWCASE_FRESH_DATE_COLOR,
   };
 }
 

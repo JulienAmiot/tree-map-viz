@@ -1,7 +1,6 @@
 /**
  * Step definitions for the Phase 7 shell-chrome features
- * (SPEC §12.3 + §17.11):
- *  - `shell/drawer.feature`
+ * (SPEC §12.3 + §17.11 + §17.43):
  *  - `shell/breadcrumb.feature`
  *  - `shell/burger_menu.feature`
  *
@@ -11,10 +10,11 @@
  *    `?test=1`-gated `window.__appTestApi__` bridge.
  *
  * Reuses the boot/view step background (kiosk open + optional fixture
- * seed + reload + optional focus). The drawer is auto-hidden by default,
- * so every interactive shell scenario opens it via the handle first;
- * shell content (board name, breadcrumb, burger trigger) lives behind
- * `max-height: 0` while closed and is not clickable until revealed.
+ * seed + reload + optional focus). SPEC §17.43 retired the auto-hidden
+ * `<app-drawer>` in favour of a permanent top bar (`<header
+ * data-testid="top-bar">`); shell content (board name, breadcrumb,
+ * burger trigger) is therefore visible at all times — no handle
+ * gesture is required to reach it.
  */
 
 import { expect } from "@playwright/test";
@@ -24,41 +24,29 @@ import { TreeGraphPage } from "../pageObjects/TreeGraphPage.js";
 
 const { When, Then } = createBdd();
 
-// -- Drawer --------------------------------------------------------------
-
-When("I tap the drawer handle", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
-  await kiosk.drawerHandle().click();
-});
-
-Then("the drawer is open", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
-  expect(await kiosk.isDrawerOpen()).toBe(true);
-  await expect(kiosk.drawerHandle()).toHaveAttribute("aria-expanded", "true");
-});
-
-Then("the drawer is closed", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
-  expect(await kiosk.isDrawerOpen()).toBe(false);
-  await expect(kiosk.drawerHandle()).toHaveAttribute("aria-expanded", "false");
-});
+// -- Top bar (SPEC §17.43) ----------------------------------------------
 
 Then(
-  "the drawer panel contains the board name {string}",
+  "the top bar shows the board name {string}",
   async ({ page }, expected: string) => {
     const kiosk = new TreeGraphPage(page);
     await expect(kiosk.boardNameLabel()).toHaveText(expected);
   },
 );
 
-Then("the drawer panel contains the focus breadcrumb", async ({ page }) => {
+Then("the top bar shows the focus breadcrumb", async ({ page }) => {
   const kiosk = new TreeGraphPage(page);
   await expect(kiosk.breadcrumbHost()).toHaveCount(1);
 });
 
-Then("the drawer panel contains the burger trigger", async ({ page }) => {
+Then("the top bar shows the burger trigger", async ({ page }) => {
   const kiosk = new TreeGraphPage(page);
   await expect(kiosk.burgerTrigger()).toHaveCount(1);
+});
+
+Then("the top bar is visible", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await expect(kiosk.topBar()).toBeVisible();
 });
 
 // -- Breadcrumb ----------------------------------------------------------
@@ -104,9 +92,9 @@ When("I tap the burger trigger", async ({ page }) => {
 });
 
 When("I tap the board name", async ({ page }) => {
-  // The board name lives inside the drawer's light DOM but outside the
-  // burger host; the perfect "outside the burger but inside the drawer"
-  // probe so we can verify burger-close + drawer-stay-open in one tap.
+  // The board name lives inside the top bar but outside the burger
+  // host; the perfect "outside the burger but inside the top bar"
+  // probe so we can verify burger-close on a stray top-bar tap.
   const kiosk = new TreeGraphPage(page);
   await kiosk.boardNameLabel().click();
 });
@@ -256,10 +244,10 @@ Then(
   "the board-settings modal name field shows the current board's name",
   async ({ page }) => {
     const kiosk = new TreeGraphPage(page);
-    const drawerName = (await kiosk.boardNameLabel().textContent())?.trim() ?? "";
+    const topBarName = (await kiosk.boardNameLabel().textContent())?.trim() ?? "";
     await expect(
       kiosk.boardSettingsModalField("field-name"),
-    ).toHaveValue(drawerName);
+    ).toHaveValue(topBarName);
   },
 );
 
@@ -281,13 +269,16 @@ When("I cancel the board-settings modal", async ({ page }) => {
   await kiosk.boardSettingsModalCancel().click();
 });
 
-Then("the drawer board name is {string}", async ({ page }, expected: string) => {
-  const kiosk = new TreeGraphPage(page);
-  await expect(kiosk.boardNameLabel()).toHaveText(expected);
-});
+Then(
+  "the top-bar board name is {string}",
+  async ({ page }, expected: string) => {
+    const kiosk = new TreeGraphPage(page);
+    await expect(kiosk.boardNameLabel()).toHaveText(expected);
+  },
+);
 
 Then(
-  "the drawer board name is unchanged from the seed default",
+  "the top-bar board name is unchanged from the seed default",
   async ({ page }) => {
     // §17.31 — the empty-storage seed plants the showcase board
     // (`SHOWCASE_BOARD_NAME`). Cancelling the settings modal must
@@ -317,10 +308,14 @@ Then(
 Then(
   "the focused-panel title colour is {string}",
   async ({ page }, expected: string) => {
-    // SPEC §17.31 — verifying the rendered colour requires the
-    // browser's computed style (the rule resolves
-    // `var(--board-fresh, currentColor)` against the cascaded
-    // custom property installed on `<tree-graph-screen>`'s host).
+    // SPEC §17.31, simplified by §17.42 — the focused-panel title
+    // is now painted with a static bright off-white literal
+    // (`rgb(245, 245, 245)`) on every board. The §17.31 build
+    // resolved the colour through `var(--board-fresh, currentColor)`
+    // backed by a per-board CSS custom property; §17.42 retired
+    // the per-board accent in favour of a flat near-white that
+    // the kiosk's dark theme already lifts visually.
+    //
     // The focused panel's `[data-testid="title"]` is reachable
     // through the open shadow trees via Playwright's testid
     // locator. We pierce the shadow tree by scoping to

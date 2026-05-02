@@ -19,8 +19,9 @@
  *     date sits at the same visual distance from the focused panel's
  *     outer edge as a child tile's date sits from its tile outer
  *     edge — **0.4rem / 0.6rem in both cases**.
- *   - Timestamp colour follows a board-level fresh-colour →
- *     desaturated lerp by age in days (`dateAgeColor`).
+ *   - Timestamp colour follows the §17.42 fixed white → dark-grey
+ *     age gradient (`dateAgeColor`); the per-board fresh colour
+ *     §17.21 / §17.31 plumbed has been retired.
  *
  * Description: TextNode has **no** description field per §17.15 (the
  * current value IS the description for a text card). Only the BSC
@@ -89,15 +90,14 @@ export class TextNodeAsParent extends LitElement {
          while still respecting the §17.14 vh-relative sizing. */
       .title {
         font-size: 2.4vh;
-        font-weight: 700;
-        /* SPEC 17.31 -- the focused-panel title is painted with the
-           board's fresh-date colour (the same accent that drives the
-           timestamp's age gradient). The --board-fresh custom
-           property is set on the tree-graph-screen host by the
-           composition root on every refresh and inherits through the
-           shadow boundaries down to here. The currentColor fallback
-           keeps unit fixtures readable without the prop being set. */
-        color: var(--board-fresh, currentColor);
+        /* SPEC 17.42 -- the focused-panel title is bright off-white
+           (rgb(245, 245, 245)) regardless of board. The per-board
+           fresh-date colour the §17.21 / §17.31 design plumbed
+           through --board-fresh has been retired; the kiosk's
+           dark theme already gives the title enough emphasis with
+           a flat near-white, and the per-board colour picker added
+           a personalisation surface that nobody used. */
+        color: rgb(245, 245, 245);
       }
       /* SPEC 17.28 -- click-to-edit affordances. The cursor flip on
          hover signals the click target is editable; the value body

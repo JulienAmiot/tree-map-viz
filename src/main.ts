@@ -22,8 +22,8 @@
  *   + The shell now also receives `boardName` (from the current board on
  *     `BoardCollectionService`) and a `breadcrumbPath` (from
  *     `walkPath(boardTree, focusedId)` mapped to plain `{ id, title }`).
- *     Both are recomputed on every refresh, so the drawer chrome stays in
- *     sync with the focus + board state.
+ *     Both are recomputed on every refresh, so the permanent top bar
+ *     stays in sync with the focus + board state.
  *   + The shell emits `breadcrumb-navigate` `{ nodeId }` when the user taps
  *     an ancestor segment; the composition root drives `nav.focusByUuid` +
  *     `refresh()` synchronously and also `router.push(...)` so the URL stays
@@ -96,7 +96,6 @@ import "./adapters/ui/shell/TreeGraphScreen.js";
 import type { TreeGraphScreen } from "./adapters/ui/shell/TreeGraphScreen.js";
 import type { InlineEditTitleDetail } from "./adapters/ui/views/inlineEditEvents.js";
 import type { InlineEditValueDetail } from "./adapters/ui/views/inlineEditEvents.js";
-import { DEFAULT_FRESH_COLOR } from "./adapters/ui/views/dateAgeColor.js";
 import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
 import { AddChildService } from "./application/AddChildService.js";
 import { BoardCollectionService } from "./application/BoardCollectionService.js";
@@ -142,8 +141,7 @@ async function main(): Promise<void> {
   // ride on `ImportExportService`'s validate-before-replace contract:
   // a successful decode replaces the current board's tree atomically
   // through `boards.replaceCurrentTree` (which preserves the board's
-  // name + freshDateColor); a failed decode never touches the in-memory
-  // tree. Surfacing follows the §17.33 decision: `window.alert(reason)`
+  // name); a failed decode never touches the in-memory tree. Surfacing follows the §17.33 decision: `window.alert(reason)`
   // for the rare error path, kiosk-acceptable for an op operators
   // rarely hit.
   const importExportSvc = new ImportExportService(
@@ -157,27 +155,13 @@ async function main(): Promise<void> {
   const refresh = (): void => {
     const view = nav.getFocusedView();
     const current = boards.getCurrentBoard();
-    // SPEC §17.21 — every refresh threads the board's `freshDateColor`
-    // through the mapper so each tile's pre-baked `dateColor` reflects
-    // the current board's theme. Boards without a colour fall back to
-    // the §17.18 default warm orange inside `dateAgeColor`.
-    const freshColor = current.freshDateColor ?? DEFAULT_FRESH_COLOR;
-    const mapperOptions = current.freshDateColor
-      ? { freshDateColor: current.freshDateColor }
-      : {};
-    // SPEC §17.31 — also expose the resolved fresh-colour as a CSS
-    // custom property on the screen host so non-timestamp surfaces
-    // (focused-panel title) can paint themselves with the same board
-    // accent. Custom properties cascade through shadow boundaries
-    // downward, so setting `--board-fresh` once on the screen host
-    // is visible to every per-view shadow tree without further
-    // plumbing. The fallback applies for boards that have no
-    // `freshDateColor` set, mirroring the mapper's
-    // `dateAgeColor` fallback so the title and the timestamp's fresh
-    // endpoint always agree.
-    screen.style.setProperty("--board-fresh", freshColor);
+    // §17.42 retired the per-board fresh-date colour the §17.21 /
+    // §17.31 wiring carried. The mapper now needs no board-level
+    // option; the focused-panel title uses a hard-coded bright
+    // off-white from CSS, and the timestamp gradient is fixed
+    // white → dark-grey inside `dateAgeColor`.
     screen.view = view
-      ? mapFocusedToViewModel(view.center, view.childrenNodes, mapperOptions)
+      ? mapFocusedToViewModel(view.center, view.childrenNodes)
       : null;
     screen.boardName = current.name;
     screen.breadcrumbPath = computeBreadcrumb(current.tree, nav.getFocusedId());
@@ -358,7 +342,6 @@ async function main(): Promise<void> {
       screen.openBoardSettingsModal({
         boardId: current.id,
         name: current.name,
-        freshDateColor: current.freshDateColor ?? "",
         canDelete: boards.list().length > 1,
       });
       return;
@@ -491,7 +474,6 @@ async function main(): Promise<void> {
       const detail = (e as CustomEvent<BoardSettingsConfirmDetail>).detail;
       const result = await boards.updateSettings(detail.boardId, {
         name: detail.name,
-        freshDateColor: detail.freshDateColor,
       });
       if (!result.ok) {
         screen.setBoardSettingsError(result.reason);
@@ -541,7 +523,7 @@ async function main(): Promise<void> {
     void (async () => {
       const detail = (e as CustomEvent<BoardsPanelCreateDetail>).detail;
       const seedTree = makeNewBoardSeedTree(detail.name, idGen);
-      const result = await boards.createBoard(detail.name, seedTree, undefined);
+      const result = await boards.createBoard(detail.name, seedTree);
       if (!result.ok) {
         screen.setBoardsPanelError(result.reason);
         return;

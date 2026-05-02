@@ -21,8 +21,10 @@
  * children grid re-mounts at opacity 0 → 1 so the new children "appear"
  * rather than blink in. A custom CSS property `--drill-title-color` is
  * also set on the tapped tile so the .title rule (in tileLayoutStyles)
- * recolours to `var(--board-fresh)` during the morph — the rest of the
- * tile (value, timestamp, unit) deliberately keeps its own colours.
+ * recolours to the parent-role bright off-white during the morph
+ * (§17.42 replaced the prior `var(--board-fresh)` look-up after the
+ * per-board fresh-colour was retired) — the rest of the tile (value,
+ * timestamp, unit) deliberately keeps its own colours.
  *
  * §17.36 — panel surface continuity:
  *   The parent strip and child tiles now share a panel aesthetic
@@ -69,23 +71,18 @@
  *   (1) Font-weight: child role `600` → parent role `700`. §17.38
  *       deliberately skipped weight smoothing on the rationale
  *       "system fonts step at integer hundreds, browser support
- *       inconsistent". That rationale was wrong for the kiosk's
- *       actual environment: the font stack starts with
- *       `system-ui`, which on every modern desktop / mobile OS
- *       resolves to a variable system font (Segoe UI Variable on
- *       Windows 10+, SF Pro on Mac / iOS, Roboto on Android),
- *       and Chromium interpolates `wght` smoothly across the
- *       axis. Even the worst-case non-variable fallback steps at
- *       the 50 %-progress midpoint instead of at 100 %, still a
- *       smoother result than the pre-§17.39 commit-time step.
- *       The plumbing mirrors §17.38: a `--drill-title-font-weight`
- *       custom property on the morphing tile, read by
- *       `tileLayoutStyles`' `.title` rule via
- *       `font-weight: var(--drill-title-font-weight, 600)`, and
- *       `font-weight 320ms ease` added to the existing transition
- *       list. This module exports `DRILL_PARENT_TITLE_FONT_WEIGHT`
- *       alongside `DRILL_PARENT_TITLE_FONT_SIZE`; the helper
- *       writes both onto the tile in the same step.
+ *       inconsistent". §17.39 added a `--drill-title-font-weight`
+ *       custom property on the morphing tile to interpolate
+ *       through the wght axis on variable system fonts.
+ *
+ *       §17.42 then collapsed both child and parent roles to a
+ *       single static `font-weight: 700`, which removes the
+ *       weight delta entirely. The custom property and its
+ *       transition entry are gone; with no delta to interpolate
+ *       there is nothing to morph and the operator gets a clean
+ *       step-free hand-off on every system, variable fonts and
+ *       non-variable fallbacks alike. `DRILL_PARENT_TITLE_FONT_WEIGHT`
+ *       is therefore retired alongside the helper write.
  *
  *   (2) BSC value horizontal jump: the parent-identity-strip's
  *       `.strip` wrapper carries `padding-right` clamp(...) when
@@ -191,18 +188,17 @@ export const DRILL_SETTLE_MS = 320;
 export const DRILL_PARENT_TITLE_FONT_SIZE = "2.4vh";
 
 /**
- * SPEC §17.39 — the parent-role title's font-weight, mirrored here for
- * the same reason as `DRILL_PARENT_TITLE_FONT_SIZE`. Today's value is
- * `700` (heavy / bold); the literal lives in `*AsParent.ts` as the
- * `.title { font-weight: 700 }` override. The helper writes this
- * constant via `--drill-title-font-weight`, the `.title` rule reads it
- * via `font-weight: var(--drill-title-font-weight, 600)`, and the
- * `transition: ..., font-weight 320ms ease` clause in
- * `tileLayoutStyles` makes the growth animate (smooth on variable
- * fonts, midpoint-stepped on non-variable fallbacks). Lock-step
- * unit-tested below alongside the size constant.
+ * SPEC §17.42 — the parent-role title's static colour, mirrored here
+ * for the same lock-step reason as `DRILL_PARENT_TITLE_FONT_SIZE`.
+ * The literal lives in `*AsParent.ts` as the `.title { color:
+ * rgb(245, 245, 245) }` override; this constant keeps the drill
+ * helper aligned. The morph writes this colour onto the tapped
+ * tile via `--drill-title-color`; the existing
+ * `transition: color 320ms ease` clause in `tileLayoutStyles`
+ * smooths the recolour over the settle. At commit the parent-role
+ * literal wins by source order at the same value — no pop.
  */
-export const DRILL_PARENT_TITLE_FONT_WEIGHT = "700";
+export const DRILL_PARENT_TITLE_COLOR = "rgb(245, 245, 245)";
 
 /**
  * CSS class added to the tapped tile while the morph is in flight so
@@ -326,8 +322,11 @@ export function runDrillTransition(opts: RunDrillTransitionOptions): void {
   // without a multi-shadow-pierce query. The .title rule reads
   // `color: var(--drill-title-color, currentColor)`, so setting it
   // recolours the title alone — value, timestamp, unit, and any
-  // future tile glyph keep their own colours.
-  tile.style.setProperty("--drill-title-color", "var(--board-fresh)");
+  // future tile glyph keep their own colours. §17.42 retired the
+  // per-board `var(--board-fresh)` look-up; the morph now lands on
+  // the parent-role bright off-white that the static
+  // `*AsParent.ts .title` rules carry.
+  tile.style.setProperty("--drill-title-color", DRILL_PARENT_TITLE_COLOR);
   // SPEC §17.38 — pipe the parent-role title font-size onto the
   // morphing tile through the same cascade. The .title rule in
   // tileLayoutStyles reads `font-size: var(--drill-title-font-size,
@@ -340,19 +339,12 @@ export function runDrillTransition(opts: RunDrillTransitionOptions): void {
     "--drill-title-font-size",
     DRILL_PARENT_TITLE_FONT_SIZE,
   );
-  // SPEC §17.39 — same pattern for the font-weight bump. The .title
-  // rule reads `font-weight: var(--drill-title-font-weight, 600)`
-  // and lists font-weight in its transition, so writing 700 here
-  // animates the weight over the settle. Variable system fonts (the
-  // kiosk's font stack starts with system-ui) interpolate the wght
-  // axis smoothly; non-variable fallbacks step at the midpoint
-  // instead of at 100 %, still better than the pre-§17.39 commit-
-  // time step. At commit the parent-role override (literal 700)
-  // wins by source-order at the same value — no weight pop.
-  tile.style.setProperty(
-    "--drill-title-font-weight",
-    DRILL_PARENT_TITLE_FONT_WEIGHT,
-  );
+  // §17.42 — the §17.39 `--drill-title-font-weight` write is gone:
+  // child and parent roles both render at `font-weight: 700`, so
+  // there is no weight delta to interpolate. The clean step-free
+  // hand-off this delivered makes the morph look identical on
+  // variable fonts (Segoe UI Variable, SF Pro, Roboto) AND on
+  // non-variable fallbacks.
 
   // Stage every fade-out element with a uniform transition so the
   // optical centre of the animation lands at the same moment as the

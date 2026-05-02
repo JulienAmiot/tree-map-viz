@@ -202,59 +202,30 @@ describe("BoardCollectionService", () => {
     });
   });
 
-  describe("updateSettings (\u00a717.31)", () => {
+  describe("updateSettings (\u00a717.31, simplified by \u00a717.42)", () => {
     // SPEC §17.31 — single round-trip patch for the board's mutable
-    // settings (name + freshDateColor). The settings modal needs both
-    // in one call so a name-and-colour edit doesn't fan out to two
-    // independent persistence writes.
+    // settings. §17.42 retired the per-board fresh-date colour; the
+    // patch surface is now `{ name? }` only. The method is kept
+    // (rather than collapsing into `rename`) so the modal's confirm
+    // event has a single service-level entry point.
 
-    it("patches the freshDateColor and persists", async () => {
+    it("patches the name and persists", async () => {
       const svc = await BoardCollectionService.create(repo, sequentialIdGen());
 
-      const r = await svc.updateSettings("b1", { freshDateColor: "#743089" });
+      const r = await svc.updateSettings("b1", { name: "Alpha-themed" });
 
       expect(r).toEqual({ ok: true });
-      expect(svc.list().find((b) => b.id === "b1")?.freshDateColor).toBe("#743089");
-      expect(repo.saveCallCount).toBe(1);
-      expect(repo.lastSaved?.boards.find((b) => b.id === "b1")?.freshDateColor).toBe(
-        "#743089",
-      );
-    });
-
-    it("patches name and freshDateColor in a single round-trip", async () => {
-      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
-
-      const r = await svc.updateSettings("b1", {
-        name: "Alpha-themed",
-        freshDateColor: "#1ea76a",
-      });
-
-      expect(r).toEqual({ ok: true });
-      const updated = svc.list().find((b) => b.id === "b1");
-      expect(updated?.name).toBe("Alpha-themed");
-      expect(updated?.freshDateColor).toBe("#1ea76a");
+      expect(svc.list().find((b) => b.id === "b1")?.name).toBe("Alpha-themed");
       expect(repo.saveCallCount).toBe(1);
     });
 
-    it("leaves a field unchanged when its key is omitted", async () => {
-      // §17.31 — partial patches: passing only `name` must NOT clear
-      // an existing freshDateColor (and vice versa).
-      const repoWithColor = new FakeBoardCollectionRepository(
-        makeSnapshot(
-          [
-            { ...makeBoard("b1", "Alpha"), freshDateColor: "#743089" },
-            makeBoard("b2", "Beta"),
-          ],
-          "b1",
-        ),
-      );
-      const svc = await BoardCollectionService.create(repoWithColor, sequentialIdGen());
+    it("leaves the name unchanged when its key is omitted", async () => {
+      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
 
-      await svc.updateSettings("b1", { name: "Alpha 2" });
+      const r = await svc.updateSettings("b1", {});
 
-      const after = svc.list().find((b) => b.id === "b1");
-      expect(after?.name).toBe("Alpha 2");
-      expect(after?.freshDateColor).toBe("#743089");
+      expect(r).toEqual({ ok: true });
+      expect(svc.list().find((b) => b.id === "b1")?.name).toBe("Alpha");
     });
 
     it("trims the name and rejects empty / whitespace-only", async () => {
@@ -268,15 +239,6 @@ describe("BoardCollectionService", () => {
       expect(r2.ok).toBe(false);
       expect(r3).toEqual({ ok: true });
       expect(svc.list().find((b) => b.id === "b1")?.name).toBe("Trimmed");
-    });
-
-    it("rejects an empty freshDateColor", async () => {
-      // §17.31 — empty colour is rejected; the modal's color picker
-      // never emits empty so this is the defence-in-depth contract.
-      const svc = await BoardCollectionService.create(repo, sequentialIdGen());
-      const r = await svc.updateSettings("b1", { freshDateColor: "   " });
-      expect(r.ok).toBe(false);
-      expect(repo.saveCallCount).toBe(0);
     });
 
     it("rejects an unknown board id", async () => {
@@ -343,8 +305,8 @@ describe("BoardCollectionService", () => {
 
   describe("replaceCurrentTree (§17.33)", () => {
     // SPEC §17.33 — atomic swap of the current board's tree, used by
-    // the Import flow. Other boards stay untouched; the freshDateColor
-    // of the current board is preserved across the swap.
+    // the Import flow. Other boards stay untouched; the board's
+    // mutable settings (name) are preserved across the swap.
 
     it("swaps the current board's tree and persists", async () => {
       const svc = await BoardCollectionService.create(repo, sequentialIdGen());
@@ -371,29 +333,6 @@ describe("BoardCollectionService", () => {
       // boards' trees are preserved by reference.
       expect(svc.list().find((b) => b.id === "b2")?.tree).toBe(otherTreeBefore);
       expect(svc.list().map((b) => b.id)).toEqual(["b1", "b2"]);
-    });
-
-    it("preserves the board's freshDateColor across the swap", async () => {
-      // §17.33 — theme is a board-level field, not a tree-level one;
-      // an import that replaces the tree must NOT clear the colour.
-      const repoWithColor = new FakeBoardCollectionRepository(
-        makeSnapshot(
-          [
-            { ...makeBoard("b1", "Alpha"), freshDateColor: "#743089" },
-            makeBoard("b2", "Beta"),
-          ],
-          "b1",
-        ),
-      );
-      const svc = await BoardCollectionService.create(
-        repoWithColor,
-        sequentialIdGen(),
-      );
-
-      await svc.replaceCurrentTree(freshTree("imported"));
-
-      const after = svc.list().find((b) => b.id === "b1");
-      expect(after?.freshDateColor).toBe("#743089");
     });
 
     it("preserves the board's name across the swap", async () => {

@@ -12,7 +12,7 @@ Feature: Mutations survive a kiosk reload (§17.35)
   Several existing features include a one-off reload step (e.g.
   `persistence/board_collection.feature` covers create-survives-reload;
   `shell/board_settings.feature` covers settings-changes-survive
-  via the drawer label). This feature is the **explicit
+  via the top-bar label). This feature is the **explicit
   load-save contract**: a representative slice of mutations + a
   reload, asserting the post-reload state still carries the change.
 

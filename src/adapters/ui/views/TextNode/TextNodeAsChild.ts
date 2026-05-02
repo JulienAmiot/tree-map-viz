@@ -3,10 +3,11 @@
  * (SPEC §5 — refined in §17.14, §17.18, §17.27).
  *
  * Same fields as `<text-node-as-parent>` (§5 — uniform fields across
- * roles); same shared `tileLayoutStyles` + `textBodyStyles`. The role
- * only differs through a slightly different `.title` weight, picked up
- * here. Timestamp sits in the **bottom-right** corner with an age-based
- * colour gradient (`dateAgeColor`).
+ * roles); same shared `tileLayoutStyles` + `textBodyStyles`. §17.42
+ * collapsed the title font-weight so child and parent both render
+ * at 700; the role no longer carries any per-role `.title`
+ * override here. Timestamp sits in the **bottom-right** corner with
+ * an age-based colour gradient (`dateAgeColor`).
  *
  * SPEC §17.27 — the value is rendered as **markdown**: the latest
  * `TimestampedValue<string>` text passes through `renderMarkdownToHtml`
@@ -16,7 +17,7 @@
  * full content stays visible regardless of tile size.
  */
 
-import { LitElement, css, html } from "lit";
+import { LitElement, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
@@ -37,15 +38,7 @@ export class TextNodeAsChild extends LitElement {
    */
   private resizeObserver: ResizeObserver | null = null;
 
-  static styles = [
-    tileLayoutStyles,
-    textBodyStyles,
-    css`
-      .title {
-        font-weight: 600;
-      }
-    `,
-  ];
+  static styles = [tileLayoutStyles, textBodyStyles];
 
   override connectedCallback(): void {
     super.connectedCallback();

@@ -40,13 +40,11 @@ Feature: Every focus change reflects in the URL hash (§17.35)
 
   @HE-???? @priority:high
   Scenario: Tapping a breadcrumb ancestor segment updates the URL
-    # The breadcrumb lives in the drawer body; the drawer is auto-
-    # hidden by default and intercepts pointer events when closed.
-    # Open it first, same prelude as `shell/breadcrumb.feature`.
+    # SPEC §17.43 — the breadcrumb lives in the permanent top bar
+    # and is always visible / tappable.
     When I tap the child tile for "TXT-A"
     Then the focused id is "TXT-A"
-    When I tap the drawer handle
-    And I tap the breadcrumb segment for "TXT-ROOT"
+    When I tap the breadcrumb segment for "TXT-ROOT"
     Then the focused id is "TXT-ROOT"
     And the URL hash includes "/n/TXT-ROOT"
 

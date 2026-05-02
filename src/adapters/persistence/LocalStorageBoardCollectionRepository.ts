@@ -55,8 +55,15 @@ type WireBoard = {
   id: string;
   name: string;
   tree: unknown;
-  /** SPEC §17.21 — board-level fresh-end colour for the date-age gradient. */
-  freshDateColor?: string;
+  /**
+   * SPEC §17.42 — `freshDateColor` was retired with the per-board
+   * fresh-date-colour theming hint (§17.21 / §17.31). New writes never
+   * emit the field; legacy reads tolerate and discard any leftover
+   * value so the kiosk doesn't reject a perfectly good stored payload
+   * just because the operator's previous build wrote one. Typed as
+   * `unknown` so a hostile / corrupted value can't slip through.
+   */
+  freshDateColor?: unknown;
 };
 type WireEnvelope = { v: number; currentBoardId: string; boards: WireBoard[] };
 
@@ -111,9 +118,6 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
           name: b.name,
           tree: JSON.parse(encode(b.tree)) as unknown,
         };
-        if (b.freshDateColor !== undefined) {
-          wire.freshDateColor = b.freshDateColor;
-        }
         return wire;
       }),
     };
@@ -129,13 +133,12 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
       throw new Error("LocalStorageBoardCollectionRepository: stored payload is missing required fields");
     }
     const boards: Board[] = parsed.boards.map((b) => {
+      // §17.42 — discard any legacy `freshDateColor` carried by older
+      // payloads; the field is no longer part of the Board type.
       const board: Board = {
         id: b.id,
         name: b.name,
         tree: decode(JSON.stringify(b.tree)) as TreeNode<unknown>,
-        ...(typeof b.freshDateColor === "string"
-          ? { freshDateColor: b.freshDateColor }
-          : {}),
       };
       return board;
     });
@@ -167,7 +170,7 @@ function defaultSeed(): BoardCollectionSnapshot {
   // SPEC §17.21 — first-boot kiosk lands on the showcase board, which
   // exercises every visible UI branch (TextNode + BSC, all three
   // computed-value branches, eligible/non-eligible mix, dates spanning
-  // the colour-age gradient). Pre-§17.21 callers that relied on the
+  // the timestamp age gradient). Pre-§17.21 callers that relied on the
   // empty single-TextNode "Default Board" should inject a custom
   // `seed` factory through the constructor options.
   const board = buildShowcaseBoard();

@@ -105,13 +105,14 @@ export class BurgerMenu extends LitElement {
       border-radius: 2px;
     }
     .menu {
-      /* SPEC §17.21 — popup uses position: fixed so it escapes the
-         drawer panel's overflow: hidden (which is required for the
-         max-height collapse animation). The top / right are set
-         imperatively from the trigger's getBoundingClientRect() on open
-         and on viewport resize. position: fixed only escapes overflow
-         clipping; it does NOT escape transform / will-change: transform
-         containing blocks, but the drawer does not use those.
+      /* SPEC §17.21 (top-bar pivot in §17.43) — popup uses position:
+         fixed so it escapes the host top bar's normal flow and lands
+         relative to the viewport instead of the bar's auto-sized box.
+         The top / right are set imperatively from the trigger's
+         getBoundingClientRect() on open and on viewport resize.
+         position: fixed only escapes overflow clipping; it does NOT
+         escape transform / will-change: transform containing blocks,
+         but the top bar does not use those.
          (Backticks omitted in this CSS comment per §17.14 — they would
           terminate the surrounding css tagged-template literal.) */
       position: fixed;

@@ -97,6 +97,78 @@ export type BusinessScoreCardValueViewModel =
       readonly n: number;
     };
 
+/**
+ * §17.41 — quantised trend-arrow direction for the BSC tile.
+ *
+ * Mirrors the domain-level `TrendArrow` enum (no view-layer dependency
+ * on the domain type — keep the VM self-contained). `null` means the
+ * arrow should NOT be rendered (insufficient history, degenerate
+ * objective, non-recordedValue branch — see {@link
+ * BusinessScoreCardObjectiveViewModel.trendArrow}).
+ */
+export type TrendArrowDirection =
+  | "up"
+  | "up-right"
+  | "right"
+  | "down-right"
+  | "down";
+
+/**
+ * SPEC §17.40 + §17.41 + §17.44 — pre-computed objective-progress
+ * info for the BSC tile.
+ *
+ * The mapper bakes everything the view needs to render the §17.40
+ * target row, the gradient-coloured value, the §17.44 warning glyph
+ * (now living *inside* the target row, to the right of the date,
+ * tinted by deviation), and the §17.41 trend arrow so the view layer
+ * remains a pure consumer (no JS math, no Date parsing, no domain
+ * types). Mirrors the §17.21 dateColor pattern.
+ *
+ * Fields:
+ *   - `targetValue`, `targetDateIso`, `unit` — what the operator is
+ *     aiming for; rendered in the small target row under the value.
+ *   - `valueColor` — pre-computed `rgb(r, g, b)` string for the
+ *     current value (and its unit suffix). Empty `""` when the value
+ *     branch has no number to grade (childrenCount n=0, or a
+ *     degenerate objective with non-finite endpoints) — view falls
+ *     back to the default tile text colour.
+ *   - `warningColor` (§17.44 — replaces the pre-§17.44
+ *     `mayMissDeadline: boolean`) — pre-computed `rgb(r, g, b)`
+ *     string on a three-stop yellow → orange → red ramp keyed to the
+ *     deviation magnitude (`deadlineShortfall` = `1 -
+ *     gradientPositionFraction(predicted, min, target)`). Empty `""`
+ *     when no warning should render (deadline already passed,
+ *     insufficient history, computed/childrenCount branches, or the
+ *     trend reaches the target). When non-empty the view emits a
+ *     warning glyph at the right of the target date with this colour
+ *     applied as an inline `color` style — yellow at the lowest
+ *     deviation (operator just barely below trajectory), red at the
+ *     highest (predicted to fall back to `min` or worse). The
+ *     `mayMissDeadline` boolean was retired in §17.44: a single
+ *     field encodes both *whether* and *how* the warning renders,
+ *     mirroring the §17.40 `valueColor` / §17.21 `dateColor`
+ *     conventions. Same data-source restriction as `trendArrow` —
+ *     only set for `recordedValue` BSCs.
+ *   - `trendArrow` (§17.41) — quantised direction of the
+ *     least-squares slope normalised against "the rate required to
+ *     land at target by deadline". `null` means the view should NOT
+ *     render an arrow (insufficient history, degenerate objective,
+ *     or a non-`recordedValue` branch — same data-source restriction
+ *     as `warningColor`). When present, the arrow glyph is
+ *     monochrome (`currentColor`) — the colour-as-severity signal
+ *     stays on the value glyph (§17.40) and on the warning glyph
+ *     (§17.44); the arrow's *direction* carries its own at-a-glance
+ *     signal without needing a hue scale.
+ */
+export type BusinessScoreCardObjectiveViewModel = {
+  readonly targetValue: number;
+  readonly targetDateIso: string;
+  readonly unit: string;
+  readonly valueColor: string;
+  readonly warningColor: string;
+  readonly trendArrow: TrendArrowDirection | null;
+};
+
 export type BusinessScoreCardNodeViewModel = {
   readonly kind: "BusinessScoreCardNode";
   readonly id: string;
@@ -116,6 +188,12 @@ export type BusinessScoreCardNodeViewModel = {
    * `dateIso` is empty.
    */
   readonly dateColor: string;
+  /**
+   * SPEC §17.40 — pre-computed objective-progress info (target row +
+   * gradient-coloured value + off-track warning). See
+   * `BusinessScoreCardObjectiveViewModel` for field semantics.
+   */
+  readonly objective: BusinessScoreCardObjectiveViewModel;
 };
 
 export type NodeViewModel = TextNodeViewModel | BusinessScoreCardNodeViewModel;

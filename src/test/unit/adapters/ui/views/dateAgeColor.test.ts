@@ -3,15 +3,21 @@ import { describe, expect, it } from "vitest";
 import {
   ageInDays,
   dateAgeColor,
-  DEFAULT_FRESH_COLOR,
-  desaturatedCounterpart,
+  FRESH_RGB,
   MAX_AGE_DAYS,
+  STALE_RGB,
 } from "../../../../../adapters/ui/views/dateAgeColor.js";
 
 const now = new Date("2026-04-30T12:00:00.000Z");
 
 function isoDaysAgo(days: number): string {
   return new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function parseRgb(s: string): { r: number; g: number; b: number } {
+  const m = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(s);
+  if (!m) throw new Error(`unexpected colour string: ${s}`);
+  return { r: Number(m[1]), g: Number(m[2]), b: Number(m[3]) };
 }
 
 describe("ageInDays (\u00a717.18)", () => {
@@ -35,34 +41,60 @@ describe("ageInDays (\u00a717.18)", () => {
   });
 });
 
-describe("dateAgeColor — back-compat with \u00a717.18 default fresh colour", () => {
-  it("DEFAULT_FRESH_COLOR is the warm orange \u00a717.18 originally pinned", () => {
-    expect(DEFAULT_FRESH_COLOR).toBe("rgb(255, 145, 50)");
+describe("dateAgeColor — \u00a717.42 fixed white \u2192 dark-grey gradient", () => {
+  // §17.42 retired the per-board fresh-colour the §17.21 / §17.31
+  // design carried (no more Board.freshDateColor / --board-fresh /
+  // colour picker on <board-settings-modal>). The helper is now a
+  // pure function of `iso` + optional `now`, with both endpoints
+  // hard-coded.
+
+  it("FRESH_RGB and STALE_RGB are the operator-pinned endpoints", () => {
+    expect(FRESH_RGB).toEqual({ r: 245, g: 245, b: 245 });
+    expect(STALE_RGB).toEqual({ r: 64, g: 64, b: 64 });
   });
 
-  it("returns the default fresh colour at t = 0 when no freshColor is passed", () => {
-    expect(dateAgeColor(now.toISOString(), { now })).toBe(
-      "rgb(255, 145, 50)",
+  it("returns the bright off-white at age = 0", () => {
+    expect(dateAgeColor(now.toISOString(), { now })).toBe("rgb(245, 245, 245)");
+  });
+
+  it("returns the dark-grey at age = MAX_AGE_DAYS", () => {
+    expect(dateAgeColor(isoDaysAgo(MAX_AGE_DAYS), { now })).toBe(
+      "rgb(64, 64, 64)",
     );
   });
 
-  it("clamps beyond MAX_AGE_DAYS to the cold endpoint", () => {
+  it("clamps beyond MAX_AGE_DAYS to the dark-grey endpoint", () => {
     const farPast = dateAgeColor(isoDaysAgo(MAX_AGE_DAYS * 5), { now });
     const atMax = dateAgeColor(isoDaysAgo(MAX_AGE_DAYS), { now });
     expect(farPast).toBe(atMax);
+    expect(farPast).toBe("rgb(64, 64, 64)");
   });
 
-  it("interpolates monotonically — older = closer to the desaturated endpoint", () => {
-    const fresh = parseRgb(dateAgeColor(isoDaysAgo(0), { now }));
-    const old = parseRgb(dateAgeColor(isoDaysAgo(MAX_AGE_DAYS), { now }));
-    const mid = parseRgb(dateAgeColor(isoDaysAgo(MAX_AGE_DAYS / 2), { now }));
-    // Each channel sits between the two endpoints.
-    for (const ch of ["r", "g", "b"] as const) {
-      const lo = Math.min(fresh[ch], old[ch]);
-      const hi = Math.max(fresh[ch], old[ch]);
-      expect(mid[ch]).toBeGreaterThanOrEqual(lo);
-      expect(mid[ch]).toBeLessThanOrEqual(hi);
+  it("interpolates linearly across MAX_AGE_DAYS, achromatic at every step", () => {
+    // The endpoints are both grey (R = G = B), so the lerp at any
+    // intermediate fraction also produces an achromatic colour. The
+    // §17.21 hue-preserving design retired in §17.42 because the
+    // monochrome dark theme already gives the timestamp enough
+    // visual weight without per-board hue.
+    const stops = [0, 0.25, 0.5, 0.75, 1];
+    for (const t of stops) {
+      const days = t * MAX_AGE_DAYS;
+      const colour = parseRgb(dateAgeColor(isoDaysAgo(days), { now }));
+      expect(colour.r).toBe(colour.g);
+      expect(colour.r).toBe(colour.b);
+      // Channel monotonically decreases as days grows.
+      const expected = Math.round(245 + (64 - 245) * t);
+      expect(Math.abs(colour.r - expected)).toBeLessThanOrEqual(1);
     }
+  });
+
+  it("the midpoint sits halfway between the two endpoints (within rounding)", () => {
+    const mid = parseRgb(dateAgeColor(isoDaysAgo(MAX_AGE_DAYS / 2), { now }));
+    // 245 + (64 - 245)/2 = 245 - 90.5 = 154.5 ⇒ 154 or 155.
+    expect(mid.r).toBeGreaterThanOrEqual(154);
+    expect(mid.r).toBeLessThanOrEqual(155);
+    expect(mid.g).toBe(mid.r);
+    expect(mid.b).toBe(mid.r);
   });
 
   it("falls back to currentColor for empty / unparseable input (defensive)", () => {
@@ -70,80 +102,3 @@ describe("dateAgeColor — back-compat with \u00a717.18 default fresh colour", (
     expect(dateAgeColor("nope", { now })).toBe("currentColor");
   });
 });
-
-describe("dateAgeColor — \u00a717.21 board-level fresh colour + dynamic desaturation", () => {
-  it("uses the caller-supplied fresh colour at t = 0 (hex)", () => {
-    expect(
-      dateAgeColor(now.toISOString(), { now, freshColor: "#1ea76a" }),
-    ).toBe("rgb(30, 167, 106)");
-  });
-
-  it("accepts the rgb() string format too", () => {
-    expect(
-      dateAgeColor(now.toISOString(), {
-        now,
-        freshColor: "rgb(30, 167, 106)",
-      }),
-    ).toBe("rgb(30, 167, 106)");
-  });
-
-  it("falls back to the default fresh colour for unparseable freshColor input", () => {
-    expect(
-      dateAgeColor(now.toISOString(), { now, freshColor: "tomato-soup" }),
-    ).toBe("rgb(255, 145, 50)");
-  });
-
-  it("at MAX_AGE_DAYS, the colour is a very desaturated version of the same hue", () => {
-    // For a green fresh colour, the cold endpoint is a green-leaning grey.
-    const cold = parseRgb(
-      dateAgeColor(isoDaysAgo(MAX_AGE_DAYS), {
-        now,
-        freshColor: "#1ea76a",
-      }),
-    );
-    // Channels are very close together (desaturated).
-    const max = Math.max(cold.r, cold.g, cold.b);
-    const min = Math.min(cold.r, cold.g, cold.b);
-    expect(max - min).toBeLessThanOrEqual(20);
-    // The hue tilt is preserved: green is the dominant channel.
-    expect(cold.g).toBeGreaterThanOrEqual(cold.r);
-    expect(cold.g).toBeGreaterThanOrEqual(cold.b);
-  });
-
-  it("the cold endpoint of the gradient equals desaturatedCounterpart(freshColor)", () => {
-    const cold = dateAgeColor(isoDaysAgo(MAX_AGE_DAYS), {
-      now,
-      freshColor: "#1ea76a",
-    });
-    expect(cold).toBe(desaturatedCounterpart("#1ea76a"));
-  });
-
-  it("desaturatedCounterpart preserves hue across the colour wheel", () => {
-    // Each fresh colour's desaturated counterpart keeps the
-    // dominant-channel ordering of the input.
-    const cases: { fresh: string; bigger: "r" | "g" | "b" }[] = [
-      { fresh: "#ff5050", bigger: "r" },
-      { fresh: "#50ff50", bigger: "g" },
-      { fresh: "#5050ff", bigger: "b" },
-    ];
-    for (const c of cases) {
-      const cold = parseRgb(desaturatedCounterpart(c.fresh));
-      const channels: Record<"r" | "g" | "b", number> = {
-        r: cold.r,
-        g: cold.g,
-        b: cold.b,
-      };
-      const dominant = (Object.keys(channels) as ("r" | "g" | "b")[]).reduce(
-        (best, k) => (channels[k] > channels[best] ? k : best),
-        "r" as "r" | "g" | "b",
-      );
-      expect(dominant).toBe(c.bigger);
-    }
-  });
-});
-
-function parseRgb(s: string): { r: number; g: number; b: number } {
-  const m = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(s);
-  if (!m) throw new Error(`unexpected colour string: ${s}`);
-  return { r: Number(m[1]), g: Number(m[2]), b: Number(m[3]) };
-}

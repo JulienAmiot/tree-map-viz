@@ -1,0 +1,54 @@
+{
+  "nodeType": "BusinessScoreCard",
+  "id": "Root",
+  "title": "Root",
+  "description": "Objective progress fixture (SPEC §17.40)",
+  "targetValue": 100,
+  "minimalValue": 0,
+  "unit": "%",
+  "targetDate": "2026-12-31T00:00:00.000Z",
+  "historizedValues": [
+    { "value": 0, "date": "2026-01-01T00:00:00.000Z" }
+  ],
+  "computed": true,
+  "eligibleForParentComputation": false,
+  "weight": 1,
+  "childrenNodes": [
+    {
+      "nodeType": "BusinessScoreCard",
+      "id": "OnTrack",
+      "title": "OnTrack",
+      "description": "Recorded BSC pacing on the projection line.",
+      "targetValue": 100,
+      "minimalValue": 0,
+      "unit": "%",
+      "targetDate": "2026-12-31T00:00:00.000Z",
+      "historizedValues": [
+        { "value": 0, "date": "2026-01-01T00:00:00.000Z" },
+        { "value": 80, "date": "2026-04-30T00:00:00.000Z" }
+      ],
+      "computed": false,
+      "eligibleForParentComputation": true,
+      "weight": 1,
+      "childrenNodes": []
+    },
+    {
+      "nodeType": "BusinessScoreCard",
+      "id": "OffTrack",
+      "title": "OffTrack",
+      "description": "Recorded BSC behind the linear projection — should warn.",
+      "targetValue": 100,
+      "minimalValue": 0,
+      "unit": "%",
+      "targetDate": "2026-12-31T00:00:00.000Z",
+      "historizedValues": [
+        { "value": 0, "date": "2026-01-01T00:00:00.000Z" },
+        { "value": 5, "date": "2026-04-30T00:00:00.000Z" }
+      ],
+      "computed": false,
+      "eligibleForParentComputation": true,
+      "weight": 1,
+      "childrenNodes": []
+    }
+  ]
+}

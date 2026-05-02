@@ -27,10 +27,10 @@
  *     the parent's date sits at the same visual distance from the
  *     focused panel's outer edge as a child tile's date does from
  *     its tile outer edge — **0.4rem / 0.6rem in both cases**.
- *   - Timestamp colour follows a warm-orange → cold-pale-blue lerp
- *     by age in days (`dateAgeColor`), so a glance at the wall of
- *     tiles tells the user which numbers are *fresh* and which are
- *     *stale* without reading the date.
+ *   - Timestamp colour follows the §17.42 fixed bright off-white →
+ *     dark-grey lerp by age in days (`dateAgeColor`); the per-board
+ *     fresh-colour the §17.21 / §17.31 design plumbed through
+ *     `--board-fresh` has been retired.
  *
  * Why the description is only on the parent role (not on child tiles):
  *   - On a child tile a multi-line description would compete with the
@@ -61,6 +61,8 @@ import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import {
   formatDate,
+  renderTargetRow,
+  renderTrendArrow,
   renderValueTemplate,
   timestampForValue,
 } from "./valueTemplate.js";
@@ -108,16 +110,15 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
       }
       .title {
         font-size: 2.4vh;
-        font-weight: 700;
         flex: 0 0 auto;
-        /* SPEC 17.31 -- the focused-panel title is painted with the
-           board's fresh-date colour (the same accent that drives the
-           timestamp's age gradient). The --board-fresh custom
-           property is set on the tree-graph-screen host by the
-           composition root on every refresh and inherits through the
-           shadow boundaries down to here. The currentColor fallback
-           keeps unit fixtures readable without the prop being set. */
-        color: var(--board-fresh, currentColor);
+        /* SPEC 17.42 -- the focused-panel title is bright off-white
+           (rgb(245, 245, 245)) regardless of board. The per-board
+           fresh-date colour the §17.21 / §17.31 design plumbed
+           through --board-fresh has been retired; the kiosk's
+           dark theme already gives the title enough emphasis with
+           a flat near-white, and the per-board colour picker added
+           a personalisation surface that nobody used. */
+        color: rgb(245, 245, 245);
       }
       /* SPEC 17.30 -- the metric's definition. vh-relative so it
          matches the title's typographic scale; muted colour so the
@@ -268,7 +269,11 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
           >`
         : nothing}
       <div class="value-area" data-testid="value-row">
-        ${this.renderValue()}
+        <div class="value-row">
+          ${this.renderValue()}
+          ${this.editingField !== "value" ? renderTrendArrow(this.vm) : nothing}
+        </div>
+        ${this.editingField !== "value" ? renderTargetRow(this.vm) : nothing}
       </div>
     `;
   }
@@ -318,6 +323,14 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
   private renderValue() {
     if (!this.vm) return nothing;
     const v = this.vm.value;
+    // SPEC 17.40 -- the gradient colour is applied via the shared
+    // --bsc-value-color custom property; mirrors the inline style
+    // valueTemplate.ts uses on its own .value span. Empty `colorStyle`
+    // (degenerate / non-numeric branch) leaves the attribute blank
+    // so the .value falls back to currentColor.
+    const colorStyle = this.vm.objective.valueColor
+      ? `--bsc-value-color: ${this.vm.objective.valueColor}`
+      : "";
     if (this.editingField === "value" && v.kind === "recordedValue") {
       return html`<span class="value" data-testid="value" data-value-kind="recordedValue">
         <input
@@ -339,11 +352,12 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
         role="button"
         tabindex="0"
         title="Click to edit value"
+        style=${colorStyle}
         @click=${this.startValueEdit}
         >${v.value}<span class="unit">&nbsp;${v.unit}</span></span
       >`;
     }
-    return renderValueTemplate(v);
+    return renderValueTemplate(this.vm);
   }
 
   private startTitleEdit = (): void => {

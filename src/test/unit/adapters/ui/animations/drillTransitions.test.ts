@@ -10,8 +10,9 @@
  *    path as system-level `prefers-reduced-motion: reduce`.
  *  - default path: the tile receives a `translate() scale()` transform
  *    derived from the FLIP rect deltas, a colour transition into
- *    `var(--board-fresh)`, and the `tile--drilling` class. All
- *    fade-out elements drop to `opacity: 0`. Commit fires after
+ *    the parent-role bright off-white (§17.42 replaced the prior
+ *    `var(--board-fresh)` look-up), and the `tile--drilling` class.
+ *    All fade-out elements drop to `opacity: 0`. Commit fires after
  *    `DRILL_SETTLE_MS`; the class is cleaned up afterwards.
  *  - degenerate-rect path: when the tapped tile has zero size (e.g.
  *    jsdom defaults, or a torn-down layout), the helper falls through
@@ -26,8 +27,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   DRILL_CLASS,
+  DRILL_PARENT_TITLE_COLOR,
   DRILL_PARENT_TITLE_FONT_SIZE,
-  DRILL_PARENT_TITLE_FONT_WEIGHT,
   DRILL_SETTLE_MS,
   runDrillTransition,
 } from "../../../../../adapters/ui/animations/drillTransitions.js";
@@ -97,12 +98,13 @@ describe("runDrillTransition (FLIP morph — §17.32)", () => {
       // the title stays at the static-render fallback (2vh) and the
       // post-commit re-render hands off to the parent role's literal.
       expect(tile.style.getPropertyValue("--drill-title-font-size")).toBe("");
-      // §17.39 — same reduced-motion gate for the title font-weight
-      // morph custom property. The user opted out of motion, so the
-      // morph does not stage any transition target on the tile -- the
-      // title stays at the static-render fallback (600) and the post-
-      // commit re-render hands off to the parent role's literal in a
-      // single frame.
+      // §17.42 retired the §17.39 `--drill-title-font-weight` custom
+      // property because both child and parent roles now render the
+      // title at a single static `font-weight: 700`. The reduced-
+      // motion path therefore never sets the property; the assertion
+      // pins the explicit absence so a future regression can't
+      // silently re-introduce a weight delta the morph would have
+      // to interpolate again.
       expect(tile.style.getPropertyValue("--drill-title-font-weight")).toBe(
         "",
       );
@@ -239,13 +241,18 @@ describe("runDrillTransition (FLIP morph — §17.32)", () => {
       expect(tile.style.willChange).toContain("border-radius");
     });
 
-    it("recolours ONLY the title via the --drill-title-color custom property (\u00a717.32 — value/timestamp keep own colours)", () => {
-      // The previous build wrote `tile.style.color = var(--board-fresh)`,
-      // which cascaded to every text node in the tile (value, timestamp,
-      // unit). The operator's requirement is that ONLY the title
-      // recolours; the helper now uses a custom property the .title
-      // rule reads in tileLayoutStyles, so siblings of .title keep
-      // currentColor.
+    it("recolours ONLY the title via the --drill-title-color custom property (\u00a717.32 \u2014 value/timestamp keep own colours)", () => {
+      // The §17.32 build wrote `tile.style.color = var(--board-fresh)`,
+      // which cascaded to every text node in the tile (value,
+      // timestamp, unit). The operator's requirement is that ONLY
+      // the title recolours; the helper uses a custom property the
+      // .title rule reads in tileLayoutStyles, so siblings of .title
+      // keep currentColor. §17.42 retired the per-board fresh
+      // colour the prior build read; the morph now lands on the
+      // parent-role bright off-white, mirrored in
+      // `DRILL_PARENT_TITLE_COLOR` so a future theme tweak that
+      // updates *AsParent.ts without the helper-side constant fails
+      // fast here.
       const tile = makeTile({ x: 0, y: 0, w: 100, h: 100 });
       const target = makeTile({ x: 0, y: 0, w: 800, h: 200 });
       runDrillTransition({
@@ -256,26 +263,25 @@ describe("runDrillTransition (FLIP morph — §17.32)", () => {
         shouldReduceMotion: () => false,
       });
       expect(tile.style.getPropertyValue("--drill-title-color")).toBe(
-        "var(--board-fresh)",
+        DRILL_PARENT_TITLE_COLOR,
       );
-      // Crucial: the tile's own `color` is NOT set — that would
+      expect(DRILL_PARENT_TITLE_COLOR).toBe("rgb(245, 245, 245)");
+      // Crucial: the tile's own `color` is NOT set \u2014 that would
       // have cascaded to every descendant.
       expect(tile.style.color).toBe("");
     });
 
-    it("morphs ONLY the title's font-weight via the --drill-title-font-weight custom property (\u00a717.39 — no commit-time weight pop)", () => {
-      // §17.39 — the second half of the title-morph polish (§17.38
-      // landed font-size; §17.39 lands font-weight). Same plumbing
-      // shape: a custom CSS property the .title rule reads, set on
-      // the morphing tile by the helper, with the parent-role literal
-      // mirrored in DRILL_PARENT_TITLE_FONT_WEIGHT (today: "700") so
-      // a future theme tweak that updates *AsParent.ts without the
-      // helper-side constant fails fast here. The transition list on
-      // .title (in tileLayoutStyles) carries `font-weight 320ms ease`
-      // so the resolved start (= the static-render fallback "600")
-      // and end (= "700") values animate over the settle (smoothly on
-      // variable system fonts, midpoint-stepped on non-variable
-      // fallbacks; either way better than the post-commit step).
+    it("does NOT write a --drill-title-font-weight custom property (\u00a717.42 \u2014 child + parent roles share weight 700)", () => {
+      // §17.39 added `--drill-title-font-weight` to interpolate the
+      // child role's `600` into the parent role's `700` over the
+      // settle window. §17.42 collapsed both roles to a single
+      // static `font-weight: 700`, removing the weight delta. With
+      // nothing to interpolate the helper no longer writes the
+      // custom property; the operator gets a clean step-free
+      // hand-off on every system, variable fonts AND non-variable
+      // fallbacks alike. This assertion pins the explicit absence so
+      // a future regression that re-introduces the property fails
+      // fast here.
       const tile = makeTile({ x: 0, y: 0, w: 100, h: 100 });
       const target = makeTile({ x: 0, y: 0, w: 800, h: 200 });
       runDrillTransition({
@@ -286,13 +292,8 @@ describe("runDrillTransition (FLIP morph — §17.32)", () => {
         shouldReduceMotion: () => false,
       });
       expect(tile.style.getPropertyValue("--drill-title-font-weight")).toBe(
-        DRILL_PARENT_TITLE_FONT_WEIGHT,
+        "",
       );
-      expect(DRILL_PARENT_TITLE_FONT_WEIGHT).toBe("700");
-      // Crucial: the tile's own `font-weight` is NOT set -- that
-      // would have cascaded to every text node in the tile (value /
-      // timestamp / unit), which have their own weight rules
-      // (the value is 700, the timestamp ~regular, the unit 500).
       expect(tile.style.fontWeight).toBe("");
     });
 

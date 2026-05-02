@@ -1,12 +1,11 @@
 @HE-2590 @component:shell @phase:7 @priority:high
-Feature: Board settings modal — name, fresh-date colour, delete (§17.31)
+Feature: Board settings modal — name + delete (§17.31, simplified by §17.42)
 
   SPEC §17.31: the burger menu's "Settings…" item opens
-  `<board-settings-modal>` for the current board. The modal exposes
-  the mutable board fields:
+  `<board-settings-modal>` for the current board. §17.42 retired the
+  per-board fresh-date colour the §17.31 design carried, so the modal
+  exposes:
     - **Name** (required, trimmed)
-    - **Fresh-date colour** (`<input type="color">`) — drives both the
-      timestamp's age gradient AND the focused-panel title colour.
     - **Delete board** with an inline confirmation step. Disabled when
       the collection holds the single remaining board.
 
@@ -17,7 +16,6 @@ Feature: Board settings modal — name, fresh-date colour, delete (§17.31)
 
   Background:
     When I open the kiosk in test mode with empty storage
-    And I tap the drawer handle
     And I tap the burger trigger
     And I tap the burger menu item with action "settings"
 
@@ -25,29 +23,28 @@ Feature: Board settings modal — name, fresh-date colour, delete (§17.31)
     Then the board-settings modal is open
     And the board-settings modal name field shows the current board's name
 
-  Scenario: Confirming the form persists the new name and re-paints the drawer label
+  Scenario: Confirming the form persists the new name and re-paints the top-bar label
     When I set the board-settings modal field "field-name" to "Renamed via settings"
     And I confirm the board-settings modal
     Then the board-settings modal is closed
-    And the drawer board name is "Renamed via settings"
+    And the top-bar board name is "Renamed via settings"
 
-  Scenario: Typing a hex colour repaints the focused-panel title accent
-    # SPEC §17.31 — the hex `<input type="text">` is bidirectionally
-    # synced with the native colour picker. Typing `#9000FF` and
-    # saving updates the persisted board.freshDateColor; refresh()
-    # then plumbs that as `--board-fresh` on the screen host so the
-    # focused-panel title's `var(--board-fresh, currentColor)` rule
-    # picks it up immediately.
-    When I set the board-settings modal field "field-color-hex" to "#9000ff"
-    And I confirm the board-settings modal
-    Then the board-settings modal is closed
-    And the focused-panel title colour is "rgb(144, 0, 255)"
+  Scenario: The focused-panel title is bright off-white regardless of board (§17.42)
+    # §17.42 — the focused-panel title is a flat off-white
+    # `rgb(245, 245, 245)` for every board; the per-board fresh-date
+    # colour and its `var(--board-fresh, currentColor)` plumbing have
+    # been retired. The kiosk's dark theme already gives the title
+    # enough emphasis with the flat colour, and removing the picker
+    # collapses the modal + service + persistence path to a single
+    # source of truth.
+    When I cancel the board-settings modal
+    Then the focused-panel title colour is "rgb(245, 245, 245)"
 
   Scenario: Cancelling the modal does not change the board name
     When I set the board-settings modal field "field-name" to "Should be discarded"
     And I cancel the board-settings modal
     Then the board-settings modal is closed
-    And the drawer board name is unchanged from the seed default
+    And the top-bar board name is unchanged from the seed default
 
   Scenario: The Delete button is disabled when only one board exists
     # SPEC §17.31 — the empty-storage seed plants a single showcase

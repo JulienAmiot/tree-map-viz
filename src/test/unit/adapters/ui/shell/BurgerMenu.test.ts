@@ -167,12 +167,15 @@ describe("<burger-menu>", () => {
   });
 
   it("popup uses position: fixed and is anchored to the trigger on open (\u00a717.21)", async () => {
-    // SPEC §17.21 — the popup must escape the drawer panel's overflow:
-    // hidden, which we achieve by switching from absolute → fixed
-    // positioning and computing top/right from the trigger's bbox on
-    // open. jsdom doesn't run a layout engine, so getBoundingClientRect
-    // returns zeroes by default; we stub it to a realistic position to
-    // pin the contract.
+    // SPEC §17.21 (carried into §17.43) — the popup uses fixed
+    // positioning and computes top/right from the trigger's bbox on
+    // open so it lands relative to the viewport instead of the
+    // surrounding flow. Pre-§17.43 this was needed to escape the
+    // drawer panel's overflow:hidden; post-§17.43 the same fixed-
+    // positioning lets the popup overflow the (auto-sized) top bar
+    // cleanly. jsdom doesn't run a layout engine, so
+    // getBoundingClientRect returns zeroes by default; we stub it
+    // to a realistic position to pin the contract.
     const el = await mountLitElement<BurgerMenu>("burger-menu");
     const trigger = triggerOf(el);
     trigger.getBoundingClientRect = (): DOMRect =>

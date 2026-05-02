@@ -13,6 +13,7 @@ afterEach(cleanupLitFixtures);
 function makeVm(
   value: BusinessScoreCardNodeViewModel["value"],
   dateIso?: string,
+  objectiveOverride: Partial<BusinessScoreCardNodeViewModel["objective"]> = {},
 ): BusinessScoreCardNodeViewModel {
   // SPEC §17.18 — top-level `dateIso` is what the corner timestamp
   // reads from. For tests that fabricate a VM directly (without going
@@ -31,6 +32,20 @@ function makeVm(
     // SPEC §17.21 — pin a representative dateColor; empty dateIso →
     // empty dateColor (mirrors mapper behaviour).
     dateColor: resolvedDateIso ? "rgb(255, 145, 50)" : "",
+    // SPEC §17.40 / §17.41 — default objective shape; tests can
+    // override individual fields via the `objectiveOverride` arg. The
+    // default has no trend arrow (matches the §17.41 silent-on-
+    // insufficient-data policy: a fabricated VM with no history pin
+    // should NOT trigger an arrow).
+    objective: {
+      targetValue: 100,
+      targetDateIso: "2026-12-31T00:00:00.000Z",
+      unit: value.kind === "childrenCount" ? "" : value.unit,
+      valueColor: "",
+      warningColor: "",
+      trendArrow: null,
+      ...objectiveOverride,
+    },
   };
 }
 
@@ -68,6 +83,14 @@ describe("<business-score-card-as-parent>", () => {
       value: { kind: "computedMean", mean: 87.42, unit: "%" },
       dateIso: "",
       dateColor: "",
+      objective: {
+        targetValue: 100,
+        targetDateIso: "2026-12-31T00:00:00.000Z",
+        unit: "%",
+        valueColor: "",
+        warningColor: "",
+        trendArrow: null,
+      },
     };
     const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
       "business-score-card-as-parent",
@@ -348,22 +371,264 @@ describe("<business-score-card-as-parent>", () => {
     });
   });
 
-  describe("title colour (\u00a717.31)", () => {
-    // SPEC §17.31 — see TextNodeAsParent.test.ts for the full
+  // -- SPEC §17.40 ----------------------------------------------------
+
+  describe("\u00a717.40 \u2014 objective row, gradient value colour, off-track warning", () => {
+    it("applies vm.objective.valueColor to the .value via --bsc-value-color (recordedValue)", async () => {
+      const vm = makeVm(
+        {
+          kind: "recordedValue",
+          value: 50,
+          unit: "%",
+          dateIso: "2026-04-23T00:00:00.000Z",
+        },
+        undefined,
+        { valueColor: "rgb(250, 204, 21)" },
+      );
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = vm;
+        },
+      );
+      const value = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="value"]',
+      );
+      expect(value?.getAttribute("style") ?? "").toContain(
+        "--bsc-value-color: rgb(250, 204, 21)",
+      );
+    });
+
+    it("renders the target row + bullseye icon under the value with target value, unit, and date", async () => {
+      const vm = makeVm(
+        {
+          kind: "computedMean",
+          mean: 50,
+          unit: "%",
+        },
+        "2026-04-23T00:00:00.000Z",
+        {
+          targetValue: 80,
+          targetDateIso: "2026-12-31T00:00:00.000Z",
+          unit: "%",
+        },
+      );
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = vm;
+        },
+      );
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="target-row"]'),
+      ).not.toBeNull();
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="target-icon"]'),
+      ).not.toBeNull();
+      expect(
+        el.shadowRoot
+          ?.querySelector('[data-testid="target-text"]')
+          ?.textContent?.replace(/\s+/g, " ")
+          .trim(),
+      ).toBe("80 %");
+      expect(
+        el.shadowRoot
+          ?.querySelector('[data-testid="target-date"]')
+          ?.getAttribute("datetime"),
+      ).toBe("2026-12-31T00:00:00.000Z");
+    });
+
+    it("\u00a717.44 — renders the deadline-risk warning glyph inside the target row, after the target date, tinted by warningColor", async () => {
+      const vm = makeVm(
+        {
+          kind: "recordedValue",
+          value: 10,
+          unit: "%",
+          dateIso: "2026-07-02T00:00:00.000Z",
+        },
+        undefined,
+        { warningColor: "rgb(220, 38, 38)" },
+      );
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = vm;
+        },
+      );
+      const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
+      expect(row).not.toBeNull();
+      const warn = row?.querySelector<HTMLElement>(
+        '[data-testid="off-track-warning"]',
+      );
+      // §17.44 — warning lives inside the target row, after the date,
+      // tinted by the deviation magnitude.
+      expect(warn).not.toBeNull();
+      expect(warn?.getAttribute("style") ?? "").toMatch(
+        /\bcolor:\s*rgb\(220,\s*38,\s*38\)/,
+      );
+      const date = row?.querySelector('[data-testid="target-date"]');
+      expect(date).not.toBeNull();
+      expect(
+        date!.compareDocumentPosition(warn!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it("\u00a717.44 — does not render the warning glyph when warningColor is empty", async () => {
+      const vm = makeVm(
+        {
+          kind: "recordedValue",
+          value: 90,
+          unit: "%",
+          dateIso: "2026-07-02T00:00:00.000Z",
+        },
+        undefined,
+        { warningColor: "" },
+      );
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = vm;
+        },
+      );
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="off-track-warning"]'),
+      ).toBeNull();
+    });
+
+    it("does not render the target row while inline-editing the value (focus is on input)", async () => {
+      const vm = makeVm({
+        kind: "recordedValue",
+        value: 42,
+        unit: "%",
+        dateIso: "2026-04-23T00:00:00.000Z",
+      });
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = vm;
+        },
+      );
+      el.shadowRoot
+        ?.querySelector<HTMLElement>('[data-testid="value"]')
+        ?.click();
+      await el.updateComplete;
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="target-row"]'),
+      ).toBeNull();
+    });
+  });
+
+  describe("trend arrow (\u00a717.41)", () => {
+    it("renders the trend arrow next to the value when objective.trendArrow is set, with the bucket exposed as data-direction and a monochrome glyph", async () => {
+      const vm = makeVm(
+        {
+          kind: "recordedValue",
+          value: 50,
+          unit: "%",
+          dateIso: "2026-07-02T00:00:00.000Z",
+        },
+        undefined,
+        { trendArrow: "up" },
+      );
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = vm;
+        },
+      );
+      const arrow = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="trend-arrow"]',
+      );
+      expect(arrow).not.toBeNull();
+      expect(arrow!.getAttribute("data-direction")).toBe("up");
+      expect(arrow!.textContent?.trim()).toBe("\u2191");
+      // §17.41 colour policy -- monochrome (currentColor); no inline
+      // colour plumbing.
+      expect(arrow!.getAttribute("style") ?? "").toBe("");
+      // Sits inside the .value-row wrapper so it lands horizontally
+      // next to the value (not in the column-flex value-area below).
+      expect(arrow!.parentElement?.classList.contains("value-row")).toBe(true);
+    });
+
+    it("does NOT render a trend arrow when objective.trendArrow is null (insufficient history / non-recordedValue)", async () => {
+      const vm = makeVm(
+        {
+          kind: "recordedValue",
+          value: 50,
+          unit: "%",
+          dateIso: "2026-07-02T00:00:00.000Z",
+        },
+        undefined,
+        { trendArrow: null },
+      );
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = vm;
+        },
+      );
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="trend-arrow"]'),
+      ).toBeNull();
+    });
+
+    it("hides the trend arrow while inline-editing the value (consistent with target-row + warning policy)", async () => {
+      const vm = makeVm(
+        {
+          kind: "recordedValue",
+          value: 42,
+          unit: "%",
+          dateIso: "2026-04-23T00:00:00.000Z",
+        },
+        undefined,
+        { trendArrow: "up-right" },
+      );
+      const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+        "business-score-card-as-parent",
+        (e) => {
+          e.vm = vm;
+        },
+      );
+      // Sanity check: arrow visible before editing.
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="trend-arrow"]'),
+      ).not.toBeNull();
+      el.shadowRoot
+        ?.querySelector<HTMLElement>('[data-testid="value"]')
+        ?.click();
+      await el.updateComplete;
+      // Arrow gone while editing -- the editor input does not need a
+      // trend-rate gloss next to it (the operator's eye is on the
+      // input field, the arrow would compete for focus).
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="trend-arrow"]'),
+      ).toBeNull();
+    });
+  });
+
+  describe("title colour (\u00a717.31, simplified by \u00a717.42)", () => {
+    // \u00a717.42 \u2014 see TextNodeAsParent.test.ts for the full
     // rationale. Pinned independently here because BSC and TextNode
     // are sibling per-views with their own scoped styles; a future
     // theme refactor that drops the rule from one but keeps it in
     // the other would silently desynchronise the focused-panel
     // appearance across kinds.
-    it("the .title carries `color: var(--board-fresh, currentColor)`", () => {
+    it("the .title carries the bright off-white literal", () => {
       const cssText = (
         BusinessScoreCardNodeAsParent.styles as readonly { cssText?: string }[]
       )
         .map((s) => String(s.cssText ?? s))
         .join("\n");
       expect(cssText).toMatch(
-        /\.title\s*\{[\s\S]*?color:\s*var\(--board-fresh,\s*currentColor\)/,
+        /\.title\s*\{[\s\S]*?color:\s*rgb\(245,\s*245,\s*245\)/,
       );
+      // §17.42 \u2014 the prior `var(--board-fresh, ...)` look-up
+      // MUST be gone so a future regression that reintroduces the
+      // per-board accent fails fast here. The bare `--board-fresh`
+      // string still appears in narrative comments by design; the
+      // regex only flags actual `var()` consumers.
+      expect(cssText).not.toMatch(/var\(--board-fresh/);
     });
   });
 });

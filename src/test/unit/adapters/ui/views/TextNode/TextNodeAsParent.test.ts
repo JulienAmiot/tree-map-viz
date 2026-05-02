@@ -330,26 +330,32 @@ describe("<text-node-as-parent>", () => {
     });
   });
 
-  describe("title colour (\u00a717.31)", () => {
-    // SPEC §17.31 — the focused-panel title is painted with the
-    // board's fresh-date colour. The composition root sets a
-    // `--board-fresh` custom property on `<tree-graph-screen>` that
-    // cascades into this view's shadow tree; the `.title` rule
-    // resolves it via `var(--board-fresh, currentColor)`.
+  describe("title colour (\u00a717.31, simplified by \u00a717.42)", () => {
+    // §17.31 painted the focused-panel title with the per-board
+    // fresh-date colour through `var(--board-fresh, currentColor)`.
+    // §17.42 retired the per-board colour design (no more
+    // `Board.freshDateColor`, no more `--board-fresh`) and pinned a
+    // single bright off-white `rgb(245, 245, 245)` for every parent
+    // title regardless of board. Children-tile titles
+    // (TextNodeAsChild + BSC AsChild) intentionally do NOT carry
+    // this rule \u2014 only the focused panel.
     //
     // jsdom can't compute shadow-scoped CSS, so we read the static
-    // CSS text directly (same pattern §17.18 uses for the
-    // timestamp). The shape we pin: the `.title` block carries
-    // `color: var(--board-fresh, currentColor)`. Children-tile
-    // titles (TextNodeAsChild + BSC AsChild) intentionally do NOT
-    // carry this rule — only the focused panel.
-    it("the .title carries `color: var(--board-fresh, currentColor)`", () => {
+    // CSS text directly (same pattern \u00a717.18 uses for the
+    // timestamp).
+    it("the .title carries the bright off-white literal", () => {
       const cssText = (TextNodeAsParent.styles as readonly { cssText?: string }[])
         .map((s) => String(s.cssText ?? s))
         .join("\n");
       expect(cssText).toMatch(
-        /\.title\s*\{[\s\S]*?color:\s*var\(--board-fresh,\s*currentColor\)/,
+        /\.title\s*\{[\s\S]*?color:\s*rgb\(245,\s*245,\s*245\)/,
       );
+      // §17.42 \u2014 the prior `var(--board-fresh, ...)` look-up MUST
+      // be gone so a future regression that reintroduces the
+      // per-board accent fails fast here. The bare `--board-fresh`
+      // string still appears in narrative comments by design;
+      // the regex only flags actual `var()` consumers.
+      expect(cssText).not.toMatch(/var\(--board-fresh/);
     });
   });
 });

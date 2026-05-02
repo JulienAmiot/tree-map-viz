@@ -12,8 +12,9 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
       **bottom-right** corner (§17.18 — moved from top-right so the
       title row uses the full width and the date sits below the
       figure where the eye lands after reading the value),
-      absolutely positioned, with a colour interpolated by age (warm
-      orange → cold pale blue).
+      absolutely positioned, with a colour interpolated by age
+      (§17.42: bright off-white at age 0 → dark grey at age ≥ 30 d;
+      §17.21's per-board fresh-end colour was retired here).
 
   These invariants are layout-only, so we assert via real-browser
   computed styles (jsdom is too lossy for shadow-scoped CSS).
@@ -43,7 +44,7 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     Then the focused value-date is in the bottom-right corner of the tile
 
   @HE-???? @priority:high
-  Scenario: Current-value timestamp colour is age-gradient driven (§17.18 — warm orange → cold pale blue)
+  Scenario: Current-value timestamp colour is age-gradient driven (§17.18 / §17.42 — bright off-white → dark grey)
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge
     And I reload the kiosk

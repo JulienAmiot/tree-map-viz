@@ -84,9 +84,6 @@ export class BoardCollectionService {
       id: existing.id,
       name: trimmed,
       tree: existing.tree,
-      ...(existing.freshDateColor !== undefined
-        ? { freshDateColor: existing.freshDateColor }
-        : {}),
     };
     await this.persist();
     return { ok: true };
@@ -95,7 +92,6 @@ export class BoardCollectionService {
   async createBoard(
     name: string,
     tree: TreeNode<unknown>,
-    freshDateColor?: string,
   ): Promise<{ ok: true; board: Board } | { ok: false; reason: string }> {
     const trimmed = name.trim();
     if (trimmed.length === 0) {
@@ -106,7 +102,6 @@ export class BoardCollectionService {
       id,
       name: trimmed,
       tree,
-      ...(freshDateColor !== undefined ? { freshDateColor } : {}),
     };
     this.boards.push(board);
     this.currentBoardId = id;
@@ -115,22 +110,16 @@ export class BoardCollectionService {
   }
 
   /**
-   * SPEC §17.31 — patch a board's mutable settings (name + fresh-date
-   * colour). A single round-trip through the repo so the UI's settings
-   * panel doesn't have to call `rename` and a hypothetical
-   * `updateColour` separately. Either field is optional; passing
-   * `undefined` for a field leaves it unchanged. Passing
-   * `freshDateColor: ""` or any falsy non-undefined value is rejected
-   * (the wire format expects either `undefined` for absent or a
-   * non-empty CSS colour string).
+   * SPEC §17.31 — patch a board's mutable settings. §17.42 retired
+   * the per-board fresh-date colour, leaving `name` as the only
+   * mutable field; the method still exists (rather than collapsing
+   * into `rename`) so the modal's confirm event has a single
+   * service-level entry point and we keep room to add future
+   * board-level settings without churning callers again.
    *
    * Validation:
    *   - `name`, when supplied, is trimmed and must be non-empty (same
    *     rule as `rename` and `createBoard`).
-   *   - `freshDateColor`, when supplied, is trimmed and must be
-   *     non-empty (any further "is this a real CSS colour?" check is
-   *     deliberately out of scope — the modal uses
-   *     `<input type="color">` which only emits valid hex strings).
    *   - The board must exist; the same `Board not found` reason as
    *     `rename` / `switchTo` is returned otherwise.
    */
@@ -138,7 +127,6 @@ export class BoardCollectionService {
     boardId: string,
     settings: {
       readonly name?: string;
-      readonly freshDateColor?: string;
     },
   ): Promise<{ ok: true } | { ok: false; reason: string }> {
     const idx = this.boards.findIndex((b) => b.id === boardId);
@@ -154,19 +142,10 @@ export class BoardCollectionService {
       }
       nextName = trimmed;
     }
-    let nextColor: string | undefined = existing.freshDateColor;
-    if (settings.freshDateColor !== undefined) {
-      const trimmed = settings.freshDateColor.trim();
-      if (trimmed.length === 0) {
-        return { ok: false, reason: "Fresh-date colour cannot be empty." };
-      }
-      nextColor = trimmed;
-    }
     this.boards[idx] = {
       id: existing.id,
       name: nextName,
       tree: existing.tree,
-      ...(nextColor !== undefined ? { freshDateColor: nextColor } : {}),
     };
     await this.persist();
     return { ok: true };
@@ -183,9 +162,7 @@ export class BoardCollectionService {
    *
    * The new tree is taken at face value — no validation on shape,
    * id uniqueness, etc., because the codec already enforced that
-   * before this method is reached. The `freshDateColor` of the
-   * current board is preserved (theme is a board-level concern,
-   * not a tree-level one).
+   * before this method is reached.
    */
   async replaceCurrentTree(tree: TreeNode<unknown>): Promise<void> {
     const idx = this.boards.findIndex((b) => b.id === this.currentBoardId);
@@ -199,9 +176,6 @@ export class BoardCollectionService {
       id: existing.id,
       name: existing.name,
       tree,
-      ...(existing.freshDateColor !== undefined
-        ? { freshDateColor: existing.freshDateColor }
-        : {}),
     };
     await this.persist();
   }

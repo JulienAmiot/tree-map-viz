@@ -773,14 +773,16 @@ Then(
 Then(
   "the focused value-date colour is on the warm-to-cold age gradient",
   async ({ page }) => {
-    // §17.18 + §17.21 — the corner timestamp's colour is set via
+    // §17.18 + §17.42 — the corner timestamp's colour is set via
     // `--age-color` (a custom property) → `color: var(--age-color,
-    // currentColor)`. We read the resolved `color` and confirm it
-    // lies in the convex hull of the *default* fresh endpoint
-    // (`rgb(255, 145, 50)`) and its dynamically-computed desaturated
-    // counterpart (HSL same-hue, S≈6%, L≈70% → ≈ `rgb(183, 178, 174)`),
-    // i.e. the gradient is actually being applied — not falling
-    // through to `currentColor`.
+    // currentColor)`. The gradient endpoints were simplified in
+    // §17.42 from the §17.21 per-board colour design to a fixed
+    // bright off-white (`rgb(245, 245, 245)`) at age 0 days fading
+    // linearly to a dark grey (`rgb(64, 64, 64)`) at >= 30 days
+    // old. We confirm the resolved `color` is achromatic (R = G =
+    // B within ±1 to absorb gamma rounding) and falls inside that
+    // ramp — i.e. the helper is actually emitting a gradient
+    // colour, not falling through to `currentColor`.
     const kiosk = new TreeGraphPage(page);
     const ts = kiosk.parentStrip().getByTestId("value-date");
     await expect(ts).toHaveCount(1);
@@ -789,14 +791,158 @@ Then(
     const m = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(color);
     expect(m).not.toBeNull();
     const [r, g, b] = [Number(m![1]), Number(m![2]), Number(m![3])];
-    // Convex combination of (255, 145, 50) and ≈(183, 178, 174):
-    //   r ∈ [183, 255], g ∈ [145, 178], b ∈ [50, 174].
-    // Bounds widened by ±2 to absorb HSL→RGB rounding.
-    expect(r).toBeGreaterThanOrEqual(181);
-    expect(r).toBeLessThanOrEqual(255);
-    expect(g).toBeGreaterThanOrEqual(143);
-    expect(g).toBeLessThanOrEqual(180);
-    expect(b).toBeGreaterThanOrEqual(48);
-    expect(b).toBeLessThanOrEqual(176);
+    // Achromatic — both endpoints are pure greys, so the lerp is
+    // achromatic at every step. ±1 tolerance for sRGB rounding.
+    expect(Math.abs(r - g)).toBeLessThanOrEqual(1);
+    expect(Math.abs(r - b)).toBeLessThanOrEqual(1);
+    // Bounded by the §17.42 endpoints (64 ≤ channel ≤ 245).
+    expect(r).toBeGreaterThanOrEqual(63);
+    expect(r).toBeLessThanOrEqual(246);
+  },
+);
+
+// -- SPEC §17.40 -- BSC objective row + gradient value colour + warning ----
+
+Then(
+  "the child tile {string} shows a target row with text containing {string}",
+  async ({ page }, nodeId: string, expectedSubstring: string) => {
+    // SPEC §17.40 — the per-tile target row carries a bullseye icon
+    // and a `target-text` span with the target value + unit, optionally
+    // followed by a `target-date` time element.
+    const kiosk = new TreeGraphPage(page);
+    const tile = kiosk.childById(nodeId);
+    await expect(tile).toHaveCount(1);
+    const row = tile.getByTestId("target-row");
+    await expect(row).toHaveCount(1);
+    const text = (await row.textContent()) ?? "";
+    expect(text.replace(/\s+/g, " ")).toContain(expectedSubstring);
+  },
+);
+
+Then(
+  "the focused parent strip shows a target row with text containing {string}",
+  async ({ page }, expectedSubstring: string) => {
+    // Same contract as the child-tile step, scoped to the focused
+    // parent strip — the BSC parent role re-uses the same template
+    // helper, and the per-view's `:host { position: static }` does
+    // not affect the target-row's flow inside `.value-area`.
+    const kiosk = new TreeGraphPage(page);
+    const row = kiosk.parentStrip().getByTestId("target-row");
+    await expect(row).toHaveCount(1);
+    const text = (await row.textContent()) ?? "";
+    expect(text.replace(/\s+/g, " ")).toContain(expectedSubstring);
+  },
+);
+
+Then(
+  "the child tile {string} value carries a gradient colour",
+  async ({ page }, nodeId: string) => {
+    // SPEC §17.40 — the mapper bakes a four-stop red → green ramp
+    // colour into the VM at `objective.valueColor` and the per-view
+    // applies it via the `--bsc-value-color` custom property on the
+    // `.value` element. We read the resolved `color` and reject the
+    // tile-default text colour (the `<body>` text colour the rest
+    // of the kiosk inherits) -- a non-empty ramp colour will be
+    // distinct.
+    const kiosk = new TreeGraphPage(page);
+    const tile = kiosk.childById(nodeId);
+    await expect(tile).toHaveCount(1);
+    const value = tile.getByTestId("value");
+    await expect(value).toHaveCount(1);
+    const colors = await value.evaluate((el) => {
+      const computed = getComputedStyle(el).color;
+      const inline = el.getAttribute("style") ?? "";
+      return { computed, inline };
+    });
+    expect(colors.inline).toMatch(/--bsc-value-color:\s*rgb\(/);
+    expect(colors.computed).toMatch(/^rgb\(\d+,\s*\d+,\s*\d+\)$/);
+    // The four-stop ramp's RGBs are bounded; every stop has at least
+    // one channel > 60 (red >= 220, orange >= 234, yellow has G >=
+    // 204, green has G >= 163). The kiosk's default text colour on
+    // the dark theme is a high-luminance grey (>= 200 across all
+    // three channels) -- assert at least one channel is BELOW 200
+    // to confirm the ramp is in effect rather than the default.
+    const m = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(colors.computed);
+    expect(m).not.toBeNull();
+    const [r, g, b] = [Number(m![1]), Number(m![2]), Number(m![3])];
+    expect(Math.min(r, g, b)).toBeLessThan(200);
+  },
+);
+
+Then(
+  "the child tile {string} shows the off-track warning glyph",
+  async ({ page }, nodeId: string) => {
+    // SPEC §17.40 amendment + §17.44 -- the warning fires when the
+    // BSC's recorded trajectory (least-squares fit) extrapolated to
+    // the target date predicts a value short of the target. §17.44
+    // moves the glyph from the tile's bottom-left into the target
+    // row, after the target date, tinted on a yellow → orange → red
+    // ramp keyed to the deviation magnitude. The step asserts the
+    // glyph (a) lives inside the .target-row (not absolutely
+    // positioned at bottom-left); and (b) carries an inline
+    // `color: rgb(...)` from the §17.44 ramp.
+    const kiosk = new TreeGraphPage(page);
+    const tile = kiosk.childById(nodeId);
+    await expect(tile).toHaveCount(1);
+    const row = tile.getByTestId("target-row");
+    await expect(row).toHaveCount(1);
+    const warn = row.getByTestId("off-track-warning");
+    await expect(warn).toHaveCount(1);
+    const inline = (await warn.getAttribute("style")) ?? "";
+    expect(inline).toMatch(/\bcolor:\s*rgb\(\d+,\s*\d+,\s*\d+\)/);
+  },
+);
+
+Then(
+  "the child tile {string} does not show the off-track warning glyph",
+  async ({ page }, nodeId: string) => {
+    const kiosk = new TreeGraphPage(page);
+    const tile = kiosk.childById(nodeId);
+    await expect(tile).toHaveCount(1);
+    await expect(tile.getByTestId("off-track-warning")).toHaveCount(0);
+  },
+);
+
+Then(
+  "the focused parent strip shows the off-track warning glyph",
+  async ({ page }) => {
+    // §17.44 -- on the focused-panel strip the warning glyph also
+    // lives inside the parent's .target-row (not at the strip's
+    // bottom-left), tinted by the same deviation-keyed ramp.
+    const kiosk = new TreeGraphPage(page);
+    const row = kiosk.parentStrip().getByTestId("target-row");
+    await expect(row).toHaveCount(1);
+    const warn = row.getByTestId("off-track-warning");
+    await expect(warn).toHaveCount(1);
+    const inline = (await warn.getAttribute("style")) ?? "";
+    expect(inline).toMatch(/\bcolor:\s*rgb\(\d+,\s*\d+,\s*\d+\)/);
+  },
+);
+
+// -- SPEC §17.41 -- BSC trend arrow at the right of the value -------------
+
+Then(
+  "the child tile {string} shows a trend arrow with direction {string}",
+  async ({ page }, nodeId: string, expectedDirection: string) => {
+    // SPEC §17.41 — every recordedValue BSC with a defined regression
+    // (≥ 2 distinct-timestamp historized entries) renders a small
+    // arrow at the right of its value. The mapper bakes the bucket
+    // into `data-direction` so the e2e step can assert which of the
+    // 5 buckets (`up | up-right | right | down-right | down`) the
+    // mapper landed on without parsing the rendered Unicode glyph.
+    //
+    // The §17.41 colour policy — monochrome `currentColor`, no
+    // gradient tint — is asserted via the absence of any inline
+    // colour-related style on the arrow span (mirrors the §17.40
+    // amendment's check on the warning glyph).
+    const kiosk = new TreeGraphPage(page);
+    const tile = kiosk.childById(nodeId);
+    await expect(tile).toHaveCount(1);
+    const arrow = tile.getByTestId("trend-arrow");
+    await expect(arrow).toHaveCount(1);
+    expect(await arrow.getAttribute("data-direction")).toBe(expectedDirection);
+    const inline = (await arrow.getAttribute("style")) ?? "";
+    expect(inline).not.toMatch(/(?<!-)color:/);
+    expect(inline).not.toMatch(/--bsc-value-color/);
   },
 );

@@ -197,22 +197,21 @@ export class TreeGraphPage {
     return this.layout().getAttribute("data-orientation");
   }
 
-  /** The `<app-drawer>` host element. Carries the reflected `open` boolean attribute. */
-  drawerHost(): Locator {
-    return this.page.getByTestId("drawer");
+  /**
+   * SPEC §17.43 — the permanent top bar (`<header data-testid="top-bar">`)
+   * that replaced the auto-hidden `<app-drawer>`. Holds the board name,
+   * focus breadcrumb, and burger trigger; always visible.
+   */
+  topBar(): Locator {
+    return this.page.getByTestId("top-bar");
   }
 
-  /** The `<button data-testid="drawer-handle">` rendered inside `<app-drawer>` shadow root. */
-  drawerHandle(): Locator {
-    return this.page.getByTestId("drawer-handle");
-  }
-
-  /** The board-name `<span>` shown at the leading edge of the drawer body. */
+  /** The board-name `<span>` shown at the leading edge of the top bar. */
   boardNameLabel(): Locator {
     return this.page.getByTestId("board-name");
   }
 
-  /** The `<focus-breadcrumb>` host element rendered inside the drawer body. */
+  /** The `<focus-breadcrumb>` host element rendered inside the top bar. */
   breadcrumbHost(): Locator {
     return this.page.locator("focus-breadcrumb");
   }
@@ -249,12 +248,6 @@ export class TreeGraphPage {
     return this.page.locator(
       `[data-testid="burger-item"][data-action="${action}"]`,
     );
-  }
-
-  /** Read the drawer host's reflected `open` attribute (presence ↔ open). */
-  async isDrawerOpen(): Promise<boolean> {
-    const v = await this.drawerHost().getAttribute("open");
-    return v !== null;
   }
 
   /** Read the burger menu list's `hidden` attribute (presence ↔ closed). */

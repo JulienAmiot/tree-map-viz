@@ -1,18 +1,18 @@
 @HE-2570 @component:shell @phase:7
 Feature: Breadcrumb shows the focus path and navigates on tap
 
-  SPEC §4: the breadcrumb renders the path from root → focused node as a
-  row of tappable segments inside the drawer. The focused segment is
-  non-tappable and marked `aria-current="page"`. Tapping any ancestor
-  segment focuses that node — the URL hash is the source of truth, so
-  `walkPath(boardTree, focusedId)` reflects the new focus on the very next
-  refresh (SPEC §11.3).
+  SPEC §4 + §17.43: the breadcrumb renders the path from root →
+  focused node as a row of tappable segments inside the permanent
+  top bar. The focused segment is non-tappable and marked
+  `aria-current="page"`. Tapping any ancestor segment focuses that
+  node — the URL hash is the source of truth, so
+  `walkPath(boardTree, focusedId)` reflects the new focus on the
+  very next refresh (SPEC §11.3).
 
   Background:
     When I open the kiosk in test mode with empty storage
     And I seed the "capacityTree" fixture via the test bridge
     And I reload the kiosk
-    And I tap the drawer handle
 
   @HE-???? @priority:high
   Scenario: At root the breadcrumb shows a single non-tappable segment

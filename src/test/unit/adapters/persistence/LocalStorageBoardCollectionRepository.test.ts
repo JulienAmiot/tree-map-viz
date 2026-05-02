@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { encode } from "../../../../adapters/persistence/jsonCodec.js";
 import {
   LocalStorageBoardCollectionRepository,
   STORAGE_KEY,
@@ -135,40 +136,48 @@ describe("LocalStorageBoardCollectionRepository — adapter-specific", () => {
       const board = snapshot.boards[0]!;
       expect(board.id).toBe("showcase-board");
       expect(board.name).toBe("Showcase");
-      // Board-level fresh date colour is set on the showcase seed and
-      // round-trips through the codec.
-      expect(board.freshDateColor).toBe("#743089");
       // Sanity: the root has more than one direct child (the rich
       // showcase exercises every visible UI branch).
       expect(board.tree.children.length).toBeGreaterThanOrEqual(3);
     });
 
-    it("round-trips Board.freshDateColor through save() + load() (\u00a717.21)", async () => {
-      const repo = new LocalStorageBoardCollectionRepository({ storage });
-      const snapshot: BoardCollectionSnapshot = {
+    it("tolerates a legacy stored freshDateColor on read (\u00a717.42 migration)", async () => {
+      // §17.42 retired the per-board fresh-date colour. Operators
+      // upgrading from a build that wrote the field still have it
+      // in their browser localStorage. The repo MUST decode such
+      // payloads without throwing and MUST drop the field on the
+      // resulting Board snapshot (the type no longer carries it).
+      //
+      // We synthesise the legacy envelope by reusing the live codec
+      // for the tree wire shape, then injecting `freshDateColor`
+      // back at the board envelope layer (the field the §17.42
+      // migration deliberately drops on decode).
+      const board = tn("legacy-root", "Legacy themed");
+      const treeWire = JSON.parse(encode(board)) as unknown;
+      const legacyEnvelope = {
+        v: 1,
+        currentBoardId: "legacy",
         boards: [
           {
-            id: "themed",
-            name: "Themed",
-            tree: tn("t-root"),
-            freshDateColor: "rgb(30, 167, 106)",
-          },
-          {
-            id: "untheme",
-            name: "Default colour",
-            tree: tn("u-root"),
+            id: "legacy",
+            name: "Legacy themed",
+            tree: treeWire,
+            freshDateColor: "#743089",
           },
         ],
-        currentBoardId: "themed",
       };
-      await repo.save(snapshot);
+      storage.setItem(STORAGE_KEY, JSON.stringify(legacyEnvelope));
 
+      const repo = new LocalStorageBoardCollectionRepository({ storage });
       const reloaded = await repo.load();
-      expect(reloaded.boards).toHaveLength(2);
-      expect(reloaded.boards[0]!.freshDateColor).toBe("rgb(30, 167, 106)");
-      // A board without `freshDateColor` decodes without the key
-      // present (UI falls back to the default warm orange).
-      expect(reloaded.boards[1]!.freshDateColor).toBeUndefined();
+
+      expect(reloaded.boards).toHaveLength(1);
+      const reloadedBoard = reloaded.boards[0]!;
+      expect(reloadedBoard.id).toBe("legacy");
+      expect(reloadedBoard.name).toBe("Legacy themed");
+      // Field is no longer part of the Board type; explicitly absent
+      // on the decoded snapshot so downstream code never observes it.
+      expect((reloadedBoard as Record<string, unknown>).freshDateColor).toBeUndefined();
     });
 
     it("does NOT re-seed on subsequent loads after the first save", async () => {
