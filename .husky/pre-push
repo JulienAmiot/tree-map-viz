@@ -1,0 +1,80 @@
+#!/usr/bin/env sh
+# --------------------------------------------------------------------------
+# pre-push: SonarQube quality gate (§17.53) — safety net for master pushes.
+# --------------------------------------------------------------------------
+# This hook fires BEFORE `git push` updates the remote. It reads the list of
+# refs being pushed from stdin (one line per ref:
+#   "<local_ref> <local_sha> <remote_ref> <remote_sha>") and, if any of
+# them targets `refs/heads/master`, runs `npm run sonar:gate`. The script
+# blocks until SonarQube publishes the Quality Gate result and exits
+# non-zero on FAILED, which aborts the push.
+#
+# WHY MASTER ONLY
+# ---------------
+# Feature branches are intentionally fast iteration — gating every push
+# would punish work-in-progress commits the operator hasn't even reviewed
+# yet. The contract from the operator (2026-05-03) is "check the commit
+# BEFORE merging it to the main branch", so the gate runs at the merge
+# boundary: when a branch's tip is being pushed to master.
+#
+# DUAL-GATE STRATEGY
+# ------------------
+# This is the SAFETY NET, not the primary gate. The deliberate gate is the
+# manual `npm run sonar:gate` step BEFORE running `git push origin master`,
+# which gives a chance to fix issues without a half-pushed branch state.
+# This hook catches the case where the operator (or this AI) forgets the
+# manual step.
+#
+# BYPASS
+# ------
+# `git push --no-verify` skips this hook (standard git behaviour). Don't
+# use it — push to a feature branch instead, then merge after a green gate.
+#
+# ENVIRONMENT
+# -----------
+# Requires Docker Desktop running + `npm run sonar:up` to have started the
+# server on http://localhost:9000, and a populated `.env.sonar` (see
+# `.env.sonar.example`). If the server is not reachable, the scanner errors
+# out before producing a gate result and the push fails — that's intended:
+# we don't merge to master without a green gate. To work around a downed
+# Sonar server, either bring it up (`npm run sonar:up`) or push to a
+# feature branch and merge once the server is back.
+# --------------------------------------------------------------------------
+
+remote_master="refs/heads/master"
+push_targets_master="false"
+
+# Read the ref tuples from stdin. Each line is:
+#   <local_ref> <local_sha> <remote_ref> <remote_sha>
+# We only care about the third column; if any equals refs/heads/master we
+# trigger the gate.
+while IFS=' ' read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "$remote_master" ]; then
+    push_targets_master="true"
+    break
+  fi
+done
+
+if [ "$push_targets_master" != "true" ]; then
+  # Pushing only feature branches — gate is not enforced here. The manual
+  # `npm run sonar:gate` ceremony before merging into master remains the
+  # primary gate.
+  exit 0
+fi
+
+echo ""
+echo "[pre-push] Push targets refs/heads/master — running SonarQube quality gate."
+echo "[pre-push] (bypass with 'git push --no-verify' if you absolutely must;"
+echo "[pre-push]  but 'push to feature branch + merge after green gate' is the right path.)"
+echo ""
+
+if ! npm run sonar:gate; then
+  echo ""
+  echo "[pre-push] FAIL: SonarQube quality gate did not pass. Push aborted."
+  echo "[pre-push] Open http://localhost:9000/dashboard?id=tree-graph-viz to see the issues."
+  exit 1
+fi
+
+echo ""
+echo "[pre-push] OK: SonarQube quality gate PASSED."
+exit 0
