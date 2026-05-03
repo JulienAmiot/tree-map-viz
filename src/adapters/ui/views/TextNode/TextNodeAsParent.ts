@@ -139,17 +139,27 @@ export class TextNodeAsParent extends LitElement {
          no vertical padding and a line-height of 1, so it sits
          flush with where the static title sat -- entering edit
          mode no longer shifts the focused panel's layout
-         downward. min-width: 0 + max-width: 100% defeat the
-         input's intrinsic min-content so a narrow title row
-         still constrains the input to the row width and the
-         input never extends past the strip (and therefore never
-         past the viewport). */
+         downward. min-width: 0 + max-width defeat the input's
+         intrinsic min-content so a narrow title row still
+         constrains the input to the row width and the input never
+         extends past the strip (and therefore never past the
+         viewport).
+
+         SPEC 17.50 -- the inline title-edit must NOT run behind
+         the §17.47 close-X / edit-pencil buttons that overlay the
+         title row's right end. The static title text gets clipped
+         by text-overflow: ellipsis, but an INTERACTIVE input has
+         to keep the operator's typed text visible. The strip
+         publishes --strip-gutter-right (one OR two button widths,
+         see ParentIdentityStrip) and we subtract it from max-width.
+         The fallback 0px keeps unit fixtures that mount the per-
+         view OUTSIDE the strip rendering at the row's full width. */
       .title-edit {
         height: 100%;
         padding: 0 0.4rem;
         line-height: 1;
         min-width: 0;
-        max-width: 100%;
+        max-width: calc(100% - var(--strip-gutter-right, 0px));
       }
       .value-edit {
         min-height: 6rem;

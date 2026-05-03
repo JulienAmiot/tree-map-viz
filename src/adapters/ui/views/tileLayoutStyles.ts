@@ -46,10 +46,20 @@ export const tileLayoutStyles = css`
     height: 100%;
     color: inherit;
     font: inherit;
-    /* Modest inner padding lets the value breathe a little without
-       eating into the available space too much; tuned to keep small
-       tiles still legible. */
-    padding: 0.4rem 0.6rem;
+    /* SPEC 17.46 -- tile typography refresh. Pre-17.46 the host
+       padding was 0.4rem 0.6rem, leaving ~12px gutters around the
+       figure on a 16-px root that ate into the value's growth budget
+       without pulling its weight visually. Post-17.46 the host
+       padding shrinks to 0.2rem 0.35rem (~3.2 / 5.6 px on a 16-px
+       root), giving the value's cqmin clamp a wider canvas to grow
+       into while keeping the title row + target row visually clear
+       of the tile's outer edge. The timestamp's bottom / right
+       offsets shrink in lock-step (0.2rem / 0.35rem) so the date
+       still hugs the same padded inner edge as the value's growth
+       envelope. The 17.30 / 17.45 parent-vs-child timestamp
+       parity is parity-of-deltas, not parity-of-absolutes, so
+       symmetric reductions hold the contract. */
+    padding: 0.2rem 0.35rem;
     overflow: hidden;
   }
   .title {
@@ -110,10 +120,20 @@ export const tileLayoutStyles = css`
     position: absolute;
     /* SPEC §17.18 — bottom-right (was top-right pre-§17.18). The
        offsets match the host's inner padding so the date hugs the
-       padded inner edge rather than the raw tile border. */
-    bottom: 0.4rem;
-    right: 0.6rem;
-    font-size: 1.4vh;
+       padded inner edge rather than the raw tile border. SPEC §17.46
+       trimmed the host padding (0.4 / 0.6 -> 0.2 / 0.35rem); the
+       offsets follow in lock-step so the timestamp still sits flush
+       with the inner padding edge rather than floating in the
+       padding gap. */
+    bottom: 0.2rem;
+    right: 0.35rem;
+    /* SPEC §17.46 -- shrunk from 1.4vh to 1.15vh. The operator
+       feedback was "the date dominates next to the figure"; pulling
+       the date down to ~85 % of its prior size leaves the figure
+       (which §17.46 also bumps) as the unambiguous focal point of
+       the tile while keeping the date legible at every viewport
+       size the kiosk targets. */
+    font-size: 1.15vh;
     line-height: 1;
     /* Per-tile colour driven by --age-color (bright off-white at
        age 0 days -> dark-grey at age >= 30 days, linear; see
@@ -171,18 +191,18 @@ export const tileLayoutStyles = css`
     font-weight: 700;
     line-height: 1.05;
     /* SPEC §17.17 — "the figure should be the biggest possible". The
-       cqmin coefficient was bumped from 18 → 36 (= roughly 2x the prior
-       size) so a single-digit/short numeric value fills its tile.
-       cqmin scales with the smaller of the tile's own width/height, so
-       the value never overflows horizontally on wide-and-short tiles
-       nor vertically on tall-and-thin ones. The clamp range was tuned
-       so that a 4-digit number (e.g. "1234") still fits the tile width
-       at this coefficient (≈ k = 0.36 → width budget per char of about
-       1/(0.6·N) of cqmin, comfortably above 0.36 for N ≤ 4). The
-       small-tile floor 1.5rem keeps numbers legible on the smallest
-       1/12-floor tiles; the large-tile ceiling 20rem prevents
-       typographic blow-out on giant single-child layouts. */
-    font-size: clamp(1.5rem, 36cqmin, 20rem);
+       cqmin coefficient was bumped from 18 → 36 in §17.17. SPEC
+       §17.46 amends to 42cqmin (a further ~17 % bump) on operator
+       feedback: with the §17.46 host-padding trim the figure has
+       more canvas to grow into, and the date moved to the smaller
+       1.15vh size, so the figure can take more of the visual weight
+       without crowding either edge. The 4-digit fit envelope holds
+       (≈ k = 0.42 → per-char budget ≈ 1/(0.6·N) of cqmin > 0.42 for
+       N ≤ 4). Floor 1.5rem keeps small-tile legibility; ceiling
+       22rem prevents typographic blow-out on giant single-child
+       layouts. The .target-row + .trend-arrow coefficients rescale
+       in lock-step below to keep the 0.2× / 0.4× ratios. */
+    font-size: clamp(1.5rem, 42cqmin, 22rem);
     /* SPEC 17.40 -- when the mapper bakes a gradient colour for the
        BSC's current value (red -> orange -> yellow -> green along the
        min -> target progress), the per-view sets --bsc-value-color on
@@ -249,9 +269,11 @@ export const tileLayoutStyles = css`
     gap: 0.4em;
     margin-top: 0.4em;
     /* 0.2 x .value's clamp() -- visually 20 % of the value height at
-       every cqmin level. The font-size also drives the bullseye icon's
+       every cqmin level. SPEC §17.46 -- rescaled with the value's
+       42cqmin bump (was 7.2cqmin / 4rem ceil at the 36cqmin / 20rem
+       value rule). The font-size also drives the bullseye icon's
        width/height through em units so the icon scales in lock-step. */
-    font-size: clamp(0.3rem, 7.2cqmin, 4rem);
+    font-size: clamp(0.3rem, 8.4cqmin, 4.4rem);
     line-height: 1.1;
     font-weight: 500;
     /* Default tile text colour -- intentionally NOT gradient-coloured
@@ -329,9 +351,11 @@ export const tileLayoutStyles = css`
   .trend-arrow {
     flex: 0 0 auto;
     /* 0.4 x .value's clamp() -- visually 40 % of the value height at
-       every cqmin level. The same cqmin axis drives both clamps so
-       the ratio holds at every tile size. */
-    font-size: clamp(0.6rem, 14.4cqmin, 8rem);
+       every cqmin level. SPEC §17.46 -- rescaled with the value's
+       42cqmin bump (was 14.4cqmin / 8rem ceil at the 36cqmin / 20rem
+       value rule). The same cqmin axis drives both clamps so the
+       ratio holds at every tile size. */
+    font-size: clamp(0.6rem, 16.8cqmin, 8.8rem);
     line-height: 1;
     /* Kerning fix for the diagonal arrows (\u2197, \u2198) which sit
        slightly above the baseline in most system fonts; -0.05em

@@ -189,15 +189,30 @@ Then("the edit-node modal is closed", async ({ page }) => {
   expect(await kiosk.isEditNodeModalOpen()).toBe(false);
 });
 
+// SPEC §17.50 -- the modal no longer carries a title field; renames
+// happen via the focused-panel inline title editor. The "modal weight
+// field shows X" step replaces the obsolete "modal title field shows
+// X" step in the §17.28 feature file. `field-weight` is the always-
+// present TextNode-side input (and BSC-side input) the operator can
+// observe through the modal flow.
 Then(
-  "the edit-node modal title field shows {string}",
+  "the edit-node modal weight field shows {string}",
   async ({ page }, expected: string) => {
     const kiosk = new TreeGraphPage(page);
-    await expect(kiosk.editNodeModalForm().getByTestId("field-title")).toHaveValue(
-      expected,
-    );
+    await expect(
+      kiosk.editNodeModalForm().getByTestId("field-weight"),
+    ).toHaveValue(expected);
   },
 );
+
+// SPEC §17.50 -- pin the absence of `field-title`; if a future change
+// re-introduces a title field by accident the e2e suite catches it.
+Then("the edit-node modal does not render a title field", async ({ page }) => {
+  const kiosk = new TreeGraphPage(page);
+  await expect(
+    kiosk.editNodeModalForm().getByTestId("field-title"),
+  ).toHaveCount(0);
+});
 
 When(
   "I set the edit-node modal field {string} to {string}",

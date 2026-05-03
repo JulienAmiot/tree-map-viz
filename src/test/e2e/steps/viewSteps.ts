@@ -583,39 +583,44 @@ Then(
 Then(
   "the focused value-date is in the bottom-right corner of the tile",
   async ({ page }) => {
-    // §17.18 — timestamp moved from top-right to bottom-right. We use
-    // the parent-strip host (`<business-score-card-as-parent>` /
-    // `<text-node-as-parent>`) bounding box as the "tile" reference:
-    // it has `width: 100%; height: 100%` so its box matches the slot
-    // it occupies. The title sits at the top of that host; the
-    // timestamp must sit at the bottom-right corner of the same host.
+    // §17.18 — timestamp moved from top-right to bottom-right.
+    // §17.45 introduced the metric-pane (`.metric-pane` inside the
+    // per-view's body) as the timestamp's containing block; with a
+    // description sibling the metric-pane is the LEFT half of the
+    // body (row flex) and with no description it fills the body. The
+    // §17.46 amendment switches the body to column flex when the
+    // per-view's host is taller than wide (the landscape left-rail
+    // case), in which case the metric-pane is the TOP half of the
+    // body and the description sits below -- so "bottom-right of the
+    // tile" no longer maps to "bottom of the strip's outer rect"
+    // when a description is present. The contract that survives both
+    // refactors is "bottom-right of the metric-pane" (the §17.45
+    // containing block); that's what this step now reads against.
     const kiosk = new TreeGraphPage(page);
     const ts = kiosk.parentStrip().getByTestId("value-date");
     const title = kiosk.parentStrip().getByTestId("title");
+    const metricPane = kiosk.parentStrip().getByTestId("metric-pane");
     await expect(ts).toHaveCount(1);
     await expect(title).toHaveCount(1);
+    await expect(metricPane).toHaveCount(1);
     const tsBox = await ts.boundingBox();
     const titleBox = await title.boundingBox();
+    const paneBox = await metricPane.boundingBox();
     expect(tsBox).not.toBeNull();
     expect(titleBox).not.toBeNull();
-    // The title row gives us the tile's left/right and top edges; for
-    // the bottom edge we read the parent-strip host's box (it spans
-    // the same width as the title and reaches down to the tile's
-    // bottom).
-    const stripBox = await kiosk.parentStrip().boundingBox();
-    expect(stripBox).not.toBeNull();
-    // Right half of the tile:
-    const titleMidX = titleBox!.x + titleBox!.width / 2;
-    expect(tsBox!.x).toBeGreaterThan(titleMidX);
-    // Bottom half of the tile (well below the title row):
-    const stripMidY = stripBox!.y + stripBox!.height / 2;
-    expect(tsBox!.y).toBeGreaterThan(stripMidY);
-    // Hugs the right edge of the tile:
-    const distFromRight = titleBox!.x + titleBox!.width - (tsBox!.x + tsBox!.width);
+    expect(paneBox).not.toBeNull();
+    // Right half of the metric-pane:
+    const paneMidX = paneBox!.x + paneBox!.width / 2;
+    expect(tsBox!.x).toBeGreaterThan(paneMidX);
+    // Bottom half of the metric-pane (well below the title row):
+    const paneMidY = paneBox!.y + paneBox!.height / 2;
+    expect(tsBox!.y).toBeGreaterThan(paneMidY);
+    // Hugs the right edge of the metric-pane:
+    const distFromRight = paneBox!.x + paneBox!.width - (tsBox!.x + tsBox!.width);
     expect(distFromRight).toBeLessThan(64);
-    // Hugs the bottom edge of the tile:
+    // Hugs the bottom edge of the metric-pane:
     const distFromBottom =
-      stripBox!.y + stripBox!.height - (tsBox!.y + tsBox!.height);
+      paneBox!.y + paneBox!.height - (tsBox!.y + tsBox!.height);
     expect(distFromBottom).toBeLessThan(64);
   },
 );
@@ -623,19 +628,26 @@ Then(
 Then(
   "the focused value-date offset matches a child tile value-date offset within {int} px",
   async ({ page }, tolerancePx: number) => {
-    // SPEC §17.30 — the parent panel's timestamp must sit at the same
-    // visual distance from the strip's outer edge as a child tile's
-    // timestamp from its tile's outer edge. The shared
-    // `tileLayoutStyles` declares `bottom: 0.4rem; right: 0.6rem` for
-    // both — the parity hinges on the per-view's `:host { position:
-    // static }` override letting the timestamp escape the strip's
-    // wrapper padding.
+    // SPEC §17.30 (refined by §17.45) — the parent panel's timestamp
+    // must sit at the same visual distance from the metric-pane's
+    // outer edge as a child tile's timestamp from its tile's outer
+    // edge. The shared `tileLayoutStyles` declares
+    // `bottom: 0.4rem; right: 0.6rem` for both — the parity hinges
+    // on the metric-pane carrying `position: relative` so the
+    // absolute-positioned timestamp resolves its containing block to
+    // the metric-pane (post-§17.45).
     //
-    // The check: compute (rightEdge - timestamp.right, bottomEdge -
-    // timestamp.bottom) for both the parent strip and a child tile
-    // that has its own value-date, then assert the deltas match
-    // within `tolerancePx` (sub-rem, generous enough to absorb sub-
-    // pixel rounding + a possible 1-px strip border).
+    // Pre-§17.45 the per-view's `:host { position: static }` override
+    // piped the timestamp's containing block one layer outward to the
+    // `<parent-identity-strip>` wrapper, so the parity was measured
+    // against the strip's outer edge. §17.45 introduces a horizontal
+    // split (metric-pane left, optional description right): when a
+    // description is present the metric-pane is the LEFT half of the
+    // strip body, and "the same offset from the outer edge" means
+    // "from the metric-pane's outer edge", not from the strip's. The
+    // step measures against the metric-pane unconditionally; with no
+    // description the metric-pane fills the body so the contract
+    // collapses to the pre-§17.45 strip-outer parity.
     //
     // We look up the child tile by `data-id` rather than walking
     // `closest('[data-testid="child"]')` from the timestamp because
@@ -648,9 +660,11 @@ Then(
     const parentTs = kiosk.parentStrip().getByTestId("value-date");
     await expect(parentTs).toHaveCount(1);
     const parentBox = await parentTs.boundingBox();
-    const stripBox = await kiosk.parentStrip().boundingBox();
+    const metricPane = kiosk.parentStrip().getByTestId("metric-pane");
+    await expect(metricPane).toHaveCount(1);
+    const paneBox = await metricPane.boundingBox();
     expect(parentBox).not.toBeNull();
-    expect(stripBox).not.toBeNull();
+    expect(paneBox).not.toBeNull();
 
     const childTile = kiosk.childById("ChildB");
     const childTs = childTile.getByTestId("value-date");
@@ -661,9 +675,9 @@ Then(
     expect(childTileBox).not.toBeNull();
 
     const parentRightOffset =
-      stripBox!.x + stripBox!.width - (parentBox!.x + parentBox!.width);
+      paneBox!.x + paneBox!.width - (parentBox!.x + parentBox!.width);
     const parentBottomOffset =
-      stripBox!.y + stripBox!.height - (parentBox!.y + parentBox!.height);
+      paneBox!.y + paneBox!.height - (parentBox!.y + parentBox!.height);
     const childRightOffset =
       childTileBox!.x + childTileBox!.width - (childBox!.x + childBox!.width);
     const childBottomOffset =
@@ -728,26 +742,26 @@ Then(
 );
 
 Then(
-  "the focused BSC value is horizontally centered to the parent strip within {int} px",
+  "the focused BSC value is horizontally centered to its metric pane within {int} px",
   async ({ page }, tolerancePx: number) => {
-    // SPEC §17.39 — the centered BSC `.value` span on the focused
-    // panel must sit at the strip's full-width horizontal center.
-    // Pre-§17.39 the strip's `padding-right` (clamp(5.5rem, 8vw,
-    // 7.5rem) when both close-X and pencil are rendered) shrunk the
-    // per-view's content area by ~120 px on a 1280 px viewport, so
-    // a `justify-content: center` layout placed the value at the
-    // shrunken-area center rather than the strip's full center —
-    // ~60 px to the left of where the morph end-state had it.
+    // SPEC §17.39 (refined by §17.45) — the centered BSC `.value`
+    // span on the focused panel must sit at the **metric-pane**'s
+    // horizontal center. The metric-pane is the layout container
+    // the per-view introduces in §17.45 to host the BSC's numeric
+    // content (value + target row + timestamp); when no description
+    // sibling is present the metric-pane fills the strip's body
+    // (post-title, gutter-escaped via the §17.39 negative margin),
+    // so "centered in the metric-pane" collapses to the pre-§17.45
+    // "centered in the strip's full width" contract; when a
+    // description IS present the metric-pane is the LEFT half of
+    // the strip body, and the centered value sits at the LEFT-half
+    // center — the operator's mental model becomes "the value is
+    // centered in the metric area, the description is on the right".
     //
-    // The fix is a negative `margin-right` on the BSC parent's
-    // `.value-area` that cancels the strip's `padding-right` via
-    // the `--strip-gutter-right` custom property. The check here
-    // computes the value's center-x and asserts it matches the
-    // strip's center-x within `tolerancePx`. We deliberately
-    // measure against the strip (the visual frame), not the per-
-    // view's shadow root host (which would be the shrunken
-    // content-area) — the operator's mental model is "the value
-    // is centered in the focused panel".
+    // The check computes the value's center-x and asserts it matches
+    // the metric-pane's center-x within `tolerancePx`. Measuring
+    // against the metric-pane (not the strip) makes the assertion
+    // stable whether the focused node carries a description or not.
     //
     // Focus must be on a BSC node with a recordedValue (so the
     // `.value` is a non-empty span the bounding box is well-defined
@@ -757,14 +771,16 @@ Then(
     const parentValue = kiosk.parentStrip().getByTestId("value");
     await expect(parentValue).toHaveCount(1);
     const valueBox = await parentValue.boundingBox();
-    const stripBox = await kiosk.parentStrip().boundingBox();
+    const metricPane = kiosk.parentStrip().getByTestId("metric-pane");
+    await expect(metricPane).toHaveCount(1);
+    const paneBox = await metricPane.boundingBox();
     expect(valueBox).not.toBeNull();
-    expect(stripBox).not.toBeNull();
+    expect(paneBox).not.toBeNull();
 
     const valueCenterX = valueBox!.x + valueBox!.width / 2;
-    const stripCenterX = stripBox!.x + stripBox!.width / 2;
+    const paneCenterX = paneBox!.x + paneBox!.width / 2;
 
-    expect(Math.abs(valueCenterX - stripCenterX)).toBeLessThanOrEqual(
+    expect(Math.abs(valueCenterX - paneCenterX)).toBeLessThanOrEqual(
       tolerancePx,
     );
   },
@@ -920,6 +936,196 @@ Then(
 );
 
 // -- SPEC §17.41 -- BSC trend arrow at the right of the value -------------
+
+// -- SPEC §17.52 -- child-tile inline weight edit ------------------------
+
+Then(
+  "the child tile {string} shows a weight-edit corner button",
+  async ({ page }, nodeId: string) => {
+    // SPEC §17.52 -- every node tile carries a corner icon in the
+    // bottom-left for inline weight editing. Mirror of the §17.18
+    // bottom-right timestamp position. The button is the discoverable
+    // path; long-press is the hidden gesture.
+    const kiosk = new TreeGraphPage(page);
+    await expect(kiosk.weightEditButtonForChild(nodeId)).toHaveCount(1);
+  },
+);
+
+When(
+  "I tap the weight-edit corner button on child tile {string}",
+  async ({ page }, nodeId: string) => {
+    // SPEC §17.52 -- the icon is one of the two triggers for the
+    // popover (the other being a 500 ms long-press anywhere on the
+    // tile body). The icon's `@click` handler stops propagation so
+    // the tap does NOT also drill into the tile.
+    const kiosk = new TreeGraphPage(page);
+    await kiosk.weightEditButtonForChild(nodeId).click();
+  },
+);
+
+Then(
+  "the weight-edit popover is open",
+  async ({ page }) => {
+    const kiosk = new TreeGraphPage(page);
+    await expect.poll(() => kiosk.isWeightEditPopoverOpen()).toBe(true);
+    await expect(kiosk.weightEditPopoverPanel()).toHaveCount(1);
+  },
+);
+
+Then(
+  "the weight-edit popover is closed",
+  async ({ page }) => {
+    const kiosk = new TreeGraphPage(page);
+    await expect.poll(() => kiosk.isWeightEditPopoverOpen()).toBe(false);
+  },
+);
+
+Then(
+  "the weight-edit slider value is {string}",
+  async ({ page }, expected: string) => {
+    const kiosk = new TreeGraphPage(page);
+    await expect(kiosk.weightEditSlider()).toHaveValue(expected);
+  },
+);
+
+Then(
+  "the weight-edit live label shows {string}",
+  async ({ page }, expected: string) => {
+    const kiosk = new TreeGraphPage(page);
+    await expect(kiosk.weightEditLabel()).toHaveText(expected);
+  },
+);
+
+When(
+  "I drag the weight-edit slider to {string}",
+  async ({ page }, value: string) => {
+    // SPEC §17.52 -- simulate a drag mid-gesture: dispatch the
+    // native `input` event WITHOUT a `change`. The popover updates
+    // its live label but does NOT yet dispatch
+    // `inline-edit-weight`. The §17.52 commit-on-release contract
+    // is what we're pinning here: live label first, persisted
+    // commit only on release.
+    const kiosk = new TreeGraphPage(page);
+    await kiosk.weightEditSlider().evaluate((el, v) => {
+      const input = el as HTMLInputElement;
+      input.value = String(v);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }, value);
+  },
+);
+
+When(
+  "I release the weight-edit slider at {string}",
+  async ({ page }, value: string) => {
+    // SPEC §17.52 -- simulate the operator releasing the slider:
+    // dispatch both `input` (final live update) and `change` (the
+    // §17.52 commit seam). The popover dispatches
+    // `inline-edit-weight`, the composition root applies
+    // `editFields(node, { kind, weight })`, and the tree refreshes.
+    const kiosk = new TreeGraphPage(page);
+    await kiosk.weightEditSlider().evaluate((el, v) => {
+      const input = el as HTMLInputElement;
+      input.value = String(v);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }, value);
+  },
+);
+
+When(
+  "I press Escape to dismiss the weight-edit popover",
+  async ({ page }) => {
+    // SPEC §17.52 -- Escape on the document-level keydown listener
+    // closes the popover without commit (no `inline-edit-weight`
+    // dispatch -> no service call).
+    await page.keyboard.press("Escape");
+  },
+);
+
+When(
+  "I tap outside the weight-edit popover",
+  async ({ page }) => {
+    // SPEC §17.52 -- pointerdown OUTSIDE the popover (the screen-
+    // level capture handler walks the composedPath looking for
+    // the popover) closes without commit. Tap the top-bar (well
+    // away from any tile or the popover panel itself).
+    const kiosk = new TreeGraphPage(page);
+    await kiosk.topBar().click();
+  },
+);
+
+Then(
+  "the child tile {string} carries data-weight {string}",
+  async ({ page }, nodeId: string, expectedWeight: string) => {
+    // SPEC §17.52 -- the tile wrapper publishes the live weight
+    // as a `data-weight` attribute. After a successful commit the
+    // children-grid re-renders with the new weight on every tile,
+    // and the assertion below pins the exact post-commit value
+    // without depending on rendered-pixel area math (which is
+    // sensitive to viewport size + squarify ordering quirks).
+    const kiosk = new TreeGraphPage(page);
+    await expect(kiosk.childById(nodeId)).toHaveAttribute(
+      "data-weight",
+      expectedWeight,
+    );
+  },
+);
+
+Then(
+  "the child tile {string} bounding-box area exceeds the child tile {string} bounding-box area",
+  async ({ page }, idA: string, idB: string) => {
+    // SPEC §17.52 -- redundant but useful sanity: the visible
+    // tile sizes are also rebalanced after a commit. We pin a
+    // strict inequality (NOT a ratio) because squarify rounds
+    // sub-pixels into the smallest tile in a row, so a 5 vs 1
+    // ratio doesn't always render as exactly 5x area.
+    const kiosk = new TreeGraphPage(page);
+    const aBox = await kiosk.childById(idA).boundingBox();
+    const bBox = await kiosk.childById(idB).boundingBox();
+    if (!aBox || !bBox) throw new Error("missing bounding box");
+    expect(aBox.width * aBox.height).toBeGreaterThan(bBox.width * bBox.height);
+  },
+);
+
+When(
+  "I long-press on child tile {string}",
+  async ({ page }, nodeId: string) => {
+    // SPEC §17.52 -- the second trigger for the popover. The
+    // children-grid arms a 500 ms timer on `pointerdown` over the
+    // tile wrapper; on fire the timer dispatches
+    // `weight-edit-open`. Simulate the gesture by dispatching
+    // `pointerdown` over the tile, then waiting 600 ms (50 ms
+    // buffer past the threshold), then `pointerup`. We resolve
+    // the wrapper's center via boundingBox() so the synthesised
+    // pointerId-1 events land on the correct element.
+    const kiosk = new TreeGraphPage(page);
+    const tile = kiosk.childById(nodeId);
+    await tile.evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      el.dispatchEvent(
+        new PointerEvent("pointerdown", {
+          bubbles: true,
+          composed: true,
+          pointerId: 1,
+          clientX: cx,
+          clientY: cy,
+        }),
+      );
+    });
+    await page.waitForTimeout(600);
+    await tile.evaluate((el) => {
+      el.dispatchEvent(
+        new PointerEvent("pointerup", {
+          bubbles: true,
+          composed: true,
+          pointerId: 1,
+        }),
+      );
+    });
+  },
+);
 
 Then(
   "the child tile {string} shows a trend arrow with direction {string}",

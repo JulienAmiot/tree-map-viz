@@ -106,6 +106,8 @@ import type {
   EditNodeModal,
   EditNodeTarget,
 } from "../modal/EditNodeModal.js";
+import "../views/childWeight/WeightEditPopover.js";
+import type { WeightEditOpenDetail } from "../views/childWeight/weightEditEvents.js";
 import type { PlusTileActivateDetail } from "../views/plus/PlusTile.js";
 import "../views/index.js";
 import type { FocusedTreeViewModel } from "../views/NodeViewModel.js";
@@ -202,6 +204,19 @@ export class TreeGraphScreen extends LitElement {
   @property({ attribute: false })
   boardsPanelError: string | null = null;
 
+  /**
+   * SPEC §17.52 -- active child-tile weight-edit popover state.
+   * When non-null the shell renders `<weight-edit-popover>` anchored
+   * to `target.anchorRect` with the slider seeded at `target.weight`.
+   * The shell DOES NOT itself dispatch `inline-edit-weight` -- the
+   * popover does, and the event bubbles past the shell to the
+   * composition root. The shell only owns OPEN / CLOSE; commit lives
+   * outside (mirrors the §17.28 edit-modal split: shell owns
+   * visibility, root owns service calls).
+   */
+  @state()
+  private weightEditTarget: WeightEditOpenDetail | null = null;
+
   readonly orientation = new OrientationController(this);
 
   static styles = css`
@@ -270,8 +285,29 @@ export class TreeGraphScreen extends LitElement {
       box-sizing: border-box;
       width: 100%;
       height: 100%;
-      /* §4: parent strip ≈ 22 % (mid of 20–25 %), children grid ≈ 78 %. */
-      grid-template-rows: 22fr 78fr;
+      /* SPEC §17.46 — orientation-aware grid template. Pre-§17.46 the
+         layout was always a 2-row stack (parent strip on top, children
+         grid below) regardless of orientation: legible on a portrait
+         tablet but wasteful on a 16/9 landscape kiosk where the parent
+         strip's left-and-right sides held empty space the title row
+         could not fill (a parent title is at most ~30 chars wide; the
+         strip stretched to 1280 px or more on the kiosk default). The
+         §17.46 amendment swaps to a 2-COLUMN grid in landscape
+         (parent strip on the LEFT 25 %, children grid on the RIGHT
+         75 %) so the strip now fills a tall narrow panel that
+         resembles the way operators visually read the focused metric
+         (number on the side, supporting context — children — beside
+         it). Portrait keeps the original 22 / 78 row stack — on a
+         portrait viewport a left-rail strip would compete with the
+         children grid for the limited horizontal budget.
+         The split fraction (25 / 75) is wider than the old 22 / 78
+         because the LEFT-side strip in landscape carries the §17.45
+         description on the right half of its body — i.e. half of the
+         left rail is description text, so the rail itself needs more
+         room than the old top-strip did. The OrientationController
+         publishes data-orientation on this element; the two
+         attribute-scoped rules below pick the right grid template
+         based on the live aspect ratio. */
       /* SPEC §17.36 — small breathing room around and between the strip
          and the grid so the strip's rounded corners (and the grid's
          outer tile gutters) read as a panel rather than two flush
@@ -280,6 +316,29 @@ export class TreeGraphScreen extends LitElement {
       padding: 4px;
       gap: 4px;
       min-height: 0;
+    }
+    /* §17.46 -- portrait grid: 22 / 78 row stack (carries forward the
+       pre-§17.46 contract). The OrientationController writes
+       data-orientation="portrait" when the layout's content rect has
+       height > width. */
+    .layout[data-orientation="portrait"] {
+      grid-template-rows: 22fr 78fr;
+      grid-template-columns: 1fr;
+    }
+    /* §17.46 -- landscape grid: 25 / 75 column split, parent strip
+       on the LEFT, children grid on the RIGHT. The parent strip's
+       per-view CSS (BusinessScoreCardNodeAsParent / TextNodeAsParent)
+       reads its own container shape via a portrait-orientation CSS
+       container query and switches the body's flex-direction from
+       row to column when its host is taller than wide -- so the
+       value-pane lands on the top 50 % and the description on the
+       bottom 50 %. The grid template change here and the per-view
+       container query are decoupled: they both react to the same
+       physical aspect-ratio change, but each owns its own slice of
+       the layout. */
+    .layout[data-orientation="landscape"] {
+      grid-template-rows: 1fr;
+      grid-template-columns: 25fr 75fr;
     }
     /* §17.32 — drill-into transition. The previous (§17.20) "zoom the
        whole layout" effect was replaced by a FLIP-style morph driven
@@ -359,6 +418,15 @@ export class TreeGraphScreen extends LitElement {
         .errorMessage=${this.boardsPanelError}
         @boards-panel-cancel=${this.handleBoardsPanelModalClose}
       ></boards-panel-modal>
+      <weight-edit-popover
+        ?open=${this.weightEditTarget !== null}
+        .nodeId=${this.weightEditTarget?.nodeId ?? ""}
+        .weight=${this.weightEditTarget?.weight ?? 1}
+        .anchorRect=${this.weightEditTarget?.anchorRect ?? null}
+        .iconRect=${this.weightEditTarget?.iconRect ?? null}
+        @inline-edit-weight=${this.handleWeightCommit}
+        @weight-edit-cancel=${this.handleWeightEditCancel}
+      ></weight-edit-popover>
     `;
 
     if (!this.view) {
@@ -384,6 +452,8 @@ export class TreeGraphScreen extends LitElement {
         data-testid="layout"
         data-orientation=${this.orientation.orientation}
         @plus-tile-activate=${this.handlePlusTileActivate}
+        @weight-edit-open=${this.handleWeightEditOpen}
+        @weight-edit-cancel=${this.handleWeightEditCancel}
       >
         <parent-identity-strip
           .vm=${center}
@@ -400,6 +470,126 @@ export class TreeGraphScreen extends LitElement {
     this.modalParentId = detail.parentId;
     this.modalOpen = true;
     this.addChildError = null;
+  };
+
+  /**
+   * SPEC §17.52 -- a child tile's `<weight-edit-button>` was tapped
+   * OR the children-grid's long-press timer fired. Snapshot the
+   * detail so the popover renders anchored to the tile's frozen
+   * rect; subsequent treemap reflows don't move the popover (the
+   * anchorRect was captured by reference at dispatch time, not
+   * re-read here).
+   *
+   * SPEC §17.52-polish -- if the popover is already open for the
+   * SAME tile, close instead of re-opening. Operator follow-up:
+   * *"should disappear once you've interacted with the icon
+   * again"*. Tapping a DIFFERENT tile's icon (or long-pressing a
+   * different tile) still re-targets the popover, so the operator
+   * can fluidly walk from one tile to the next without an
+   * intermediate close-tap. The toggle key is the `nodeId` -- the
+   * same node identity the composition root carries through
+   * `EditNodeService.editFields` -- so the contract is invariant
+   * whether the dispatch came from the corner icon or the long-
+   * press path.
+   */
+  private handleWeightEditOpen = (e: Event): void => {
+    const detail = (e as CustomEvent<WeightEditOpenDetail>).detail;
+    if (
+      this.weightEditTarget !== null &&
+      this.weightEditTarget.nodeId === detail.nodeId
+    ) {
+      this.weightEditTarget = null;
+      return;
+    }
+    this.weightEditTarget = detail;
+  };
+
+  /**
+   * SPEC §17.52 -- close path. Cleared by:
+   *   - tap-outside (the document-level `pointerdown` capture
+   *     listener installed in `connectedCallback`);
+   *   - Escape (the document-level `keydown` listener);
+   *   - explicit `weight-edit-cancel` event from the popover (e.g.
+   *     Escape pressed while the slider has focus);
+   *   - successful commit (handleWeightCommit also closes).
+   */
+  private handleWeightEditCancel = (): void => {
+    this.weightEditTarget = null;
+  };
+
+  /**
+   * SPEC §17.52 -- the popover dispatched `inline-edit-weight` on
+   * thumb release. The composition root (main.ts) listens for this
+   * event on the screen and applies `editFields(node, { kind,
+   * weight })`. The shell's only job is to close the popover so the
+   * just-edited tile becomes interactable again (without this close
+   * the popover would linger over a now-stale anchorRect once the
+   * post-commit treemap reflow moves the tile to its new size).
+   * The event itself is NOT stopped here -- it continues bubbling to
+   * main.ts where the service call lands.
+   */
+  private handleWeightCommit = (): void => {
+    this.weightEditTarget = null;
+  };
+
+  /**
+   * SPEC §17.52 -- document-level outside-tap + Escape listeners.
+   * Installed when the screen is connected so the popover can be
+   * dismissed by interactions OUTSIDE the popover's own shadow root
+   * (the popover itself can only see events that bubble through
+   * its own DOM). Both listeners early-out when no popover is open
+   * so the screen doesn't pay an event-handling cost in the common
+   * case.
+   *
+   * Outside-tap detection uses `pointerdown` (not `click`) so the
+   * popover closes the moment the operator starts a tap on any
+   * other tile -- the operator's mental model is "I tap somewhere
+   * else, the popover goes away", not "I have to wait for the
+   * tap to complete". Capture phase (`{ capture: true }`) so we
+   * see the event before any element-level `stopPropagation`. The
+   * `composedPath()` check is what crosses shadow boundaries: if
+   * the popover element itself is in the path, the click is
+   * INSIDE -- keep the popover open.
+   */
+  override connectedCallback(): void {
+    super.connectedCallback();
+    document.addEventListener("pointerdown", this.handleDocumentPointerDown, {
+      capture: true,
+    });
+    document.addEventListener("keydown", this.handleDocumentKeyDown);
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    document.removeEventListener(
+      "pointerdown",
+      this.handleDocumentPointerDown,
+      { capture: true },
+    );
+    document.removeEventListener("keydown", this.handleDocumentKeyDown);
+  }
+
+  private handleDocumentPointerDown = (e: Event): void => {
+    if (this.weightEditTarget === null) return;
+    const popover = this.shadowRoot?.querySelector("weight-edit-popover");
+    if (!popover) return;
+    const path =
+      typeof (e as Event & { composedPath?: () => EventTarget[] })
+        .composedPath === "function"
+        ? (e as Event & { composedPath: () => EventTarget[] }).composedPath()
+        : [];
+    if (path.includes(popover)) {
+      // Click was inside the popover (the slider, the label, or
+      // the panel chrome) -- don't close.
+      return;
+    }
+    this.weightEditTarget = null;
+  };
+
+  private handleDocumentKeyDown = (e: KeyboardEvent): void => {
+    if (e.key === "Escape" && this.weightEditTarget !== null) {
+      this.weightEditTarget = null;
+    }
   };
 
   private handleModalClose = (): void => {

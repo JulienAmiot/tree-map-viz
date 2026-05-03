@@ -90,16 +90,28 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And the parent panel background tint differs from a child tile background tint
 
   @HE-???? @priority:high
-  Scenario: Parent panel timestamp sits at the same offset from its outer edge as a child tile timestamp (§17.30)
+  Scenario: Parent panel timestamp sits at the same offset from its outer edge as a child tile timestamp (§17.30 / §17.45)
     # SPEC §17.30 — the date on the focused panel must visually hug
     # the panel's bottom-right corner at the same distance a child
     # tile's date hugs its tile's bottom-right corner. Pre-§17.30 the
     # parent strip wrapped the per-view element with extra padding
     # (~1.25rem) which pushed the parent date ~1.65rem / ~1.85rem from
     # the panel's outer edge, while the children's dates stayed at
-    # ~0.4rem / ~0.6rem. Post-§17.30 the per-view's `:host { position:
-    # static }` lets the timestamp escape into the strip's positioning
-    # context so both offsets land in the same range.
+    # ~0.4rem / ~0.6rem. §17.30 piped the timestamp's containing
+    # block to the strip's wrapper via `:host { position: static }`
+    # so both offsets landed in the same range.
+    #
+    # SPEC §17.45 amendment — the per-view now splits its body
+    # horizontally into a `.metric-pane` (left, holds the value +
+    # target row + timestamp) and a `.description` (right, when
+    # `vm.description` is non-empty). The metric-pane carries
+    # `position: relative`, so the timestamp's containing block is
+    # the metric-pane (not the strip's wrapper). The "outer edge"
+    # the parity is measured against is therefore the metric-pane's
+    # outer edge: with no description the metric-pane fills the
+    # strip's body (parity collapses to the pre-§17.45 strip-edge
+    # contract); with a description the metric-pane is the LEFT
+    # half and the parity holds against that half's outer edge.
     #
     # Default focus on `mixedComputed` is `Root` (computed=true), whose
     # children-derived `dateIso` is the most recent of the children's
@@ -136,9 +148,9 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     Then the focused title offset matches a child tile title offset within 4 px
 
   @HE-???? @priority:high
-  Scenario: Parent BSC value is horizontally centered to the strip's full width (§17.39)
+  Scenario: Parent BSC value is horizontally centered to its metric pane (§17.39 / §17.45)
     # SPEC §17.39 — when the focused panel renders a BSC node, the
-    # centered `.value` span must sit at the strip's full-width
+    # centered `.value` span must sit at the metric area's
     # horizontal center, NOT at the padding-right-shrunk content-
     # area's center. Pre-§17.39 the strip's `.strip` wrapper
     # carried `padding-right: clamp(5.5rem, 8vw, 7.5rem)` whenever
@@ -146,21 +158,30 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     # the per-view's value-area inherited the shrunken width and
     # the centered `.value` snapped left by `gutter / 2` at commit
     # vs. the morph's full-rect end-state — the operator's "value
-    # jumping to the left" feedback. Post-§17.39 the BSC parent's
-    # `.value-area` carries a negative `margin-right` that exactly
-    # cancels the strip's `padding-right` (via the
-    # `--strip-gutter-right` custom property the strip publishes),
-    # so the centered value lands at the strip's full-width center
-    # — same as the morph end-state, no jump at commit.
+    # jumping to the left" feedback. The §17.39 fix lifted the
+    # gutter literal into a CSS custom property
+    # `--strip-gutter-right` and applied a negative `margin-right`
+    # on the BSC parent's metric area to cancel it.
     #
-    # Focus on `ChildB` (recordedValue BSC, always present in
-    # `mixedComputed`) so the strip carries a numeric `.value`
-    # span. Tolerance `2 px` absorbs sub-pixel rounding from the
-    # negative-margin / clamp arithmetic without admitting a 60-
-    # px-class regression (the pre-fix offset was ~half the
-    # gutter).
+    # SPEC §17.45 amendment — the per-view's body now splits into
+    # `.metric-pane` (left, holding the value + target row +
+    # timestamp) and `.description` (right, when present). When
+    # the focused node carries a description the metric-pane is
+    # the LEFT half of the strip body, and the centered value sits
+    # at the LEFT-half center, not the strip's full center. The
+    # negative margin-right is dropped on description bodies
+    # (description occupies the would-be right half, so there's no
+    # gutter to escape into); without a description the metric-pane
+    # fills the body and the negative margin still applies to land
+    # the centered value at the strip's full-width center. The
+    # invariant the operator cares about is "the value is centered
+    # in its container" — the container is the metric-pane in both
+    # cases. Focus on `ChildB` (recordedValue BSC, always present
+    # in `mixedComputed` — has a description so the metric-pane is
+    # the LEFT half of the strip body). Tolerance `2 px` absorbs
+    # sub-pixel rounding from the flex / clamp arithmetic.
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge
     And I reload the kiosk
     And I focus on node "ChildB"
-    Then the focused BSC value is horizontally centered to the parent strip within 2 px
+    Then the focused BSC value is horizontally centered to its metric pane within 2 px
