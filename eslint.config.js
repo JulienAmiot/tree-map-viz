@@ -5,7 +5,15 @@ const FORBID_LIT = ["lit", "lit/decorators.js", "lit/directives/class-map.js", "
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "node_modules/**", "src/test/e2e/.features-gen/**", "playwright-report/**", "test-results/**"],
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "src/test/e2e/.features-gen/**",
+      "playwright-report/**",
+      "test-results/**",
+      "coverage/**",
+      ".scannerwork/**",
+    ],
   },
   {
     languageOptions: {
