@@ -1,5 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// SPEC §17.52 -- jsdom does not expose a `PointerEvent` constructor;
+// the §17.52 outside-tap-close tests need to dispatch `pointerdown`
+// on the document to drive the shell's document-level listener. The
+// shim mirrors the §17.51 stepper-button test shim and only kicks
+// in when `PointerEvent` is genuinely absent.
+if (typeof globalThis.PointerEvent === "undefined") {
+  class PointerEventShim extends Event {
+    pointerId: number;
+    constructor(type: string, init: EventInit & { pointerId?: number } = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 0;
+    }
+  }
+  (globalThis as unknown as { PointerEvent: typeof PointerEvent }).PointerEvent =
+    PointerEventShim as unknown as typeof PointerEvent;
+}
+
 import { DRILL_CLASS } from "../../../../../adapters/ui/animations/drillTransitions.js";
 import "../../../../../adapters/ui/shell/TreeGraphScreen.js";
 import { TreeGraphScreen } from "../../../../../adapters/ui/shell/TreeGraphScreen.js";
@@ -157,6 +174,28 @@ describe("<tree-graph-screen>", () => {
       '[data-testid="layout"]',
     ) as HTMLElement | null;
     expect(layout?.dataset["orientation"]).toBe("portrait");
+  });
+
+  it("\u00a717.46 \u2014 the layout grid uses a column split (parent strip 25 % left, children grid 75 % right) in landscape and a row stack (22 / 78) in portrait", () => {
+    // \u00a717.46 amends the pre-\u00a717.46 contract that always
+    // stacked the parent strip on top regardless of orientation.
+    // On a wide-and-short kiosk viewport (1280\u00d7720) the strip
+    // wasted most of its horizontal real-estate; the new column
+    // split puts it on the LEFT 25 % and gives the children grid
+    // the RIGHT 75 %, leaving the strip a tall narrow panel for
+    // the metric on top + description on bottom (\u00a717.45 split
+    // flipped to vertical via the per-view's container query).
+    // Pin both attribute-scoped rules at the CSS level so a future
+    // refactor that breaks one is caught at test-time -- jsdom
+    // doesn't compute shadow-scoped CSS for layout assertions
+    // (the e2e suite covers the real-browser geometry).
+    const cssText = String((TreeGraphScreen.styles as { cssText?: string }).cssText ?? "");
+    expect(cssText).toMatch(
+      /\.layout\[data-orientation="portrait"\]\s*\{[\s\S]*?grid-template-rows:\s*22fr\s+78fr/,
+    );
+    expect(cssText).toMatch(
+      /\.layout\[data-orientation="landscape"\]\s*\{[\s\S]*?grid-template-columns:\s*25fr\s+75fr/,
+    );
   });
 
   it("hides the loading placeholder once a view is set", async () => {
@@ -726,6 +765,320 @@ describe("<tree-graph-screen>", () => {
       await el.updateComplete;
       expect(handler).toHaveBeenCalledTimes(1);
       expect(el.isBoardsPanelModalOpen).toBe(true);
+    });
+  });
+
+  // -- SPEC §17.52 -- weight-edit popover seam ------------------------
+
+  describe("weight-edit popover seam (\u00a717.52)", () => {
+    it("renders a <weight-edit-popover> overlay (closed by default)", async () => {
+      // SPEC §17.52 -- the popover is always rendered (so its
+      // size + anchored top/left can be computed in `updated()`)
+      // but stays closed via `?open=false` until a tile fires
+      // `weight-edit-open`.
+      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const popover = el.shadowRoot?.querySelector("weight-edit-popover");
+      expect(popover).not.toBeNull();
+      expect(popover?.hasAttribute("open")).toBe(false);
+    });
+
+    it("a `weight-edit-open` event from inside the layout opens the popover with the supplied detail", async () => {
+      // SPEC §17.52 -- the screen's @weight-edit-open handler
+      // captures the detail (nodeId + weight + anchorRect) and
+      // surfaces it through the popover's properties. The
+      // event is dispatched from inside the layout (a tile in
+      // the children grid in production); jsdom synthesises
+      // the same shape via a CustomEvent on the layout div.
+      const el = await mountLitElement<TreeGraphScreen>(
+        "tree-graph-screen",
+        (e) => {
+          e.view = focusedView(textVm, [nodeSlot("uuid-1", "T1")]);
+        },
+      );
+      const layout = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="layout"]',
+      )!;
+      const anchor: DOMRect = {
+        left: 100,
+        top: 100,
+        right: 200,
+        bottom: 200,
+        width: 100,
+        height: 100,
+        x: 100,
+        y: 100,
+        toJSON() {
+          return {};
+        },
+      } as DOMRect;
+      layout.dispatchEvent(
+        new CustomEvent("weight-edit-open", {
+          bubbles: true,
+          composed: true,
+          detail: { nodeId: "uuid-1", weight: 2.5, anchorRect: anchor },
+        }),
+      );
+      await el.updateComplete;
+      const popover = el.shadowRoot?.querySelector("weight-edit-popover")!;
+      expect(popover.hasAttribute("open")).toBe(true);
+      const popoverWithProps = popover as unknown as {
+        nodeId: string;
+        weight: number;
+      };
+      expect(popoverWithProps.nodeId).toBe("uuid-1");
+      expect(popoverWithProps.weight).toBe(2.5);
+    });
+
+    it("`inline-edit-weight` from the popover closes the popover (composition root then applies the service)", async () => {
+      // SPEC §17.52 -- the shell closes the popover on commit
+      // so the just-edited tile becomes interactable again
+      // before main.ts runs the EditNodeService call. The
+      // `inline-edit-weight` event itself is NOT stopped here;
+      // it bubbles past the screen to main.ts.
+      const el = await mountLitElement<TreeGraphScreen>(
+        "tree-graph-screen",
+        (e) => {
+          e.view = focusedView(textVm, [nodeSlot("uuid-1", "T1")]);
+        },
+      );
+      const layout = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="layout"]',
+      )!;
+      layout.dispatchEvent(
+        new CustomEvent("weight-edit-open", {
+          bubbles: true,
+          composed: true,
+          detail: {
+            nodeId: "uuid-1",
+            weight: 1,
+            anchorRect: {
+              left: 0,
+              top: 0,
+              right: 50,
+              bottom: 50,
+              width: 50,
+              height: 50,
+              x: 0,
+              y: 0,
+              toJSON() {
+                return {};
+              },
+            } as DOMRect,
+          },
+        }),
+      );
+      await el.updateComplete;
+      const popover = el.shadowRoot?.querySelector("weight-edit-popover")!;
+      expect(popover.hasAttribute("open")).toBe(true);
+      // Listen on the screen so we confirm the event is allowed
+      // to bubble (composition root concern: apply service).
+      const screenHandler = vi.fn();
+      el.addEventListener("inline-edit-weight", screenHandler);
+      popover.dispatchEvent(
+        new CustomEvent("inline-edit-weight", {
+          bubbles: true,
+          composed: true,
+          detail: { nodeId: "uuid-1", weight: 4.5 },
+        }),
+      );
+      await el.updateComplete;
+      expect(screenHandler).toHaveBeenCalledTimes(1);
+      // Popover closed.
+      expect(popover.hasAttribute("open")).toBe(false);
+    });
+
+    it("Escape on document closes the popover (\u00a717.52 cancel path)", async () => {
+      const el = await mountLitElement<TreeGraphScreen>(
+        "tree-graph-screen",
+        (e) => {
+          e.view = focusedView(textVm, [nodeSlot("uuid-1", "T1")]);
+        },
+      );
+      const layout = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="layout"]',
+      )!;
+      layout.dispatchEvent(
+        new CustomEvent("weight-edit-open", {
+          bubbles: true,
+          composed: true,
+          detail: {
+            nodeId: "uuid-1",
+            weight: 1,
+            anchorRect: {
+              left: 0,
+              top: 0,
+              right: 50,
+              bottom: 50,
+              width: 50,
+              height: 50,
+              x: 0,
+              y: 0,
+              toJSON() {
+                return {};
+              },
+            } as DOMRect,
+          },
+        }),
+      );
+      await el.updateComplete;
+      const popover = el.shadowRoot?.querySelector("weight-edit-popover")!;
+      expect(popover.hasAttribute("open")).toBe(true);
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+      await el.updateComplete;
+      expect(popover.hasAttribute("open")).toBe(false);
+    });
+
+    it("a pointerdown OUTSIDE the popover closes it; a pointerdown INSIDE does NOT (\u00a717.52)", async () => {
+      // SPEC §17.52 -- outside-tap close uses the document-
+      // level capture-phase pointerdown listener that walks
+      // the composedPath looking for the popover element.
+      // Inside-the-popover pointerdowns must NOT close (else
+      // the operator's slider drag would dismiss the popover
+      // mid-gesture).
+      const el = await mountLitElement<TreeGraphScreen>(
+        "tree-graph-screen",
+        (e) => {
+          e.view = focusedView(textVm, [nodeSlot("uuid-1", "T1")]);
+        },
+      );
+      const layout = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="layout"]',
+      )!;
+      layout.dispatchEvent(
+        new CustomEvent("weight-edit-open", {
+          bubbles: true,
+          composed: true,
+          detail: {
+            nodeId: "uuid-1",
+            weight: 1,
+            anchorRect: {
+              left: 0,
+              top: 0,
+              right: 50,
+              bottom: 50,
+              width: 50,
+              height: 50,
+              x: 0,
+              y: 0,
+              toJSON() {
+                return {};
+              },
+            } as DOMRect,
+          },
+        }),
+      );
+      await el.updateComplete;
+      const popover = el.shadowRoot?.querySelector("weight-edit-popover")!;
+      expect(popover.hasAttribute("open")).toBe(true);
+
+      // Pointerdown on the popover -- must NOT close.
+      const insideEvent = new PointerEvent("pointerdown", { bubbles: true });
+      popover.dispatchEvent(insideEvent);
+      await el.updateComplete;
+      // jsdom's CustomEvent doesn't trigger the document
+      // capture path automatically; instead simulate a
+      // dispatch on the document with a composedPath that
+      // includes the popover.
+      const insideOnDoc = new PointerEvent("pointerdown", { bubbles: true });
+      Object.defineProperty(insideOnDoc, "composedPath", {
+        value: () => [popover, document],
+      });
+      document.dispatchEvent(insideOnDoc);
+      await el.updateComplete;
+      expect(popover.hasAttribute("open")).toBe(true);
+
+      // Pointerdown OUTSIDE -- composedPath does NOT include
+      // the popover -- should close.
+      const outsideOnDoc = new PointerEvent("pointerdown", { bubbles: true });
+      Object.defineProperty(outsideOnDoc, "composedPath", {
+        value: () => [document.body, document],
+      });
+      document.dispatchEvent(outsideOnDoc);
+      await el.updateComplete;
+      expect(popover.hasAttribute("open")).toBe(false);
+    });
+
+    it("a second `weight-edit-open` for the SAME nodeId toggles the popover closed (\u00a717.52-polish)", async () => {
+      // SPEC §17.52-polish -- operator follow-up: the popover
+      // *"should disappear once you've interacted with the
+      // icon again"*. Tapping the same tile's corner icon
+      // (which dispatches the same `weight-edit-open` event a
+      // second time) closes the popover. Tapping a DIFFERENT
+      // tile's icon mid-edit re-targets instead of closing,
+      // so the operator can fluidly walk from one tile to the
+      // next without an intermediate close-tap.
+      const el = await mountLitElement<TreeGraphScreen>(
+        "tree-graph-screen",
+        (e) => {
+          e.view = focusedView(textVm, [
+            nodeSlot("uuid-1", "T1"),
+            nodeSlot("uuid-2", "T2"),
+          ]);
+        },
+      );
+      const layout = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="layout"]',
+      )!;
+      const anchor: DOMRect = {
+        left: 0,
+        top: 0,
+        right: 50,
+        bottom: 50,
+        width: 50,
+        height: 50,
+        x: 0,
+        y: 0,
+        toJSON() {
+          return {};
+        },
+      } as DOMRect;
+      // First open for uuid-1 -> popover opens.
+      layout.dispatchEvent(
+        new CustomEvent("weight-edit-open", {
+          bubbles: true,
+          composed: true,
+          detail: { nodeId: "uuid-1", weight: 1, anchorRect: anchor },
+        }),
+      );
+      await el.updateComplete;
+      const popover = el.shadowRoot?.querySelector("weight-edit-popover")!;
+      expect(popover.hasAttribute("open")).toBe(true);
+      // Second open for the SAME uuid-1 -> popover closes
+      // (toggle).
+      layout.dispatchEvent(
+        new CustomEvent("weight-edit-open", {
+          bubbles: true,
+          composed: true,
+          detail: { nodeId: "uuid-1", weight: 1, anchorRect: anchor },
+        }),
+      );
+      await el.updateComplete;
+      expect(popover.hasAttribute("open")).toBe(false);
+      // Re-open for uuid-1 (third dispatch) -> popover opens.
+      layout.dispatchEvent(
+        new CustomEvent("weight-edit-open", {
+          bubbles: true,
+          composed: true,
+          detail: { nodeId: "uuid-1", weight: 1, anchorRect: anchor },
+        }),
+      );
+      await el.updateComplete;
+      expect(popover.hasAttribute("open")).toBe(true);
+      // Now dispatch for a DIFFERENT nodeId -> popover stays
+      // open but re-targets to uuid-2 (no close).
+      layout.dispatchEvent(
+        new CustomEvent("weight-edit-open", {
+          bubbles: true,
+          composed: true,
+          detail: { nodeId: "uuid-2", weight: 3, anchorRect: anchor },
+        }),
+      );
+      await el.updateComplete;
+      expect(popover.hasAttribute("open")).toBe(true);
+      const popoverWithProps = popover as unknown as { nodeId: string };
+      expect(popoverWithProps.nodeId).toBe("uuid-2");
     });
   });
 });

@@ -94,6 +94,7 @@ import type {
 } from "./adapters/ui/shell/ParentIdentityStrip.js";
 import "./adapters/ui/shell/TreeGraphScreen.js";
 import type { TreeGraphScreen } from "./adapters/ui/shell/TreeGraphScreen.js";
+import type { InlineEditWeightDetail } from "./adapters/ui/views/childWeight/weightEditEvents.js";
 import type { InlineEditTitleDetail } from "./adapters/ui/views/inlineEditEvents.js";
 import type { InlineEditValueDetail } from "./adapters/ui/views/inlineEditEvents.js";
 import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
@@ -305,6 +306,40 @@ async function main(): Promise<void> {
       }
       const asOf = detail.asOf ?? new Date();
       const result = await editNodeSvc.appendValue(node, detail.value, asOf);
+      if (!result.ok) {
+        refresh();
+        return;
+      }
+      refresh();
+    })();
+  });
+
+  // SPEC §17.52 — child-tile inline weight edit. Dispatched by
+  // `<weight-edit-popover>` once the operator releases the slider
+  // thumb (the native `change` event on `<input type="range">`,
+  // i.e. commit-on-release). Same service path as the modal's
+  // weight field but with a one-field payload (just `weight`); the
+  // kind is inferred from the in-memory node so the operator
+  // doesn't have to know whether the tile is a TextNode or a BSC.
+  // Domain rejection (e.g. `Weight.of` rejects an out-of-range
+  // value because of a stale browser slipping past the slider's
+  // min / max) surfaces silently — the view re-renders from the
+  // unchanged tree on the failure path's `refresh()`.
+  screen.addEventListener("inline-edit-weight", (e) => {
+    void (async () => {
+      const detail = (e as CustomEvent<InlineEditWeightDetail>).detail;
+      const node = findNodeById(boards.getCurrentBoard().tree, detail.nodeId);
+      if (!node) {
+        return;
+      }
+      const kind = inferKind(node);
+      if (!kind) {
+        return;
+      }
+      const result = await editNodeSvc.editFields(node, {
+        kind,
+        weight: detail.weight,
+      });
       if (!result.ok) {
         refresh();
         return;

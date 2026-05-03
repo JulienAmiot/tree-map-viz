@@ -54,9 +54,18 @@ describe("<text-node-as-child>", () => {
     const cssText = (TextNodeAsChild.styles as readonly { cssText?: string }[])
       .map((s) => String(s.cssText ?? s))
       .join("\n");
-    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?bottom:\s*0\.4rem/);
-    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?right:\s*0\.6rem/);
-    expect(cssText).not.toMatch(/\.timestamp\s*\{[\s\S]*?top:\s*0\.4rem/);
+    // §17.18 / §17.46 — the timestamp sits in the bottom-right corner;
+    // §17.46 trimmed the literals from `0.4rem / 0.6rem` to
+    // `0.2rem / 0.35rem` (matching the reduced host padding) so the
+    // date hugs the same padded inner edge as the §17.46 bigger
+    // value's growth envelope. The regression guard is "bottom-right
+    // corner, not top-right" (the §17.18 contract) -- the literal is
+    // pinned to the post-§17.46 values for the same reason
+    // (a future tweak that sets bottom: 0 or moves it back to the
+    // top fails fast).
+    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?bottom:\s*0\.2rem/);
+    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?right:\s*0\.35rem/);
+    expect(cssText).not.toMatch(/\.timestamp\s*\{[\s\S]*?top:\s*0\.2rem/);
     // §17.18 — inline `--age-color` custom property carries the
     // age-based gradient colour (warm orange → cold pale blue).
     const inlineStyle = ts?.getAttribute("style") ?? "";
@@ -139,5 +148,31 @@ describe("<text-node-as-child>", () => {
     expect(value?.querySelector("script")).toBeNull();
     // The literal characters are still readable as text.
     expect(value?.textContent).toContain("<script>");
+  });
+
+  it("\u00a717.46 \u2014 the shared tileLayoutStyles bumps the value's cqmin coefficient and trims the host padding + timestamp font-size", () => {
+    // \u00a717.46 -- tile typography refresh (operator feedback:
+    // "the figure should be bigger and the date smaller; less
+    // padding"). Pin the new literals at the CSS-text level so a
+    // future tweak that inadvertently reverts one of the three
+    // related properties out of sync (host padding, timestamp size,
+    // value coefficient) fails fast at test-time. The TextNode child
+    // role inherits the shared rules; pinning here covers every
+    // per-view that imports tileLayoutStyles (the sibling tests in
+    // the BSC suite + TextNodeAsParent suite all read the same
+    // CSSResult chain).
+    const cssText = (TextNodeAsChild.styles as readonly { cssText?: string }[])
+      .map((s) => String(s.cssText ?? s))
+      .join("\n");
+    // Host padding trimmed from 0.4rem 0.6rem to 0.2rem 0.35rem.
+    expect(cssText).toMatch(/:host\s*\{[\s\S]*?padding:\s*0\.2rem\s+0\.35rem/);
+    // Timestamp font-size shrunk from 1.4vh to 1.15vh.
+    expect(cssText).toMatch(
+      /\.timestamp\s*\{[\s\S]*?font-size:\s*1\.15vh/,
+    );
+    // Value cqmin coefficient bumped from 36cqmin to 42cqmin.
+    expect(cssText).toMatch(
+      /\.value\s*\{[\s\S]*?font-size:\s*clamp\(\s*1\.5rem\s*,\s*42cqmin\s*,\s*22rem\s*\)/,
+    );
   });
 });

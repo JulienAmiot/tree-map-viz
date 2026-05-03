@@ -16,6 +16,16 @@ playwright/.cache/
 .env
 .env.*
 !.env.example
+!.env.sonar.example
 
 # Local stdout captures from npm scripts (vitest.log, build.log, etc.)
 *.log
+
+# Vitest coverage output (consumed by SonarQube; never committed)
+coverage/
+
+# SonarQube scanner work directory (cache + intermediate reports)
+.scannerwork/
+
+# Local SonarQube credentials (§17.53) — see .env.sonar.example
+.env.sonar

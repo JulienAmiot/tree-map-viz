@@ -4,14 +4,46 @@ import "../../../../../adapters/ui/shell/ChildrenGrid.js";
 import {
   ChildrenGrid,
   TILE_DRILL_EVENT,
+  WEIGHT_LONG_PRESS_MS,
+  WEIGHT_LONG_PRESS_MOVE_TOLERANCE_PX,
   type TileDrillDetail,
 } from "../../../../../adapters/ui/shell/ChildrenGrid.js";
+import type { WeightEditOpenDetail } from "../../../../../adapters/ui/views/childWeight/weightEditEvents.js";
+import { WEIGHT_EDIT_OPEN_EVENT } from "../../../../../adapters/ui/views/childWeight/weightEditEvents.js";
 import type { ChildSlotViewModel } from "../../../../../adapters/ui/views/NodeViewModel.js";
 import { FakeResizeObserver } from "../../../../fixtures/fakeResizeObserver.js";
 import {
   cleanupLitFixtures,
   mountLitElement,
 } from "../../../../fixtures/litElementFixture.js";
+
+// SPEC §17.52 -- jsdom (the Vitest default DOM implementation) does
+// not expose a `PointerEvent` constructor; the §17.52 long-press
+// tests need to dispatch `pointerdown` / `pointerup` / `pointermove`
+// to drive the gesture. Same shim as the §17.51 test file -- only
+// activates when the constructor is genuinely absent.
+if (typeof globalThis.PointerEvent === "undefined") {
+  class PointerEventShim extends Event {
+    pointerId: number;
+    clientX: number;
+    clientY: number;
+    constructor(
+      type: string,
+      init: EventInit & {
+        pointerId?: number;
+        clientX?: number;
+        clientY?: number;
+      } = {},
+    ) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 0;
+      this.clientX = init.clientX ?? 0;
+      this.clientY = init.clientY ?? 0;
+    }
+  }
+  (globalThis as unknown as { PointerEvent: typeof PointerEvent }).PointerEvent =
+    PointerEventShim as unknown as typeof PointerEvent;
+}
 
 /**
  * Vitest unit tests for `<children-grid>`. Swap a FakeResizeObserver in
@@ -304,5 +336,251 @@ describe("<children-grid>", () => {
     for (const tile of plusTilesOf(el)) {
       expect(tile.dataset["slot"]).toBe("plus");
     }
+  });
+
+  // -- SPEC §17.52 -- child-tile weight edit affordance ----------------
+
+  describe("\u00a717.52 \u2014 child-tile weight edit", () => {
+    it("each node tile embeds a <weight-edit-button> with the slot's nodeId + weight", async () => {
+      // SPEC §17.52 -- the corner icon is a per-tile affordance
+      // rendered as a sibling of <node-view> inside the tile
+      // wrapper. The button carries the node-id + the live weight
+      // so the popover can pre-fill the slider without a second
+      // VM lookup.
+      const el = await mountGrid([
+        nodeSlot("uuid-a", "A", 2.5),
+        nodeSlot("uuid-b", "B", 0.5),
+      ]);
+      lastObserver().fire([
+        { target: el, rect: { width: 600, height: 300 } },
+      ]);
+      await el.updateComplete;
+      const tiles = childTilesOf(el);
+      expect(tiles).toHaveLength(2);
+      const buttons = tiles.map((t) => t.querySelector("weight-edit-button"));
+      expect(buttons[0]?.getAttribute("node-id")).toBe("uuid-a");
+      expect(buttons[1]?.getAttribute("node-id")).toBe("uuid-b");
+      expect((buttons[0] as HTMLElement & { weight: number }).weight).toBe(
+        2.5,
+      );
+      expect((buttons[1] as HTMLElement & { weight: number }).weight).toBe(
+        0.5,
+      );
+      // The tile wrapper publishes the live weight as a data
+      // attribute too -- handy for e2e selectors and for the
+      // §17.52 long-press handler which reads it without going
+      // back to the slot list.
+      expect(tiles[0]?.dataset["weight"]).toBe("2.5");
+      expect(tiles[1]?.dataset["weight"]).toBe("0.5");
+    });
+
+    it("plus tiles do NOT embed a <weight-edit-button> (\u00a74 \u2014 the + has no weight to edit)", async () => {
+      const el = await mountGrid([nodeSlot("a", "A"), plusSlot("p")]);
+      lastObserver().fire([
+        { target: el, rect: { width: 600, height: 300 } },
+      ]);
+      await el.updateComplete;
+      const plus = plusTilesOf(el)[0]!;
+      expect(plus.querySelector("weight-edit-button")).toBeNull();
+    });
+
+    it("a long-press on a tile dispatches `weight-edit-open` after WEIGHT_LONG_PRESS_MS (\u00a717.52)", async () => {
+      // SPEC §17.52 -- the second trigger (besides the corner
+      // icon): pressing-and-holding the tile body for 500 ms
+      // opens the popover. The press-and-hold is a hidden
+      // gesture meant for power users; the visible icon is the
+      // discoverable path.
+      vi.useFakeTimers();
+      try {
+        const el = await mountGrid([nodeSlot("uuid-a", "A", 3)]);
+        lastObserver().fire([
+          { target: el, rect: { width: 600, height: 300 } },
+        ]);
+        await el.updateComplete;
+        const tile = childTilesOf(el)[0]!;
+        const seen: WeightEditOpenDetail[] = [];
+        el.addEventListener(WEIGHT_EDIT_OPEN_EVENT, (e) => {
+          seen.push(
+            (e as CustomEvent<WeightEditOpenDetail>).detail,
+          );
+        });
+        tile.dispatchEvent(
+          new PointerEvent("pointerdown", {
+            bubbles: true,
+            pointerId: 1,
+            clientX: 100,
+            clientY: 100,
+          }),
+        );
+        // Pre-threshold: no event yet.
+        vi.advanceTimersByTime(WEIGHT_LONG_PRESS_MS - 1);
+        expect(seen).toHaveLength(0);
+        // Cross the threshold.
+        vi.advanceTimersByTime(2);
+        expect(seen).toHaveLength(1);
+        expect(seen[0]?.nodeId).toBe("uuid-a");
+        expect(seen[0]?.weight).toBe(3);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("releasing before WEIGHT_LONG_PRESS_MS does NOT dispatch `weight-edit-open` (\u00a717.52 \u2014 short tap = drill)", async () => {
+      vi.useFakeTimers();
+      try {
+        const el = await mountGrid([nodeSlot("uuid-a", "A")]);
+        lastObserver().fire([
+          { target: el, rect: { width: 600, height: 300 } },
+        ]);
+        await el.updateComplete;
+        const tile = childTilesOf(el)[0]!;
+        const handler = vi.fn();
+        el.addEventListener(WEIGHT_EDIT_OPEN_EVENT, handler);
+        tile.dispatchEvent(
+          new PointerEvent("pointerdown", {
+            bubbles: true,
+            pointerId: 1,
+            clientX: 100,
+            clientY: 100,
+          }),
+        );
+        vi.advanceTimersByTime(200);
+        tile.dispatchEvent(
+          new PointerEvent("pointerup", { bubbles: true, pointerId: 1 }),
+        );
+        vi.advanceTimersByTime(2000);
+        expect(handler).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("a pointer-drift past WEIGHT_LONG_PRESS_MOVE_TOLERANCE_PX cancels the long-press timer (\u00a717.52)", async () => {
+      vi.useFakeTimers();
+      try {
+        const el = await mountGrid([nodeSlot("uuid-a", "A")]);
+        lastObserver().fire([
+          { target: el, rect: { width: 600, height: 300 } },
+        ]);
+        await el.updateComplete;
+        const tile = childTilesOf(el)[0]!;
+        const handler = vi.fn();
+        el.addEventListener(WEIGHT_EDIT_OPEN_EVENT, handler);
+        tile.dispatchEvent(
+          new PointerEvent("pointerdown", {
+            bubbles: true,
+            pointerId: 1,
+            clientX: 100,
+            clientY: 100,
+          }),
+        );
+        // Drift past the tolerance in y.
+        tile.dispatchEvent(
+          new PointerEvent("pointermove", {
+            bubbles: true,
+            pointerId: 1,
+            clientX: 100,
+            clientY: 100 + WEIGHT_LONG_PRESS_MOVE_TOLERANCE_PX + 1,
+          }),
+        );
+        vi.advanceTimersByTime(WEIGHT_LONG_PRESS_MS + 100);
+        expect(handler).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("the click that follows a fired long-press does NOT dispatch `tile-drill` (\u00a717.52 \u2014 long-press wins)", async () => {
+      // SPEC §17.52 -- when the long-press fires, the
+      // subsequent click (when the operator releases) must be
+      // suppressed. Without this contract releasing a long-press
+      // would simultaneously open the weight popover AND drill
+      // into the tile, leaving the popover orphaned over a
+      // different focused node.
+      vi.useFakeTimers();
+      try {
+        const el = await mountGrid([nodeSlot("uuid-a", "A")]);
+        lastObserver().fire([
+          { target: el, rect: { width: 600, height: 300 } },
+        ]);
+        await el.updateComplete;
+        const tile = childTilesOf(el)[0]!;
+        const drillHandler = vi.fn();
+        el.addEventListener(TILE_DRILL_EVENT, drillHandler);
+        tile.dispatchEvent(
+          new PointerEvent("pointerdown", {
+            bubbles: true,
+            pointerId: 1,
+            clientX: 100,
+            clientY: 100,
+          }),
+        );
+        vi.advanceTimersByTime(WEIGHT_LONG_PRESS_MS + 1);
+        // Long-press fired -- now the operator releases. The
+        // browser would normally fire `click` after pointerup,
+        // but we simulate it directly since jsdom doesn't.
+        tile.dispatchEvent(
+          new PointerEvent("pointerup", { bubbles: true, pointerId: 1 }),
+        );
+        tile.click();
+        expect(drillHandler).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("a normal short-tap click DOES dispatch `tile-drill` (no long-press in flight, \u00a74 carry-through)", async () => {
+      // SPEC §4 carry-through -- the §17.52 long-press path
+      // must NOT regress the canonical drill gesture for a
+      // simple tap.
+      const el = await mountGrid([
+        nodeSlot("uuid-a", "A"),
+        nodeSlot("uuid-b", "B"),
+      ]);
+      lastObserver().fire([
+        { target: el, rect: { width: 600, height: 300 } },
+      ]);
+      await el.updateComplete;
+      const tile = childTilesOf(el)[1]!;
+      const seen: TileDrillDetail[] = [];
+      el.addEventListener(TILE_DRILL_EVENT, (e) => {
+        seen.push((e as CustomEvent<TileDrillDetail>).detail);
+      });
+      tile.click();
+      expect(seen).toHaveLength(1);
+      expect(seen[0]?.nodeId).toBe("uuid-b");
+    });
+
+    it("the .tile selector carries a CSS transition on top/left/width/height for the post-commit reflow (\u00a717.52)", () => {
+      const cssText = String(
+        (ChildrenGrid.styles as unknown as { cssText?: string }).cssText ??
+          ChildrenGrid.styles,
+      );
+      expect(cssText).toMatch(
+        /\.tile\s*\{[^}]*transition:\s*top\s+320ms\s+ease,\s*left\s+320ms\s+ease,\s*width\s+320ms\s+ease,\s*height\s+320ms\s+ease/,
+      );
+    });
+
+    it("the .tile > * fill rule narrows to .tile > node-view + .tile > plus-tile so the corner button sizes naturally (\u00a717.52)", () => {
+      // SPEC §17.52 -- the pre-§17.52 `.tile > *` rule forced
+      // every direct child to fill the tile, which would have
+      // forced the absolutely-positioned corner button to width
+      // 100% / height 100%. The §17.52 split keeps the fill rule
+      // for the two intentional fillers (<node-view> + <plus-
+      // tile>) and lets the weight-edit-button auto-size.
+      const cssText = String(
+        (ChildrenGrid.styles as unknown as { cssText?: string }).cssText ??
+          ChildrenGrid.styles,
+      );
+      expect(cssText).toMatch(
+        /\.tile\s*>\s*node-view\s*\{[^}]*width:\s*100%/,
+      );
+      expect(cssText).toMatch(
+        /\.tile\s*>\s*plus-tile\s*\{[^}]*width:\s*100%/,
+      );
+      // The pre-§17.52 broad selector must be gone (a literal
+      // `.tile > *` would re-trip the corner-button sizing).
+      expect(cssText).not.toMatch(/\.tile\s*>\s*\*\s*\{/);
+    });
   });
 });

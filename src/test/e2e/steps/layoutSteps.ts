@@ -48,9 +48,31 @@ Then("the parent strip is above the children grid", async ({ page }) => {
       "expected parent-identity-strip + children-grid to both have bounding boxes",
     );
   }
-  // §4 / option c1: strip stays at the top in both orientations.
+  // §4 / option c1 (carried by portrait only post-§17.46): strip stays
+  // at the top in portrait. The landscape variant is covered by the
+  // separate "to the left of the children grid" step below.
   expect(stripBox.y + stripBox.height).toBeLessThanOrEqual(gridBox.y + 0.5);
 });
+
+Then(
+  "the parent strip is to the left of the children grid",
+  async ({ page }) => {
+    // SPEC §17.46 -- in landscape the parent strip docks to the LEFT 25 %
+    // rail (was: top-22 % band pre-§17.46). The §4 + option c1 invariant
+    // is amended: strip-on-top is preserved in portrait; landscape gains
+    // strip-on-left so the rail can hold the §17.45 metric / description
+    // vertical split.
+    const kiosk = new TreeGraphPage(page);
+    const stripBox = await kiosk.parentStripHost().boundingBox();
+    const gridBox = await kiosk.childrenGridHost().boundingBox();
+    if (!stripBox || !gridBox) {
+      throw new Error(
+        "expected parent-identity-strip + children-grid to both have bounding boxes",
+      );
+    }
+    expect(stripBox.x + stripBox.width).toBeLessThanOrEqual(gridBox.x + 0.5);
+  },
+);
 
 Then(
   "every tile area is at least one twelfth of the inner children grid area",

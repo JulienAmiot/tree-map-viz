@@ -30,14 +30,29 @@
  *      which form they're looking at.
  *   2. **No current-value / as-of fields.** The latest history value
  *      is edited inline on the focused panel; the modal stays scoped
- *      to "fields" (title, weight, description, unit, objective,
- *      computed, eligibleForParentComputation). Keeping the two flows
- *      orthogonal prevents a modal-confirm from racing an inline-edit
- *      on the same node.
- *   3. **All fields default to the current node's values.** Editing
+ *      to "fields" — *minus* anything already editable inline. Keeping
+ *      the two flows orthogonal prevents a modal-confirm from racing an
+ *      inline-edit on the same node.
+ *   3. **No title field** (SPEC §17.50). The title is editable inline
+ *      from the focused-panel strip (tap the title → swap to input);
+ *      the modal must NOT also expose it. Two reasons: (a) the modal
+ *      duplicates an affordance the operator already has one tap away,
+ *      adding no value; (b) two editors on the same field race each
+ *      other if both are open (the modal would need to either disable
+ *      its title field while the inline editor is active or arbitrate
+ *      between the two on confirm — neither is worth the surface). The
+ *      modal therefore covers ONLY fields with no inline equivalent:
+ *      weight, description, unit, objective, computed,
+ *      eligibleForParentComputation. Title comes through this flow as
+ *      `payload.title === undefined` and `EditNodeService.editFields`
+ *      skips the field per its existing `payload.title !== undefined`
+ *      guard.
+ *   4. **All fields default to the current node's values.** Editing
  *      means "tweak what's there", so the form opens already filled
  *      in. The Confirm button is enabled iff the operator hasn't
- *      blanked a required field (title, BSC unit, BSC objective).
+ *      blanked a required field (BSC unit + BSC objective). For a
+ *      `TextNode` only weight is editable through the modal, and the
+ *      slider always has a value, so Confirm is always enabled.
  *
  * Surface contract:
  *   - `open` (boolean attribute, reflected) — modal visible.
@@ -117,9 +132,12 @@ export class EditNodeModal extends LitElement {
   @property({ attribute: false })
   errorMessage: string | null = null;
 
-  // NB: cannot be named `title` — would shadow `HTMLElement.title`.
-  @state()
-  private formTitle = "";
+  // SPEC §17.50 -- the modal no longer carries a title field. Title is
+  // edited inline from the focused-panel strip (the §17.28 click-to-edit
+  // affordance on `<h1 class="title">`). The state slot is gone too;
+  // `seedFromTarget` does not seed it; `buildPayload` produces a
+  // payload without `title`, which `EditNodeService.editFields` treats
+  // as "do not touch the title".
 
   @state()
   private description = "";
@@ -375,17 +393,6 @@ export class EditNodeModal extends LitElement {
         ?data-error=${this.errorMessage !== null}
         @submit=${this.handleSubmit}
       >
-        <div class="field">
-          <input
-            data-testid="field-title"
-            type="text"
-            placeholder=${'Title — e.g. "North-region revenue"'}
-            .value=${this.formTitle}
-            required
-            maxlength="120"
-            @input=${(e: Event) => this.bindString(e, "formTitle")}
-          />
-        </div>
         ${isBsc ? this.renderDescriptionField() : nothing}
         <div class="field-row" data-testid="weight-row">
           <div class="field">
@@ -570,15 +577,15 @@ export class EditNodeModal extends LitElement {
     if (!this.editTarget) {
       return null;
     }
-    const title = this.formTitle.trim();
-    if (!title) {
-      return null;
-    }
+    // SPEC §17.50 -- title is intentionally omitted from the payload.
+    // `EditNodeService.editFields` skips the field when `payload.title`
+    // is `undefined`, so the operator's inline title edit (which is
+    // the canonical entry point for renames) is the only path that
+    // mutates the node's identity.title.
     const weight = this.weight.trim() === "" ? undefined : Number(this.weight);
     if (this.editTarget.kind === "TextNode") {
       return {
         kind: "TextNode",
-        title,
         ...(weight === undefined || Number.isNaN(weight) ? {} : { weight }),
       };
     }
@@ -604,7 +611,6 @@ export class EditNodeModal extends LitElement {
     }
     return {
       kind: "BusinessScoreCardNode",
-      title,
       description,
       ...(weight === undefined || Number.isNaN(weight) ? {} : { weight }),
       unit,
@@ -621,7 +627,6 @@ export class EditNodeModal extends LitElement {
   private bindString(
     e: Event,
     field:
-      | "formTitle"
       | "description"
       | "weight"
       | "unit"
@@ -650,7 +655,7 @@ export class EditNodeModal extends LitElement {
    * `bindString` helper works for both halves of the weight pair).
    */
   private seedFromTarget(target: EditNodeTarget): void {
-    this.formTitle = target.title;
+    // SPEC §17.50 -- no `formTitle` to seed; title is edited inline.
     this.weight = String(target.weight);
     if (target.kind === "TextNode") {
       this.description = "";

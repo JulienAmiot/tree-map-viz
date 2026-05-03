@@ -163,6 +163,45 @@ export class TreeGraphPage {
     return this.page.locator(`[data-testid="child"][data-id="${id}"]`);
   }
 
+  // ----- §17.52 child-tile weight-edit -----------------------------------
+
+  /**
+   * SPEC §17.52 — the corner icon nested inside a specific child tile.
+   * The button lives in the `<weight-edit-button>` shadow DOM under
+   * the tile wrapper. Playwright's `getByTestId` pierces the open
+   * shadow root; scoping by `childById(id)` first disambiguates the
+   * lookup against sibling tiles.
+   */
+  weightEditButtonForChild(id: string): Locator {
+    return this.childById(id).getByTestId("weight-edit-button");
+  }
+
+  /** SPEC §17.52 — the slider popover panel (only present in the DOM while open). */
+  weightEditPopoverPanel(): Locator {
+    return this.page.getByTestId("weight-edit-popover");
+  }
+
+  /** SPEC §17.52 — the popover host element (always rendered; `open` attr reflects state). */
+  weightEditPopoverHost(): Locator {
+    return this.page.locator("weight-edit-popover");
+  }
+
+  /** SPEC §17.52 — the slider input inside the popover. */
+  weightEditSlider(): Locator {
+    return this.page.getByTestId("weight-edit-slider");
+  }
+
+  /** SPEC §17.52 — the live numeric label inside the popover. */
+  weightEditLabel(): Locator {
+    return this.page.getByTestId("weight-edit-label");
+  }
+
+  /** Read the popover host's reflected `open` attribute. */
+  async isWeightEditPopoverOpen(): Promise<boolean> {
+    const v = await this.weightEditPopoverHost().getAttribute("open");
+    return v !== null;
+  }
+
   /** All `<plus-tile>` host elements (custom-element tag — useful for "no descendant testids" assertions). */
   plusTileHosts(): Locator {
     return this.page.locator("plus-tile");

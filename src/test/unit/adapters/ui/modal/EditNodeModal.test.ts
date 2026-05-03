@@ -113,19 +113,32 @@ describe("<edit-node-modal>", () => {
   });
 
   describe("TextNode target", () => {
-    it("seeds title + weight from the target on open", async () => {
+    it("seeds weight from the target on open (SPEC \u00a717.50 \u2014 no title field)", async () => {
+      // SPEC §17.50 -- title is edited inline from the focused-panel
+      // strip; the modal therefore renders no `field-title`. Weight
+      // is the only TextNode-editable field through the modal flow.
       const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
         e.editTarget = textTarget;
         e.open = true;
       });
       expect(panelOf(el)).not.toBeNull();
-      expect((fieldOf(el, "field-title") as HTMLInputElement).value).toBe(
-        "Quarterly review",
-      );
       expect((fieldOf(el, "field-weight") as HTMLInputElement).value).toBe("2");
       expect(
         (fieldOf(el, "field-weight-slider") as HTMLInputElement).value,
       ).toBe("2");
+    });
+
+    it("does NOT render the title field (SPEC \u00a717.50 \u2014 inline edit only)", async () => {
+      // SPEC §17.50 -- the modal MUST NOT carry a title input. Every
+      // rename happens through the focused-panel inline editor; the
+      // modal covers only fields that have no inline equivalent.
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = textTarget;
+        e.open = true;
+      });
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-title"]'),
+      ).toBeNull();
     });
 
     it("does NOT render BSC-specific fields (description / unit / objective / toggles)", async () => {
@@ -147,7 +160,10 @@ describe("<edit-node-modal>", () => {
       ).toBeNull();
     });
 
-    it("dispatches edit-node-confirm with a TextNode payload on confirm", async () => {
+    it("dispatches edit-node-confirm with a TextNode payload (no title) on confirm", async () => {
+      // SPEC §17.50 -- the payload is title-less by construction; the
+      // service skips `payload.title` when undefined, so the focused
+      // node's title is preserved across modal-confirm.
       const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
         e.editTarget = textTarget;
         e.open = true;
@@ -155,7 +171,7 @@ describe("<edit-node-modal>", () => {
       const handler = vi.fn();
       el.addEventListener(EDIT_NODE_CONFIRM_EVENT, handler);
 
-      await setInput(el, "field-title", "Renamed");
+      await setInput(el, "field-weight", "5");
       confirmBtn(el).click();
 
       expect(handler).toHaveBeenCalledTimes(1);
@@ -165,30 +181,38 @@ describe("<edit-node-modal>", () => {
       expect(detail.nodeId).toBe("uuid-text");
       expect(detail.payload).toEqual({
         kind: "TextNode",
-        title: "Renamed",
-        weight: 2,
+        weight: 5,
       });
+      // SPEC §17.50 -- explicit guard: payload must not carry a title.
+      expect(
+        (detail.payload as { title?: unknown }).title,
+      ).toBeUndefined();
     });
 
-    it("disables Confirm when the title is blank", async () => {
+    it("Confirm stays enabled for a TextNode (only weight is editable, slider always has a value)", async () => {
+      // SPEC §17.50 -- with the title field gone there is no required
+      // text input for TextNode. The slider always has a value, so
+      // Confirm stays enabled regardless of the weight input's text.
       const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
         e.editTarget = textTarget;
         e.open = true;
       });
-      await setInput(el, "field-title", "   ");
-      expect(confirmBtn(el).disabled).toBe(true);
+      expect(confirmBtn(el).disabled).toBe(false);
     });
   });
 
   describe("BusinessScoreCardNode target", () => {
-    it("seeds every field from the target on open", async () => {
+    it("seeds every modal-editable field from the target on open (SPEC \u00a717.50 \u2014 no title)", async () => {
+      // SPEC §17.50 -- title is intentionally NOT in the modal; it is
+      // edited inline from the focused-panel strip. Description, unit,
+      // objective, and the two boolean toggles are still modal-only.
       const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
         e.editTarget = bscTarget;
         e.open = true;
       });
-      expect((fieldOf(el, "field-title") as HTMLInputElement).value).toBe(
-        "Revenue",
-      );
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-title"]'),
+      ).toBeNull();
       expect(
         (fieldOf(el, "field-description") as HTMLTextAreaElement).value,
       ).toBe("EU-North revenue");
@@ -212,7 +236,11 @@ describe("<edit-node-modal>", () => {
       ).toBe(true);
     });
 
-    it("dispatches edit-node-confirm with the full BSC payload on confirm", async () => {
+    it("dispatches edit-node-confirm with a BSC payload (no title) on confirm", async () => {
+      // SPEC §17.50 -- the payload omits `title`; `EditNodeService`
+      // treats undefined title as "do not touch". The other modal-
+      // editable fields (description, unit, objective, computed,
+      // eligible) still flow through this confirm path.
       const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
         e.editTarget = bscTarget;
         e.open = true;
@@ -220,7 +248,6 @@ describe("<edit-node-modal>", () => {
       const handler = vi.fn();
       el.addEventListener(EDIT_NODE_CONFIRM_EVENT, handler);
 
-      await setInput(el, "field-title", "Renamed");
       await setInput(el, "field-unit", "%");
       await setCheckbox(el, "field-computed", true);
       confirmBtn(el).click();
@@ -232,7 +259,10 @@ describe("<edit-node-modal>", () => {
       expect(detail.nodeId).toBe("uuid-bsc");
       expect(detail.payload.kind).toBe("BusinessScoreCardNode");
       if (detail.payload.kind !== "BusinessScoreCardNode") return;
-      expect(detail.payload.title).toBe("Renamed");
+      // SPEC §17.50 -- explicit guard: payload must not carry a title.
+      expect(
+        (detail.payload as { title?: unknown }).title,
+      ).toBeUndefined();
       expect(detail.payload.unit).toBe("%");
       expect(detail.payload.computed).toBe(true);
       expect(detail.payload.objective).toEqual({
@@ -333,19 +363,24 @@ describe("<edit-node-modal>", () => {
     });
   });
 
-  it("re-seeds the form when the target swaps mid-open", async () => {
+  it("re-seeds the form when the target swaps mid-open (SPEC \u00a717.50 \u2014 weight + BSC fields)", async () => {
+    // SPEC §17.50 -- the modal no longer carries `field-title`. Re-
+    // seeding is observable through the weight slider/input (always
+    // present) and the BSC-only fields (which appear / disappear
+    // when swapping kinds) and the BSC field values when swapping
+    // BSC <-> BSC.
     const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
       e.editTarget = textTarget;
       e.open = true;
     });
-    expect((fieldOf(el, "field-title") as HTMLInputElement).value).toBe(
-      "Quarterly review",
-    );
+    expect((fieldOf(el, "field-weight") as HTMLInputElement).value).toBe("2");
+    // BSC-only fields are absent on a TextNode target.
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-unit"]'),
+    ).toBeNull();
     el.editTarget = bscTarget;
     await el.updateComplete;
-    expect((fieldOf(el, "field-title") as HTMLInputElement).value).toBe(
-      "Revenue",
-    );
+    expect((fieldOf(el, "field-weight") as HTMLInputElement).value).toBe("3");
     expect((fieldOf(el, "field-unit") as HTMLInputElement).value).toBe(
       "M\u20ac",
     );

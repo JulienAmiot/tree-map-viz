@@ -1,0 +1,116 @@
+# --------------------------------------------------------------------------
+# Local SonarQube quality-gate stack for `tree-graph-viz` (§17.53)
+# --------------------------------------------------------------------------
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# The operator wants every commit gated against a SonarQube Quality Gate
+# BEFORE it lands on `master`. Cloud-hosted runners can't reach a server
+# bound to localhost on the developer's box, so the server lives here on
+# `localhost:9000` and the gate runs locally as part of:
+#   - the manual ceremony  (`npm run sonar:gate` before merging the
+#     feature branch into master), AND
+#   - the husky `pre-push` hook (safety net — see `.husky/pre-push`).
+#
+# WHAT'S DEFINED
+# --------------
+#  - `sonarqube`  : SonarQube Community Edition LTS (latest 25.1 community).
+#                   Bound to 127.0.0.1:9000 ONLY (NOT 0.0.0.0) — the server
+#                   is meant to be reachable only from this machine; never
+#                   expose it to the LAN unless you also wire auth in front.
+#  - `db`         : PostgreSQL 16 — the recommended persistence backend
+#                   (the embedded H2 DB is dev-only and Sonar refuses to
+#                   start with it past v7.9).
+#
+# VOLUMES
+# -------
+# All four volumes are NAMED (not bind mounts) — they live in Docker's
+# default volume location. Why named? Bind mounts to `./sonar-data/...`
+# break on Windows because the SonarQube container runs as uid 1000 inside
+# the container but Windows mounts default to uid 0. Named volumes
+# sidestep the entire permission story.
+#
+# FIRST-RUN BOOT
+# --------------
+# `npm run sonar:up` runs this file. The first start takes ~90 s while
+# SonarQube initialises the schema; subsequent starts take ~30 s. Open
+# http://localhost:9000 (login: admin / admin — change immediately) and
+# create a user token via "My Account → Security → Generate Tokens"
+# named `tree-graph-viz-local`. Save the token in `.env.sonar` as
+# `SONAR_TOKEN=<value>` (file is git-ignored, see `.gitignore`).
+#
+# ELASTICSEARCH BOOTSTRAP CHECKS
+# ------------------------------
+# The `vm.max_map_count >= 262144` requirement is set in `ulimits` below
+# (Docker Desktop's WSL2 backend honours this; on Linux hosts you may need
+# to also `sysctl -w vm.max_map_count=262144`).
+#
+# EDITION CHOICE
+# --------------
+# Community Edition (free, MIT) is sufficient — it analyses the master
+# branch only. SonarQube's "branch + PR analysis" lives in Developer
+# Edition+ and is paid; the `pre-push` hook covers our master-only flow
+# without it.
+# --------------------------------------------------------------------------
+
+services:
+  sonarqube:
+    image: sonarqube:25.1.0.102122-community
+    container_name: tgv-sonarqube
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+      # Web context path stays at "/" so http://localhost:9000 resolves
+      # without a prefix. ES heap kept tiny (Sonar default is 512m, more
+      # than enough for a single-developer kiosk codebase).
+      SONAR_CE_JAVAOPTS: "-Xmx512m -Xms128m"
+      SONAR_WEB_JAVAOPTS: "-Xmx512m -Xms128m"
+      SONAR_SEARCH_JAVAOPTS: "-Xmx512m -Xms512m"
+    ports:
+      # 127.0.0.1: prefix => localhost-only bind (Docker Desktop default
+      # would otherwise expose to the LAN via 0.0.0.0).
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    healthcheck:
+      # `/api/system/status` returns `{"status":"UP"}` only once the
+      # platform AND the embedded compute engine are ready; the Sonar
+      # web UI itself comes up earlier so this is the more honest probe.
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/api/system/status | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: tgv-sonarqube-db
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonar
+    volumes:
+      - sonarqube_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonar -d sonar"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:
+  sonarqube_db:

@@ -6,7 +6,7 @@ import {
   type EditNodeOpenDetail,
   FOCUS_CLOSE_TO_PARENT_EVENT,
   type FocusCloseToParentDetail,
-  type ParentIdentityStrip,
+  ParentIdentityStrip,
 } from "../../../../../adapters/ui/shell/ParentIdentityStrip.js";
 import type { NodeViewModel } from "../../../../../adapters/ui/views/NodeViewModel.js";
 import {
@@ -197,7 +197,19 @@ describe("<parent-identity-strip>", () => {
       expect(handler).not.toHaveBeenCalled();
     });
 
-    it("flags the strip wrapper with the `has-close` modifier so CSS can reserve right-gutter padding", async () => {
+    it("flags the strip wrapper with the `has-close` modifier (semantic marker; \u00a717.47 retired the right-gutter CSS the modifier used to drive)", async () => {
+      // \u00a717.23 introduced the close-X button; the wrapper's
+      // has-close modifier was originally how the strip's CSS knew
+      // to reserve a right-side gutter so the button did not
+      // overlap the title text. \u00a717.47 retired the gutter
+      // (the buttons now match the title row's 3vh height and
+      // overlay the right end of the title row instead of dangling
+      // below it; long titles still get text-overflow: ellipsis at
+      // the title row's right edge). The modifier is kept as a
+      // semantic marker -- useful for diagnostics + the e2e steps
+      // that confirm presence -- but no longer carries a CSS
+      // payload, so this test now only asserts the marker's
+      // presence/absence keying off `parentId`.
       const el = await mountLitElement<ParentIdentityStrip>(
         "parent-identity-strip",
         (e) => {
@@ -319,6 +331,104 @@ describe("<parent-identity-strip>", () => {
       ) as HTMLElement;
       expect(wrap.classList.contains("has-close")).toBe(true);
       expect(wrap.classList.contains("has-edit")).toBe(true);
+    });
+  });
+
+  // -- \u00a717.47 buttons-aligned-with-title contract --------------------
+
+  describe("buttons aligned with the title row (\u00a717.47)", () => {
+    // \u00a717.47 -- the close-X + edit-pencil buttons should sit on
+    // the same horizontal line as the title (so the focused panel
+    // does not have stray hardware dangling below the title row
+    // into the body / value area), and they should NOT consume
+    // horizontal space at the right of the panel (so the per-view's
+    // value / description fills the strip's full inner width). The
+    // CSS contract we pin here:
+    //   1. .strip-action sizes match the title row's height
+    //      (clamp(1.5rem, 3vh, 2.25rem) square -- floor protects
+    //      touch-target on small viewports, ceiling caps the
+    //      growth on very tall ones, the natural 3vh resolves to
+    //      the title row's own height in between).
+    //   2. .strip-action's `top` is the same offset that the title
+    //      row uses (1px border + 0.2rem host padding-top) so the
+    //      button's top edge aligns flush with the title row's top
+    //      edge.
+    //   3. The has-close / has-edit modifiers no longer carry a
+    //      `padding-right` rule (the gutter is retired) -- so the
+    //      strip's content-area width is the full strip width
+    //      regardless of which buttons render.
+
+    it("the .strip-action size and top offset match the title row (clamp 1.5rem -- 3vh -- 2.25rem; top = 1px + 0.2rem)", () => {
+      const cssText = String(
+        (ParentIdentityStrip.styles as { cssText?: string }).cssText ?? "",
+      );
+      expect(cssText).toMatch(
+        /\.strip-action\s*\{[\s\S]*?width:\s*clamp\(\s*1\.5rem\s*,\s*3vh\s*,\s*2\.25rem\s*\)/,
+      );
+      expect(cssText).toMatch(
+        /\.strip-action\s*\{[\s\S]*?height:\s*clamp\(\s*1\.5rem\s*,\s*3vh\s*,\s*2\.25rem\s*\)/,
+      );
+      expect(cssText).toMatch(
+        /\.strip-action\s*\{[\s\S]*?top:\s*calc\(\s*1px\s*\+\s*0\.2rem\s*\)/,
+      );
+    });
+
+    it("the strip's CSS does not reserve a right-side gutter via padding-right (\u00a717.47 retirement holds)", () => {
+      const cssText = String(
+        (ParentIdentityStrip.styles as { cssText?: string }).cssText ?? "",
+      );
+      // \u00a717.47 -- the pre-\u00a717.47 contract was
+      //   .strip.has-close,
+      //   .strip.has-edit { padding-right: clamp(3rem, 4vw, 3.75rem); ... }
+      //   .strip.has-close.has-edit { padding-right: clamp(5.5rem, 8vw, 7.5rem); ... }
+      // Both rules are gone in \u00a717.47. The negation guards on
+      // `.strip.has-close` rule bodies catch a regression that
+      // re-introduces the layout-affecting padding. Using `[^}]*`
+      // (not `[\s\S]*?`) keeps the search confined to a single rule
+      // body so a comment further down that mentions "padding-right"
+      // (e.g. the .close-x rule's narrative) does not trip the
+      // negation. \u00a717.50 added the `--strip-gutter-right`
+      // custom-property publish on these same selectors; that is
+      // intentional and not flagged by the negation below.
+      expect(cssText).not.toMatch(
+        /\.strip\.has-close[^{]*\{[^}]*padding-right/,
+      );
+      expect(cssText).not.toMatch(
+        /\.strip\.has-edit[^{]*\{[^}]*padding-right/,
+      );
+    });
+
+    it("the strip publishes --strip-gutter-right on the .has-close / .has-edit modifiers (\u00a717.50)", () => {
+      // SPEC \u00a717.50 -- the modifier classes still carry no
+      // layout-affecting padding (\u00a717.47 retirement holds),
+      // but they now also publish a --strip-gutter-right CSS custom
+      // property that per-views consume for inline-edit input
+      // max-width. Static read-only content (title text, value
+      // figure, description) keeps text-overflow: ellipsis so a long
+      // title is clipped under the buttons -- the variable is for
+      // INTERACTIVE inline-edit inputs only. The pins below catch a
+      // regression that drops the variable export (which would let
+      // the inline title-edit run behind the close-X / edit-pencil
+      // again).
+      const cssText = String(
+        (ParentIdentityStrip.styles as { cssText?: string }).cssText ?? "",
+      );
+      // Default rule on `.strip` initialises the var to 0px so the
+      // calc(100% - var(--strip-gutter-right, 0px)) max-width in
+      // unit-fixture mounts (no modifier classes set) resolves to
+      // 100% and tests that don't set up the modifiers still pass.
+      expect(cssText).toMatch(
+        /\.strip\s*\{[\s\S]*?--strip-gutter-right:\s*0px/,
+      );
+      // One-button variant (close-X xor edit-pencil): one clamp +
+      // the right offset (0.35rem + 1px border).
+      expect(cssText).toMatch(
+        /\.strip\.has-close\s*:not\(\s*\.has-edit\s*\)\s*,\s*\.strip\.has-edit\s*:not\(\s*\.has-close\s*\)\s*\{[\s\S]*?--strip-gutter-right:\s*calc\([\s\S]*?clamp\(1\.5rem,\s*3vh,\s*2\.25rem\)/,
+      );
+      // Two-button variant: two clamps + a 0.25rem inter-button gap.
+      expect(cssText).toMatch(
+        /\.strip\.has-close\.has-edit\s*\{[\s\S]*?--strip-gutter-right:\s*calc\([\s\S]*?clamp\(1\.5rem,\s*3vh,\s*2\.25rem\)\s*\+\s*0\.25rem\s*\+\s*\n?\s*clamp\(1\.5rem,\s*3vh,\s*2\.25rem\)/,
+      );
     });
   });
 });

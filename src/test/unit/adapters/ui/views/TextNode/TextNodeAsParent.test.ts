@@ -55,8 +55,11 @@ describe("<text-node-as-parent>", () => {
     const cssText = (TextNodeAsParent.styles as readonly { cssText?: string }[])
       .map((s) => String(s.cssText ?? s))
       .join("\n");
-    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?bottom:\s*0\.4rem/);
-    expect(cssText).not.toMatch(/\.timestamp\s*\{[\s\S]*?top:\s*0\.4rem/);
+    // §17.18 / §17.46 — bottom-right corner, post-§17.46 trimmed
+    // literals (was 0.4rem; see TextNodeAsChild.test.ts for the
+    // rationale).
+    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?bottom:\s*0\.2rem/);
+    expect(cssText).not.toMatch(/\.timestamp\s*\{[\s\S]*?top:\s*0\.2rem/);
     // §17.18 — inline `--age-color` carries the lerped colour.
     expect(ts?.getAttribute("style") ?? "").toMatch(/--age-color:\s*rgb\(/);
   });

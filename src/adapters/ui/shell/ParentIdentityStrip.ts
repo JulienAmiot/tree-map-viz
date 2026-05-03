@@ -143,57 +143,95 @@ export class ParentIdentityStrip extends LitElement {
         );
       border-radius: var(--panel-border-radius, 8px);
     }
-    /* When the top-right buttons are rendered, reserve right gutter so
-       a long focused title does not run into the buttons hit zones.
-       The buttons themselves sit in the gutter via absolute positioning.
-       Modifiers (additive, set independently by render()):
-         - has-close (SPEC 17.23) -- the close-X button is rendered.
-         - has-edit  (SPEC 17.28) -- the edit-pencil button is rendered.
-       When both are set the gutter widens to accommodate both buttons;
-       when only one is set the narrower gutter is enough.
+    /* SPEC 17.47 -- the has-close / has-edit modifier classes used to
+       reserve a clamp(3rem, ...) right-side gutter on .strip so the
+       title (and the rest of the per-view's content) could not run
+       under the absolute-positioned buttons. Pre-17.47 the per-view's
+       content-area was therefore narrower than the strip's own width,
+       and the BSC parent had to read a republished gutter custom
+       property and apply a negative margin-right on the metric-pane
+       to escape the reservation for the centered value (17.39).
+       Post-17.47 the buttons shrink to match the title row's 3vh
+       height (so they sit visually inside the title row instead of
+       dangling below it into the body) and the gutter is dropped
+       entirely -- the per-view's content fills the strip's full
+       inner width, the centered value lands at the strip's full
+       center without any escape gymnastics, and the buttons overlay
+       only the right-end of the title row (the title's text-overflow:
+       ellipsis from tileLayoutStyles cuts off any title that would
+       otherwise extend behind them).
 
-       SPEC 17.39 -- the same gutter value is republished as a custom
-       property (--strip-gutter-right) so the per-view inside the strip
-       can selectively *escape* the gutter for content that would
-       otherwise jump-on-commit. CSS custom properties cascade through
-       shadow DOM, so the per-view's BusinessScoreCardNodeAsParent reads
-       the var on its .value-area and applies a negative margin-right
-       to extend the value-area back to the strip's full inner width.
-       The result: the centered BSC value lands at the strip's full-
-       width center (same as the morph end-state), instead of at the
-       padding-right-shrunk content-area's center. The title and
-       description inside the per-view do NOT read the var, so they
-       stay constrained to the content-area and continue to keep clear
-       of the buttons -- the gutter still does its job for the rows
-       that share Y-coords with the buttons; the value-area below
-       does not (the buttons are 2.25rem tall, anchored at the strip's
-       top, so the value-area sits below the buttons regardless).
-       Single source of truth: the literal clamp value lives once
-       per modifier; the var simply mirrors it. */
-    .strip.has-close,
-    .strip.has-edit {
-      padding-right: clamp(3rem, 4vw, 3.75rem);
-      --strip-gutter-right: clamp(3rem, 4vw, 3.75rem);
+       SPEC 17.50 -- the modifier classes still carry no layout-
+       affecting padding (the §17.47 retirement holds), but they now
+       also publish a CSS custom property --strip-gutter-right that
+       per-views consume for inline-edit inputs ONLY. Static read-only
+       content (title text, value figure, description body) keeps
+       text-overflow: ellipsis / overflow: hidden so a long title is
+       clipped under the buttons and does not appear truncated by a
+       reservation. Inline edit inputs are different: they are
+       INTERACTIVE, so a long edit value MUST stay visible while the
+       operator is typing -- letting the input run BEHIND the buttons
+       hides the right end of what the operator is editing. The
+       per-view picks up --strip-gutter-right via CSS custom
+       property cascade (which crosses shadow DOM boundaries, same
+       mechanism §17.32 uses for --drill-title-color) and subtracts
+       it from the inline-edit input's max-width so the input stops
+       short of the buttons. Static rendering is unaffected. */
+    .strip {
+      /* Default: no right-side gutter. Overridden by .has-close /
+         .has-edit modifiers below. The clamp(...) literals match the
+         button-positioning rules further down (.close-x.right,
+         .edit-pencil.right, the 0.25rem inter-button gap) so the
+         gutter width tracks the buttons' actual footprint at every
+         clamp-resolved size. */
+      --strip-gutter-right: 0px;
+    }
+    .strip.has-close:not(.has-edit),
+    .strip.has-edit:not(.has-close) {
+      /* One button visible (close-X xor edit-pencil): the gutter is
+         the button's clamp width plus its right offset. */
+      --strip-gutter-right: calc(
+        1px + 0.35rem + clamp(1.5rem, 3vh, 2.25rem)
+      );
     }
     .strip.has-close.has-edit {
-      padding-right: clamp(5.5rem, 8vw, 7.5rem);
-      --strip-gutter-right: clamp(5.5rem, 8vw, 7.5rem);
+      /* Both buttons visible: two button widths + the 0.25rem inter-
+         button gap + the close-X's right offset. */
+      --strip-gutter-right: calc(
+        1px + 0.35rem + clamp(1.5rem, 3vh, 2.25rem) + 0.25rem +
+          clamp(1.5rem, 3vh, 2.25rem)
+      );
     }
     node-view {
       display: block;
       width: 100%;
       height: 100%;
     }
-    /* Close-X button — overlays the top-right of the strip. The two short
-       lines that form the X are drawn via ::before / ::after pseudo-elements
-       so the glyph stays crisp at any size and inherits currentColor from
-       the strip. The 2.25rem touch target fits the SPEC §1 "no-keyboard,
-       finger-friendly" assumption (>= 36 px on a 16 px root). */
+    /* SPEC 17.47 -- close-X + edit-pencil buttons overlay the right
+       end of the title row. The two short lines that form each glyph
+       are drawn via ::before / ::after pseudo-elements so they stay
+       crisp at any size and inherit currentColor from the strip.
+       Pre-17.47 the buttons were 2.25rem square (>= 36 px touch
+       target on a 16-px root) but at that size they extended below
+       the title row's 3vh height into the body area on every kiosk-
+       class viewport (3vh ~= 21.6 px on a 720-px viewport, ~= 32.4
+       px on 1080 px) and the strip had to reserve a clamp(3rem, ...)
+       right-side gutter to keep the title clear of them.
+       Post-17.47 the button is sized to the title row's height
+       (3vh) with a 1.5rem floor (24 px -- still finger-tappable on
+       the smallest kiosk viewports) and a 2.25rem ceiling (kept for
+       very tall viewports so the touch target never grows
+       unboundedly). Anchored at top: 1px (border) + 0.2rem (per-
+       view's host padding-top, see tileLayoutStyles 17.46) so the
+       button's top edge aligns with the title row's top edge -- on
+       the typical 1080p kiosk where 3vh resolves to ~32.4 px the
+       button height clamps to the same 32.4 px and the two surfaces
+       sit on the exact same horizontal line. */
     .strip-action {
       position: absolute;
-      top: clamp(0.4rem, 1vw, 0.75rem);
-      width: 2.25rem;
-      height: 2.25rem;
+      top: calc(1px + 0.2rem);
+      width: clamp(1.5rem, 3vh, 2.25rem);
+      height: clamp(1.5rem, 3vh, 2.25rem);
       padding: 0;
       margin: 0;
       border: 0;
@@ -215,8 +253,14 @@ export class ParentIdentityStrip extends LitElement {
     .strip-action:active {
       background: color-mix(in srgb, currentColor 22%, transparent);
     }
+    /* SPEC 17.47 -- close-X sits at the strip's far right, flush with
+       the per-view's host padding-right (0.35rem) plus the strip's
+       own 1 px border so the button's right edge aligns with the
+       host's content-area right edge. The X cross-bars scale with
+       the button's font-size proxy via percentage widths so they
+       look proportional on every clamp-resolved size. */
     .close-x {
-      right: clamp(0.4rem, 1vw, 0.75rem);
+      right: calc(1px + 0.35rem);
     }
     .close-x::before,
     .close-x::after {
@@ -224,7 +268,7 @@ export class ParentIdentityStrip extends LitElement {
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 1.1rem;
+      width: 60%;
       height: 2px;
       background: currentColor;
       border-radius: 1px;
@@ -243,16 +287,17 @@ export class ParentIdentityStrip extends LitElement {
        a plus. Sized in rem (not cqmin) so it stays consistent with the
        X across viewport sizes -- the strip itself does not establish a
        containment context. */
+    /* SPEC 17.47 -- the pencil sits immediately to the left of the
+       close-X. Both buttons are clamp(1.5rem, 3vh, 2.25rem) square
+       so the offset uses the same clamp; a 0.25rem gap separates
+       them visually. */
     .edit-pencil {
-      /* Sit immediately to the left of the close-X. The close-x button
-         is 2.25rem wide; we leave a small gap for visual separation. */
-      right: calc(clamp(0.4rem, 1vw, 0.75rem) + 2.25rem + 0.35rem);
+      right: calc(1px + 0.35rem + clamp(1.5rem, 3vh, 2.25rem) + 0.25rem);
     }
     /* When the close-X is hidden (root focus), the pencil takes the
-       far-right slot so the gutter does not read as "missing button".
-       Aligned via a modifier set on the button by render(). */
+       far-right slot. */
     .edit-pencil.is-trailing {
-      right: clamp(0.4rem, 1vw, 0.75rem);
+      right: calc(1px + 0.35rem);
     }
     .edit-pencil::before,
     .edit-pencil::after {
@@ -265,19 +310,21 @@ export class ParentIdentityStrip extends LitElement {
       transform-origin: center;
     }
     /* Shaft -- the long body of the pencil, tilted 45deg so the cap end
-       is at the top-left and the tip end is at the bottom-right. */
+       is at the top-left and the tip end is at the bottom-right.
+       Width is a percentage of the button so it scales proportionally
+       with the §17.47 clamp-resolved button size. */
     .edit-pencil::before {
-      width: 1.1rem;
+      width: 60%;
       height: 2px;
       transform: translate(-50%, -50%) rotate(-45deg);
     }
     /* Tip -- a tiny perpendicular bar near the bottom-right end of the
-       shaft, drawn slightly offset and rotated 90deg from the shaft so
-       it reads as the writing point. */
+       shaft, drawn slightly offset and rotated 90deg from the shaft
+       so it reads as the writing point. */
     .edit-pencil::after {
-      width: 0.35rem;
+      width: 0.3rem;
       height: 2px;
-      transform: translate(0.18rem, 0.32rem) rotate(45deg);
+      transform: translate(0.15rem, 0.28rem) rotate(45deg);
     }
   `;
 
