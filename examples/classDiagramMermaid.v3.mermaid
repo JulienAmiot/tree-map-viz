@@ -1,0 +1,168 @@
+classDiagram
+    direction LR
+
+    %% =================================================================
+    %%  As-built node class diagram (post-§17.14 + §17.28).
+    %%  Supersedes classDiagramMermaid.v2.mermaid for current code; v2
+    %%  is kept as the historical Option B reference.
+    %%
+    %%  What's new vs. v2:
+    %%   - TextCard       — string-typed history aggregate, mirrors
+    %%                      BusinessScoreCard for TextNode (§17.14).
+    %%   - TextNode       — composes TextCard, implements
+    %%                      Historizable<string>, currentValue() returns
+    %%                      the latest string entry (§17.14).
+    %%   - setIdentity / setWeight on TreeNode             (§17.28).
+    %%   - setUnit / setObjective on BusinessScoreCard     (§17.28).
+    %%   - setComputed / setEligibleForParentComputation
+    %%     on BusinessScoreCardNode                        (§17.28).
+    %%   - EmptyHistoryError extracted to a shared module so both
+    %%     concrete nodes raise the same type from currentValue()
+    %%     (§17.14).
+    %%   - AlreadyAttachedError / NotAChildError raised by
+    %%     TreeNode.attach / TreeNode.detach.
+    %%   - Tree shape modelled as an explicit 1↔0..* self-association
+    %%     on TreeNode<T> (children / parent), what attach / detach
+    %%     actually maintain.
+    %% =================================================================
+
+    %% --- Value objects (no primitive obsession) ---
+    class Title {
+      +String value
+    }
+    class Description {
+      +String value
+    }
+    class Weight {
+      +Number value
+    }
+    class Unit {
+      +String symbol
+    }
+    class NodeIdentity {
+      +Title title
+      +Description description
+    }
+
+    %% --- Historization ---
+    class TimestampedValue~T~ {
+      +Date date
+      +T value
+      +compareByDate(a, b)$ Number
+    }
+    class Historizable~T~ {
+      <<interface>>
+      +history() readonly TimestampedValue~T~[]
+    }
+
+    %% --- Objective ---
+    class Objective~T~ {
+      +T initialValue
+      +T targetValue
+      +Date targetDate
+    }
+    class HasObjective~T~ {
+      <<interface>>
+      +objective() Objective~T~
+    }
+
+    %% --- Aggregation capability ---
+    %% TextNode does NOT implement this, so it is excluded from parent
+    %% computation by the type system, not by a runtime flag.
+    class ContributesToParent~T~ {
+      <<interface>>
+      +isEligible() Boolean
+      +contribution() TimestampedValue~T~
+    }
+
+    %% --- Tree base (abstract, generic) ---
+    class TreeNode~T~ {
+      <<abstract>>
+      +String id
+      +NodeIdentity identity
+      +Weight weight
+      +TreeNode~unknown~ parent
+      +readonly TreeNode~unknown~[] children
+      +setIdentity(NodeIdentity) void
+      +setWeight(Weight) void
+      +attach(TreeNode~unknown~) void
+      +detach(TreeNode~unknown~) void
+      +currentValue()* TimestampedValue~T~
+    }
+
+    %% --- Concrete node kinds: SIBLINGS, no chain between them ---
+    class TextNode {
+      +TextCard card
+      +history() readonly TimestampedValue~string~[]
+      +currentValue() TimestampedValue~string~
+    }
+    class BusinessScoreCardNode~T~ {
+      +BusinessScoreCard~T~ card
+      +Boolean computed
+      +Boolean eligibleForParentComputation
+      +setComputed(Boolean) void
+      +setEligibleForParentComputation(Boolean) void
+      +history() readonly TimestampedValue~T~[]
+      +objective() Objective~T~
+      +isEligible() Boolean
+      +contribution() TimestampedValue~T~
+      +currentValue() TimestampedValue~T~
+    }
+
+    %% --- Card aggregates ---
+    class BusinessScoreCard~T~ {
+      +Unit unit
+      +Objective~T~ objective
+      +of(unit, objective, history)$ BusinessScoreCard~T~
+      +setUnit(Unit) void
+      +setObjective(Objective~T~) void
+      +history() readonly TimestampedValue~T~[]
+      +addRecorded(TimestampedValue~T~) void
+    }
+    class TextCard {
+      +of(history)$ TextCard
+      +history() readonly TimestampedValue~string~[]
+      +addRecorded(TimestampedValue~string~) void
+    }
+
+    %% --- Errors raised by node lifecycle / value access ---
+    class AlreadyAttachedError {
+      <<Error>>
+    }
+    class NotAChildError {
+      <<Error>>
+    }
+    class EmptyHistoryError {
+      <<Error>>
+    }
+
+    %% --- Composition (filled diamond) ---
+    NodeIdentity *-- Title
+    NodeIdentity *-- Description
+    TreeNode~T~ *-- NodeIdentity
+    TreeNode~T~ *-- Weight
+    BusinessScoreCard~T~ *-- Unit
+    BusinessScoreCard~T~ *-- "1" Objective~T~
+    BusinessScoreCard~T~ o-- "0..*" TimestampedValue~T~
+    TextCard           o-- "0..*" TimestampedValue~T~
+    BusinessScoreCardNode~T~ *-- "1" BusinessScoreCard~T~
+    TextNode                  *-- "1" TextCard
+
+    %% --- Tree shape (self-association via attach/detach) ---
+    TreeNode~T~ "1" o-- "0..*" TreeNode~T~ : children / parent
+
+    %% --- Inheritance / realization ---
+    TreeNode~T~ <|-- TextNode
+    TreeNode~T~ <|-- BusinessScoreCardNode~T~
+    BusinessScoreCard~T~     ..|> Historizable~T~
+    TextCard                 ..|> Historizable~string~
+    TextNode                 ..|> Historizable~string~
+    BusinessScoreCardNode~T~ ..|> Historizable~T~
+    BusinessScoreCardNode~T~ ..|> HasObjective~T~
+    BusinessScoreCardNode~T~ ..|> ContributesToParent~T~
+
+    %% --- Errors raised by the node API ---
+    TreeNode~T~ ..> AlreadyAttachedError : attach() if already parented
+    TreeNode~T~ ..> NotAChildError       : detach() if not a child
+    TextNode                  ..> EmptyHistoryError : currentValue() if empty history
+    BusinessScoreCardNode~T~  ..> EmptyHistoryError : currentValue() if empty history
