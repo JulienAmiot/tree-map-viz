@@ -136,7 +136,8 @@ export class EditNodeService {
     value: string | number,
     asOf?: Date,
   ): Promise<Outcome> {
-    const stampedAt = asOf ?? this.clock.now();
+    // SPEC §17.58 — unwrap Timestamp → Date for the still-Date-shaped factory.
+    const stampedAt = asOf ?? this.clock.now().moment;
     let undo: () => void;
     try {
       undo = this.applyAppendValue(node, value, stampedAt);
