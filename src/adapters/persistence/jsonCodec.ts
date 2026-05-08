@@ -24,6 +24,7 @@ import { TreeNode } from "../../domain/nodes/TreeNode.js";
 import { Description } from "../../domain/values/Description.js";
 import { NodeIdentity } from "../../domain/values/NodeIdentity.js";
 import { Objective } from "../../domain/values/Objective.js";
+import { Timestamp } from "../../domain/values/Timestamp.js";
 import { TimestampedValue } from "../../domain/values/TimestampedValue.js";
 import { Title } from "../../domain/values/Title.js";
 import { Unit } from "../../domain/values/Unit.js";
@@ -125,7 +126,7 @@ function decodeBusinessScoreCardNode(
   const computed = requireBoolean(obj, "computed", pointer);
   const eligible = requireBoolean(obj, "eligibleForParentComputation", pointer);
 
-  const objective = Objective.of(minimalValue, targetValue, targetDate);
+  const objective = Objective.of(minimalValue, targetValue, Timestamp.of(targetDate));
   const card = BusinessScoreCard.of(unit, objective, history);
   const node = new BusinessScoreCardNode<number>(
     id,

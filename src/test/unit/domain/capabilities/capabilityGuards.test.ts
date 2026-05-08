@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { TimestampedValue } from "../../../../domain/values/TimestampedValue.js";
 import { Objective } from "../../../../domain/values/Objective.js";
+import { Timestamp } from "../../../../domain/values/Timestamp.js";
 
 import {
   implementsContributesToParent,
@@ -53,7 +54,7 @@ describe("capabilityGuards", () => {
     it("accepts an object with an objective() method", () => {
       const stub = {
         objective(): Objective<number> {
-          return Objective.of(0, 100, date);
+          return Objective.of(0, 100, Timestamp.of(date));
         },
       };
       expect(implementsHasObjective(stub)).toBe(true);
@@ -117,7 +118,7 @@ describe("capabilityGuards", () => {
           return [];
         },
         objective(): Objective<number> {
-          return Objective.of(0, 1, date);
+          return Objective.of(0, 1, Timestamp.of(date));
         },
         isEligible(): boolean {
           return true;

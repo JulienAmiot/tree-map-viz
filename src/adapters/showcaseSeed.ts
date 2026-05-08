@@ -49,6 +49,7 @@ import { TextNode } from "../domain/nodes/TextNode.js";
 import { Description } from "../domain/values/Description.js";
 import { NodeIdentity } from "../domain/values/NodeIdentity.js";
 import { Objective } from "../domain/values/Objective.js";
+import { Timestamp } from "../domain/values/Timestamp.js";
 import { TimestampedValue } from "../domain/values/TimestampedValue.js";
 import { Title } from "../domain/values/Title.js";
 import { Unit } from "../domain/values/Unit.js";
@@ -67,8 +68,10 @@ export const SHOWCASE_BOARD_NAME = "Showcase";
 export function buildShowcaseTree(now: Date = new Date()): TextNode {
   const today = startOfUtcHour(now);
   const days = (n: number): Date => new Date(today.getTime() - n * MS_PER_DAY);
-  const targetDate = new Date(
-    Date.UTC(today.getUTCFullYear(), 11, 31, 23, 59, 59),
+  // SPEC §17.60 — `Objective.of` takes a `Timestamp`; convert here once
+  // so all 10 call sites below stay readable as `Objective.of(..., targetDate)`.
+  const targetDate = Timestamp.of(
+    new Date(Date.UTC(today.getUTCFullYear(), 11, 31, 23, 59, 59)),
   );
 
   const root = new TextNode(

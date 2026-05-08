@@ -1,38 +1,36 @@
 import { describe, expect, it } from "vitest";
 
-import { InvalidObjectiveError, Objective } from "../../../../domain/values/Objective.js";
+import { Objective } from "../../../../domain/values/Objective.js";
+import { InvalidTimestampError, Timestamp } from "../../../../domain/values/Timestamp.js";
 
+// SPEC §17.60 — `Objective.of` now takes a `Timestamp`, not a `Date`.
+// Validation of bad dates therefore lives at `Timestamp.of`; the legacy
+// `InvalidObjectiveError` is gone (no `Objective`-level invariant left
+// to flag once the moment is a non-`NaN` Timestamp).
 describe("Objective", () => {
-  const targetDate = new Date("2026-12-31T00:00:00Z");
-  const sameTargetDate = new Date("2026-12-31T00:00:00Z");
-  const otherTargetDate = new Date("2027-12-31T00:00:00Z");
+  const targetDate = Timestamp.of(new Date("2026-12-31T00:00:00Z"));
+  const sameTargetDate = Timestamp.of(new Date("2026-12-31T00:00:00Z"));
+  const otherTargetDate = Timestamp.of(new Date("2027-12-31T00:00:00Z"));
 
   it("accepts initialValue, targetValue, and a valid targetDate", () => {
     const obj = Objective.of(0, 100, targetDate);
     expect(obj.initialValue).toBe(0);
     expect(obj.targetValue).toBe(100);
-    expect(obj.targetDate.getTime()).toBe(targetDate.getTime());
+    expect(obj.targetDate.getTime()).toBe(targetDate.moment.getTime());
   });
 
-  it("rejects an invalid targetDate", () => {
-    expect(() => Objective.of(0, 100, new Date("not-a-date"))).toThrow(InvalidObjectiveError);
+  it("delegates moment validation to Timestamp.of (invalid date string)", () => {
+    expect(() => Timestamp.of(new Date("not-a-date"))).toThrow(InvalidTimestampError);
   });
 
-  it("rejects a targetDate built from NaN", () => {
-    expect(() => Objective.of(0, 100, new Date(Number.NaN))).toThrow(InvalidObjectiveError);
-  });
-
-  it("defends against caller mutating the input targetDate", () => {
-    const input = new Date(targetDate.getTime());
-    const obj = Objective.of(0, 100, input);
-    input.setFullYear(1999);
-    expect(obj.targetDate.getTime()).toBe(targetDate.getTime());
+  it("delegates moment validation to Timestamp.of (NaN date)", () => {
+    expect(() => Timestamp.of(new Date(Number.NaN))).toThrow(InvalidTimestampError);
   });
 
   it("defends against caller mutating the exposed targetDate", () => {
     const obj = Objective.of(0, 100, targetDate);
     obj.targetDate.setFullYear(1999);
-    expect(obj.targetDate.getTime()).toBe(targetDate.getTime());
+    expect(obj.targetDate.getTime()).toBe(targetDate.moment.getTime());
   });
 
   it("two objectives with identical components are equal", () => {
