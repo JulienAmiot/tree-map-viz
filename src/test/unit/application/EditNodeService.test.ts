@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EditNodeService } from "../../../application/EditNodeService.js";
 import type { Clock } from "../../../application/ports/Clock.js";
 import { BusinessScoreCard } from "../../../domain/nodes/BusinessScoreCard.js";
+import { Timestamp } from "../../../domain/values/Timestamp.js";
 import { BusinessScoreCardNode } from "../../../domain/nodes/BusinessScoreCardNode.js";
 import { TextCard } from "../../../domain/nodes/TextCard.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
@@ -47,8 +48,12 @@ function makeBsc(): BusinessScoreCardNode<number> {
 // SPEC \u00a717.57 \u2014 deterministic clock for the appendValue default-asOf
 // path. Tests that pass an explicit `asOf` ignore this stub; tests that
 // rely on the default get a frozen instant they can assert against.
+// \u00a717.58 narrowed `Clock.now()` to return a `Timestamp` value object;
+// `FAKE_NOW` stays as a raw `Date` for the assertion below (history's
+// `.asOf.getTime()` compares via the underlying ms).
 const FAKE_NOW = new Date("2026-05-08T21:00:00.000Z");
-const fakeClock: Clock = { now: () => FAKE_NOW };
+const FAKE_NOW_TS = Timestamp.of(FAKE_NOW);
+const fakeClock: Clock = { now: () => FAKE_NOW_TS };
 
 describe("EditNodeService (\u00a717.28)", () => {
   let persist: ReturnType<typeof vi.fn>;
@@ -244,7 +249,7 @@ describe("EditNodeService (\u00a717.28)", () => {
 
     it("calls `clock.now()` only when `asOf` is omitted (explicit dates skip the port)", async () => {
       const node = makeText();
-      const nowSpy = vi.fn(() => FAKE_NOW);
+      const nowSpy = vi.fn(() => FAKE_NOW_TS);
       const spied: Clock = { now: nowSpy };
       const spiedSvc = new EditNodeService(spied, persist);
       await spiedSvc.appendValue(node, "explicit", new Date("2026-05-01T00:00:00Z"));

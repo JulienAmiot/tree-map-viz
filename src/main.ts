@@ -105,6 +105,7 @@ import { ImportExportService } from "./application/ImportExportService.js";
 import { TreeNavigationService } from "./application/TreeNavigationService.js";
 import type { Clock } from "./application/ports/Clock.js";
 import { BusinessScoreCardNode } from "./domain/nodes/BusinessScoreCardNode.js";
+import { Timestamp } from "./domain/values/Timestamp.js";
 import { TextCard } from "./domain/nodes/TextCard.js";
 import { TextNode } from "./domain/nodes/TextNode.js";
 import type { TreeNode } from "./domain/nodes/TreeNode.js";
@@ -118,11 +119,10 @@ import "./index.css";
 
 async function main(): Promise<void> {
   const idGen = (): string => crypto.randomUUID();
-  // SPEC §17.57 — domain ports' real-clock binding lives here, alongside
-  // `idGen`. Inline rather than in a dedicated `SystemClock` adapter
-  // file because the IdGenerator port set the precedent for tiny
-  // single-method ports being bound right in the composition root.
-  const clock: Clock = { now: () => new Date() };
+  // SPEC §17.57 / §17.58 — domain ports' real-clock binding (mirrors
+  // IdGenerator's no-adapter-file pattern). `Timestamp.of` validates
+  // `getTime()` so a `NaN`-Date would surface here at the boundary.
+  const clock: Clock = { now: () => Timestamp.of(new Date()) };
   const codec = { encode, decode };
   const repo = new LocalStorageBoardCollectionRepository({ storage: window.localStorage });
   const boards = await BoardCollectionService.create(repo, idGen);
@@ -742,7 +742,8 @@ function makeNewBoardSeedTree(
   const trimmed = boardName.trim() || "New board";
   const identity = NodeIdentity.of(Title.of(trimmed), Description.of(""));
   const card = TextCard.of([
-    TimestampedValue.of(`Welcome to **${trimmed}**.`, clock.now()),
+    // SPEC §17.58 — unwrap Timestamp → Date for the still-Date-shaped factory.
+    TimestampedValue.of(`Welcome to **${trimmed}**.`, clock.now().moment),
   ]);
   return new TextNode(id, identity, Weight.of(1), card);
 }

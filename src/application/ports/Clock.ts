@@ -1,3 +1,5 @@
+import type { Timestamp } from "../../domain/values/Timestamp.js";
+
 /**
  * Application port: a clock that returns the current moment (SPEC §17.57).
  *
@@ -13,18 +15,16 @@
  *   strings), it lands on the same port without a callable→object
  *   refactor at every call site.
  *
+ * **Return type since §17.58**: `Timestamp` — the v4-aligned VO that
+ * wraps a validated `Date` (§17.57 returned raw `Date`). Boundary-level
+ * consumers that still need a raw `Date` unwrap with `clock.now().moment`.
+ *
  * Stubs in tests stay near zero-ceremony:
  *
- *     const fixed = new Date("2026-05-01T12:00:00Z");
+ *     const fixed = Timestamp.of(new Date("2026-05-01T12:00:00Z"));
  *     const clock: Clock = { now: () => fixed };
- *
- * **Return type today**: `Date`. The v4 design names this `Timestamp`
- * (a value object). The codebase still uses native `Date` end-to-end,
- * so introducing `Timestamp` is deferred to a later v4-rollout strand;
- * `Clock.now()` will narrow to `Timestamp` at that point with no
- * intervening port-shape change.
  */
 export interface Clock {
   /** Current moment, sampled at call time. Pure — no side-effects. */
-  now(): Date;
+  now(): Timestamp;
 }
