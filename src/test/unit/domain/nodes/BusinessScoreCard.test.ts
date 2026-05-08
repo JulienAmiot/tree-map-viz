@@ -3,12 +3,13 @@ import { describe, expect, it } from "vitest";
 import type { Historizable } from "../../../../domain/capabilities/Historizable.js";
 import { BusinessScoreCard } from "../../../../domain/nodes/BusinessScoreCard.js";
 import { Objective } from "../../../../domain/values/Objective.js";
+import { Timestamp } from "../../../../domain/values/Timestamp.js";
 import { TimestampedValue } from "../../../../domain/values/TimestampedValue.js";
 import { Unit } from "../../../../domain/values/Unit.js";
 
 describe("BusinessScoreCard", () => {
   const unit = Unit.percent();
-  const objective = Objective.of(0, 100, new Date("2026-12-31T00:00:00Z"));
+  const objective = Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00Z")));
   const t2024 = TimestampedValue.of(10, new Date("2024-01-15T00:00:00Z"));
   const t2025 = TimestampedValue.of(20, new Date("2025-06-30T00:00:00Z"));
   const t2026 = TimestampedValue.of(30, new Date("2026-04-26T00:00:00Z"));
@@ -86,7 +87,7 @@ describe("BusinessScoreCard", () => {
       const sameDay = new Date("2025-06-30T00:00:00Z");
       const a = TimestampedValue.of("a", sameDay);
       const b = TimestampedValue.of("b", sameDay);
-      const stringObjective = Objective.of<string>("low", "high", new Date("2026-12-31T00:00:00Z"));
+      const stringObjective = Objective.of<string>("low", "high", Timestamp.of(new Date("2026-12-31T00:00:00Z")));
       const card = BusinessScoreCard.of<string>(unit, stringObjective, [a]);
       card.addRecorded(b);
       expect(card.history().map((tv) => tv.value)).toEqual(["a", "b"]);
@@ -112,7 +113,7 @@ describe("BusinessScoreCard", () => {
 
     it("setObjective swaps the objective reference, preserving the history", () => {
       const card = BusinessScoreCard.of(unit, objective, [t2024]);
-      const nextObj = Objective.of(10, 200, new Date("2030-01-01T00:00:00Z"));
+      const nextObj = Objective.of(10, 200, Timestamp.of(new Date("2030-01-01T00:00:00Z")));
       card.setObjective(nextObj);
       expect(card.objective).toBe(nextObj);
       expect(card.history()).toHaveLength(1);

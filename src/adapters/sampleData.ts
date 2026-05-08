@@ -5,6 +5,7 @@ import { TextNode } from "../domain/nodes/TextNode.js";
 import { Description } from "../domain/values/Description.js";
 import { NodeIdentity } from "../domain/values/NodeIdentity.js";
 import { Objective } from "../domain/values/Objective.js";
+import { Timestamp } from "../domain/values/Timestamp.js";
 import { TimestampedValue } from "../domain/values/TimestampedValue.js";
 import { Title } from "../domain/values/Title.js";
 import { Unit } from "../domain/values/Unit.js";
@@ -19,7 +20,8 @@ function makeIdentity(title: string, description: string): NodeIdentity {
  * Replace with a real adapter behind a port when loading from an API.
  */
 export function buildSampleTree(): TextNode {
-  const targetDate = new Date("2026-12-31T00:00:00Z");
+  // SPEC §17.60 — `Objective.of` takes a `Timestamp`.
+  const targetDate = Timestamp.of(new Date("2026-12-31T00:00:00Z"));
   const t1 = new Date("2026-04-22T18:25:43.511Z");
   const t2 = new Date("2026-04-23T18:25:43.511Z");
 

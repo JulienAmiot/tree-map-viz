@@ -4,6 +4,7 @@ import type { TreeNode } from "../domain/nodes/TreeNode.js";
 import { Description } from "../domain/values/Description.js";
 import { NodeIdentity } from "../domain/values/NodeIdentity.js";
 import { Objective } from "../domain/values/Objective.js";
+import { Timestamp } from "../domain/values/Timestamp.js";
 import { TimestampedValue } from "../domain/values/TimestampedValue.js";
 import { Title } from "../domain/values/Title.js";
 import { Unit } from "../domain/values/Unit.js";
@@ -219,7 +220,7 @@ export class EditNodeService {
             Objective.of(
               payload.objective.initialValue,
               payload.objective.targetValue,
-              payload.objective.targetDate,
+              Timestamp.of(payload.objective.targetDate),
             ),
           );
           undoActions.push(() => bsc.card.setObjective(prev));

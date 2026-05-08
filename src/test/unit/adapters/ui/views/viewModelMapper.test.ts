@@ -14,12 +14,13 @@ import { TreeNode } from "../../../../../domain/nodes/TreeNode.js";
 import { Description } from "../../../../../domain/values/Description.js";
 import { NodeIdentity } from "../../../../../domain/values/NodeIdentity.js";
 import { Objective } from "../../../../../domain/values/Objective.js";
+import { Timestamp } from "../../../../../domain/values/Timestamp.js";
 import { TimestampedValue } from "../../../../../domain/values/TimestampedValue.js";
 import { Title } from "../../../../../domain/values/Title.js";
 import { Unit } from "../../../../../domain/values/Unit.js";
 import { Weight } from "../../../../../domain/values/Weight.js";
 
-const targetDate = new Date("2026-12-31T00:00:00.000Z");
+const targetDate = Timestamp.of(new Date("2026-12-31T00:00:00.000Z"));
 
 function identityOf(title: string, description: string): NodeIdentity {
   return NodeIdentity.of(Title.of(title), Description.of(description));
@@ -128,7 +129,7 @@ describe("mapNodeToViewModel", () => {
     // trend (95 → 104) the regression extrapolated to year-end far
     // exceeds 100 → no deadline-risk warning.
     expect(vm.objective.targetValue).toBe(100);
-    expect(vm.objective.targetDateIso).toBe(targetDate.toISOString());
+    expect(vm.objective.targetDateIso).toBe(targetDate.moment.toISOString());
     expect(vm.objective.unit).toBe("%");
     expect(vm.objective.valueColor).toBe("rgb(22, 163, 74)");
     expect(vm.objective.warningColor).toBe("");
@@ -372,7 +373,7 @@ describe("mapNodeToViewModel", () => {
     // the yellow → orange → red ramp.
     const card = BusinessScoreCard.of(
       Unit.percent(),
-      Objective.of(0, 100, new Date("2026-12-31T00:00:00.000Z")),
+      Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
         TimestampedValue.of(0, new Date("2026-01-01T00:00:00.000Z")),
         TimestampedValue.of(10, new Date("2026-07-02T00:00:00.000Z")),
@@ -400,7 +401,7 @@ describe("mapNodeToViewModel", () => {
     // (80) is below target.
     const card = BusinessScoreCard.of(
       Unit.percent(),
-      Objective.of(0, 100, new Date("2026-12-31T00:00:00.000Z")),
+      Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
         TimestampedValue.of(0, new Date("2026-01-01T00:00:00.000Z")),
         TimestampedValue.of(80, new Date("2026-04-30T00:00:00.000Z")),
@@ -473,7 +474,7 @@ describe("mapNodeToViewModel", () => {
   it("\u00a717.44 — leaves warningColor empty once the deadline has passed", () => {
     const card = BusinessScoreCard.of(
       Unit.percent(),
-      Objective.of(0, 100, new Date("2026-06-30T00:00:00.000Z")),
+      Objective.of(0, 100, Timestamp.of(new Date("2026-06-30T00:00:00.000Z"))),
       [
         TimestampedValue.of(0, new Date("2026-01-01T00:00:00.000Z")),
         TimestampedValue.of(20, new Date("2026-05-30T00:00:00.000Z")),
@@ -500,7 +501,7 @@ describe("mapNodeToViewModel", () => {
     // §17.40 / §17.44 rule (operator opted-in) still fires the warning.
     const card = BusinessScoreCard.of(
       Unit.percent(),
-      Objective.of(0, 100, new Date("2026-12-31T00:00:00.000Z")),
+      Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
         TimestampedValue.of(130, new Date("2026-01-01T00:00:00.000Z")),
         TimestampedValue.of(110, new Date("2026-04-30T00:00:00.000Z")),
@@ -530,7 +531,7 @@ describe("mapNodeToViewModel", () => {
     // the green-channel ordering distinguishes the ramp's tilt
     // without depending on exact RGB triplets (the regression math
     // has rounding inside it).
-    const targetDate = new Date("2026-12-31T00:00:00.000Z");
+    const targetDate = Timestamp.of(new Date("2026-12-31T00:00:00.000Z"));
     const now = new Date("2026-05-02T00:00:00.000Z");
     const big = new BusinessScoreCardNode<number>(
       "big",
@@ -592,7 +593,7 @@ describe("mapNodeToViewModel", () => {
     // 2026-12-31 → progressRate ≈ 1 (perfectly on track) → up-right.
     const card = BusinessScoreCard.of(
       Unit.percent(),
-      Objective.of(0, 100, new Date("2026-12-31T00:00:00.000Z")),
+      Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
         TimestampedValue.of(0, new Date("2026-01-01T00:00:00.000Z")),
         TimestampedValue.of(50, new Date("2026-07-02T00:00:00.000Z")),
@@ -618,7 +619,7 @@ describe("mapNodeToViewModel", () => {
     // target halfway through → progressRate ≈ 2 → up.
     const card = BusinessScoreCard.of(
       Unit.percent(),
-      Objective.of(0, 100, new Date("2026-12-31T00:00:00.000Z")),
+      Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
         TimestampedValue.of(0, new Date("2026-01-01T00:00:00.000Z")),
         TimestampedValue.of(100, new Date("2026-07-02T00:00:00.000Z")),
@@ -643,7 +644,7 @@ describe("mapNodeToViewModel", () => {
     // → progressRate ≈ -2 → "down" (< -1.5).
     const card = BusinessScoreCard.of(
       Unit.percent(),
-      Objective.of(0, 100, new Date("2026-12-31T00:00:00.000Z")),
+      Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
         TimestampedValue.of(100, new Date("2026-01-01T00:00:00.000Z")),
         TimestampedValue.of(0, new Date("2026-07-02T00:00:00.000Z")),
@@ -709,7 +710,7 @@ describe("mapNodeToViewModel", () => {
     // progressRate ≈ 1.25 → up-right.
     const card = BusinessScoreCard.of(
       Unit.percent(),
-      Objective.of(100, 20, new Date("2026-12-31T00:00:00.000Z")),
+      Objective.of(100, 20, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
         TimestampedValue.of(100, new Date("2026-01-01T00:00:00.000Z")),
         TimestampedValue.of(50, new Date("2026-07-02T00:00:00.000Z")),

@@ -31,6 +31,7 @@ import type { TreeNode } from "../../../../domain/nodes/TreeNode.js";
 import { Description } from "../../../../domain/values/Description.js";
 import { NodeIdentity } from "../../../../domain/values/NodeIdentity.js";
 import { Objective } from "../../../../domain/values/Objective.js";
+import { Timestamp } from "../../../../domain/values/Timestamp.js";
 import { TimestampedValue } from "../../../../domain/values/TimestampedValue.js";
 import { Title } from "../../../../domain/values/Title.js";
 import { Unit } from "../../../../domain/values/Unit.js";
@@ -52,7 +53,7 @@ function tn(idStr: string, title: string, weight = 1): TextNode {
 function bsc(idStr: string, title: string, weight = 1): BusinessScoreCardNode<number> {
   const card = BusinessScoreCard.of(
     Unit.of("USD"),
-    Objective.of(0, 100, new Date("2026-12-31T00:00:00Z")),
+    Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00Z"))),
     [
       TimestampedValue.of(10, new Date("2026-04-01T00:00:00Z")),
       TimestampedValue.of(40, new Date("2026-04-15T00:00:00Z")),

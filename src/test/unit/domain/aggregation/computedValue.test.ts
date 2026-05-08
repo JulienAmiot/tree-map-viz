@@ -11,13 +11,14 @@ import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import { Description } from "../../../../domain/values/Description.js";
 import { NodeIdentity } from "../../../../domain/values/NodeIdentity.js";
 import { Objective } from "../../../../domain/values/Objective.js";
+import { Timestamp } from "../../../../domain/values/Timestamp.js";
 import { TimestampedValue } from "../../../../domain/values/TimestampedValue.js";
 import { Title } from "../../../../domain/values/Title.js";
 import { Unit } from "../../../../domain/values/Unit.js";
 import { Weight } from "../../../../domain/values/Weight.js";
 
 const identity = NodeIdentity.of(Title.of("X"), Description.of(""));
-const farFuture = Objective.of(0, 100, new Date("2030-12-31T00:00:00Z"));
+const farFuture = Objective.of(0, 100, Timestamp.of(new Date("2030-12-31T00:00:00Z")));
 const tv = (v: number, isoDate: string) => TimestampedValue.of(v, new Date(`${isoDate}T00:00:00Z`));
 
 interface BscOpts {

@@ -35,7 +35,7 @@ function makeBsc(): BusinessScoreCardNode<number> {
     Weight.of(2),
     BusinessScoreCard.of(
       Unit.of("M\u20ac"),
-      Objective.of(0, 100, new Date("2026-12-31T00:00:00Z")),
+      Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00Z"))),
       [TimestampedValue.of(42, new Date("2026-01-01T00:00:00Z"))],
     ),
     /* computed */ false,

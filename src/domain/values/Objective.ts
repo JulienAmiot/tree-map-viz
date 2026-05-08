@@ -1,10 +1,16 @@
-export class InvalidObjectiveError extends Error {
-  constructor(reason: string) {
-    super(`Invalid Objective: ${reason}`);
-    this.name = "InvalidObjectiveError";
-  }
-}
+import { Timestamp } from "./Timestamp.js";
 
+/**
+ * `Objective<T>` value object — the (initial, target, by-when) tuple a
+ * `BusinessScoreCard` is graded against (SPEC §17.60 — `targetDate`
+ * narrows from raw `Date` to the `Timestamp` value object introduced in
+ * §17.58, mirroring the v4 class diagram's `+Timestamp targetDate` field).
+ *
+ * The narrowing pushes "is this a valid moment?" validation down into
+ * `Timestamp.of`, so the legacy `InvalidObjectiveError` (which only
+ * existed to flag `NaN`-Dates) is no longer needed — `Timestamp.of`
+ * already throws `InvalidTimestampError` at the boundary.
+ */
 export class Objective<T> {
   private readonly targetDateMs: number;
 
@@ -16,12 +22,8 @@ export class Objective<T> {
     this.targetDateMs = targetDateMs;
   }
 
-  static of<T>(initialValue: T, targetValue: T, targetDate: Date): Objective<T> {
-    const ms = targetDate.getTime();
-    if (Number.isNaN(ms)) {
-      throw new InvalidObjectiveError("targetDate must be a valid Date");
-    }
-    return new Objective<T>(initialValue, targetValue, ms);
+  static of<T>(initialValue: T, targetValue: T, targetDate: Timestamp): Objective<T> {
+    return new Objective<T>(initialValue, targetValue, targetDate.moment.getTime());
   }
 
   get targetDate(): Date {
