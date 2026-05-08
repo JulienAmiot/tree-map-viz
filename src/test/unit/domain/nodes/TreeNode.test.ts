@@ -7,11 +7,12 @@ import {
 } from "../../../../domain/nodes/TreeNode.js";
 import { Description } from "../../../../domain/values/Description.js";
 import { NodeIdentity } from "../../../../domain/values/NodeIdentity.js";
+import { Timestamp } from "../../../../domain/values/Timestamp.js";
 import { TimestampedValue } from "../../../../domain/values/TimestampedValue.js";
 import { Title } from "../../../../domain/values/Title.js";
 import { Weight } from "../../../../domain/values/Weight.js";
 
-const date = new Date("2026-01-01T00:00:00Z");
+const date = Timestamp.of(new Date("2026-01-01T00:00:00Z"));
 const idA = NodeIdentity.of(Title.of("A"), Description.of(""));
 const idB = NodeIdentity.of(Title.of("B"), Description.of(""));
 const idC = NodeIdentity.of(Title.of("C"), Description.of(""));

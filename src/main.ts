@@ -742,8 +742,7 @@ function makeNewBoardSeedTree(
   const trimmed = boardName.trim() || "New board";
   const identity = NodeIdentity.of(Title.of(trimmed), Description.of(""));
   const card = TextCard.of([
-    // SPEC §17.58 — unwrap Timestamp → Date for the still-Date-shaped factory.
-    TimestampedValue.of(`Welcome to **${trimmed}**.`, clock.now().moment),
+    TimestampedValue.of(`Welcome to **${trimmed}**.`, clock.now()),
   ]);
   return new TextNode(id, identity, Weight.of(1), card);
 }

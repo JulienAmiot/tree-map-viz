@@ -8,6 +8,7 @@ import { TextCard } from "../../../../domain/nodes/TextCard.js";
 import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import { Description } from "../../../../domain/values/Description.js";
 import { NodeIdentity } from "../../../../domain/values/NodeIdentity.js";
+import { Timestamp } from "../../../../domain/values/Timestamp.js";
 import { TimestampedValue } from "../../../../domain/values/TimestampedValue.js";
 import { Title } from "../../../../domain/values/Title.js";
 import { Weight } from "../../../../domain/values/Weight.js";
@@ -20,7 +21,7 @@ function makeTextNode(opts: {
   history?: { value: string; iso: string }[];
 } = {}): TextNode {
   const card = TextCard.of(
-    (opts.history ?? []).map((e) => TimestampedValue.of(e.value, new Date(e.iso))),
+    (opts.history ?? []).map((e) => TimestampedValue.of(e.value, Timestamp.of(new Date(e.iso)))),
   );
   return new TextNode(opts.id ?? "tn-1", identity, weight, card);
 }
@@ -42,7 +43,7 @@ describe("TextNode", () => {
 
     it("stores the supplied TextCard reference (no copy/clone)", () => {
       const card = TextCard.of([
-        TimestampedValue.of("hello", new Date("2026-04-01T00:00:00.000Z")),
+        TimestampedValue.of("hello", Timestamp.of(new Date("2026-04-01T00:00:00.000Z"))),
       ]);
       const n = new TextNode("id", identity, weight, card);
       expect(n.card).toBe(card);

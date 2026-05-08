@@ -137,8 +137,12 @@ export class EditNodeService {
     value: string | number,
     asOf?: Date,
   ): Promise<Outcome> {
-    // SPEC §17.58 — unwrap Timestamp → Date for the still-Date-shaped factory.
-    const stampedAt = asOf ?? this.clock.now().moment;
+    // SPEC §17.61 — `applyAppendValue` and `TimestampedValue.of` both
+    // take `Timestamp` now; `clock.now()` already returns one, so the
+    // §17.58 `.moment` unwrap is gone. `asOf` (Date) keeps the public
+    // appendValue signature stable for UI callers that hand us a Date
+    // straight from a form field; we wrap it once at the boundary.
+    const stampedAt = asOf ? Timestamp.of(asOf) : this.clock.now();
     let undo: () => void;
     try {
       undo = this.applyAppendValue(node, value, stampedAt);
@@ -249,7 +253,7 @@ export class EditNodeService {
   private applyAppendValue(
     node: TreeNode<unknown>,
     value: string | number,
-    asOf: Date,
+    asOf: Timestamp,
   ): () => void {
     if (node instanceof TextNode) {
       if (typeof value !== "string") {

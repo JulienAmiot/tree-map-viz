@@ -1,10 +1,22 @@
-export class InvalidTimestampedValueError extends Error {
-  constructor(reason: string) {
-    super(`Invalid TimestampedValue: ${reason}`);
-    this.name = "InvalidTimestampedValueError";
-  }
-}
+import { Timestamp } from "./Timestamp.js";
 
+/**
+ * `TimestampedValue<T>` value object — a (value, when-it-was-recorded)
+ * pair (SPEC §17.61 — `asOf` narrows from raw `Date` to the `Timestamp`
+ * value object introduced in §17.58, mirroring the v4 class diagram's
+ * `+Timestamp asOf` field on `class TimestampedValue<T> { <<value>> }`).
+ *
+ * Validation lives at `Timestamp.of` (a `NaN`-Date is rejected at the
+ * boundary), so the legacy `InvalidTimestampedValueError` is gone — no
+ * `TimestampedValue`-level invariant remains once the moment is a
+ * non-`NaN` Timestamp.
+ *
+ * Storage stays as a `number` (ms since epoch) for fast numeric compare
+ * inside hot history-sort loops; the `asOf: Date` getter is preserved
+ * (deliberately) so consumers (`viewModelMapper`, `currentValueDateIso`,
+ * JSON encode) keep working unchanged. A future strand can narrow the
+ * getter to `Timestamp` once those consumers migrate.
+ */
 export class TimestampedValue<T> {
   private readonly asOfMs: number;
 
@@ -15,12 +27,8 @@ export class TimestampedValue<T> {
     this.asOfMs = asOfMs;
   }
 
-  static of<T>(value: T, asOf: Date): TimestampedValue<T> {
-    const ms = asOf.getTime();
-    if (Number.isNaN(ms)) {
-      throw new InvalidTimestampedValueError("asOf must be a valid Date");
-    }
-    return new TimestampedValue<T>(value, ms);
+  static of<T>(value: T, asOf: Timestamp): TimestampedValue<T> {
+    return new TimestampedValue<T>(value, asOf.moment.getTime());
   }
 
   get asOf(): Date {

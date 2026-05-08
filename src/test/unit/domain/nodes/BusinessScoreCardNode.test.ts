@@ -20,9 +20,9 @@ import { Weight } from "../../../../domain/values/Weight.js";
 const identity = NodeIdentity.of(Title.of("Revenue"), Description.of("Q4 KPI"));
 const weight = Weight.of(2);
 const targetDate = Timestamp.of(new Date("2026-12-31T00:00:00Z"));
-const t1 = TimestampedValue.of(40, new Date("2024-01-15T00:00:00Z"));
-const t2 = TimestampedValue.of(60, new Date("2025-06-30T00:00:00Z"));
-const t3 = TimestampedValue.of(80, new Date("2026-04-26T00:00:00Z"));
+const t1 = TimestampedValue.of(40, Timestamp.of(new Date("2024-01-15T00:00:00Z")));
+const t2 = TimestampedValue.of(60, Timestamp.of(new Date("2025-06-30T00:00:00Z")));
+const t3 = TimestampedValue.of(80, Timestamp.of(new Date("2026-04-26T00:00:00Z")));
 
 interface NodeOptions {
   id?: string;

@@ -66,12 +66,16 @@ export const SHOWCASE_BOARD_NAME = "Showcase";
  * pin deterministic timestamps; production callers omit it.
  */
 export function buildShowcaseTree(now: Date = new Date()): TextNode {
-  const today = startOfUtcHour(now);
-  const days = (n: number): Date => new Date(today.getTime() - n * MS_PER_DAY);
-  // SPEC §17.60 — `Objective.of` takes a `Timestamp`; convert here once
-  // so all 10 call sites below stay readable as `Objective.of(..., targetDate)`.
+  const todayDate = startOfUtcHour(now);
+  // SPEC §17.60 / §17.61 — both `Objective.of(..., targetDate)` and
+  // `TimestampedValue.of(value, asOf)` take a `Timestamp`. Convert
+  // here once so the 30+ factory call sites below stay readable as
+  // `..., today)` / `..., days(n))`.
+  const today = Timestamp.of(todayDate);
+  const days = (n: number): Timestamp =>
+    Timestamp.of(new Date(todayDate.getTime() - n * MS_PER_DAY));
   const targetDate = Timestamp.of(
-    new Date(Date.UTC(today.getUTCFullYear(), 11, 31, 23, 59, 59)),
+    new Date(Date.UTC(todayDate.getUTCFullYear(), 11, 31, 23, 59, 59)),
   );
 
   const root = new TextNode(

@@ -19,7 +19,8 @@ import { Weight } from "../../../../domain/values/Weight.js";
 
 const identity = NodeIdentity.of(Title.of("X"), Description.of(""));
 const farFuture = Objective.of(0, 100, Timestamp.of(new Date("2030-12-31T00:00:00Z")));
-const tv = (v: number, isoDate: string) => TimestampedValue.of(v, new Date(`${isoDate}T00:00:00Z`));
+const tv = (v: number, isoDate: string) =>
+  TimestampedValue.of(v, Timestamp.of(new Date(`${isoDate}T00:00:00Z`)));
 
 interface BscOpts {
   id?: string;

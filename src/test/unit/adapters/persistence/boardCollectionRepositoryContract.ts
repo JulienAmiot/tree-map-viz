@@ -45,7 +45,7 @@ function tn(idStr: string, title: string, weight = 1): TextNode {
     NodeIdentity.of(Title.of(title), Description.of("")),
     Weight.of(weight),
     TextCard.of([
-      TimestampedValue.of(`${title} note`, new Date("2026-04-15T00:00:00Z")),
+      TimestampedValue.of(`${title} note`, Timestamp.of(new Date("2026-04-15T00:00:00Z"))),
     ]),
   );
 }
@@ -55,8 +55,8 @@ function bsc(idStr: string, title: string, weight = 1): BusinessScoreCardNode<nu
     Unit.of("USD"),
     Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00Z"))),
     [
-      TimestampedValue.of(10, new Date("2026-04-01T00:00:00Z")),
-      TimestampedValue.of(40, new Date("2026-04-15T00:00:00Z")),
+      TimestampedValue.of(10, Timestamp.of(new Date("2026-04-01T00:00:00Z"))),
+      TimestampedValue.of(40, Timestamp.of(new Date("2026-04-15T00:00:00Z"))),
     ],
   );
   return new BusinessScoreCardNode<number>(

@@ -122,7 +122,7 @@ export class AddChildService {
       // empty avoids a TextNode-specific identity type.)
       const identity = NodeIdentity.of(Title.of(payload.title), Description.of(""));
       const initialHistory = (payload.initialHistory ?? []).map((entry) =>
-        TimestampedValue.of(entry.value, entry.asOf),
+        TimestampedValue.of(entry.value, Timestamp.of(entry.asOf)),
       );
       const card = TextCard.of(initialHistory);
       return new TextNode(id, identity, weight, card);
@@ -138,7 +138,7 @@ export class AddChildService {
         Timestamp.of(payload.objective.targetDate),
       );
       const initialHistory = (payload.initialHistory ?? []).map((entry) =>
-        TimestampedValue.of(entry.value, entry.asOf),
+        TimestampedValue.of(entry.value, Timestamp.of(entry.asOf)),
       );
       const card = BusinessScoreCard.of(Unit.of(payload.unit), objective, initialHistory);
       return new BusinessScoreCardNode<number>(

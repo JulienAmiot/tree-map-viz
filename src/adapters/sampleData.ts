@@ -20,10 +20,11 @@ function makeIdentity(title: string, description: string): NodeIdentity {
  * Replace with a real adapter behind a port when loading from an API.
  */
 export function buildSampleTree(): TextNode {
-  // SPEC §17.60 — `Objective.of` takes a `Timestamp`.
+  // SPEC §17.60 / §17.61 — `Objective.of(..., targetDate)` and
+  // `TimestampedValue.of(value, asOf)` both take a `Timestamp`.
   const targetDate = Timestamp.of(new Date("2026-12-31T00:00:00Z"));
-  const t1 = new Date("2026-04-22T18:25:43.511Z");
-  const t2 = new Date("2026-04-23T18:25:43.511Z");
+  const t1 = Timestamp.of(new Date("2026-04-22T18:25:43.511Z"));
+  const t2 = Timestamp.of(new Date("2026-04-23T18:25:43.511Z"));
 
   const rootCard = TextCard.of([
     TimestampedValue.of("Organization", t2),
