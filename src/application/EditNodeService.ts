@@ -10,6 +10,7 @@ import { Unit } from "../domain/values/Unit.js";
 import { Weight } from "../domain/values/Weight.js";
 
 import type { Persister } from "./AddChildService.js";
+import type { Clock } from "./ports/Clock.js";
 
 /**
  * Plain-data payload from the Edit-node modal (SPEC §17.28).
@@ -79,7 +80,17 @@ type Outcome =
  * documentation pins it as a known limitation).
  */
 export class EditNodeService {
-  constructor(private readonly persist: Persister) {}
+  /**
+   * SPEC §17.57 — `Clock` injected so `appendValue` can default `asOf`
+   * to "now" without a `new Date()` reaching the service code. The
+   * inline value-edit path (no operator-supplied date — the kiosk's
+   * "I just measured this" gesture) is the sole consumer today.
+   * Tests stub the port to a fixed instant for determinism.
+   */
+  constructor(
+    private readonly clock: Clock,
+    private readonly persist: Persister,
+  ) {}
 
   async editFields(
     node: TreeNode<unknown>,
@@ -109,14 +120,26 @@ export class EditNodeService {
     return { ok: true, node };
   }
 
+  /**
+   * Append a new `TimestampedValue` to the node's history.
+   *
+   * `asOf` is optional: omit it (the inline value-edit kiosk gesture
+   * has no date field) and the service stamps the entry with
+   * `clock.now()`. The §17.57 default lives here rather than in the
+   * composition root so no service consumer needs to know about the
+   * Clock port — they can always pass `asOf` explicitly when they
+   * have one (e.g. an "I forgot to log this yesterday" back-fill flow
+   * in a later strand).
+   */
   async appendValue(
     node: TreeNode<unknown>,
     value: string | number,
-    asOf: Date,
+    asOf?: Date,
   ): Promise<Outcome> {
+    const stampedAt = asOf ?? this.clock.now();
     let undo: () => void;
     try {
-      undo = this.applyAppendValue(node, value, asOf);
+      undo = this.applyAppendValue(node, value, stampedAt);
     } catch (err) {
       return { ok: false, reason: EditNodeService.errorReason(err) };
     }

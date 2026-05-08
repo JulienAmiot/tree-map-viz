@@ -103,6 +103,7 @@ import { BoardCollectionService } from "./application/BoardCollectionService.js"
 import { EditNodeService } from "./application/EditNodeService.js";
 import { ImportExportService } from "./application/ImportExportService.js";
 import { TreeNavigationService } from "./application/TreeNavigationService.js";
+import type { Clock } from "./application/ports/Clock.js";
 import { BusinessScoreCardNode } from "./domain/nodes/BusinessScoreCardNode.js";
 import { TextCard } from "./domain/nodes/TextCard.js";
 import { TextNode } from "./domain/nodes/TextNode.js";
@@ -117,6 +118,11 @@ import "./index.css";
 
 async function main(): Promise<void> {
   const idGen = (): string => crypto.randomUUID();
+  // SPEC §17.57 — domain ports' real-clock binding lives here, alongside
+  // `idGen`. Inline rather than in a dedicated `SystemClock` adapter
+  // file because the IdGenerator port set the precedent for tiny
+  // single-method ports being bound right in the composition root.
+  const clock: Clock = { now: () => new Date() };
   const codec = { encode, decode };
   const repo = new LocalStorageBoardCollectionRepository({ storage: window.localStorage });
   const boards = await BoardCollectionService.create(repo, idGen);
@@ -137,7 +143,7 @@ async function main(): Promise<void> {
     });
   };
   const addChildSvc = new AddChildService(idGen, persistCurrent);
-  const editNodeSvc = new EditNodeService(persistCurrent);
+  const editNodeSvc = new EditNodeService(clock, persistCurrent);
   // SPEC §17.33 — Phase 10 wiring half A. The Import / Export menu items
   // ride on `ImportExportService`'s validate-before-replace contract:
   // a successful decode replaces the current board's tree atomically
@@ -304,8 +310,12 @@ async function main(): Promise<void> {
       if (!node) {
         return;
       }
-      const asOf = detail.asOf ?? new Date();
-      const result = await editNodeSvc.appendValue(node, detail.value, asOf);
+      // SPEC §17.57 — `appendValue`'s `asOf` is optional; when the
+      // inline-edit detail omits it the service stamps the entry with
+      // `clock.now()`. The `?? new Date()` fallback that used to live
+      // here is gone (no `new Date()` outside the composition root's
+      // `clock` binding any more for the inline value-edit path).
+      const result = await editNodeSvc.appendValue(node, detail.value, detail.asOf);
       if (!result.ok) {
         refresh();
         return;
@@ -557,7 +567,7 @@ async function main(): Promise<void> {
   screen.addEventListener("boards-panel-create", (e) => {
     void (async () => {
       const detail = (e as CustomEvent<BoardsPanelCreateDetail>).detail;
-      const seedTree = makeNewBoardSeedTree(detail.name, idGen);
+      const seedTree = makeNewBoardSeedTree(detail.name, idGen, clock);
       const result = await boards.createBoard(detail.name, seedTree);
       if (!result.ok) {
         screen.setBoardsPanelError(result.reason);
@@ -726,12 +736,13 @@ function inferKind(
 function makeNewBoardSeedTree(
   boardName: string,
   idGen: () => string,
+  clock: Clock,
 ): TreeNode<unknown> {
   const id = idGen();
   const trimmed = boardName.trim() || "New board";
   const identity = NodeIdentity.of(Title.of(trimmed), Description.of(""));
   const card = TextCard.of([
-    TimestampedValue.of(`Welcome to **${trimmed}**.`, new Date()),
+    TimestampedValue.of(`Welcome to **${trimmed}**.`, clock.now()),
   ]);
   return new TextNode(id, identity, Weight.of(1), card);
 }

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EditNodeService } from "../../../application/EditNodeService.js";
+import type { Clock } from "../../../application/ports/Clock.js";
 import { BusinessScoreCard } from "../../../domain/nodes/BusinessScoreCard.js";
 import { BusinessScoreCardNode } from "../../../domain/nodes/BusinessScoreCardNode.js";
 import { TextCard } from "../../../domain/nodes/TextCard.js";
@@ -43,13 +44,19 @@ function makeBsc(): BusinessScoreCardNode<number> {
 
 // ----- tests ----------------------------------------------------------------
 
+// SPEC \u00a717.57 \u2014 deterministic clock for the appendValue default-asOf
+// path. Tests that pass an explicit `asOf` ignore this stub; tests that
+// rely on the default get a frozen instant they can assert against.
+const FAKE_NOW = new Date("2026-05-08T21:00:00.000Z");
+const fakeClock: Clock = { now: () => FAKE_NOW };
+
 describe("EditNodeService (\u00a717.28)", () => {
   let persist: ReturnType<typeof vi.fn>;
   let svc: EditNodeService;
 
   beforeEach(() => {
     persist = vi.fn().mockResolvedValue(undefined);
-    svc = new EditNodeService(persist);
+    svc = new EditNodeService(fakeClock, persist);
   });
 
   describe("editFields — partial updates", () => {
@@ -221,6 +228,29 @@ describe("EditNodeService (\u00a717.28)", () => {
       if (!r.ok) {
         expect(r.reason).toMatch(/string/);
       }
+    });
+
+    // SPEC \u00a717.57 \u2014 the inline value-edit kiosk gesture omits the
+    // date; the service stamps the entry with `clock.now()` rather than
+    // forcing each caller to drag a `new Date()` through the boundary.
+    it("defaults `asOf` to `clock.now()` when the caller omits it", async () => {
+      const node = makeText();
+      const r = await svc.appendValue(node, "no-date inline edit");
+      expect(r.ok).toBe(true);
+      const latest = node.card.history().at(-1)!;
+      expect(latest.value).toBe("no-date inline edit");
+      expect(latest.asOf.getTime()).toBe(FAKE_NOW.getTime());
+    });
+
+    it("calls `clock.now()` only when `asOf` is omitted (explicit dates skip the port)", async () => {
+      const node = makeText();
+      const nowSpy = vi.fn(() => FAKE_NOW);
+      const spied: Clock = { now: nowSpy };
+      const spiedSvc = new EditNodeService(spied, persist);
+      await spiedSvc.appendValue(node, "explicit", new Date("2026-05-01T00:00:00Z"));
+      expect(nowSpy).not.toHaveBeenCalled();
+      await spiedSvc.appendValue(node, "implicit");
+      expect(nowSpy).toHaveBeenCalledTimes(1);
     });
   });
 });
