@@ -1,0 +1,307 @@
+classDiagram
+    direction LR
+
+    %% =================================================================
+    %%  v4 — TARGET / REDESIGN model (round 6; converged; not yet
+    %%  implemented). Captures the operator's renaming + restructure
+    %%  with all resolutions across six review rounds (61 points
+    %%  total). Sign-off pending.
+    %%
+    %%  Rounds 1..4 — see v4 git history for the full point lists.
+    %%
+    %%  Round 6 (eight confirmations):
+    %%    i.    Naming asymmetry kept: BusinessScoreNode<T> (lenient,
+    %%          goal-tracked) and StrictRangeNode<T> (strict,
+    %%          measurement-only).
+    %%    ii.   StrictRangeNode<T> has NO objective. Intentional —
+    %%          measurement-only nodes don't carry a goal trajectory.
+    %%    iii.  StrictRangeCard<T> visual contract: renders the value
+    %%          alone, colour-coded by the gradient ramp; the
+    %%          range's min/max appear on the LEFT of the value at a
+    %%          smaller size as a scale — max on top, min on bottom,
+    %%          each painted in its own gradient endpoint colour.
+    %%          (UI implementation lives in §17.x, not in the diagram.)
+    %%    iv.   Inheritance depth (5 levels on the BSC branch)
+    %%          accepted — each level carries a real concept.
+    %%    v.    Range<T>.comparator stays `private`, not `protected`
+    %%          (subclasses don't need raw access).
+    %%    vi.   Mermaid loses Comparator<T> specialisation in
+    %%          realization arrows (TS pins the type at the
+    %%          implementation site).
+    %%    vii.  Tree.findById returns `Node?` (Node | undefined). The
+    %%          §14.2 Result shape stays reserved for control-flow
+    %%          paths that carry a reason.
+    %%    viii. The field name `at` is shared between
+    %%          TimestampedValue<T> and Objective<T> — distinct types
+    %%          via TS nominal-class boundaries; semantically OK.
+    %%
+    %%  Round 5 (eleven points):
+    %%    1.  Strict-vs-lenient choice is hoisted from the Range value
+    %%        object to the NODE CLASS itself: BusinessScoreNode<T>
+    %%        composes a LenientRange<T>; a new StrictRangeNode<T>
+    %%        composes a StrictRange<T>. The boolean flag is now
+    %%        encoded by the operator's choice of node kind. The
+    %%        common addValue override moves to a shared abstract
+    %%        base RangedValueNode<T> (Object Calisthenics: code
+    %%        reuse via inheritance, polymorphism via the Range
+    %%        subtype).
+    %%    2.  Objective<T> field names mirror TimestampedValue<T>:
+    %%        `+Timestamp at` + `+T value`. Structurally identical
+    %%        to TimestampedValue<T> but semantically distinct (one
+    %%        is a recorded observation, the other is a goal target).
+    %%    3.  NotFoundError → TimestampNotFoundError (concept-specific
+    %%        name; matches the EmptyHistoryError precedent).
+    %%    4.  Static factory pattern: `StrictRange.of(min, max, cmp)`
+    %%        and `LenientRange.of(...)` keep constructors private.
+    %%        Matches BusinessScoreCard.of / TextCard.of (v3).
+    %%    5.  Canned comparators are SINGLETONS exposed from
+    %%        `domain/comparators/`: NumericComparator,
+    %%        LexicographicComparator. The codec / registry resolves
+    %%        kind-tags to these instances.
+    %%    6.  ValueNode<T>.description is a non-optional field; the
+    %%        empty default lives at FACTORY boundaries (e.g.
+    %%        TextNode.create({ ..., description = "" })) — not on
+    %%        the value object.
+    %%    7.  Range subclass-count growth (Strict, Lenient, future
+    %%        Warn / Clamp / ...) acknowledged as the natural
+    %%        extension seam — flag-free.
+    %%    8.  setValue and removeValue are NOT overridden by
+    %%        BusinessScoreNode<T> / StrictRangeNode<T> — the strict
+    %%        check applies transitively through addValue, and
+    %%        removing entries cannot violate a strict bound.
+    %%    9.  Both the Ranged<T> interface AND the Range<T> abstract
+    %%        class are kept (current shape) — interface for docs,
+    %%        abstract for code reuse.
+    %%    10. Comparator equality via singleton REFERENCE-equality
+    %%        (no custom equals method).
+    %%    11. Tree.findById returns `Node?` (Node | undefined) — the
+    %%        §14.2 Result shape is reserved for control-flow paths
+    %%        that carry a reason, not for read-accessor lookups.
+    %%
+    %%  Companion artefacts:
+    %%    - v2 = locked Option B reference (pre-§17.14).
+    %%    - v3 = as-built snapshot (post-§17.14 + §17.28).
+    %%    - v4 = THIS file (target model, not implemented yet).
+    %% =================================================================
+
+    %% --- Aliases / supporting value objects ---
+    class Timestamp {
+      <<value>>
+      +Date moment
+    }
+    class Weight {
+      <<value>>
+      +Number value
+    }
+    class TimestampedValue~T~ {
+      <<value>>
+      +Timestamp at
+      +T value
+    }
+    %% Objective<T>: structurally same shape as TimestampedValue<T>
+    %% but semantically a future-goal pair. Distinct types so the
+    %% compiler refuses cross-substitution.
+    class Objective~T~ {
+      <<value>>
+      +Timestamp at
+      +T value
+    }
+    class Direction {
+      <<enumeration>>
+      ASCENDING
+      DESCENDING
+      FLAT
+    }
+
+    %% --- Domain-side ports / capability interfaces ---
+    class Clock {
+      <<interface>>
+      +now() Timestamp
+    }
+    class Comparator~T~ {
+      <<interface>>
+      +compare(T a, T b) Number
+    }
+    class Ranged~T~ {
+      <<interface>>
+      +T minimalValue
+      +T maximalValue
+      +compare(T a, T b) Number
+      +direction() Direction
+      +contains(T v) Boolean
+      +requireValue(T v) void
+    }
+
+    %% --- Comparator singletons (§5) ---
+    class NumericComparator {
+      <<singleton>>
+      +compare(Number a, Number b) Number
+    }
+    class LexicographicComparator {
+      <<singleton>>
+      +compare(String a, String b) Number
+    }
+
+    %% --- Errors ---
+    class OutOfRangeError {
+      <<Error>>
+    }
+    class EmptyHistoryError {
+      <<Error>>
+    }
+    class TimestampNotFoundError {
+      <<Error>>
+    }
+
+    %% --- Tree container ---
+    class Tree {
+      +Node root
+      +findById(String id) Node?
+      +nodes() readonly Node[]
+    }
+
+    %% --- Node hierarchy ---
+    class Node {
+      <<abstract>>
+      +String id
+      +String title
+      +Weight weight
+      +Node parent
+      +readonly Node[] children
+      +attach(Node child) void
+      +detach(Node child) void
+    }
+    class ValueNode~T~ {
+      <<abstract>>
+      +String description
+      +getValue()* T
+      +getDescription() String
+    }
+    class HistorizableValueNode~T~ {
+      <<abstract>>
+      -TimestampedValue~T~[] history
+      -Clock clock
+      +entries() readonly TimestampedValue~T~[]
+      +getValue() T
+      +setValue(T v) void
+      +addValue(Timestamp t, T v) void
+      +removeValue(Timestamp t) void
+    }
+    class TextNode {
+      +getValue() String
+    }
+    %% RangedValueNode<T> — shared abstract base for any historizable
+    %% value node whose values are bounded by a Range<T>. Owns the
+    %% addValue override (calls range.requireValue(v) before super).
+    %% Concrete subclasses pick their Range subtype (StrictRange /
+    %% LenientRange) to encode strictness without a flag.
+    class RangedValueNode~T~ {
+      <<abstract>>
+      +Range~T~ range
+      +addValue(Timestamp t, T v) void
+    }
+    class BusinessScoreNode~T~ {
+      +LenientRange~T~ range
+      +Objective~T~ objective
+    }
+    class StrictRangeNode~T~ {
+      +StrictRange~T~ range
+    }
+
+    %% --- Range hierarchy (Object Calisthenics: flag → polymorphism) ---
+    class Range~T~ {
+      <<abstract>>
+      +T minimalValue
+      +T maximalValue
+      -Comparator~T~ comparator
+      +compare(T a, T b) Number
+      +direction() Direction
+      +contains(T v) Boolean
+      +requireValue(T v)* void
+    }
+    class StrictRange~T~ {
+      +of(T min, T max, Comparator~T~ cmp)$ StrictRange~T~
+      +requireValue(T v) void
+    }
+    class LenientRange~T~ {
+      +of(T min, T max, Comparator~T~ cmp)$ LenientRange~T~
+      +requireValue(T v) void
+    }
+
+    %% --- Visual layer (Card<N extends Node> bound documented only —
+    %%     Mermaid does not encode TS bounds). ---
+    class Card~N~ {
+      <<abstract>>
+      +N node
+      +getNode() N
+    }
+    class TextCard {
+      +TextNode node
+      +getNode() TextNode
+    }
+    class BusinessScoreCard~T~ {
+      +BusinessScoreNode~T~ node
+      +getNode() BusinessScoreNode~T~
+    }
+    %% StrictRangeCard<T> visual contract (round-6 iii):
+    %%  - Value, colour-coded by the gradient ramp (positionFraction
+    %%    of value within [min, max]).
+    %%  - On the LEFT of the value, a scale at smaller size:
+    %%      max on top   — painted with the ASCENDING-end gradient colour
+    %%      min on bottom — painted with the DESCENDING-end gradient colour
+    %%  - No objective row (StrictRangeNode<T> has no objective per ii).
+    %%  - No trend arrow (no objective ⇒ no goal trajectory ⇒ no rate).
+    class StrictRangeCard~T~ {
+      +StrictRangeNode~T~ node
+      +getNode() StrictRangeNode~T~
+    }
+
+    %% --- Composition ---
+    Node                       *-- "1"    Weight
+    Tree                       *-- "1"    Node                : root
+    TimestampedValue~T~        *-- "1"    Timestamp           : at
+    Objective~T~               *-- "1"    Timestamp           : at
+    HistorizableValueNode~T~   o-- "0..*" TimestampedValue~T~ : history (sorted, unique key, possibly empty after removeValue)
+    BusinessScoreNode~T~       *-- "1"    LenientRange~T~     : range
+    BusinessScoreNode~T~       *-- "1"    Objective~T~        : objective
+    StrictRangeNode~T~         *-- "1"    StrictRange~T~      : range
+    Range~T~                   *-- "1"    Comparator~T~       : comparator
+
+    %% --- Tree shape (self-association maintained by attach / detach) ---
+    Node "0..1" o-- "0..*" Node : children / parent
+
+    %% --- Inheritance (Node tree) ---
+    Node                     <|-- ValueNode~T~
+    ValueNode~T~             <|-- HistorizableValueNode~T~
+    HistorizableValueNode~T~ <|-- TextNode
+    HistorizableValueNode~T~ <|-- RangedValueNode~T~
+    RangedValueNode~T~       <|-- BusinessScoreNode~T~
+    RangedValueNode~T~       <|-- StrictRangeNode~T~
+
+    %% --- Inheritance (Range tree) ---
+    Range~T~ <|-- StrictRange~T~
+    Range~T~ <|-- LenientRange~T~
+
+    %% --- Inheritance (Card tree) ---
+    Card~N~ <|-- TextCard
+    Card~N~ <|-- BusinessScoreCard~T~
+    Card~N~ <|-- StrictRangeCard~T~
+
+    %% --- Realization ---
+    Range~T~                  ..|> Ranged~T~
+    NumericComparator         ..|> Comparator~T~
+    LexicographicComparator   ..|> Comparator~T~
+
+    %% --- Card -> Node wiring (hosting, not inheritance) ---
+    TextCard             *-- "1" TextNode             : node
+    BusinessScoreCard~T~ *-- "1" BusinessScoreNode~T~ : node
+    StrictRangeCard~T~   *-- "1" StrictRangeNode~T~   : node
+
+    %% --- Injected dependencies ---
+    HistorizableValueNode~T~ ..> Clock : injected at construction (ζ)
+
+    %% --- Errors raised by the API ---
+    HistorizableValueNode~T~ ..> EmptyHistoryError         : getValue() if history is empty (β)
+    HistorizableValueNode~T~ ..> TimestampNotFoundError    : removeValue(t) if no entry at t (a / 3)
+    StrictRange~T~           ..> OutOfRangeError           : requireValue(v) if !contains(v)
+    RangedValueNode~T~       ..> OutOfRangeError           : addValue() — propagates from range.requireValue (transitively)
