@@ -182,7 +182,7 @@ export const DRILL_SETTLE_MS = 320;
  * call sites in lock-step. If the parent-role title size ever changes,
  * both `*AsParent.ts` overrides AND this constant must be updated
  * together (a single-source-of-truth refactor through a CSS custom
- * property at `<tree-graph-screen>` :host level is a candidate
+ * property at `<tree-map-screen>` :host level is a candidate
  * follow-up).
  */
 export const DRILL_PARENT_TITLE_FONT_SIZE = "2.4vh";

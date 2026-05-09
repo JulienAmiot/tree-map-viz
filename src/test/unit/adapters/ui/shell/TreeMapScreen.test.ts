@@ -18,8 +18,8 @@ if (typeof globalThis.PointerEvent === "undefined") {
 }
 
 import { DRILL_CLASS } from "../../../../../adapters/ui/animations/drillTransitions.js";
-import "../../../../../adapters/ui/shell/TreeGraphScreen.js";
-import { TreeGraphScreen } from "../../../../../adapters/ui/shell/TreeGraphScreen.js";
+import "../../../../../adapters/ui/shell/TreeMapScreen.js";
+import { TreeMapScreen } from "../../../../../adapters/ui/shell/TreeMapScreen.js";
 import type { AddChildModal } from "../../../../../adapters/ui/modal/AddChildModal.js";
 import type { FocusBreadcrumb } from "../../../../../adapters/ui/shell/Breadcrumb.js";
 import type { ChildrenGrid } from "../../../../../adapters/ui/shell/ChildrenGrid.js";
@@ -37,7 +37,7 @@ import {
 } from "../../../../fixtures/litElementFixture.js";
 
 /**
- * Vitest unit tests for `<tree-graph-screen>`. The shell delegates rendering
+ * Vitest unit tests for `<tree-map-screen>`. The shell delegates rendering
  * of the focused node + children to `<parent-identity-strip>` and
  * `<children-grid>`; these tests confirm the composition wiring
  * (vm/slots propagation, loading state, orientation reflection) without
@@ -97,9 +97,9 @@ function focusedView(
   return { center, children };
 }
 
-describe("<tree-graph-screen>", () => {
+describe("<tree-map-screen>", () => {
   it("renders a loading placeholder when view is null", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
     const loading = el.shadowRoot?.querySelector('[data-testid="loading"]');
     expect(loading).not.toBeNull();
     expect(el.shadowRoot?.querySelector("parent-identity-strip")).toBeNull();
@@ -107,7 +107,7 @@ describe("<tree-graph-screen>", () => {
   });
 
   it("composes <parent-identity-strip> + <children-grid> when view is set", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen", (e) => {
       e.view = focusedView(textVm, [nodeSlot("a", "A"), plusSlot("uuid-root")]);
     });
 
@@ -127,7 +127,7 @@ describe("<tree-graph-screen>", () => {
   });
 
   it("re-propagates the new vm/slots when view changes", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen", (e) => {
       e.view = focusedView(textVm, [nodeSlot("a", "A")]);
     });
 
@@ -156,7 +156,7 @@ describe("<tree-graph-screen>", () => {
   });
 
   it("reflects the controller's orientation onto the layout wrapper", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen", (e) => {
       e.view = focusedView(textVm, []);
     });
 
@@ -189,7 +189,7 @@ describe("<tree-graph-screen>", () => {
     // refactor that breaks one is caught at test-time -- jsdom
     // doesn't compute shadow-scoped CSS for layout assertions
     // (the e2e suite covers the real-browser geometry).
-    const cssText = String((TreeGraphScreen.styles as { cssText?: string }).cssText ?? "");
+    const cssText = String((TreeMapScreen.styles as { cssText?: string }).cssText ?? "");
     expect(cssText).toMatch(
       /\.layout\[data-orientation="portrait"\]\s*\{[\s\S]*?grid-template-rows:\s*22fr\s+78fr/,
     );
@@ -199,7 +199,7 @@ describe("<tree-graph-screen>", () => {
   });
 
   it("hides the loading placeholder once a view is set", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
     expect(el.shadowRoot?.querySelector('[data-testid="loading"]')).not.toBeNull();
 
     el.view = focusedView(textVm, []);
@@ -208,7 +208,7 @@ describe("<tree-graph-screen>", () => {
   });
 
   it("renders the permanent top bar (board name, breadcrumb, burger) at all times — even before view is set (\u00a717.43)", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen", (e) => {
       e.boardName = "Quarterly OKRs";
       e.breadcrumbPath = [
         { id: "uuid-root", title: "Root" },
@@ -238,7 +238,7 @@ describe("<tree-graph-screen>", () => {
   });
 
   it("propagates updates to boardName + breadcrumbPath into the slotted children", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen", (e) => {
       e.boardName = "First";
       e.breadcrumbPath = [{ id: "uuid-root", title: "Root" }];
     });
@@ -266,7 +266,7 @@ describe("<tree-graph-screen>", () => {
   });
 
   it("renders an <add-child-modal> overlay (closed by default) at all times", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
     const modal = el.shadowRoot?.querySelector("add-child-modal") as
       | AddChildModal
       | null;
@@ -276,7 +276,7 @@ describe("<tree-graph-screen>", () => {
   });
 
   it("`plus-tile-activate` from inside the layout opens the modal with the supplied parentId", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen", (e) => {
       e.view = focusedView(textVm, [nodeSlot("a", "A"), plusSlot("uuid-root")]);
     });
     expect(el.isAddChildModalOpen).toBe(false);
@@ -303,7 +303,7 @@ describe("<tree-graph-screen>", () => {
   });
 
   it("`add-child-cancel` from the modal closes it (without re-emitting through the screen)", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen", (e) => {
       e.view = focusedView(textVm, [plusSlot("uuid-root")]);
     });
     const layout = el.shadowRoot?.querySelector(
@@ -328,7 +328,7 @@ describe("<tree-graph-screen>", () => {
   });
 
   it("`closeAddChildModal()` is the public seam for the composition root", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
     const layout = el.shadowRoot?.querySelector('[data-testid="loading"]');
     expect(layout).not.toBeNull(); // sanity: shell still renders before view
     el.dispatchEvent(
@@ -351,7 +351,7 @@ describe("<tree-graph-screen>", () => {
     // Without a view, `.layout` doesn't exist; the helper has no host to
     // animate against, so commit fires synchronously. Pinned so a future
     // refactor doesn't accidentally swallow the commit on the loading path.
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
     const commit = vi.fn();
     el.runDrillAnimation("uuid-anything", commit);
     expect(commit).toHaveBeenCalledTimes(1);
@@ -363,7 +363,7 @@ describe("<tree-graph-screen>", () => {
     // focus that has no real children, where the grid only renders a
     // plus tile. The navigation must still land; we just skip the
     // animation.
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen", (e) => {
       e.view = focusedView(textVm, [plusSlot("uuid-root")]);
     });
     const commit = vi.fn();
@@ -378,7 +378,7 @@ describe("<tree-graph-screen>", () => {
     // class lands on the tapped tile (not the layout wrapper) and the
     // commit fires after the settle window — i.e. the FLIP morph took
     // the place of the legacy `encap--drill` keyframe.
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen", (e) => {
       e.view = focusedView(textVm, [nodeSlot("uuid-a", "A"), nodeSlot("uuid-b", "B")]);
     });
     const grid = el.shadowRoot?.querySelector("children-grid") as ChildrenGrid;
@@ -482,13 +482,13 @@ describe("<tree-graph-screen>", () => {
   it("re-exports `DRILL_CLASS` so callers/tests can pin the class name symbolically", () => {
     // Catches a future rename of the drill class without forcing every
     // test to reach into the helper.
-    expect(TreeGraphScreen.DRILL_CLASS).toBe(DRILL_CLASS);
+    expect(TreeMapScreen.DRILL_CLASS).toBe(DRILL_CLASS);
   });
 
   // -- §17.23 close-to-parent propagation -------------------------------
 
   it("threads the second-to-last breadcrumb segment into <parent-identity-strip>.parentId (§17.23)", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen", (e) => {
       e.view = focusedView(textVm, [nodeSlot("a", "A")]);
       e.breadcrumbPath = [
         { id: "uuid-root", title: "Root" },
@@ -503,7 +503,7 @@ describe("<tree-graph-screen>", () => {
   });
 
   it("at root focus (path length \u2264 1) the strip's parentId is empty (no close-X) (§17.23)", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen", (e) => {
       e.view = focusedView(textVm, []);
       e.breadcrumbPath = [{ id: "uuid-root", title: "Root" }];
     });
@@ -514,7 +514,7 @@ describe("<tree-graph-screen>", () => {
   });
 
   it("recomputes the strip's parentId when breadcrumbPath updates (§17.23)", async () => {
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen", (e) => {
       e.view = focusedView(textVm, []);
       e.breadcrumbPath = [{ id: "uuid-root", title: "Root" }];
     });
@@ -539,7 +539,7 @@ describe("<tree-graph-screen>", () => {
     // Why: the composition root needs to call AddChildService and only on
     // success close. The shell deliberately does NOT close on confirm so a
     // failed addChild can leave the modal open with an error.
-    const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen", (e) => {
+    const el = await mountLitElement<TreeMapScreen>("tree-map-screen", (e) => {
       e.view = focusedView(textVm, [plusSlot("uuid-root")]);
     });
     const layout = el.shadowRoot?.querySelector(
@@ -576,7 +576,7 @@ describe("<tree-graph-screen>", () => {
 
   describe("edit-node modal seam (\u00a717.28)", () => {
     it("renders an <edit-node-modal> overlay (closed by default)", async () => {
-      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
       const modal = el.shadowRoot?.querySelector("edit-node-modal");
       expect(modal).not.toBeNull();
       expect(modal?.hasAttribute("open")).toBe(false);
@@ -584,7 +584,7 @@ describe("<tree-graph-screen>", () => {
     });
 
     it("`openEditNodeModal(target)` opens the modal and seeds editTarget", async () => {
-      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
       el.openEditNodeModal({
         nodeId: "uuid-root",
         kind: "TextNode",
@@ -599,7 +599,7 @@ describe("<tree-graph-screen>", () => {
     });
 
     it("`edit-node-cancel` from the modal closes it", async () => {
-      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
       el.openEditNodeModal({
         nodeId: "uuid-root",
         kind: "TextNode",
@@ -618,7 +618,7 @@ describe("<tree-graph-screen>", () => {
     });
 
     it("`closeEditNodeModal()` + `setEditNodeError(...)` are the public seams for the composition root", async () => {
-      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
       el.openEditNodeModal({
         nodeId: "uuid-root",
         kind: "TextNode",
@@ -633,7 +633,7 @@ describe("<tree-graph-screen>", () => {
     });
 
     it("`edit-node-confirm` does NOT auto-close the modal -- composition root must call closeEditNodeModal()", async () => {
-      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
       el.openEditNodeModal({
         nodeId: "uuid-root",
         kind: "TextNode",
@@ -664,7 +664,7 @@ describe("<tree-graph-screen>", () => {
 
   describe("boards-panel modal seam (\u00a717.34)", () => {
     it("renders a <boards-panel-modal> overlay (closed by default)", async () => {
-      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
       const modal = el.shadowRoot?.querySelector("boards-panel-modal");
       expect(modal).not.toBeNull();
       expect(modal?.hasAttribute("open")).toBe(false);
@@ -672,7 +672,7 @@ describe("<tree-graph-screen>", () => {
     });
 
     it("`openBoardsPanelModal(target)` opens the modal and seeds the target", async () => {
-      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
       el.openBoardsPanelModal({
         boards: [
           { id: "uuid-A", name: "Showcase" },
@@ -689,7 +689,7 @@ describe("<tree-graph-screen>", () => {
     });
 
     it("`boards-panel-cancel` from the modal closes it", async () => {
-      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
       el.openBoardsPanelModal({
         boards: [{ id: "uuid-A", name: "Showcase" }],
         currentBoardId: "uuid-A",
@@ -708,7 +708,7 @@ describe("<tree-graph-screen>", () => {
     });
 
     it("`closeBoardsPanelModal()` + `setBoardsPanelError(...)` are the public seams for the composition root", async () => {
-      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
       el.openBoardsPanelModal({
         boards: [{ id: "uuid-A", name: "Showcase" }],
         currentBoardId: "uuid-A",
@@ -721,7 +721,7 @@ describe("<tree-graph-screen>", () => {
     });
 
     it("`boards-panel-switch` does NOT auto-close the modal -- composition root must call closeBoardsPanelModal()", async () => {
-      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
       el.openBoardsPanelModal({
         boards: [
           { id: "uuid-A", name: "Showcase" },
@@ -746,7 +746,7 @@ describe("<tree-graph-screen>", () => {
     });
 
     it("`boards-panel-create` does NOT auto-close the modal -- composition root must call closeBoardsPanelModal()", async () => {
-      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
       el.openBoardsPanelModal({
         boards: [{ id: "uuid-A", name: "Showcase" }],
         currentBoardId: "uuid-A",
@@ -776,7 +776,7 @@ describe("<tree-graph-screen>", () => {
       // size + anchored top/left can be computed in `updated()`)
       // but stays closed via `?open=false` until a tile fires
       // `weight-edit-open`.
-      const el = await mountLitElement<TreeGraphScreen>("tree-graph-screen");
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
       const popover = el.shadowRoot?.querySelector("weight-edit-popover");
       expect(popover).not.toBeNull();
       expect(popover?.hasAttribute("open")).toBe(false);
@@ -789,8 +789,8 @@ describe("<tree-graph-screen>", () => {
       // event is dispatched from inside the layout (a tile in
       // the children grid in production); jsdom synthesises
       // the same shape via a CustomEvent on the layout div.
-      const el = await mountLitElement<TreeGraphScreen>(
-        "tree-graph-screen",
+      const el = await mountLitElement<TreeMapScreen>(
+        "tree-map-screen",
         (e) => {
           e.view = focusedView(textVm, [nodeSlot("uuid-1", "T1")]);
         },
@@ -835,8 +835,8 @@ describe("<tree-graph-screen>", () => {
       // before main.ts runs the EditNodeService call. The
       // `inline-edit-weight` event itself is NOT stopped here;
       // it bubbles past the screen to main.ts.
-      const el = await mountLitElement<TreeGraphScreen>(
-        "tree-graph-screen",
+      const el = await mountLitElement<TreeMapScreen>(
+        "tree-map-screen",
         (e) => {
           e.view = focusedView(textVm, [nodeSlot("uuid-1", "T1")]);
         },
@@ -888,8 +888,8 @@ describe("<tree-graph-screen>", () => {
     });
 
     it("Escape on document closes the popover (\u00a717.52 cancel path)", async () => {
-      const el = await mountLitElement<TreeGraphScreen>(
-        "tree-graph-screen",
+      const el = await mountLitElement<TreeMapScreen>(
+        "tree-map-screen",
         (e) => {
           e.view = focusedView(textVm, [nodeSlot("uuid-1", "T1")]);
         },
@@ -937,8 +937,8 @@ describe("<tree-graph-screen>", () => {
       // Inside-the-popover pointerdowns must NOT close (else
       // the operator's slider drag would dismiss the popover
       // mid-gesture).
-      const el = await mountLitElement<TreeGraphScreen>(
-        "tree-graph-screen",
+      const el = await mountLitElement<TreeMapScreen>(
+        "tree-map-screen",
         (e) => {
           e.view = focusedView(textVm, [nodeSlot("uuid-1", "T1")]);
         },
@@ -1009,8 +1009,8 @@ describe("<tree-graph-screen>", () => {
       // tile's icon mid-edit re-targets instead of closing,
       // so the operator can fluidly walk from one tile to the
       // next without an intermediate close-tap.
-      const el = await mountLitElement<TreeGraphScreen>(
-        "tree-graph-screen",
+      const el = await mountLitElement<TreeMapScreen>(
+        "tree-map-screen",
         (e) => {
           e.view = focusedView(textVm, [
             nodeSlot("uuid-1", "T1"),

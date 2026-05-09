@@ -20,7 +20,7 @@
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
 
-import { TreeGraphPage } from "../pageObjects/TreeGraphPage.js";
+import { TreeMapPage } from "../pageObjects/TreeMapPage.js";
 
 const { When, Then } = createBdd();
 
@@ -29,23 +29,23 @@ const { When, Then } = createBdd();
 Then(
   "the top bar shows the board name {string}",
   async ({ page }, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.boardNameLabel()).toHaveText(expected);
   },
 );
 
 Then("the top bar shows the focus breadcrumb", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.breadcrumbHost()).toHaveCount(1);
 });
 
 Then("the top bar shows the burger trigger", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.burgerTrigger()).toHaveCount(1);
 });
 
 Then("the top bar is visible", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.topBar()).toBeVisible();
 });
 
@@ -54,20 +54,20 @@ Then("the top bar is visible", async ({ page }) => {
 When(
   "I tap the breadcrumb segment for {string}",
   async ({ page }, nodeId: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await kiosk.breadcrumbSegmentByNodeId(nodeId).click();
   },
 );
 
 Then("the breadcrumb has {int} segment(s)", async ({ page }, n: number) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.breadcrumbSegments()).toHaveCount(n);
 });
 
 Then(
   "breadcrumb segment {int} shows {string}",
   async ({ page }, position: number, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.breadcrumbSegments().nth(position - 1)).toHaveText(
       expected,
     );
@@ -75,7 +75,7 @@ Then(
 );
 
 Then("the last breadcrumb segment is the current page", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   const last = kiosk.breadcrumbSegments().last();
   await expect(last).toHaveAttribute("aria-current", "page");
   // The current segment is rendered as a non-button <span>; ancestors are
@@ -87,7 +87,7 @@ Then("the last breadcrumb segment is the current page", async ({ page }) => {
 // -- Burger menu ---------------------------------------------------------
 
 When("I tap the burger trigger", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.burgerTrigger().click();
 });
 
@@ -95,18 +95,18 @@ When("I tap the board name", async ({ page }) => {
   // The board name lives inside the top bar but outside the burger
   // host; the perfect "outside the burger but inside the top bar"
   // probe so we can verify burger-close on a stray top-bar tap.
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.boardNameLabel().click();
 });
 
 Then("the burger menu is open", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   expect(await kiosk.isBurgerMenuOpen()).toBe(true);
   await expect(kiosk.burgerTrigger()).toHaveAttribute("aria-expanded", "true");
 });
 
 Then("the burger menu is closed", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   expect(await kiosk.isBurgerMenuOpen()).toBe(false);
   await expect(kiosk.burgerTrigger()).toHaveAttribute(
     "aria-expanded",
@@ -117,37 +117,37 @@ Then("the burger menu is closed", async ({ page }) => {
 Then(
   "the burger menu has an item with action {string}",
   async ({ page }, action: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.burgerMenuItemByAction(action)).toHaveCount(1);
   },
 );
 
 Then("the burger menu has {int} items", async ({ page }, n: number) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.burgerMenuItems()).toHaveCount(n);
 });
 
 // -- Close-to-parent X (§17.23) -----------------------------------------
 
 When("I tap the close-to-parent button", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.closeToParentButton().click();
 });
 
 Then("the close-to-parent button is visible", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.closeToParentButton()).toBeVisible();
 });
 
 Then("the close-to-parent button is not rendered", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.closeToParentButton()).toHaveCount(0);
 });
 
 Then(
   "the close-to-parent button targets node {string}",
   async ({ page }, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.closeToParentButton()).toHaveAttribute(
       "data-parent-id",
       expected,
@@ -158,19 +158,19 @@ Then(
 // -- Edit-node pencil + modal (§17.28) -----------------------------------
 
 When("I tap the edit-node pencil", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.editNodeButton().click();
 });
 
 Then("the edit-node pencil is visible", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.editNodeButton()).toBeVisible();
 });
 
 Then(
   "the edit-node pencil targets node {string}",
   async ({ page }, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.editNodeButton()).toHaveAttribute(
       "data-node-id",
       expected,
@@ -179,13 +179,13 @@ Then(
 );
 
 Then("the edit-node modal is open", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   expect(await kiosk.isEditNodeModalOpen()).toBe(true);
   await expect(kiosk.editNodeModalPanel()).toBeVisible();
 });
 
 Then("the edit-node modal is closed", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   expect(await kiosk.isEditNodeModalOpen()).toBe(false);
 });
 
@@ -198,7 +198,7 @@ Then("the edit-node modal is closed", async ({ page }) => {
 Then(
   "the edit-node modal weight field shows {string}",
   async ({ page }, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(
       kiosk.editNodeModalForm().getByTestId("field-weight"),
     ).toHaveValue(expected);
@@ -208,7 +208,7 @@ Then(
 // SPEC §17.50 -- pin the absence of `field-title`; if a future change
 // re-introduces a title field by accident the e2e suite catches it.
 Then("the edit-node modal does not render a title field", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(
     kiosk.editNodeModalForm().getByTestId("field-title"),
   ).toHaveCount(0);
@@ -217,18 +217,18 @@ Then("the edit-node modal does not render a title field", async ({ page }) => {
 When(
   "I set the edit-node modal field {string} to {string}",
   async ({ page }, fieldId: string, value: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await kiosk.editNodeModalForm().getByTestId(fieldId).fill(value);
   },
 );
 
 When("I confirm the edit-node modal", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.editNodeModalConfirm().click();
 });
 
 When("I cancel the edit-node modal", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.editNodeModalCancel().click();
 });
 
@@ -237,7 +237,7 @@ When("I cancel the edit-node modal", async ({ page }) => {
 When(
   "I tap the burger menu item with action {string}",
   async ({ page }, action: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await kiosk.burgerMenuItemByAction(action).click();
   },
 );
@@ -245,20 +245,20 @@ When(
 // -- Board-settings modal (§17.31) --------------------------------------
 
 Then("the board-settings modal is open", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   expect(await kiosk.isBoardSettingsModalOpen()).toBe(true);
   await expect(kiosk.boardSettingsModalPanel()).toBeVisible();
 });
 
 Then("the board-settings modal is closed", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   expect(await kiosk.isBoardSettingsModalOpen()).toBe(false);
 });
 
 Then(
   "the board-settings modal name field shows the current board's name",
   async ({ page }) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const topBarName = (await kiosk.boardNameLabel().textContent())?.trim() ?? "";
     await expect(
       kiosk.boardSettingsModalField("field-name"),
@@ -269,25 +269,25 @@ Then(
 When(
   "I set the board-settings modal field {string} to {string}",
   async ({ page }, fieldId: string, value: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await kiosk.boardSettingsModalField(fieldId).fill(value);
   },
 );
 
 When("I confirm the board-settings modal", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.boardSettingsModalConfirm().click();
 });
 
 When("I cancel the board-settings modal", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.boardSettingsModalCancel().click();
 });
 
 Then(
   "the top-bar board name is {string}",
   async ({ page }, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.boardNameLabel()).toHaveText(expected);
   },
 );
@@ -298,7 +298,7 @@ Then(
     // §17.31 — the empty-storage seed plants the showcase board
     // (`SHOWCASE_BOARD_NAME`). Cancelling the settings modal must
     // not have touched it.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const text = (await kiosk.boardNameLabel().textContent())?.trim() ?? "";
     expect(text.length).toBeGreaterThan(0);
     expect(text).not.toBe("Should be discarded");
@@ -309,7 +309,7 @@ Then("the board-settings delete button is disabled", async ({ page }) => {
   // §17.31 — the empty-storage seed plants exactly one board (the
   // showcase). The delete button is disabled because deleting the
   // sole board would violate the `getCurrentBoard` invariant.
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.boardSettingsModalDeleteBtn()).toBeDisabled();
 });
 
@@ -346,19 +346,19 @@ Then(
 // -- Inline title / value edit (§17.28) ---------------------------------
 
 When("I tap the focused title", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.focusedTitle().click();
 });
 
 When("I tap the focused value", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.focusedValue().click();
 });
 
 When(
   "I type {string} in the focused title editor and press Enter",
   async ({ page }, value: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const editor = kiosk.focusedTitleEditor();
     await editor.fill(value);
     await editor.press("Enter");
@@ -375,7 +375,7 @@ When(
     // BSC inline value edit. Probing the tag avoids the "press Enter,
     // see if it stuck" pattern that pollutes the textarea with stray
     // newlines before Ctrl+Enter arrives.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const editor = kiosk.focusedValueEditor();
     await editor.fill(value);
     const tagName = await editor.evaluate((el) => el.tagName);

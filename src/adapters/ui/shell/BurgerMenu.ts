@@ -16,7 +16,7 @@
  * Surface contract:
  *  - dispatches a bubbling + composed `burger-menu-action`
  *    `CustomEvent<{ action }>` when an item is activated. The kiosk shell
- *    `<tree-graph-screen>` re-emits / forwards as needed; today the
+ *    `<tree-map-screen>` re-emits / forwards as needed; today the
  *    composition root logs a placeholder until Phase 10 wires the real
  *    `ImportExportService` + `BoardCollectionService` consumers (§17.3).
  *  - closes itself **after every item activation** (standard menu UX +

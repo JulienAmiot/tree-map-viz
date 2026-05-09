@@ -26,7 +26,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createBdd } from "playwright-bdd";
 
-import { TreeGraphPage } from "../pageObjects/TreeGraphPage.js";
+import { TreeMapPage } from "../pageObjects/TreeMapPage.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = path.join(__dirname, "..", "fixtures", "trees");
@@ -60,7 +60,7 @@ When(
     // click in the composition root. Playwright's `download` event fires
     // when the browser starts the download; we race the burger click
     // against the event so the assertion can read the saved bytes.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const [download] = await Promise.all([
       page.waitForEvent("download"),
       kiosk.burgerMenuItemByAction(action).click(),
@@ -110,7 +110,7 @@ When(
     // the runtime would see if the operator had picked the file
     // through the native dialog.
     const text = loadFixtureText(fixtureName);
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const beforeHash = await page.evaluate(() => window.location.hash);
     const [chooser] = await Promise.all([
       page.waitForEvent("filechooser"),
@@ -141,7 +141,7 @@ When(
     // SPEC §17.33 — drive the import with a deliberately-malformed
     // payload so the codec rejects it; the alert path is exercised
     // and the in-memory tree stays put.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const [chooser] = await Promise.all([
       page.waitForEvent("filechooser"),
       kiosk.burgerMenuItemByAction("import").click(),
@@ -198,20 +198,20 @@ Then(
 // -- Boards-panel modal (§17.34) ---------------------------------------
 
 Then("the boards-panel modal is open", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   expect(await kiosk.isBoardsPanelModalOpen()).toBe(true);
   await expect(kiosk.boardsPanelModalPanel()).toBeVisible();
 });
 
 Then("the boards-panel modal is closed", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   expect(await kiosk.isBoardsPanelModalOpen()).toBe(false);
 });
 
 Then(
   "the boards-panel lists {int} board(s)",
   async ({ page }, n: number) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.boardsPanelRows()).toHaveCount(n);
   },
 );
@@ -219,7 +219,7 @@ Then(
 Then(
   "the boards-panel has a board named {string} marked as current",
   async ({ page }, name: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const rows = kiosk.boardsPanelRows();
     // Find the row whose name matches; assert its `data-current` is "true".
     const row = rows.filter({ hasText: name }).first();
@@ -231,7 +231,7 @@ Then(
 Then(
   "the boards-panel has a board named {string} not marked as current",
   async ({ page }, name: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const row = kiosk.boardsPanelRows().filter({ hasText: name }).first();
     await expect(row).toHaveAttribute("data-current", "false");
     // Non-current rows expose a Switch button.
@@ -243,7 +243,7 @@ When(
   "I tap the boards-panel switch button for {string}",
   async ({ page }, name: string) => {
     // Find the row by user-visible name, then click its Switch button.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const row = kiosk.boardsPanelRows().filter({ hasText: name }).first();
     // The composition root's switch handler runs `nav.replaceTree` +
     // `router.replace` + `refresh` synchronously, then closes the
@@ -262,7 +262,7 @@ When(
 When(
   "I type {string} into the new-board name field",
   async ({ page }, name: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await kiosk.boardsPanelNewNameField().fill(name);
   },
 );
@@ -271,7 +271,7 @@ When("I tap the boards-panel Create button", async ({ page }) => {
   // Same wait-for-hash pattern as switch — `createBoard` flips the
   // current id to the freshly-minted board, the composition root
   // re-seats nav + replaces the URL, then closes the modal.
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   const beforeHash = await page.evaluate(() => window.location.hash);
   await kiosk.boardsPanelCreateBtn().click();
   await page.waitForFunction(
@@ -282,19 +282,19 @@ When("I tap the boards-panel Create button", async ({ page }) => {
 });
 
 When("I cancel the boards-panel modal", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.boardsPanelCancelBtn().click();
 });
 
 Then("the boards-panel Create button is disabled", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.boardsPanelCreateBtn()).toBeDisabled();
 });
 
 Then(
   "the boards-panel Create button is enabled",
   async ({ page }) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.boardsPanelCreateBtn()).toBeEnabled();
   },
 );

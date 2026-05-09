@@ -1,5 +1,5 @@
 /**
- * `<tree-graph-screen>` — Lit shell custom element (SPEC §4 / §5 / §7 / §17).
+ * `<tree-map-screen>` — Lit shell custom element (SPEC §4 / §5 / §7 / §17).
  *
  * Phase 7 (DT-6) body, post-§17.43:
  *   - **Top bar** (permanent, no longer auto-hidden behind a handle): a
@@ -117,8 +117,8 @@ import "./BurgerMenu.js";
 import "./ChildrenGrid.js";
 import "./ParentIdentityStrip.js";
 
-@customElement("tree-graph-screen")
-export class TreeGraphScreen extends LitElement {
+@customElement("tree-map-screen")
+export class TreeMapScreen extends LitElement {
   @property({ attribute: false })
   view: FocusedTreeViewModel | null = null;
 
@@ -937,6 +937,6 @@ function cssEscape(value: string): string {
 
 declare global {
   interface HTMLElementTagNameMap {
-    "tree-graph-screen": TreeGraphScreen;
+    "tree-map-screen": TreeMapScreen;
   }
 }

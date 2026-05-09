@@ -26,7 +26,7 @@ type BridgedWindow = Window & {
   };
 };
 
-export class TreeGraphPage {
+export class TreeMapPage {
   constructor(private readonly page: Page) {}
 
   /**
@@ -50,7 +50,7 @@ export class TreeGraphPage {
    * Read the focused node's title — the `data-testid="title"` element rendered
    * by the `asParent` view inside the parent identity strip.
    *
-   * The chain pierces three shadow roots (`tree-graph-screen` → `node-view` →
+   * The chain pierces three shadow roots (`tree-map-screen` → `node-view` →
    * per-kind element); Playwright's `getByTestId` walks open shadow DOM, so
    * scoping by `parent-strip` first is enough to disambiguate against the
    * `asChild` titles in the children grid.

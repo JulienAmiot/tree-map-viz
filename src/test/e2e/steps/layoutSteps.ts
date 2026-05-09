@@ -17,7 +17,7 @@
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
 
-import { TreeGraphPage } from "../pageObjects/TreeGraphPage.js";
+import { TreeMapPage } from "../pageObjects/TreeMapPage.js";
 
 const { When, Then } = createBdd();
 
@@ -34,13 +34,13 @@ When(
 Then(
   "the layout orientation is {string}",
   async ({ page }, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.layout()).toHaveAttribute("data-orientation", expected);
   },
 );
 
 Then("the parent strip is above the children grid", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   const stripBox = await kiosk.parentStripHost().boundingBox();
   const gridBox = await kiosk.childrenGridHost().boundingBox();
   if (!stripBox || !gridBox) {
@@ -62,7 +62,7 @@ Then(
     // is amended: strip-on-top is preserved in portrait; landscape gains
     // strip-on-left so the rail can hold the §17.45 metric / description
     // vertical split.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const stripBox = await kiosk.parentStripHost().boundingBox();
     const gridBox = await kiosk.childrenGridHost().boundingBox();
     if (!stripBox || !gridBox) {
@@ -77,7 +77,7 @@ Then(
 Then(
   "every tile area is at least one twelfth of the inner children grid area",
   async ({ page }) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const gridBox = await kiosk.childrenGridHost().boundingBox();
     if (!gridBox) throw new Error("children-grid has no bounding box");
     const innerArea =
@@ -102,7 +102,7 @@ Then(
 Then(
   "the sum of tile areas covers the inner children grid area within {int}%",
   async ({ page }, tolerancePercent: number) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const gridBox = await kiosk.childrenGridHost().boundingBox();
     if (!gridBox) throw new Error("children-grid has no bounding box");
     const innerArea =
