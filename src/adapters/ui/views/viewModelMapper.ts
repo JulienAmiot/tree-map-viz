@@ -77,7 +77,7 @@ export function mapNodeToViewModel(
     // pre-§17.14 imported data without `historizedValues`) we fall back
     // to empty strings so the view degrades gracefully.
     const latest = node.card.history().at(-1);
-    const dateIso = latest?.asOf.toISOString() ?? "";
+    const dateIso = latest?.asOf.moment.toISOString() ?? "";
     // SPEC §17.15 — TextNode VM intentionally omits `description`; the
     // current value (`value.text`) IS the description for text cards.
     return {
@@ -128,7 +128,7 @@ function mapBusinessScoreValue(
         kind: "recordedValue",
         value: Number(result.value.value),
         unit: node.card.unit.value,
-        dateIso: result.value.asOf.toISOString(),
+        dateIso: result.value.asOf.moment.toISOString(),
       };
     case "computedValue":
       return {
@@ -202,7 +202,7 @@ function mapBusinessScoreObjective(
   const objective = node.card.objective;
   const initialValue = Number(objective.initialValue);
   const targetValue = Number(objective.targetValue);
-  const targetDateIso = objective.targetDate.toISOString();
+  const targetDateIso = objective.targetDate.moment.toISOString();
   const unit = node.card.unit.value;
 
   const currentNumber = numericValueOf(value);
@@ -227,10 +227,10 @@ function mapBusinessScoreObjective(
   if (value.kind === "recordedValue") {
     const history = node.card.history();
     const points = history.map((tv) => ({
-      dateMs: tv.asOf.getTime(),
+      dateMs: tv.asOf.moment.getTime(),
       value: Number(tv.value),
     }));
-    const targetDateMs = objective.targetDate.getTime();
+    const targetDateMs = objective.targetDate.moment.getTime();
     const shortfall = deadlineShortfall(
       points,
       initialValue,

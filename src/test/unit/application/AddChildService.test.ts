@@ -127,7 +127,7 @@ describe("AddChildService", () => {
         const obj = child.objective();
         expect(obj.initialValue).toBe(0);
         expect(obj.targetValue).toBe(10_000);
-        expect(obj.targetDate.toISOString()).toBe("2026-12-31T00:00:00.000Z");
+        expect(obj.targetDate.moment.toISOString()).toBe("2026-12-31T00:00:00.000Z");
 
         const history = child.history();
         expect(history).toHaveLength(2);

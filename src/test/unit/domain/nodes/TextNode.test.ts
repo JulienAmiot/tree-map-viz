@@ -75,7 +75,7 @@ describe("TextNode", () => {
       });
       const cv = n.currentValue();
       expect(cv.value).toBe("newest");
-      expect(cv.asOf.toISOString()).toBe("2026-04-23T00:00:00.000Z");
+      expect(cv.asOf.moment.toISOString()).toBe("2026-04-23T00:00:00.000Z");
     });
 
     it("throws EmptyHistoryError when the underlying TextCard has no entries", () => {

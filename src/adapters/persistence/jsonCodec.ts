@@ -238,7 +238,7 @@ function encodeNode(node: TreeNode<unknown>): WireNode {
 }
 
 function encodeBusinessScoreCardNode(node: BusinessScoreCardNode<unknown>): WireBusinessScoreCard {
-  const targetDateMs = node.card.objective.targetDate.getTime();
+  const targetDateMs = node.card.objective.targetDate.moment.getTime();
   const wire: WireBusinessScoreCard = {
     nodeType: "BusinessScoreCard",
     id: node.id,
@@ -249,7 +249,7 @@ function encodeBusinessScoreCardNode(node: BusinessScoreCardNode<unknown>): Wire
     unit: node.card.unit.value,
     historizedValues: node.card.history().map((tv) => ({
       value: tv.value as number,
-      date: tv.asOf.toISOString(),
+      date: tv.asOf.moment.toISOString(),
     })),
     computed: node.computed,
     eligibleForParentComputation: node.eligibleForParentComputation,
@@ -257,7 +257,7 @@ function encodeBusinessScoreCardNode(node: BusinessScoreCardNode<unknown>): Wire
     childrenNodes: node.children.map(encodeNode),
   };
   if (targetDateMs !== OPEN_ENDED_TARGET_DATE_MS) {
-    wire.targetDate = node.card.objective.targetDate.toISOString();
+    wire.targetDate = node.card.objective.targetDate.moment.toISOString();
   }
   return wire;
 }
@@ -271,7 +271,7 @@ function encodeTextNode(node: TextNode): WireTextNode {
     weight: node.weight.value,
     historizedValues: node.card.history().map((tv) => ({
       value: tv.value,
-      date: tv.asOf.toISOString(),
+      date: tv.asOf.moment.toISOString(),
     })),
     childrenNodes: node.children.map(encodeNode),
   };

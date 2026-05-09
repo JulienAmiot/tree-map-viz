@@ -8,6 +8,13 @@ import { TimestampedValue } from "../../../../domain/values/TimestampedValue.js"
 // the legacy `InvalidTimestampedValueError` is gone (no
 // `TimestampedValue`-level invariant left once the moment is a
 // non-`NaN` Timestamp).
+// SPEC §17.62 — the `asOf` getter now returns a `Timestamp` (not a raw
+// `Date`); the defensive-copy invariant is delegated to `Timestamp`
+// (a `Timestamp` is immutable; its `.moment` accessor returns a fresh
+// `Date` per call — covered in `Timestamp.test.ts`). The mutation
+// guard test below is reframed to assert layered identity rather than
+// `setFullYear`-style mutation, which is no longer a reachable shape
+// at this layer.
 describe("TimestampedValue", () => {
   const date2024 = Timestamp.of(new Date("2024-01-15T00:00:00Z"));
   const date2025 = Timestamp.of(new Date("2025-06-30T00:00:00Z"));
@@ -16,7 +23,7 @@ describe("TimestampedValue", () => {
   it("accepts a value and a valid Timestamp", () => {
     const tv = TimestampedValue.of(42, date2025);
     expect(tv.value).toBe(42);
-    expect(tv.asOf.getTime()).toBe(date2025.moment.getTime());
+    expect(tv.asOf.equals(date2025)).toBe(true);
   });
 
   it("delegates moment validation to Timestamp.of (invalid date string)", () => {
@@ -27,11 +34,15 @@ describe("TimestampedValue", () => {
     expect(() => Timestamp.of(new Date(Number.NaN))).toThrow(InvalidTimestampError);
   });
 
-  it("defends against caller mutating the exposed Date", () => {
+  it("exposes asOf as a Timestamp equal to the constructed moment (immutability via Timestamp invariants)", () => {
     const tv = TimestampedValue.of(42, date2025);
-    const exposed = tv.asOf;
-    exposed.setFullYear(1999);
-    expect(tv.asOf.getTime()).toBe(date2025.moment.getTime());
+    expect(tv.asOf).toBeInstanceOf(Timestamp);
+    expect(tv.asOf.equals(date2025)).toBe(true);
+    // Mutating the .moment Date returned by the Timestamp getter
+    // does not affect subsequent reads (Timestamp is immutable; .moment
+    // returns a fresh Date copy each call).
+    tv.asOf.moment.setFullYear(1999);
+    expect(tv.asOf.equals(date2025)).toBe(true);
   });
 
   it("isAfter returns true when this.asOf is later", () => {

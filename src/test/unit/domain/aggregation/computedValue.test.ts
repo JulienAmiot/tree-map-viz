@@ -58,7 +58,7 @@ describe("computedValue", () => {
       expect(result.kind).toBe("recordedValue");
       if (result.kind === "recordedValue") {
         expect(result.value.value).toBe(80);
-        expect(result.value.asOf.getTime()).toBe(new Date("2026-04-26T00:00:00Z").getTime());
+        expect(result.value.asOf.moment.getTime()).toBe(new Date("2026-04-26T00:00:00Z").getTime());
       }
     });
 
