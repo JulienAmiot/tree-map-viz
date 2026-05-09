@@ -17,7 +17,7 @@
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
 
-import { TreeGraphPage } from "../pageObjects/TreeGraphPage.js";
+import { TreeMapPage } from "../pageObjects/TreeMapPage.js";
 
 const { When, Then } = createBdd();
 
@@ -28,12 +28,12 @@ When("I pick the kind {string}", async ({ page }, kind: string) => {
   // left-rail kind list (was a `<select>` dropdown in §17.19, two large
   // cards pre-§17.19). The modal listens to the click and updates
   // `chosenKind` + flips `aria-pressed` on the picked button.
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.addChildModalKindButton(kind).click();
 });
 
 When("I fill in the title with {string}", async ({ page }, title: string) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.addChildModalField("field-title").fill(title);
 });
 
@@ -43,13 +43,13 @@ When(
     // SPEC §17.13 / §17.14 — both kinds collect a mandatory seed
     // `TimestampedValue`; the `field-current-value` testid is the same
     // whether the underlying input is a number (BSC) or textarea (Text).
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await kiosk.addChildModalField("field-current-value").fill(value);
   },
 );
 
 When("I confirm the add-child modal", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.addChildModalConfirm().click();
 });
 
@@ -57,20 +57,20 @@ When("I cancel the add-child modal", async ({ page }) => {
   // SPEC §17.19 — single-page flow: there's exactly one Cancel button
   // (no more dual Cancel buttons across Step 1 / Step 2), so we click
   // the testid directly.
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.addChildModalCancel().click();
 });
 
 // -- Modal state --------------------------------------------------------
 
 Then("the add-child modal is open", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   expect(await kiosk.isAddChildModalOpen()).toBe(true);
   await expect(kiosk.addChildModalPanel()).toBeVisible();
 });
 
 Then("the add-child modal is closed", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   expect(await kiosk.isAddChildModalOpen()).toBe(false);
   await expect(kiosk.addChildModalPanel()).toHaveCount(0);
 });
@@ -83,7 +83,7 @@ Then(
     // kind's name (top) + description (bottom). The button's full
     // text content concatenates both, so a `startsWith(kindLabel)`
     // check identifies the right entry.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const buttons = kiosk.addChildModalKindButtons();
     const buttonTexts = await buttons.evaluateAll((nodes: Element[]) =>
       nodes.map((n) => (n as HTMLElement).innerText.trim()),
@@ -100,7 +100,7 @@ Then(
     // kind, each rendering a "Name" line + a "Description" line. We
     // assert the count matches and that every button visually exposes
     // both halves (the description is wrapped in `.kind-btn-desc`).
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const buttons = kiosk.addChildModalKindButtons();
     await expect(buttons).toHaveCount(Number(expected));
     const buttonTexts = await buttons.evaluateAll((nodes: Element[]) =>
@@ -126,25 +126,25 @@ Then(
 Then(
   "the modal form is for kind {string}",
   async ({ page }, kind: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.addChildModalForm()).toHaveAttribute("data-kind", kind);
   },
 );
 
 Then("the modal has a title field", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-title")).toHaveCount(1);
 });
 
 // SPEC §17.19 — before a kind is picked, no type-specific fields
 // render; the form is just the dropdown + actions row.
 Then("the modal has no title field", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-title")).toHaveCount(0);
 });
 
 Then("the modal has no current-value field", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-current-value")).toHaveCount(0);
   await expect(
     kiosk.addChildModalField("field-current-value-date"),
@@ -152,19 +152,19 @@ Then("the modal has no current-value field", async ({ page }) => {
 });
 
 Then("the modal has a description field", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-description")).toHaveCount(1);
 });
 
 // SPEC §17.15 — TextNode form omits the description field; the current
 // value IS the description for text cards.
 Then("the modal has no description field", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-description")).toHaveCount(0);
 });
 
 Then("the modal has a weight field", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-weight")).toHaveCount(1);
 });
 
@@ -180,7 +180,7 @@ Then(
     // smallest reachable slider value matches the relaxed
     // `Weight.of` floor. Pre-§17.31 the slider advertised min=0 but
     // the domain rejected 0 at confirm time (a UX trap).
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const slider = kiosk.addChildModalField("field-weight-slider");
     await expect(slider).toHaveCount(1);
     await expect(slider).toHaveAttribute("type", "range");
@@ -206,7 +206,7 @@ When(
     // type="range">`, so we set the value imperatively and dispatch
     // `input` (the same event the modal listens to). This mirrors the
     // user's drag interaction at the contract level.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const slider = kiosk.addChildModalField("field-weight-slider");
     await slider.evaluate((node: Element, v: string) => {
       const input = node as HTMLInputElement;
@@ -219,7 +219,7 @@ When(
 Then(
   "the weight number input shows the value {string}",
   async ({ page }, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.addChildModalField("field-weight")).toHaveValue(
       expected,
     );
@@ -227,24 +227,24 @@ Then(
 );
 
 Then("the modal has no unit field", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-unit")).toHaveCount(0);
 });
 
 Then("the modal has no objective fields", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-initial")).toHaveCount(0);
   await expect(kiosk.addChildModalField("field-target")).toHaveCount(0);
   await expect(kiosk.addChildModalField("field-target-date")).toHaveCount(0);
 });
 
 Then("the modal has a unit field", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-unit")).toHaveCount(1);
 });
 
 Then("the modal has objective fields", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-initial")).toHaveCount(1);
   await expect(kiosk.addChildModalField("field-target")).toHaveCount(1);
   await expect(kiosk.addChildModalField("field-target-date")).toHaveCount(1);
@@ -253,7 +253,7 @@ Then("the modal has objective fields", async ({ page }) => {
 // SPEC §17.13 — the BSC modal collects a mandatory seed TimestampedValue
 // to feed the otherwise-empty history; the as-of date defaults to today.
 Then("the modal has a current-value field", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-current-value")).toHaveCount(1);
   await expect(
     kiosk.addChildModalField("field-current-value-date"),
@@ -263,7 +263,7 @@ Then("the modal has a current-value field", async ({ page }) => {
 Then(
   "the as-of date defaults to today's local-calendar ISO",
   async ({ page }) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const today = (() => {
       const d = new Date();
       const y = d.getFullYear();
@@ -278,19 +278,19 @@ Then(
 );
 
 Then("the modal has the computed toggle", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-computed")).toHaveCount(1);
 });
 
 Then("the modal has the eligible-for-parent-computation toggle", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-eligible")).toHaveCount(1);
 });
 
 Then(
   "the title field shows the value {string}",
   async ({ page }, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.addChildModalField("field-title")).toHaveValue(expected);
   },
 );
@@ -298,7 +298,7 @@ Then(
 // -- Backdrop ------------------------------------------------------------
 
 Then("the modal backdrop is semi-transparent", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   // Resolve the rendered `background-color` and assert its alpha is in the
   // [0, 1) range (anything strictly less than 1 means "you can see through
   // it"). `color-mix(in srgb, #000 55%, transparent)` resolves to an
@@ -321,7 +321,7 @@ Then("the modal backdrop is semi-transparent", async ({ page }) => {
 Then(
   'every modal text input has a placeholder of the form "<Field name> — e.g. <mock>"',
   async ({ page }) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const placeholders = await kiosk
       .addChildModalForm()
       .evaluate((form: Element) => {
@@ -346,7 +346,7 @@ Then(
 Then(
   "no modal <label> wraps a text, number, date, or textarea field",
   async ({ page }) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const violations = await kiosk
       .addChildModalForm()
       .evaluate((form: Element) => {
@@ -367,7 +367,7 @@ Then(
 // -- Focus invariance ----------------------------------------------------
 
 Then("the focused id is unchanged after the modal interaction", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   // The default seed focuses the root `TextNode` whose id is generated at
   // boot — we don't know its value up-front, but we know the parent strip's
   // `data-focused-id` was the same before opening the modal as it is now.
@@ -395,7 +395,7 @@ When("I tap the modal close-X", async ({ page }) => {
   // so a single step covers add-child / edit-node / future modals.
   // Scenarios assert the resulting "modal closed" state via the per-
   // modal "is closed" step.
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.modalCloseX().click();
 });
 
@@ -412,20 +412,20 @@ Then(
     // `inset:5vh 8vw` which left ~5vh / ~8vw of margin -- this step
     // would have passed by accident on a small viewport but failed
     // on a wide one (8vw of 1920px = 154px, well over 2rem).
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     // The shared close-X has the same testid on every modal; we
     // resolve the panel from whichever modal is currently open.
     const closeX = kiosk.modalCloseX();
     await closeX.waitFor({ state: "visible" });
-    // The modals live inside `<tree-graph-screen>`'s shadow root, so
+    // The modals live inside `<tree-map-screen>`'s shadow root, so
     // we walk into it from the host element. Both modal hosts are
     // direct shadow children of the screen.
     const measured = await page.evaluate(() => {
-      const screen = document.querySelector("tree-graph-screen");
+      const screen = document.querySelector("tree-map-screen");
       const screenRoot = (screen as { shadowRoot?: ShadowRoot } | null)
         ?.shadowRoot;
       if (!screenRoot) {
-        throw new Error("expected <tree-graph-screen> with an open shadow root");
+        throw new Error("expected <tree-map-screen> with an open shadow root");
       }
       const modals = Array.from(
         screenRoot.querySelectorAll<HTMLElement>(

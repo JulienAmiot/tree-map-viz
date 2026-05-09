@@ -4,7 +4,7 @@
  *
  * Lifecycle.
  *
- *   1. `<tree-graph-screen>` listens for `weight-edit-open`
+ *   1. `<tree-map-screen>` listens for `weight-edit-open`
  *      (dispatched by `<weight-edit-button>` on tap, OR by
  *      `<children-grid>`'s long-press handler on a tile pointer-down
  *      held > 500 ms). The handler stores the detail in a

@@ -9,12 +9,12 @@
  *   IdGen → LocalStorageRepo → BoardCollectionService.create
  *   → TreeNavigationService over the current board's tree
  *   → HashRouter ↔ navigation (URL is the source of truth for focus)
- *   → `<tree-graph-screen>` rendered through a plain VM
+ *   → `<tree-map-screen>` rendered through a plain VM
  *   → Test bridge installed iff `?test=1` (lazy import, tree-shaken otherwise)
  *
  * Phase 6 wiring (DT-5 — Lit views):
  *   + `mapFocusedToViewModel` translates `FocusedTreeView` (domain types)
- *     into the plain `FocusedTreeViewModel` consumed by `<tree-graph-screen>`
+ *     into the plain `FocusedTreeViewModel` consumed by `<tree-map-screen>`
  *     and the `<node-view>` dispatcher. Domain types still never cross the
  *     UI property boundary; the mapper itself sits under `adapters/ui/views/`.
  *
@@ -92,8 +92,8 @@ import type {
   EditNodeOpenDetail,
   FocusCloseToParentDetail,
 } from "./adapters/ui/shell/ParentIdentityStrip.js";
-import "./adapters/ui/shell/TreeGraphScreen.js";
-import type { TreeGraphScreen } from "./adapters/ui/shell/TreeGraphScreen.js";
+import "./adapters/ui/shell/TreeMapScreen.js";
+import type { TreeMapScreen } from "./adapters/ui/shell/TreeMapScreen.js";
 import type { InlineEditWeightDetail } from "./adapters/ui/views/childWeight/weightEditEvents.js";
 import type { InlineEditTitleDetail } from "./adapters/ui/views/inlineEditEvents.js";
 import type { InlineEditValueDetail } from "./adapters/ui/views/inlineEditEvents.js";
@@ -131,9 +131,9 @@ async function main(): Promise<void> {
   const board = boards.getCurrentBoard();
   const nav = new TreeNavigationService(board.tree);
 
-  const screen = document.querySelector<TreeGraphScreen>("tree-graph-screen");
+  const screen = document.querySelector<TreeMapScreen>("tree-map-screen");
   if (!screen) {
-    throw new Error("composition: <tree-graph-screen> not present in document");
+    throw new Error("composition: <tree-map-screen> not present in document");
   }
 
   const persistCurrent = async (): Promise<void> => {

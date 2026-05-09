@@ -3,7 +3,7 @@
  * `views/text_node_views.feature`, `views/business_score_card_views.feature`,
  * `views/computed_aggregation_view.feature`, `views/plus_tile.feature`.
  *
- * Every step goes through the `TreeGraphPage` page object — which itself
+ * Every step goes through the `TreeMapPage` page object — which itself
  * speaks only the kiosk's served URL, the DOM, and the `?test=1`-gated
  * `window.__appTestApi__` bridge. The loose-coupling rule from SPEC §13.3
  * (no `src/{domain,application,adapters}/**` imports here) is enforced by
@@ -20,7 +20,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createBdd } from "playwright-bdd";
 
-import { TreeGraphPage } from "../pageObjects/TreeGraphPage.js";
+import { TreeMapPage } from "../pageObjects/TreeMapPage.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = path.join(__dirname, "..", "fixtures", "trees");
@@ -42,18 +42,18 @@ const { When, Then } = createBdd();
 When(
   "I seed the {string} fixture via the test bridge",
   async ({ page }, fixtureName: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await kiosk.seedTree(loadFixture(fixtureName));
   },
 );
 
 When("I focus on node {string}", async ({ page }, nodeUuid: string) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.focusNode(nodeUuid);
 });
 
 When("I click the plus tile", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.plusTileButtons().first().click();
 });
 
@@ -62,7 +62,7 @@ When("I dismiss animations via the test bridge", async ({ page }) => {
   // helper short-circuits its CSS transition and commits navigation
   // synchronously. Without this step a Playwright drill scenario would have
   // to wait out `DRILL_SETTLE_MS` (250 ms) per drill.
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.dismissAnimations();
 });
 
@@ -73,7 +73,7 @@ When(
     // `data-testid="child"` + `data-id="<uuid>"`; clicking the wrapper bubbles
     // a `tile-drill` `CustomEvent` that the composition root translates into
     // `nav.focusByUuid + router.push + refresh`.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await kiosk.childById(nodeId).click();
   },
 );
@@ -91,13 +91,13 @@ Then(
 Then(
   "the focused description is {string}",
   async ({ page }, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.focusedDescription()).toHaveText(expected);
   },
 );
 
 Then("the focused value is {string}", async ({ page }, expected: string) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.focusedValue()).toHaveText(expected);
 });
 
@@ -110,7 +110,7 @@ Then("the focused value is {string}", async ({ page }, expected: string) => {
 Then(
   "the focused value contains a {string} element",
   async ({ page }, tagName: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const value = kiosk.focusedValue();
     await expect(value.locator(tagName)).toHaveCount(1, {
       // Some scenarios assert two list items + one ul; callers use
@@ -124,7 +124,7 @@ Then(
 Then(
   "the focused value contains {int} {string} elements",
   async ({ page }, n: number, tagName: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const value = kiosk.focusedValue();
     await expect(value.locator(tagName)).toHaveCount(n);
   },
@@ -138,7 +138,7 @@ Then(
     // specific px value (it depends on the browser's viewport at
     // test-time) but we DO pin a sane range so the rendering can't
     // silently regress to "0 px" (broken) or "movie-theatre" sizes.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const px = await kiosk.focusedValue().evaluate((el: Element) => {
       const cs = getComputedStyle(el);
       return parseFloat(cs.fontSize);
@@ -149,7 +149,7 @@ Then(
 );
 
 Then("the focused value area is empty", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   // `childrenCount` n=0 still renders <span data-testid="value"> (so existence
   // is asserted) but with no text content; assert both pieces explicitly.
   await expect(kiosk.focusedValue()).toHaveCount(1);
@@ -157,39 +157,39 @@ Then("the focused value area is empty", async ({ page }) => {
 });
 
 Then("the focused value has a date", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.focusedValueDate()).toHaveCount(1);
 });
 
 Then("the focused value has no date", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.focusedValueDate()).toHaveCount(0);
 });
 
 Then("the focused node has no value", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.focusedValue()).toHaveCount(0);
 });
 
 Then("the focused node has a computed badge", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.focusedComputedBadge()).toHaveCount(1);
 });
 
 Then("the focused node has no computed badge", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.focusedComputedBadge()).toHaveCount(0);
 });
 
 Then("the focused id is {string}", async ({ page }, expected: string) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   expect(await kiosk.focusedId()).toBe(expected);
 });
 
 Then(
   "the child {string} has title {string}",
   async ({ page }, id: string, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.childById(id).getByTestId("title")).toHaveText(expected);
   },
 );
@@ -197,7 +197,7 @@ Then(
 Then(
   "the child {string} has description {string}",
   async ({ page }, id: string, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.childById(id).getByTestId("description")).toHaveText(
       expected,
     );
@@ -211,7 +211,7 @@ Then(
     // the focused panel (parent role). Child tiles must NOT carry a
     // [data-testid="description"] element regardless of whether the
     // domain node has a non-empty description.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.childById(id).getByTestId("description")).toHaveCount(0);
   },
 );
@@ -219,20 +219,20 @@ Then(
 Then(
   "the child {string} has value {string}",
   async ({ page }, id: string, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.childById(id).getByTestId("value")).toHaveText(expected);
   },
 );
 
 Then("the child {string} has no value", async ({ page }, id: string) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.childById(id).getByTestId("value")).toHaveCount(0);
 });
 
 Then(
   "the child {string} has a computed badge",
   async ({ page }, id: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.childById(id).getByTestId("computed-badge")).toHaveCount(
       1,
     );
@@ -242,7 +242,7 @@ Then(
 Then(
   "the child {string} has no computed badge",
   async ({ page }, id: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.childById(id).getByTestId("computed-badge")).toHaveCount(
       0,
     );
@@ -250,32 +250,32 @@ Then(
 );
 
 Then("the child {string} has a date", async ({ page }, id: string) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.childById(id).getByTestId("value-date")).toHaveCount(1);
 });
 
 Then("there are {int} child tiles", async ({ page }, expected: number) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.childTiles()).toHaveCount(expected);
 });
 
 Then("there is exactly one plus tile", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.plusTileButtons()).toHaveCount(1);
 });
 
 Then("there are {int} plus tiles", async ({ page }, expected: number) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.plusTileButtons()).toHaveCount(expected);
 });
 
 Then("the plus tile shows {string}", async ({ page }, expected: string) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.plusTileButtons().first()).toContainText(expected);
 });
 
 Then("the plus tile has a dashed border", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   // The dashed border is the visual hallmark of the affordance (SPEC §12.3 plus_tile).
   // `getComputedStyle().borderStyle` collapses the four sides into a single
   // shorthand iff they all match — exactly what we want to assert.
@@ -287,24 +287,24 @@ Then("the plus tile has a dashed border", async ({ page }) => {
 });
 
 Then("the plus tile has no title", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.plusTileHosts().getByTestId("title")).toHaveCount(0);
 });
 
 Then("the plus tile has no value", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.plusTileHosts().getByTestId("value")).toHaveCount(0);
 });
 
 Then("the plus tile has no value-date", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.plusTileHosts().getByTestId("value-date")).toHaveCount(0);
 });
 
 // — §17.14 layout steps ———————————————————————————————————————————
 
 Then("the focused tile has no description block", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   // SPEC §17.14 — Description is no longer rendered in the tile body
   // for either kind; the value (text or number+unit) takes that space.
   await expect(kiosk.parentStrip().getByTestId("description")).toHaveCount(0);
@@ -324,7 +324,7 @@ Then("every tile title has the same font-size", async ({ page }) => {
   // playwright's built-in retry until a match exists; ChildA is the
   // first child of every fixture used by this scenario so it is a
   // safe pin.
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.childTiles().first()).toBeVisible();
   const sizes = await page
     .locator('children-grid [data-testid="title"]')
@@ -345,7 +345,7 @@ Then("every tile title's font-size is approximately 2vh", async ({ page }) => {
   // AsParent variant overrides with `2.4vh`. We assert the AsChild
   // (children grid) titles to ensure the §17.14 baseline holds; the
   // AsParent variant is allowed to scale up slightly per role.
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.childTiles().first()).toBeVisible();
   const sizes = await page.$$eval(
     'children-grid [data-testid="title"]',
@@ -366,7 +366,7 @@ Then(
     // Playwright's locator API walks open shadow roots, which the raw
     // `querySelector` chain above does not — that's why an earlier
     // probe-via-evaluate version returned `null` for the unit element.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const value = kiosk.parentStrip().getByTestId("value");
     await expect(value).toHaveCount(1);
     const valueFs = await value.evaluate((el: Element) =>
@@ -474,7 +474,7 @@ Then("every child tile has a non-transparent background", async ({ page }) => {
  */
 function readStripPanelStyle(page: Page) {
   return page.evaluate(() => {
-    const screen = document.querySelector("tree-graph-screen");
+    const screen = document.querySelector("tree-map-screen");
     const strip = screen?.shadowRoot?.querySelector("parent-identity-strip");
     const inner = strip?.shadowRoot?.querySelector(".strip") as
       | HTMLElement
@@ -492,7 +492,7 @@ function readStripPanelStyle(page: Page) {
 
 function readFirstChildTilePanelStyle(page: Page) {
   return page.evaluate(() => {
-    const screen = document.querySelector("tree-graph-screen");
+    const screen = document.querySelector("tree-map-screen");
     const grid = screen?.shadowRoot?.querySelector("children-grid");
     const tile = grid?.shadowRoot?.querySelector(
       '.tile[data-slot="node"]',
@@ -596,7 +596,7 @@ Then(
     // when a description is present. The contract that survives both
     // refactors is "bottom-right of the metric-pane" (the §17.45
     // containing block); that's what this step now reads against.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const ts = kiosk.parentStrip().getByTestId("value-date");
     const title = kiosk.parentStrip().getByTestId("title");
     const metricPane = kiosk.parentStrip().getByTestId("metric-pane");
@@ -656,7 +656,7 @@ Then(
     // known-id child (ChildB — recordedValue, always carries a date)
     // sidesteps the need for a shadow-piercing walk and keeps the
     // step kiosk-mode agnostic.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const parentTs = kiosk.parentStrip().getByTestId("value-date");
     await expect(parentTs).toHaveCount(1);
     const parentBox = await parentTs.boundingBox();
@@ -711,7 +711,7 @@ Then(
     // ChildB tile choice: it always renders a title and is part of
     // the `mixedComputed` fixture, so this scenario can be chained
     // against the same setup as the timestamp parity scenario.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const parentTitle = kiosk.parentStrip().getByTestId("title");
     await expect(parentTitle).toHaveCount(1);
     const parentBox = await parentTitle.boundingBox();
@@ -767,7 +767,7 @@ Then(
     // `.value` is a non-empty span the bounding box is well-defined
     // for). `ChildB` in `mixedComputed` satisfies that — the
     // scenario above seeds and focuses accordingly.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const parentValue = kiosk.parentStrip().getByTestId("value");
     await expect(parentValue).toHaveCount(1);
     const valueBox = await parentValue.boundingBox();
@@ -799,7 +799,7 @@ Then(
     // B within ±1 to absorb gamma rounding) and falls inside that
     // ramp — i.e. the helper is actually emitting a gradient
     // colour, not falling through to `currentColor`.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const ts = kiosk.parentStrip().getByTestId("value-date");
     await expect(ts).toHaveCount(1);
     const color = await ts.evaluate((el) => getComputedStyle(el).color);
@@ -825,7 +825,7 @@ Then(
     // SPEC §17.40 — the per-tile target row carries a bullseye icon
     // and a `target-text` span with the target value + unit, optionally
     // followed by a `target-date` time element.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const tile = kiosk.childById(nodeId);
     await expect(tile).toHaveCount(1);
     const row = tile.getByTestId("target-row");
@@ -842,7 +842,7 @@ Then(
     // parent strip — the BSC parent role re-uses the same template
     // helper, and the per-view's `:host { position: static }` does
     // not affect the target-row's flow inside `.value-area`.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const row = kiosk.parentStrip().getByTestId("target-row");
     await expect(row).toHaveCount(1);
     const text = (await row.textContent()) ?? "";
@@ -860,7 +860,7 @@ Then(
     // tile-default text colour (the `<body>` text colour the rest
     // of the kiosk inherits) -- a non-empty ramp colour will be
     // distinct.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const tile = kiosk.childById(nodeId);
     await expect(tile).toHaveCount(1);
     const value = tile.getByTestId("value");
@@ -897,7 +897,7 @@ Then(
     // glyph (a) lives inside the .target-row (not absolutely
     // positioned at bottom-left); and (b) carries an inline
     // `color: rgb(...)` from the §17.44 ramp.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const tile = kiosk.childById(nodeId);
     await expect(tile).toHaveCount(1);
     const row = tile.getByTestId("target-row");
@@ -912,7 +912,7 @@ Then(
 Then(
   "the child tile {string} does not show the off-track warning glyph",
   async ({ page }, nodeId: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const tile = kiosk.childById(nodeId);
     await expect(tile).toHaveCount(1);
     await expect(tile.getByTestId("off-track-warning")).toHaveCount(0);
@@ -925,7 +925,7 @@ Then(
     // §17.44 -- on the focused-panel strip the warning glyph also
     // lives inside the parent's .target-row (not at the strip's
     // bottom-left), tinted by the same deviation-keyed ramp.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const row = kiosk.parentStrip().getByTestId("target-row");
     await expect(row).toHaveCount(1);
     const warn = row.getByTestId("off-track-warning");
@@ -946,7 +946,7 @@ Then(
     // bottom-left for inline weight editing. Mirror of the §17.18
     // bottom-right timestamp position. The button is the discoverable
     // path; long-press is the hidden gesture.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.weightEditButtonForChild(nodeId)).toHaveCount(1);
   },
 );
@@ -958,7 +958,7 @@ When(
     // popover (the other being a 500 ms long-press anywhere on the
     // tile body). The icon's `@click` handler stops propagation so
     // the tap does NOT also drill into the tile.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await kiosk.weightEditButtonForChild(nodeId).click();
   },
 );
@@ -966,7 +966,7 @@ When(
 Then(
   "the weight-edit popover is open",
   async ({ page }) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect.poll(() => kiosk.isWeightEditPopoverOpen()).toBe(true);
     await expect(kiosk.weightEditPopoverPanel()).toHaveCount(1);
   },
@@ -975,7 +975,7 @@ Then(
 Then(
   "the weight-edit popover is closed",
   async ({ page }) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect.poll(() => kiosk.isWeightEditPopoverOpen()).toBe(false);
   },
 );
@@ -983,7 +983,7 @@ Then(
 Then(
   "the weight-edit slider value is {string}",
   async ({ page }, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.weightEditSlider()).toHaveValue(expected);
   },
 );
@@ -991,7 +991,7 @@ Then(
 Then(
   "the weight-edit live label shows {string}",
   async ({ page }, expected: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.weightEditLabel()).toHaveText(expected);
   },
 );
@@ -1005,7 +1005,7 @@ When(
     // `inline-edit-weight`. The §17.52 commit-on-release contract
     // is what we're pinning here: live label first, persisted
     // commit only on release.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await kiosk.weightEditSlider().evaluate((el, v) => {
       const input = el as HTMLInputElement;
       input.value = String(v);
@@ -1022,7 +1022,7 @@ When(
     // §17.52 commit seam). The popover dispatches
     // `inline-edit-weight`, the composition root applies
     // `editFields(node, { kind, weight })`, and the tree refreshes.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await kiosk.weightEditSlider().evaluate((el, v) => {
       const input = el as HTMLInputElement;
       input.value = String(v);
@@ -1049,7 +1049,7 @@ When(
     // level capture handler walks the composedPath looking for
     // the popover) closes without commit. Tap the top-bar (well
     // away from any tile or the popover panel itself).
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await kiosk.topBar().click();
   },
 );
@@ -1063,7 +1063,7 @@ Then(
     // and the assertion below pins the exact post-commit value
     // without depending on rendered-pixel area math (which is
     // sensitive to viewport size + squarify ordering quirks).
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await expect(kiosk.childById(nodeId)).toHaveAttribute(
       "data-weight",
       expectedWeight,
@@ -1079,7 +1079,7 @@ Then(
     // strict inequality (NOT a ratio) because squarify rounds
     // sub-pixels into the smallest tile in a row, so a 5 vs 1
     // ratio doesn't always render as exactly 5x area.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const aBox = await kiosk.childById(idA).boundingBox();
     const bBox = await kiosk.childById(idB).boundingBox();
     if (!aBox || !bBox) throw new Error("missing bounding box");
@@ -1098,7 +1098,7 @@ When(
     // buffer past the threshold), then `pointerup`. We resolve
     // the wrapper's center via boundingBox() so the synthesised
     // pointerId-1 events land on the correct element.
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const tile = kiosk.childById(nodeId);
     await tile.evaluate((el) => {
       const rect = el.getBoundingClientRect();
@@ -1141,7 +1141,7 @@ Then(
     // gradient tint — is asserted via the absence of any inline
     // colour-related style on the arrow span (mirrors the §17.40
     // amendment's check on the warning glyph).
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     const tile = kiosk.childById(nodeId);
     await expect(tile).toHaveCount(1);
     const arrow = tile.getByTestId("trend-arrow");

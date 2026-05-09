@@ -171,7 +171,7 @@ export class ChildrenGrid extends LitElement {
        and every child tile share the same source of truth (and so
        the drill-into morph can transition smoothly between the
        two). The color-mix fallbacks are kept for standalone unit
-       tests (a grid mounted outside <tree-graph-screen> won't
+       tests (a grid mounted outside <tree-map-screen> won't
        inherit the vars). */
     .tile[data-slot="node"] {
       background: var(
@@ -188,7 +188,7 @@ export class ChildrenGrid extends LitElement {
       /* §17.20 — node tiles are navigation targets (tap → drill).
          The cursor hint is the only on-grid affordance for that;
          the actual drill animation lives on the shell's layout
-         wrapper (encap--drill in TreeGraphScreen). */
+         wrapper (encap--drill in TreeMapScreen). */
       cursor: pointer;
     }
   `;

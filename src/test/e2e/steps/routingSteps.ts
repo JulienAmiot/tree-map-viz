@@ -24,7 +24,7 @@
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
 
-import { TreeGraphPage } from "../pageObjects/TreeGraphPage.js";
+import { TreeMapPage } from "../pageObjects/TreeMapPage.js";
 
 const { When } = createBdd();
 
@@ -37,7 +37,7 @@ const { When } = createBdd();
 When(
   "I navigate the kiosk to the focus hash for node {string}",
   async ({ page }, nodeUuid: string) => {
-    const kiosk = new TreeGraphPage(page);
+    const kiosk = new TreeMapPage(page);
     await kiosk.focusNode(nodeUuid);
   },
 );
@@ -81,7 +81,7 @@ When("I press the browser back button", async ({ page }) => {
   // the next microtask. Wait for that to flush before yielding.
   await expect
     .poll(async () => {
-      const kiosk = new TreeGraphPage(page);
+      const kiosk = new TreeMapPage(page);
       return await kiosk.focusedId();
     })
     .not.toBeNull();

@@ -230,7 +230,7 @@ describe("runDrillTransition (FLIP morph — §17.32)", () => {
       // a single source of truth (the screen's :host vars) drives
       // both the resting panel styling and the morph target. The
       // helper does not inline the literal mix percentages — they
-      // live in TreeGraphScreen.ts.
+      // live in TreeMapScreen.ts.
       expect(tile.style.backgroundColor).toContain("--panel-strip-bg");
       expect(tile.style.borderColor).toContain("--panel-border-color");
       expect(tile.style.borderRadius).toContain("--panel-border-radius");

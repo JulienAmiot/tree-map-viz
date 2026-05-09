@@ -18,7 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createBdd } from "playwright-bdd";
 
-import { TreeGraphPage } from "../pageObjects/TreeGraphPage.js";
+import { TreeMapPage } from "../pageObjects/TreeMapPage.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ORG_TREE_PATH = path.join(__dirname, "..", "fixtures", "trees", "orgTree.json");
@@ -27,21 +27,21 @@ const orgTreeJson: unknown = JSON.parse(readFileSync(ORG_TREE_PATH, "utf8"));
 const { When, Then } = createBdd();
 
 When("I open the kiosk in test mode with empty storage", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.openWithEmptyStorage();
 });
 
 When("I seed the org tree via the test bridge", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.seedTree(orgTreeJson);
 });
 
 When("I reload the kiosk", async ({ page }) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await kiosk.reload();
 });
 
 Then("the focused title is {string}", async ({ page }, expected: string) => {
-  const kiosk = new TreeGraphPage(page);
+  const kiosk = new TreeMapPage(page);
   await expect(kiosk.focusedTitle()).toHaveText(expected);
 });

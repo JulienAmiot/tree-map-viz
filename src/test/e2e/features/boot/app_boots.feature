@@ -3,7 +3,7 @@ Feature: App boots and renders the focused tree
 
   This is the Phase 5 smoke test. It exercises the whole composition root —
   Vite preview, LocalStorage seeding, hash router, navigation service, and
-  the `<tree-graph-screen>` Lit element — plus the test bridge, end-to-end.
+  the `<tree-map-screen>` Lit element — plus the test bridge, end-to-end.
 
   @HE-???? @priority:high
   Scenario: Default seed renders the showcase board's root title

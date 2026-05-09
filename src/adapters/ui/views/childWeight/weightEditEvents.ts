@@ -22,7 +22,7 @@
  *     `<weight-edit-button>` (the corner icon) on tap, AND by
  *     `<children-grid>`'s long-press handler on the tile wrapper.
  *     Both bubble + composed cross the children-grid shadow boundary
- *     so the screen-level handler in `<tree-graph-screen>` sees them.
+ *     so the screen-level handler in `<tree-map-screen>` sees them.
  *     `anchorRect` is the tile's `getBoundingClientRect()` snapshot;
  *     the popover positions itself in viewport coordinates relative
  *     to the rect (auto-flipping when the rect is near a viewport

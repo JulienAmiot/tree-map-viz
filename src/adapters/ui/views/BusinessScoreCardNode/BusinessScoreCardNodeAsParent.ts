@@ -391,7 +391,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
       }
       /* SPEC §17.46 -- when the per-view's host is taller than wide
          (i.e. the parent strip rendered as the LEFT 25 % rail in
-         landscape -- see TreeGraphScreen's data-orientation=
+         landscape -- see TreeMapScreen's data-orientation=
          "landscape" rule on .layout), switch the body to
          flex-direction: column and let the same flex-basis
          transitions carry the entering animation along the new

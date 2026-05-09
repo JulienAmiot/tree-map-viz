@@ -1111,7 +1111,7 @@ describe("<business-score-card-as-parent>", () => {
 
     it("\u00a717.46 \u2014 a portrait-orientation container query flips the body to flex-direction: column so the metric-pane lands on TOP 50 % and the description on BOTTOM 50 % when the per-view's host is taller than wide", () => {
       // \u00a717.46 -- when the parent strip is rendered as the LEFT
-      // 25 % rail in landscape (TreeGraphScreen's
+      // 25 % rail in landscape (TreeMapScreen's
       // .layout[data-orientation="landscape"] rule), the per-view's
       // host is taller than wide. The shared tileLayoutStyles makes
       // the per-view a `container-type: size` size container, so a
