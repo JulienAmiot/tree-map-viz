@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { TextCard } from "../../../../domain/nodes/TextCard.js";
+import { Timestamp } from "../../../../domain/values/Timestamp.js";
 import { TimestampedValue } from "../../../../domain/values/TimestampedValue.js";
 
-const t1 = new Date("2026-04-22T00:00:00.000Z");
-const t2 = new Date("2026-04-23T00:00:00.000Z");
-const t3 = new Date("2026-04-24T00:00:00.000Z");
+const t1 = Timestamp.of(new Date("2026-04-22T00:00:00.000Z"));
+const t2 = Timestamp.of(new Date("2026-04-23T00:00:00.000Z"));
+const t3 = Timestamp.of(new Date("2026-04-24T00:00:00.000Z"));
 
 describe("TextCard", () => {
   it("of() with no arguments produces an empty history", () => {
@@ -21,7 +22,7 @@ describe("TextCard", () => {
     ]);
     const h = card.history();
     expect(h.map((tv) => tv.value)).toEqual(["a", "b", "c"]);
-    expect(h.at(-1)!.asOf.toISOString()).toBe(t3.toISOString());
+      expect(h.at(-1)!.asOf.toISOString()).toBe(t3.moment.toISOString());
   });
 
   it("history() returns a frozen copy (defensive — callers cannot mutate the aggregate)", () => {

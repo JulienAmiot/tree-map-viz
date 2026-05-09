@@ -23,7 +23,7 @@ function makeText(): TextNode {
     NodeIdentity.of(Title.of("Notes"), Description.of("")),
     Weight.of(1),
     TextCard.of([
-      TimestampedValue.of("seed", new Date("2026-01-01T00:00:00Z")),
+      TimestampedValue.of("seed", Timestamp.of(new Date("2026-01-01T00:00:00Z"))),
     ]),
   );
 }
@@ -36,7 +36,7 @@ function makeBsc(): BusinessScoreCardNode<number> {
     BusinessScoreCard.of(
       Unit.of("M\u20ac"),
       Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00Z"))),
-      [TimestampedValue.of(42, new Date("2026-01-01T00:00:00Z"))],
+      [TimestampedValue.of(42, Timestamp.of(new Date("2026-01-01T00:00:00Z")))],
     ),
     /* computed */ false,
     /* eligible */ true,

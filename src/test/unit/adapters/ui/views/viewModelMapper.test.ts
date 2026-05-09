@@ -36,7 +36,7 @@ function makeText(
   history: { value: string; date: Date }[] = [{ value: title, date: DEFAULT_TEXT_DATE }],
 ): TextNode {
   const card = TextCard.of(
-    history.map((e) => TimestampedValue.of(e.value, e.date)),
+    history.map((e) => TimestampedValue.of(e.value, Timestamp.of(e.date))),
   );
   return new TextNode(id, identityOf(title, description), Weight.of(1), card);
 }
@@ -53,7 +53,7 @@ function makeBsc(opts: {
   const card = BusinessScoreCard.of(
     Unit.percent(),
     Objective.of(0, 100, targetDate),
-    opts.history.map((e) => TimestampedValue.of(e.value, new Date(e.iso))),
+    opts.history.map((e) => TimestampedValue.of(e.value, Timestamp.of(new Date(e.iso)))),
   );
   return new BusinessScoreCardNode<number>(
     opts.id,
@@ -349,7 +349,7 @@ describe("mapNodeToViewModel", () => {
     const card = BusinessScoreCard.of(
       Unit.percent(),
       Objective.of(100, 20, targetDate),
-      [TimestampedValue.of(20, new Date("2026-04-23T00:00:00.000Z"))],
+      [TimestampedValue.of(20, Timestamp.of(new Date("2026-04-23T00:00:00.000Z")))],
     );
     const node = new BusinessScoreCardNode<number>(
       "b-desc",
@@ -375,8 +375,8 @@ describe("mapNodeToViewModel", () => {
       Unit.percent(),
       Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
-        TimestampedValue.of(0, new Date("2026-01-01T00:00:00.000Z")),
-        TimestampedValue.of(10, new Date("2026-07-02T00:00:00.000Z")),
+        TimestampedValue.of(0, Timestamp.of(new Date("2026-01-01T00:00:00.000Z"))),
+        TimestampedValue.of(10, Timestamp.of(new Date("2026-07-02T00:00:00.000Z"))),
       ],
     );
     const node = new BusinessScoreCardNode<number>(
@@ -403,8 +403,8 @@ describe("mapNodeToViewModel", () => {
       Unit.percent(),
       Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
-        TimestampedValue.of(0, new Date("2026-01-01T00:00:00.000Z")),
-        TimestampedValue.of(80, new Date("2026-04-30T00:00:00.000Z")),
+        TimestampedValue.of(0, Timestamp.of(new Date("2026-01-01T00:00:00.000Z"))),
+        TimestampedValue.of(80, Timestamp.of(new Date("2026-04-30T00:00:00.000Z"))),
       ],
     );
     const node = new BusinessScoreCardNode<number>(
@@ -476,8 +476,8 @@ describe("mapNodeToViewModel", () => {
       Unit.percent(),
       Objective.of(0, 100, Timestamp.of(new Date("2026-06-30T00:00:00.000Z"))),
       [
-        TimestampedValue.of(0, new Date("2026-01-01T00:00:00.000Z")),
-        TimestampedValue.of(20, new Date("2026-05-30T00:00:00.000Z")),
+        TimestampedValue.of(0, Timestamp.of(new Date("2026-01-01T00:00:00.000Z"))),
+        TimestampedValue.of(20, Timestamp.of(new Date("2026-05-30T00:00:00.000Z"))),
       ],
     );
     const node = new BusinessScoreCardNode<number>(
@@ -503,8 +503,8 @@ describe("mapNodeToViewModel", () => {
       Unit.percent(),
       Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
-        TimestampedValue.of(130, new Date("2026-01-01T00:00:00.000Z")),
-        TimestampedValue.of(110, new Date("2026-04-30T00:00:00.000Z")),
+        TimestampedValue.of(130, Timestamp.of(new Date("2026-01-01T00:00:00.000Z"))),
+        TimestampedValue.of(110, Timestamp.of(new Date("2026-04-30T00:00:00.000Z"))),
       ],
     );
     const node = new BusinessScoreCardNode<number>(
@@ -538,8 +538,8 @@ describe("mapNodeToViewModel", () => {
       identityOf("Big", ""),
       Weight.of(1),
       BusinessScoreCard.of(Unit.percent(), Objective.of(0, 100, targetDate), [
-        TimestampedValue.of(0, new Date("2026-01-01T00:00:00.000Z")),
-        TimestampedValue.of(5, new Date("2026-04-30T00:00:00.000Z")),
+        TimestampedValue.of(0, Timestamp.of(new Date("2026-01-01T00:00:00.000Z"))),
+        TimestampedValue.of(5, Timestamp.of(new Date("2026-04-30T00:00:00.000Z"))),
       ]),
       false,
       true,
@@ -549,8 +549,8 @@ describe("mapNodeToViewModel", () => {
       identityOf("Small", ""),
       Weight.of(1),
       BusinessScoreCard.of(Unit.percent(), Objective.of(0, 100, targetDate), [
-        TimestampedValue.of(0, new Date("2026-01-01T00:00:00.000Z")),
-        TimestampedValue.of(30, new Date("2026-04-30T00:00:00.000Z")),
+        TimestampedValue.of(0, Timestamp.of(new Date("2026-01-01T00:00:00.000Z"))),
+        TimestampedValue.of(30, Timestamp.of(new Date("2026-04-30T00:00:00.000Z"))),
       ]),
       false,
       true,
@@ -595,8 +595,8 @@ describe("mapNodeToViewModel", () => {
       Unit.percent(),
       Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
-        TimestampedValue.of(0, new Date("2026-01-01T00:00:00.000Z")),
-        TimestampedValue.of(50, new Date("2026-07-02T00:00:00.000Z")),
+        TimestampedValue.of(0, Timestamp.of(new Date("2026-01-01T00:00:00.000Z"))),
+        TimestampedValue.of(50, Timestamp.of(new Date("2026-07-02T00:00:00.000Z"))),
       ],
     );
     const node = new BusinessScoreCardNode<number>(
@@ -621,8 +621,8 @@ describe("mapNodeToViewModel", () => {
       Unit.percent(),
       Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
-        TimestampedValue.of(0, new Date("2026-01-01T00:00:00.000Z")),
-        TimestampedValue.of(100, new Date("2026-07-02T00:00:00.000Z")),
+        TimestampedValue.of(0, Timestamp.of(new Date("2026-01-01T00:00:00.000Z"))),
+        TimestampedValue.of(100, Timestamp.of(new Date("2026-07-02T00:00:00.000Z"))),
       ],
     );
     const node = new BusinessScoreCardNode<number>(
@@ -646,8 +646,8 @@ describe("mapNodeToViewModel", () => {
       Unit.percent(),
       Objective.of(0, 100, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
-        TimestampedValue.of(100, new Date("2026-01-01T00:00:00.000Z")),
-        TimestampedValue.of(0, new Date("2026-07-02T00:00:00.000Z")),
+        TimestampedValue.of(100, Timestamp.of(new Date("2026-01-01T00:00:00.000Z"))),
+        TimestampedValue.of(0, Timestamp.of(new Date("2026-07-02T00:00:00.000Z"))),
       ],
     );
     const node = new BusinessScoreCardNode<number>(
@@ -712,8 +712,8 @@ describe("mapNodeToViewModel", () => {
       Unit.percent(),
       Objective.of(100, 20, Timestamp.of(new Date("2026-12-31T00:00:00.000Z"))),
       [
-        TimestampedValue.of(100, new Date("2026-01-01T00:00:00.000Z")),
-        TimestampedValue.of(50, new Date("2026-07-02T00:00:00.000Z")),
+        TimestampedValue.of(100, Timestamp.of(new Date("2026-01-01T00:00:00.000Z"))),
+        TimestampedValue.of(50, Timestamp.of(new Date("2026-07-02T00:00:00.000Z"))),
       ],
     );
     const node = new BusinessScoreCardNode<number>(

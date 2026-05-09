@@ -184,7 +184,7 @@ function decodeTextTimestampedValue(
       `not a valid ISO-8601 date: "${dateString}"`,
     );
   }
-  return TimestampedValue.of(value, new Date(ms));
+  return TimestampedValue.of(value, Timestamp.of(new Date(ms)));
 }
 
 function attachChildren(
@@ -223,7 +223,7 @@ function decodeTimestampedValue(raw: unknown, pointer: string): TimestampedValue
   if (Number.isNaN(ms)) {
     throw new JsonDecodeError(joinPointer(pointer, "date"), `not a valid ISO-8601 date: "${dateString}"`);
   }
-  return TimestampedValue.of(value, new Date(ms));
+  return TimestampedValue.of(value, Timestamp.of(new Date(ms)));
 }
 
 function encodeNode(node: TreeNode<unknown>): WireNode {

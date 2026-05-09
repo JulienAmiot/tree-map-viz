@@ -16,8 +16,9 @@ import type { Timestamp } from "../../domain/values/Timestamp.js";
  *   refactor at every call site.
  *
  * **Return type since §17.58**: `Timestamp` — the v4-aligned VO that
- * wraps a validated `Date` (§17.57 returned raw `Date`). Boundary-level
- * consumers that still need a raw `Date` unwrap with `clock.now().moment`.
+ * wraps a validated `Date` (§17.57 returned raw `Date`). The §17.58
+ * `.moment` boundary unwraps in `EditNodeService` + `main.ts` are gone
+ * since §17.61 (`TimestampedValue.of` now takes `Timestamp` directly).
  *
  * Stubs in tests stay near zero-ceremony:
  *

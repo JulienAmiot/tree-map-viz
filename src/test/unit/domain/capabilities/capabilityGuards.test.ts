@@ -10,7 +10,8 @@ import {
   implementsHistorizable,
 } from "../../../../domain/capabilities/capabilityGuards.js";
 
-const date = new Date("2026-01-01T00:00:00Z");
+const dateRaw = new Date("2026-01-01T00:00:00Z");
+const date = Timestamp.of(dateRaw);
 
 describe("capabilityGuards", () => {
   describe("non-object inputs", () => {
@@ -54,7 +55,7 @@ describe("capabilityGuards", () => {
     it("accepts an object with an objective() method", () => {
       const stub = {
         objective(): Objective<number> {
-          return Objective.of(0, 100, Timestamp.of(date));
+          return Objective.of(0, 100, Timestamp.of(dateRaw));
         },
       };
       expect(implementsHasObjective(stub)).toBe(true);
@@ -118,7 +119,7 @@ describe("capabilityGuards", () => {
           return [];
         },
         objective(): Objective<number> {
-          return Objective.of(0, 1, Timestamp.of(date));
+          return Objective.of(0, 1, Timestamp.of(dateRaw));
         },
         isEligible(): boolean {
           return true;

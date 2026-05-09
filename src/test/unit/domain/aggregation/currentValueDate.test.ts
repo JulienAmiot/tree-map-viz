@@ -33,7 +33,7 @@ function bsc(
   const card = BusinessScoreCard.of(
     Unit.percent(),
     farFuture,
-    history.map((e) => TimestampedValue.of(e.value, isoDate(e.iso))),
+    history.map((e) => TimestampedValue.of(e.value, Timestamp.of(isoDate(e.iso)))),
   );
   return new BusinessScoreCardNode<number>(
     id,
@@ -50,7 +50,7 @@ function text(
   history: { value: string; iso: string }[],
 ): TextNode {
   const card = TextCard.of(
-    history.map((e) => TimestampedValue.of(e.value, isoDate(e.iso))),
+    history.map((e) => TimestampedValue.of(e.value, Timestamp.of(isoDate(e.iso)))),
   );
   return new TextNode(id, identity, Weight.of(1), card);
 }
