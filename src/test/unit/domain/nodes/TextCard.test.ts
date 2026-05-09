@@ -22,7 +22,7 @@ describe("TextCard", () => {
     ]);
     const h = card.history();
     expect(h.map((tv) => tv.value)).toEqual(["a", "b", "c"]);
-      expect(h.at(-1)!.asOf.toISOString()).toBe(t3.moment.toISOString());
+      expect(h.at(-1)!.asOf.moment.toISOString()).toBe(t3.moment.toISOString());
   });
 
   it("history() returns a frozen copy (defensive — callers cannot mutate the aggregate)", () => {

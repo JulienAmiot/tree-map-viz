@@ -29,12 +29,12 @@ import type { TreeNode } from "../nodes/TreeNode.js";
 export function currentValueDateIso(node: TreeNode<unknown>): string | null {
   if (node instanceof TextNode) {
     const latest = node.card.history().at(-1);
-    return latest?.asOf.toISOString() ?? null;
+    return latest?.asOf.moment.toISOString() ?? null;
   }
   if (node instanceof BusinessScoreCardNode) {
     if (!node.computed) {
       const latest = node.card.history().at(-1);
-      return latest?.asOf.toISOString() ?? null;
+      return latest?.asOf.moment.toISOString() ?? null;
     }
     return mostRecentChildDateIso(node);
   }

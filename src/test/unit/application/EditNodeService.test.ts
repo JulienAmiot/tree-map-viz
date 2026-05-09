@@ -49,8 +49,10 @@ function makeBsc(): BusinessScoreCardNode<number> {
 // path. Tests that pass an explicit `asOf` ignore this stub; tests that
 // rely on the default get a frozen instant they can assert against.
 // \u00a717.58 narrowed `Clock.now()` to return a `Timestamp` value object;
-// `FAKE_NOW` stays as a raw `Date` for the assertion below (history's
-// `.asOf.getTime()` compares via the underlying ms).
+// `FAKE_NOW` stays as a raw `Date` so we can assert on the underlying
+// epoch ms via the new `.moment.getTime()` accessor (§17.62 narrowed
+// both `TimestampedValue.asOf` and `Objective.targetDate` getters to
+// `Timestamp`, mirroring the v4 class diagram end-to-end).
 const FAKE_NOW = new Date("2026-05-08T21:00:00.000Z");
 const FAKE_NOW_TS = Timestamp.of(FAKE_NOW);
 const fakeClock: Clock = { now: () => FAKE_NOW_TS };
@@ -106,7 +108,7 @@ describe("EditNodeService (\u00a717.28)", () => {
       expect(node.card.unit.value).toBe("%");
       expect(node.card.objective.initialValue).toBe(10);
       expect(node.card.objective.targetValue).toBe(200);
-      expect(node.card.objective.targetDate.getTime()).toBe(newDate.getTime());
+      expect(node.card.objective.targetDate.moment.getTime()).toBe(newDate.getTime());
       expect(node.computed).toBe(true);
       expect(node.eligibleForParentComputation).toBe(false);
     });
@@ -195,7 +197,7 @@ describe("EditNodeService (\u00a717.28)", () => {
       expect(node.card.history()).toHaveLength(before + 1);
       const latest = node.card.history().at(-1)!;
       expect(latest.value).toBe("fresh note");
-      expect(latest.asOf.getTime()).toBe(asOf.getTime());
+      expect(latest.asOf.moment.getTime()).toBe(asOf.getTime());
       expect(persist).toHaveBeenCalledTimes(1);
     });
 
@@ -244,7 +246,7 @@ describe("EditNodeService (\u00a717.28)", () => {
       expect(r.ok).toBe(true);
       const latest = node.card.history().at(-1)!;
       expect(latest.value).toBe("no-date inline edit");
-      expect(latest.asOf.getTime()).toBe(FAKE_NOW.getTime());
+      expect(latest.asOf.moment.getTime()).toBe(FAKE_NOW.getTime());
     });
 
     it("calls `clock.now()` only when `asOf` is omitted (explicit dates skip the port)", async () => {

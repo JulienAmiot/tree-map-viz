@@ -682,7 +682,7 @@ function buildEditTarget(node: TreeNode<unknown>): EditNodeTarget | null {
       objective: {
         initialValue: Number(objective.initialValue),
         targetValue: Number(objective.targetValue),
-        targetDateIso: objective.targetDate.toISOString().slice(0, 10),
+        targetDateIso: objective.targetDate.moment.toISOString().slice(0, 10),
       },
       computed: node.computed,
       eligibleForParentComputation: node.eligibleForParentComputation,

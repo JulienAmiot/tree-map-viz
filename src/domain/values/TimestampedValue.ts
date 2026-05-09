@@ -12,10 +12,12 @@ import { Timestamp } from "./Timestamp.js";
  * non-`NaN` Timestamp.
  *
  * Storage stays as a `number` (ms since epoch) for fast numeric compare
- * inside hot history-sort loops; the `asOf: Date` getter is preserved
- * (deliberately) so consumers (`viewModelMapper`, `currentValueDateIso`,
- * JSON encode) keep working unchanged. A future strand can narrow the
- * getter to `Timestamp` once those consumers migrate.
+ * inside hot history-sort loops; the `asOf` getter narrowed from `Date`
+ * to `Timestamp` in §17.62 (paired with `Objective.targetDate` getter
+ * narrowing — the v4 class diagram now matches end-to-end). Consumers
+ * (`viewModelMapper`, `currentValueDateIso`, JSON encode) read the
+ * underlying `Date` via `.asOf.moment.*` when they need ISO/getTime
+ * primitives.
  */
 export class TimestampedValue<T> {
   private readonly asOfMs: number;
@@ -31,8 +33,8 @@ export class TimestampedValue<T> {
     return new TimestampedValue<T>(value, asOf.moment.getTime());
   }
 
-  get asOf(): Date {
-    return new Date(this.asOfMs);
+  get asOf(): Timestamp {
+    return Timestamp.of(new Date(this.asOfMs));
   }
 
   isAfter(other: TimestampedValue<T>): boolean {

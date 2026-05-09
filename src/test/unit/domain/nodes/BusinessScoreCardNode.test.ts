@@ -107,7 +107,7 @@ describe("BusinessScoreCardNode", () => {
       const n = makeNode({ history: [t1, t2, t3] });
       const c = n.contribution();
       expect(c.value).toBe(80);
-      expect(c.asOf.getTime()).toBe(t3.asOf.getTime());
+      expect(c.asOf.equals(t3.asOf)).toBe(true);
     });
 
     it("contribution() throws EmptyHistoryError when the card has no history", () => {
@@ -121,7 +121,7 @@ describe("BusinessScoreCardNode", () => {
       const n = makeNode({ history: [t1, t2, t3] });
       const cv = n.currentValue();
       expect(cv.value).toBe(80);
-      expect(cv.asOf.getTime()).toBe(t3.asOf.getTime());
+      expect(cv.asOf.equals(t3.asOf)).toBe(true);
     });
 
     it("throws EmptyHistoryError when the card has no history", () => {
@@ -144,7 +144,7 @@ describe("BusinessScoreCardNode", () => {
       const cv = n.currentValue();
       const c = n.contribution();
       expect(cv.value).toBe(c.value);
-      expect(cv.asOf.getTime()).toBe(c.asOf.getTime());
+      expect(cv.asOf.equals(c.asOf)).toBe(true);
     });
   });
 

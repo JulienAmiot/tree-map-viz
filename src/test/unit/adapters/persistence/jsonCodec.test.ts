@@ -31,8 +31,8 @@ describe("jsonCodec", () => {
       const history = tree.card.history();
       expect(history).toHaveLength(2);
       expect(history[0]!.value).toBe(100);
-      expect(history[0]!.asOf.toISOString()).toBe("2026-04-22T18:25:43.511Z");
-      expect(history[1]!.asOf.toISOString()).toBe("2026-04-23T18:25:43.511Z");
+      expect(history[0]!.asOf.moment.toISOString()).toBe("2026-04-22T18:25:43.511Z");
+      expect(history[1]!.asOf.moment.toISOString()).toBe("2026-04-23T18:25:43.511Z");
     });
 
     it("recursively decodes childrenNodes and re-attaches them under their parent", () => {
@@ -85,7 +85,7 @@ describe("jsonCodec", () => {
       const history = tree.card.history();
       expect(history).toHaveLength(2);
       expect(history[0]!.value).toBe("older");
-      expect(history[0]!.asOf.toISOString()).toBe("2026-04-22T00:00:00.000Z");
+      expect(history[0]!.asOf.moment.toISOString()).toBe("2026-04-22T00:00:00.000Z");
       expect(history[1]!.value).toBe("newer");
       expect(tree.currentValue().value).toBe("newer");
     });
