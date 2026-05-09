@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { encode } from "../../../../adapters/persistence/jsonCodec.js";
 import {
+  LEGACY_STORAGE_KEY,
   LocalStorageBoardCollectionRepository,
   STORAGE_KEY,
   StorageFullError,
@@ -258,6 +259,69 @@ describe("LocalStorageBoardCollectionRepository — adapter-specific", () => {
       const repo = new LocalStorageBoardCollectionRepository({ storage });
 
       await expect(repo.load()).rejects.toThrow();
+    });
+  });
+
+  describe("\u00a717.63 legacy storage-key migration", () => {
+    // The pre-§17.63 builds wrote under `tree-graph-viz/board-collection/v1`;
+    // the §17.63 rename flipped the prefix to `tree-map-viz/...`. Operators
+    // upgrading from a pre-§17.63 build still have their saved boards under
+    // the legacy key; load() must copy them across silently on first boot
+    // (envelope shape unchanged at v1 — copy-and-delete, not decode/encode).
+
+    it("copies a legacy payload to the new key and clears the legacy entry on first load", async () => {
+      const board = tn("legacy-root", "From the pre-rename world");
+      const treeWire = JSON.parse(encode(board)) as unknown;
+      const legacyEnvelope = {
+        v: 1,
+        currentBoardId: "legacy-id",
+        boards: [{ id: "legacy-id", name: "Legacy", tree: treeWire }],
+      };
+      storage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(legacyEnvelope));
+
+      const repo = new LocalStorageBoardCollectionRepository({ storage });
+      const snapshot = await repo.load();
+
+      expect(snapshot.boards).toHaveLength(1);
+      expect(snapshot.boards[0]!.id).toBe("legacy-id");
+      expect(snapshot.boards[0]!.name).toBe("Legacy");
+      expect(storage.getItem(STORAGE_KEY)).not.toBeNull();
+      expect(storage.getItem(LEGACY_STORAGE_KEY)).toBeNull();
+      // Migration MUST be a byte-for-byte copy (no decode → re-encode).
+      expect(storage.getItem(STORAGE_KEY)).toBe(JSON.stringify(legacyEnvelope));
+    });
+
+    it("ignores the legacy key when the new key is already populated (post-migration boot)", async () => {
+      // On a second boot, the legacy key is normally already empty.
+      // But a crash between setItem and removeItem could leave the
+      // legacy entry behind — the operator's already-saved post-rename
+      // boards must still win, and the leftover must NOT clobber them.
+      const repo1 = new LocalStorageBoardCollectionRepository({ storage });
+      await repo1.load();
+      const newKeyPayload = storage.getItem(STORAGE_KEY)!;
+      storage.setItem(LEGACY_STORAGE_KEY, JSON.stringify({ v: 1, currentBoardId: "stale", boards: [] }));
+
+      const repo2 = new LocalStorageBoardCollectionRepository({ storage });
+      await repo2.load();
+
+      expect(storage.getItem(STORAGE_KEY)).toBe(newKeyPayload);
+      expect(storage.getItem(LEGACY_STORAGE_KEY)).not.toBeNull();
+    });
+
+    it("does NOT migrate when a custom storage key is configured", async () => {
+      // Custom-key callers have their own storage discipline; the
+      // §17.63 default-key migration must never reach across to a
+      // legacy entry on their behalf.
+      storage.setItem(LEGACY_STORAGE_KEY, '{"v":1,"currentBoardId":"x","boards":[]}');
+      const repo = new LocalStorageBoardCollectionRepository({
+        storage,
+        key: "custom-namespace/board-collection",
+      });
+
+      await repo.load();
+
+      expect(storage.getItem(LEGACY_STORAGE_KEY)).not.toBeNull();
+      expect(storage.getItem(STORAGE_KEY)).toBeNull();
     });
   });
 });

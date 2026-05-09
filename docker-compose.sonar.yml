@@ -1,5 +1,6 @@
 # --------------------------------------------------------------------------
-# Local SonarQube quality-gate stack for `tree-graph-viz` (§17.53)
+# Local SonarQube quality-gate stack for `tree-map-viz` (§17.53; project
+# renamed from `tree-graph-viz` in §17.63).
 # --------------------------------------------------------------------------
 #
 # WHY THIS FILE EXISTS
@@ -36,7 +37,7 @@
 # SonarQube initialises the schema; subsequent starts take ~30 s. Open
 # http://localhost:9000 (login: admin / admin — change immediately) and
 # create a user token via "My Account → Security → Generate Tokens"
-# named `tree-graph-viz-local`. Save the token in `.env.sonar` as
+# named `tree-map-viz-local`. Save the token in `.env.sonar` as
 # `SONAR_TOKEN=<value>` (file is git-ignored, see `.gitignore`).
 #
 # ELASTICSEARCH BOOTSTRAP CHECKS
