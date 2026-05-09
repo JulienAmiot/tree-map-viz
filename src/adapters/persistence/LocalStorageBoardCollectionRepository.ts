@@ -36,7 +36,15 @@ import { buildShowcaseBoard } from "../showcaseSeed.js";
 import { decode, encode } from "./jsonCodec.js";
 
 /** Default storage key. Versioned (`v1`) so future migrations can rename without collisions. */
-export const STORAGE_KEY = "tree-graph-viz/board-collection/v1";
+export const STORAGE_KEY = "tree-map-viz/board-collection/v1";
+
+/**
+ * Legacy storage key — pre-§17.63 builds wrote the board collection here
+ * (project was named `tree-graph-viz`; renamed to `tree-map-viz` in §17.63).
+ * Retained as a read-side migration hook in {@link LocalStorageBoardCollectionRepository.load};
+ * never written to. See SPEC §17.4 / §17.63.
+ */
+export const LEGACY_STORAGE_KEY = "tree-graph-viz/board-collection/v1";
 
 const ENVELOPE_VERSION = 1;
 
@@ -88,6 +96,7 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
   }
 
   async load(): Promise<BoardCollectionSnapshot> {
+    this.migrateLegacyKeyIfNeeded();
     const raw = this.storage.getItem(this.key);
     if (raw === null) {
       const seeded = this.buildSeed();
@@ -95,6 +104,44 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
       return seeded;
     }
     return this.deserialize(raw);
+  }
+
+  /**
+   * SPEC §17.63 — silent project-rename migration. The §17.4 storage-key
+   * prefix flipped from `tree-graph-viz/...` to `tree-map-viz/...` at the
+   * project level (npm package + Sonar key + repo all renamed alongside it).
+   * Operators upgrading from a pre-§17.63 build still have their boards
+   * under the {@link LEGACY_STORAGE_KEY}; on first load AFTER the upgrade
+   * we copy the legacy payload byte-for-byte into the new key and delete
+   * the legacy entry. No UI surface, no operator interaction — the rename
+   * is invisible to the kiosk. The envelope version stays at `v1`: only
+   * the key prefix changed, not the wire shape, so a copy-and-delete is
+   * the minimum-risk migration (no decode → re-encode round-trip that
+   * could surface a subtle wire-shape bug at the worst possible moment).
+   *
+   * Guards:
+   *   - only fires when the consumer is using the default {@link STORAGE_KEY}
+   *     (a custom-key caller has its own storage discipline and migration
+   *     policy; we don't reach across it);
+   *   - never overwrites an existing new-key payload (idempotent across
+   *     repeat boots — a legacy leftover that survived a previous run
+   *     because of a crash mid-migration is silently ignored once the
+   *     new key is populated; the operator's already-saved post-rename
+   *     boards win).
+   */
+  private migrateLegacyKeyIfNeeded(): void {
+    if (this.key !== STORAGE_KEY) {
+      return;
+    }
+    if (this.storage.getItem(this.key) !== null) {
+      return;
+    }
+    const legacy = this.storage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy === null) {
+      return;
+    }
+    this.storage.setItem(this.key, legacy);
+    this.storage.removeItem(LEGACY_STORAGE_KEY);
   }
 
   async save(snapshot: BoardCollectionSnapshot): Promise<void> {

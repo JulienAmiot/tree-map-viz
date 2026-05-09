@@ -5,7 +5,8 @@
   returned `@HE-XXXX` Test issue keys back into the source files.
 
 .DESCRIPTION
-  Implements DT-10 of the Tree Graph Viz spec (docs/SPEC.md sec.15.7, sec.17.8).
+  Implements DT-10 of the Tree Map Viz spec (docs/SPEC.md sec.15.7, sec.17.8;
+  project renamed from `tree-graph-viz` in §17.63).
 
   For each `.feature` file under -FeaturesPath:
     1. Authenticate against XRay Cloud (POST /api/v2/authenticate).

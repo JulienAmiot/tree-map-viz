@@ -1,4 +1,4 @@
-# Tree Graph Viz — XRay import pipeline
+# Tree Map Viz — XRay import pipeline
 #
 # DT-10 / docs/SPEC.md sec.15.7: on every push to main, after the e2e suite is
 # green, push every `.feature` file under src/test/e2e/features/ to XRay so each
