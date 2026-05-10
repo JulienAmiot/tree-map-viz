@@ -11,7 +11,7 @@ import { Unit } from "../domain/values/Unit.js";
 import { Weight } from "../domain/values/Weight.js";
 
 import type { Persister } from "./AddChildService.js";
-import type { Clock } from "./ports/Clock.js";
+import type { Clock } from "../domain/capabilities/Clock.js";
 
 /**
  * Plain-data payload from the Edit-node modal (SPEC §17.28).

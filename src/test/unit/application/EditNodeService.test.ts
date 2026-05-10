@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EditNodeService } from "../../../application/EditNodeService.js";
-import type { Clock } from "../../../application/ports/Clock.js";
+import type { Clock } from "../../../domain/capabilities/Clock.js";
 import { BusinessScoreCard } from "../../../domain/nodes/BusinessScoreCard.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
 import { BusinessScoreCardNode } from "../../../domain/nodes/BusinessScoreCardNode.js";

@@ -1,4 +1,4 @@
-import type { Timestamp } from "../../domain/values/Timestamp.js";
+import type { Timestamp } from "../values/Timestamp.js";
 
 /**
  * Application port: a clock that returns the current moment (SPEC §17.57).
