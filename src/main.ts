@@ -103,7 +103,7 @@ import { BoardCollectionService } from "./application/BoardCollectionService.js"
 import { EditNodeService } from "./application/EditNodeService.js";
 import { ImportExportService } from "./application/ImportExportService.js";
 import { TreeNavigationService } from "./application/TreeNavigationService.js";
-import type { Clock } from "./application/ports/Clock.js";
+import type { Clock } from "./domain/capabilities/Clock.js";
 import { BusinessScoreCardNode } from "./domain/nodes/BusinessScoreCardNode.js";
 import { Timestamp } from "./domain/values/Timestamp.js";
 import { TextCard } from "./domain/nodes/TextCard.js";
