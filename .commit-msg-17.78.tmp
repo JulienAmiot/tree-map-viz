@@ -1,0 +1,76 @@
+§17.78 v4 redesign part 14: Card visual hierarchy — abstract Card<N extends Node> + 3 concrete TextCardV4 / BusinessScoreCardV4<T> / StrictRangeCard<T> + sonar.projectVersion bump 0.1.4 -> 0.1.5
+
+First strand outside the v4 Node taxonomy after §17.77 closed it. The
+v4 class diagram declares two adjacent class clusters beyond the Node
+hierarchy: the Card visual layer (this strand) and the Tree container
+(slated for §17.79). §17.78 ships the Card cluster's full 4-class
+hierarchy as a single strand:
+
+(a) abstract Card<N extends Node> — `+N node` field + `+getNode() N`
+    method. Generic argument N bounded to Node so the type system
+    enforces the host contract; concrete subclasses narrow N at the
+    leaf level via TS covariant return narrowing on getNode().
+    Protected constructor forces instantiation through a concrete
+    subclass.
+
+(b) concrete TextCardV4 extends Card<TextNodeV4> — pure binding leaf,
+    no field/method overrides.
+
+(c) concrete BusinessScoreCardV4<T> extends Card<BusinessScoreNode<T>>
+    — generic propagates T from hosted node down to card.
+
+(d) concrete StrictRangeCard<T> extends Card<StrictRangeNode<T>> —
+    same shape as the other two concretes, differs only in bound T.
+
+Three different naming-convention outcomes in the same strand:
+- Card<N> ships under v4-final name (no v3 namesake; v4 invention).
+- TextCardV4 + BusinessScoreCardV4<T> use V4 suffix because v3 has
+  same-name classes (TextCard, BusinessScoreCard) but with a
+  COMPLETELY DIFFERENT concern: v3 cards are history-aggregates
+  owning the timestamped value sequence; v4 cards are visual
+  wrappers hosting a Node, with no history responsibility (history
+  moved to HistorizableValueNode<T> §17.73, objective moved to
+  BusinessScoreNode<T> §17.76). Same-name-different-concern is the
+  strongest case for a V4 suffix during coexistence.
+- StrictRangeCard<T> has no v3 namesake → no suffix needed.
+
+New directory src/domain/cards/ per the v4 diagram's "Visual layer"
+cluster — separate from the Node hierarchy in src/domain/nodes/.
+
++4 net unit tests in a single consolidated Card.test.ts (4 describe
+blocks, 1 test each). File-per-class would duplicate imports +
+describe-skeletons for ~3-4 tests each across 4 files; consolidation
+appropriate because the cards are tightly related identical-shape
+concretes around a trivial abstract.
+
+0 net e2e scenarios (visual-layer abstract; no UI surface yet). 0
+bundle delta (all 4 cards tree-shaken).
+
+sonar.projectVersion bump 0.1.4 -> 0.1.5 — every-strand bump per
+the §17.72 corrected rule.
+
+Strand sizing: multi-artefact (4 classes + 1 test file) but each
+artefact is a small binding leaf (~25 lines apiece): raw 209 src
+lines (35 in Card.ts + 28 in TextCardV4.ts + 32 in
+BusinessScoreCardV4.ts + 25 in StrictRangeCard.ts + 89 in
+Card.test.ts), well under the 300 ceiling with ~90 lines headroom.
+The §17.76 lesson generalises: 4-artefact strands fit under 300 IF
+each artefact is a pure binding leaf and tests are consolidated
+into one file.
+
+§17.72 corrected procedure followed: content COMMITTED FIRST, then
+npm run sonar:gate runs on the committed tip.
+
+Sanity sweep: 929 unit tests passing (925 -> 929, +4 net), eslint
+clean, typecheck clean, bundle 242.77 KB / 66.16 KB gzip / 90 modules.
+
+v4 cluster progress: Node taxonomy (§17.72-§17.77, 6 strands) and
+Card visual layer (§17.78, 1 strand) both shipped. The only v4
+diagram concept remaining is the Tree container (root, findById,
+nodes()) — small enough for §17.79. After Tree the v4 redesign's
+class-diagram side is complete; only remaining work is the
+v3-retirement migration.
+
+Next strand (§17.79+): operator's choice between (a) v4 Tree
+container, (b) v3-retirement migration plan, or (c) v3-retirement
+migration step 1.
