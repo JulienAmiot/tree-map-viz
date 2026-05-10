@@ -29,3 +29,9 @@ coverage/
 
 # Local SonarQube credentials (§17.53) — see .env.sonar.example
 .env.sonar
+
+# Transient commit-message scratch files used to feed `git commit -F`
+# from PowerShell (avoids heredoc parsing issues, see §17.77 history).
+# These should never be committed; the §17.78 strand accidentally
+# included one and added this rule as cleanup.
+.commit-msg-*.tmp
