@@ -1,10 +1,17 @@
 # Tree Map Viz — XRay import pipeline
 #
-# DT-10 / docs/SPEC.md sec.15.7: on every push to main, after the e2e suite is
+# DT-10 / docs/SPEC.md sec.15.7: on every push to master, after the e2e suite is
 # green, push every `.feature` file under src/test/e2e/features/ to XRay so each
 # scenario has a corresponding HE-* Test issue. Round-tripped @HE-XXXX keys are
-# auto-committed back to main with [skip ci] so the workflow doesn't re-trigger
+# auto-committed back to master with [skip ci] so the workflow doesn't re-trigger
 # itself.
+#
+# SPEC §17.82 / §17.83: pre-§17.83 this workflow gated on `branches: [main]`,
+# but the repo's default branch has been `master` since inception. The
+# workflow has been silently dead since whenever the mismatch surfaced.
+# §17.83 fixes it as part of bundling the Pages deployment workflow (P6
+# in the §17.82 plan: opportune housekeeping in the same .github/workflows/
+# PR rather than a separate strand).
 #
 # Repo secrets required:
 #   XRAY_CLIENT_ID
@@ -15,7 +22,7 @@ name: xray-import
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'src/test/e2e/features/**.feature'
       - 'bin/xray-import.sh'
@@ -92,4 +99,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/test/e2e/features
           git commit -m "chore(xray): round-trip @HE-XXXX keys from XRay import [skip ci]"
-          git push origin HEAD:main
+          git push origin HEAD:master

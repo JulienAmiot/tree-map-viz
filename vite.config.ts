@@ -1,6 +1,17 @@
 import { defineConfig } from "vitest/config";
 
+// SPEC §17.83 — GitHub Pages deployment ships the build at
+// `https://julienamiot.github.io/tree-map-viz/`, a subpath of the
+// `julienamiot.github.io` domain. Vite's `base` prefixes every
+// generated asset URL (in `index.html` and chunked imports) so the
+// deployed page resolves modules correctly. Dev mode (`npm run dev`)
+// is unaffected — `base` only applies to `vite build` output. The
+// HashRouter is base-agnostic by construction (the hash fragment is
+// independent of the path prefix), so no router change is needed.
+// Trailing slash matters: `/tree-map-viz/` produces correct relative
+// asset URLs; `/tree-map-viz` (no slash) breaks them.
 export default defineConfig({
+  base: "/tree-map-viz/",
   test: {
     environment: "jsdom",
     globals: true,

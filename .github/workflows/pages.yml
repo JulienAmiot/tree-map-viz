@@ -1,0 +1,98 @@
+# Tree Map Viz — GitHub Pages deployment
+#
+# SPEC §17.82 / §17.83: every push to master (= every PR merge per the
+# branch-per-feature workflow established at §17.53) builds the Vite
+# bundle and deploys it to GitHub Pages at
+# https://julienamiot.github.io/tree-map-viz/
+#
+# Pre-conditions ENFORCED here (lint + tests gate the deploy):
+#   - tsc --noEmit must pass
+#   - eslint . must pass
+#   - vitest unit suite must pass
+# If any gate fails, the deploy job never runs (it `needs: build`).
+#
+# Pre-conditions NOT enforced here (local-only):
+#   - Sonar Quality Gate runs locally via `npm run sonar:gate` before
+#     `git push origin master` (§17.53 ceremony) AND via the husky
+#     pre-push hook on master pushes. CI does NOT re-run Sonar — the
+#     local-server-only setup makes that infeasible (and the husky
+#     gate has already vetted the push).
+#
+# Pages-side prerequisites (one-time, not in this workflow):
+#   - Repo Settings → Pages → Source must be set to "GitHub Actions"
+#     (not "Deploy from a branch"). The `actions/deploy-pages@v4`
+#     action requires this; legacy gh-pages branch deploys are not
+#     used here.
+#
+# Concurrency: a single in-flight deploy at a time, but new deploys
+# queue rather than cancel — we want every merged PR to land on
+# Pages, not just the latest. (`cancel-in-progress: false`.)
+
+name: pages
+
+on:
+  push:
+    branches: [master]   # default branch per SPEC §17.82 R2; do NOT use main
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (tsc) and architectural rules
+        run: |
+          npm run lint
+          npm run lint:rules
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build (vite)
+        # `base: "/tree-map-viz/"` is set in vite.config.ts (§17.83),
+        # so the resulting dist/ has correct subpath asset URLs.
+        run: npm run build
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
