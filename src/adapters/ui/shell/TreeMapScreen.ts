@@ -89,6 +89,8 @@ import {
   runDrillTransition,
 } from "../animations/drillTransitions.js";
 import { OrientationController } from "../controllers/OrientationController.js";
+import "../modal/AboutModal.js";
+import type { AboutModal } from "../modal/AboutModal.js";
 import "../modal/AddChildModal.js";
 import type { AddChildModal } from "../modal/AddChildModal.js";
 import "../modal/BoardSettingsModal.js";
@@ -203,6 +205,10 @@ export class TreeMapScreen extends LitElement {
    * `setBoardsPanelError(reason)` so the modal stays open for retry. */
   @property({ attribute: false })
   boardsPanelError: string | null = null;
+
+  // SPEC §17.84 — read-only About modal; no target, no error.
+  @state()
+  private aboutModalOpen = false;
 
   /**
    * SPEC §17.52 -- active child-tile weight-edit popover state.
@@ -418,6 +424,10 @@ export class TreeMapScreen extends LitElement {
         .errorMessage=${this.boardsPanelError}
         @boards-panel-cancel=${this.handleBoardsPanelModalClose}
       ></boards-panel-modal>
+      <about-modal
+        ?open=${this.aboutModalOpen}
+        @about-cancel=${this.handleAboutModalClose}
+      ></about-modal>
       <weight-edit-popover
         ?open=${this.weightEditTarget !== null}
         .nodeId=${this.weightEditTarget?.nodeId ?? ""}
@@ -612,6 +622,10 @@ export class TreeMapScreen extends LitElement {
     this.boardsPanelError = null;
   };
 
+  private readonly handleAboutModalClose = (): void => {
+    this.aboutModalOpen = false;
+  };
+
   /** Called by the composition root after a successful `addChild` so the
    * modal closes (preserving any other state the shell owns). Public so
    * `main.ts` can drive it without re-querying the modal element. */
@@ -703,6 +717,16 @@ export class TreeMapScreen extends LitElement {
     this.boardsPanelError = message;
   }
 
+  /** SPEC §17.84 — open the read-only About modal. */
+  openAboutModal(): void {
+    this.aboutModalOpen = true;
+  }
+
+  /** Defensive programmatic close (e.g. on route change). */
+  closeAboutModal(): void {
+    this.aboutModalOpen = false;
+  }
+
   /** Read-only accessor used by tests — keeps the `@state` private. */
   get isAddChildModalOpen(): boolean {
     return this.modalOpen;
@@ -724,6 +748,11 @@ export class TreeMapScreen extends LitElement {
    * §17.34 boards-panel modal state. */
   get isBoardsPanelModalOpen(): boolean {
     return this.boardsPanelModalOpen;
+  }
+
+  /** §17.84 about modal state. */
+  get isAboutModalOpen(): boolean {
+    return this.aboutModalOpen;
   }
 
   /** Direct accessor to the modal element, useful for the composition root
@@ -757,6 +786,11 @@ export class TreeMapScreen extends LitElement {
         "boards-panel-modal",
       ) ?? null
     );
+  }
+
+  /** §17.84 direct accessor. */
+  get aboutModalElement(): AboutModal | null {
+    return this.shadowRoot?.querySelector<AboutModal>("about-modal") ?? null;
   }
 
   /**

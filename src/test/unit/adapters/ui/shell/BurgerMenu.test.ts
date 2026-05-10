@@ -44,10 +44,12 @@ describe("<burger-menu>", () => {
     expect(triggerOf(el).getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("renders the four items in order: import, export, boards, settings (\u00a717.31)", async () => {
+  it("renders the five items in order: import, export, boards, settings, about (\u00a717.31, \u00a717.84)", async () => {
     // SPEC §17.31 — Settings… joins Import / Export / Boards as the
-    // fourth burger-menu item. It opens `<board-settings-modal>` for
-    // the current board (name / fresh-date colour / delete-board).
+    // fourth burger-menu item. SPEC §17.84 — About… anchored last
+    // because it's app-level read-only metadata (operator's "what
+    // version am I running?" surface), neither board- nor
+    // collection-level state.
     const el = await mountLitElement<BurgerMenu>("burger-menu");
     triggerOf(el).click();
     await el.updateComplete;
@@ -57,12 +59,14 @@ describe("<burger-menu>", () => {
       "export",
       "boards",
       "settings",
+      "about",
     ]);
     expect(items.map((i) => i.textContent?.trim())).toEqual([
       "Import…",
       "Export…",
       "Boards…",
       "Settings…",
+      "About…",
     ]);
   });
 

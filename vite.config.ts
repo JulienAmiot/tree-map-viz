@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { defineConfig } from "vitest/config";
 
 // SPEC §17.83 — GitHub Pages deployment ships the build at
@@ -10,8 +13,34 @@ import { defineConfig } from "vitest/config";
 // independent of the path prefix), so no router change is needed.
 // Trailing slash matters: `/tree-map-viz/` produces correct relative
 // asset URLs; `/tree-map-viz` (no slash) breaks them.
+
+// SPEC §17.84 — App-version source-of-truth. The single canonical
+// value is `package.json#version`; this config reads it once at
+// eval time and stamps it into the bundled output via Vite's
+// `define` (a string-replacement pass that rewrites every
+// `__APP_VERSION__` reference to the literal at build time). The
+// build-date constant is captured the same way — as the ISO date
+// the build started, formatted `YYYY-MM-DD` (no time / no zone:
+// the kiosk operator's question is "is this the latest?", which
+// only needs day-precision; full timestamps add noise). Both
+// constants are consumed via `src/version.ts`, which re-exports
+// them as typed string constants so the rest of the app doesn't
+// depend on the build-time identifier convention. Tests run
+// through the same Vite config (vitest extends it), so the
+// constants are also defined in test mode — `version.test.ts`
+// can assert their shape.
+const PACKAGE_JSON = JSON.parse(
+  readFileSync(fileURLToPath(new URL("./package.json", import.meta.url)), "utf-8"),
+) as { readonly version: string };
+const APP_VERSION = PACKAGE_JSON.version;
+const APP_BUILD_DATE = new Date().toISOString().slice(0, 10);
+
 export default defineConfig({
   base: "/tree-map-viz/",
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+    __APP_BUILD_DATE__: JSON.stringify(APP_BUILD_DATE),
+  },
   test: {
     environment: "jsdom",
     globals: true,

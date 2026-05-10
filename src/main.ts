@@ -425,6 +425,11 @@ async function main(): Promise<void> {
       });
       return;
     }
+    if (detail.action === "about") {
+      // §17.84 — read-only modal; reads version constants directly.
+      screen.openAboutModal();
+      return;
+    }
   });
 
   /**
