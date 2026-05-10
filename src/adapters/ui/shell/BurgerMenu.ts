@@ -12,6 +12,7 @@
  *                  `<board-settings-modal>` (board name + fresh-date
  *                  colour + delete-board, with delete refused on the
  *                  last remaining board). Wired today.
+ *   - About…     → §17.84. Caller opens `<about-modal>` (read-only).
  *
  * Surface contract:
  *  - dispatches a bubbling + composed `burger-menu-action`
@@ -40,7 +41,12 @@ export const BURGER_MENU_ACTION_EVENT = "burger-menu-action";
 /** Vertical gap between the trigger and the popup (px). */
 const POPUP_GAP_PX = 4;
 
-export type BurgerMenuAction = "import" | "export" | "boards" | "settings";
+export type BurgerMenuAction =
+  | "import"
+  | "export"
+  | "boards"
+  | "settings"
+  | "about";
 
 export type BurgerMenuActionDetail = {
   readonly action: BurgerMenuAction;
@@ -51,12 +57,9 @@ const ITEMS: readonly { readonly action: BurgerMenuAction; readonly label: strin
     { action: "import", label: "Import…" },
     { action: "export", label: "Export…" },
     { action: "boards", label: "Boards…" },
-    // SPEC §17.31 — board-level theme settings (name + fresh-date
-    // colour + delete-board). Sits below "Boards…" because Boards
-    // is collection-level (rename / switch / create) and Settings
-    // is single-board-level. Wired today; a Phase 10 redesign may
-    // merge the two surfaces.
+    // §17.31 board-level settings; §17.84 read-only About is anchored last.
     { action: "settings", label: "Settings…" },
+    { action: "about", label: "About…" },
   ] as const;
 
 @customElement("burger-menu")

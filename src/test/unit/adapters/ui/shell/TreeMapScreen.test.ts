@@ -768,6 +768,35 @@ describe("<tree-map-screen>", () => {
     });
   });
 
+  // -- SPEC §17.84 -- about modal seam --------------------------------
+
+  describe("about modal seam (\u00a717.84)", () => {
+    it("renders <about-modal> closed by default; openAboutModal flips it open", async () => {
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
+      expect(el.aboutModalElement).not.toBeNull();
+      expect(el.aboutModalElement!.hasAttribute("open")).toBe(false);
+      expect(el.isAboutModalOpen).toBe(false);
+      el.openAboutModal();
+      await el.updateComplete;
+      expect(el.isAboutModalOpen).toBe(true);
+      expect(el.aboutModalElement!.hasAttribute("open")).toBe(true);
+    });
+
+    it("`about-cancel` and `closeAboutModal()` both close the modal", async () => {
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
+      el.openAboutModal();
+      await el.updateComplete;
+      el.aboutModalElement!.dispatchEvent(
+        new CustomEvent("about-cancel", { bubbles: true, composed: true }),
+      );
+      await el.updateComplete;
+      expect(el.isAboutModalOpen).toBe(false);
+      el.openAboutModal();
+      el.closeAboutModal();
+      expect(el.isAboutModalOpen).toBe(false);
+    });
+  });
+
   // -- SPEC §17.52 -- weight-edit popover seam ------------------------
 
   describe("weight-edit popover seam (\u00a717.52)", () => {
