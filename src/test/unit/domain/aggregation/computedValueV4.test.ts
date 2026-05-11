@@ -141,6 +141,44 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       expect(r.value).toBe(100);
     });
 
+    it("§17.93 — honours v3 eligibleForParentComputation=false: ineligible BSC children are excluded from the mean", () => {
+      const parent = buildBSC("p");
+      const ineligibleA = new BusinessScoreNode<number>(
+        "a", "a", w(1), "", clock, lenient(), obj(), "%", false, false,
+      );
+      ineligibleA.addValue(T("2026-01-01T00:00:00Z"), 10);
+      const ineligibleB = new BusinessScoreNode<number>(
+        "b", "b", w(1), "", clock, lenient(), obj(), "%", false, false,
+      );
+      ineligibleB.addValue(T("2026-01-01T00:00:00Z"), 20);
+      parent.attach(ineligibleA);
+      parent.attach(ineligibleB);
+      const r = computedValueV4(parent);
+      expect(r).toEqual({ kind: "childrenCount", n: 2 });
+    });
+
+    it("§17.93 — honours v3 computed=true: a flagged-computed leaf with own history returns childrenCount n=0 (not recordedValue)", () => {
+      const flaggedComputed = new BusinessScoreNode<number>(
+        "f", "f", w(1), "", clock, lenient(), obj(), "%", true, false,
+      );
+      flaggedComputed.addValue(T("2026-01-01T00:00:00Z"), 99);
+      const r = computedValueV4(flaggedComputed);
+      expect(r).toEqual({ kind: "childrenCount", n: 0 });
+    });
+
+    it("§17.93 — honours v3 computed=true on parent: ignores own history, aggregates from eligible children", () => {
+      const flaggedComputed = new BusinessScoreNode<number>(
+        "f", "f", w(1), "", clock, lenient(), obj(), "%", true, false,
+      );
+      flaggedComputed.addValue(T("2026-01-01T00:00:00Z"), 99);
+      flaggedComputed.attach(buildBSC("c1", 1, [["2026-02-01T00:00:00Z", 100]]));
+      flaggedComputed.attach(buildBSC("c2", 1, [["2026-02-01T00:00:00Z", 60]]));
+      const r = computedValueV4(flaggedComputed);
+      expect(r.kind).toBe("computedValue");
+      if (r.kind !== "computedValue") return;
+      expect(r.value).toBe(80);
+    });
+
     it("StrictRangeNode children participate in aggregation alongside BusinessScoreNode children", () => {
       const parent = buildBSC("p");
       parent.attach(buildBSC("a", 1, [["2026-01-01T00:00:00Z", 20]]));

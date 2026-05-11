@@ -1,3 +1,4 @@
+import { BusinessScoreNode } from "../nodes/BusinessScoreNode.js";
 import type { Node } from "../nodes/Node.js";
 import { RangedValueNode } from "../nodes/RangedValueNode.js";
 import type { Timestamp } from "../values/Timestamp.js";
@@ -69,8 +70,23 @@ export type ComputedValueResultV4<T = unknown> =
 export function computedValueV4<T>(
   node: RangedValueNode<T>,
 ): ComputedValueResultV4<T> {
-  if (node.children.length === 0) {
+  // §17.93 — when v3's `computed=true` flag is set on a v4 BSC
+  // (threaded through the §17.81 adapter), short-circuit straight
+  // to the children-aggregation branch even if the BSC has its
+  // own history. v3 honoured the flag by ignoring own history;
+  // v4's structural rule (§17.89) ignored the flag and used own
+  // history. The cutover at §17.93 surfaced 5 e2e failures from
+  // the `computed=true` placeholder pattern; this gate restores
+  // v3 behaviour without abandoning the structural default.
+  // StrictRangeNode has no `computed` slot (no v3 namesake) and
+  // always falls through to the structural rule.
+  const isFlaggedComputed = node instanceof BusinessScoreNode && node.computed;
+
+  if (!isFlaggedComputed && node.children.length === 0) {
     return leafResult(node);
+  }
+  if (isFlaggedComputed && node.children.length === 0) {
+    return { kind: "childrenCount", n: 0 };
   }
 
   const eligible = collectEligibleChildren(node.children);
@@ -108,22 +124,43 @@ function collectEligibleChildren(
 ): RangedValueNode<unknown>[] {
   const out: RangedValueNode<unknown>[] = [];
   for (const child of children) {
-    if (child instanceof RangedValueNode) {
-      out.push(child as RangedValueNode<unknown>);
-    }
+    if (!(child instanceof RangedValueNode)) continue;
+    // §17.93 — honour v3's `eligibleForParentComputation` flag
+    // (only carried on BusinessScoreNode; StrictRangeNode has no
+    // v3 namesake so it's always eligible). Mirror v3's semantic:
+    // when the operator marks a BSC "ineligible for parent
+    // computation" the parent's mean must skip it. Surfaced by
+    // the `mixedComputed` fixture's EmptyLeaf at the §17.93
+    // cutover.
+    if (child instanceof BusinessScoreNode && !child.eligibleForParentComputation) continue;
+    out.push(child as RangedValueNode<unknown>);
   }
   return out;
 }
 
 /**
  * Resolve a child's contribution to its parent's weighted mean.
- * Recurses through `computedValueV4` so a child aggregator's mean
- * propagates upward (the v3-vs-v4 semantic improvement noted in
- * the main JSDoc). Returns `NaN` if the child has no usable value
- * (empty leaf, all-empty subtree, non-numeric value type) — the
- * caller filters via `Number.isFinite`.
+ *
+ * **§17.93 — reverts the §17.89 "v4 improvement" claim**. v3's
+ * `BusinessScoreCardNode.contribution()` returned the child's
+ * OWN most-recent history value (one-level aggregation —
+ * grandchildren ignored), regardless of whether the child was
+ * itself a `computed=true` aggregator. The §17.89 docblock
+ * advertised v4 as a "slight improvement" that recurses through
+ * the child's own aggregation; the cutover at §17.93 surfaced
+ * that this changes numbers on the typical mixedComputed kiosk
+ * shape (Root=mean(ChildA.history=100, ChildB.history=60)=80 in
+ * v3 vs Root=mean(ChildA.aggregate=80, ChildB.history=60)=70 in
+ * the v4-improved version). Restored to v3's one-level rule:
+ * prefer the child's own history when present; only recurse when
+ * the child has no history (graceful fallback for the v3 crash
+ * case where `currentValue()` would throw `EmptyHistoryError`).
  */
 function effectiveNumericValue(child: RangedValueNode<unknown>): number {
+  const entries = child.entries();
+  if (entries.length > 0) {
+    return Number(entries[entries.length - 1].value);
+  }
   const result = computedValueV4(child);
   switch (result.kind) {
     case "recordedValue":

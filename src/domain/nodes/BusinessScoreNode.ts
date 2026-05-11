@@ -55,6 +55,62 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
    */
   readonly unit: string;
 
+  /**
+   * V4 surface for v3's `computed` flag — when `true`, this BSC
+   * aggregates from children (ignoring its own history); when
+   * `false` (default), the §17.89 structural rule applies (leaf
+   * uses own history, parent aggregates).
+   *
+   * **§17.93 — partial reversal of the §17.89 design call** ("v4
+   * structural rule, not flag-based"). The §17.89 docblock said
+   * v4 dropped the v3 `computed` flag and replaced it with a
+   * structural rule equivalent to v3's default behaviour on the
+   * typical kiosk data shape. The §17.93 main.ts read-cutover
+   * surfaced an existing kiosk pattern the structural rule
+   * doesn't preserve: a BSC marked `computed=true` with a
+   * placeholder history entry AND zero children. v3 honours the
+   * flag intent (renders `childrenCount n=0` → empty value area,
+   * "this will be a future aggregator"); v4's pure structural
+   * rule renders the placeholder ("0 %"). 5 e2e tests broke at
+   * cutover via the `mixedComputed` fixture's `EmptyLeaf` node.
+   * §17.93 reverses the call: lift `computed` onto v4 BSN as an
+   * optional field (default `false`, parallel to how §17.91 added
+   * `unit`), thread through §17.81 adapter, gate the §17.89
+   * leaf-with-history branch on it. Same Phase C migration story
+   * as `unit` — when BSCv4 wrapper ships the flag moves there
+   * and this field becomes deletable.
+   *
+   * The §17.80 D5 narrative ("v4 doesn't model contributions on
+   * the Node directly") still holds — `eligibleForParentComputation`
+   * remains dropped (v4 eligibility is structural: any
+   * RangedValueNode descendant with a finite numeric value
+   * contributes). Only `computed` returns, and only because of
+   * the cutover-time discovery.
+   */
+  readonly computed: boolean;
+
+  /**
+   * V4 surface for v3's `eligibleForParentComputation` flag — the
+   * sister of `computed`. When `true` (v3 default for new BSCs),
+   * this BSC contributes to its parent's weighted mean. When
+   * `false`, the parent skips this child during aggregation
+   * (used to mark "future placeholder" nodes that shouldn't
+   * pollute the average yet).
+   *
+   * **§17.93 — same partial reversal of §17.89 as `computed`**.
+   * The `mixedComputed` e2e fixture's `EmptyLeaf` carries
+   * `eligibleForParentComputation: false`; v3 honoured that flag
+   * and excluded EmptyLeaf from Root's mean (Root.value = mean of
+   * just ChildA + ChildB = (100+60)/2 = 80). v4's structural
+   * rule treated every RangedValueNode child as eligible, so
+   * EmptyLeaf got pulled into the average ((100+60+0)/3 = 53.33),
+   * breaking the e2e assertion. §17.93 restores the flag (default
+   * `true`), threaded through §17.81 adapter, gated in §17.89
+   * `collectEligibleChildren`. Same Phase C migration path —
+   * when BSCv4 wrapper ships the flag moves there.
+   */
+  readonly eligibleForParentComputation: boolean;
+
   constructor(
     id: string,
     title: string,
@@ -64,8 +120,12 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
     range: LenientRange<T>,
     readonly objective: ObjectiveV4<T>,
     unit: string = "",
+    computed: boolean = false,
+    eligibleForParentComputation: boolean = true,
   ) {
     super(id, title, weight, description, clock, range);
     this.unit = unit;
+    this.computed = computed;
+    this.eligibleForParentComputation = eligibleForParentComputation;
   }
 }

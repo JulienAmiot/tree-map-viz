@@ -97,7 +97,7 @@ import type { TreeMapScreen } from "./adapters/ui/shell/TreeMapScreen.js";
 import type { InlineEditWeightDetail } from "./adapters/ui/views/childWeight/weightEditEvents.js";
 import type { InlineEditTitleDetail } from "./adapters/ui/views/inlineEditEvents.js";
 import type { InlineEditValueDetail } from "./adapters/ui/views/inlineEditEvents.js";
-import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
+import { mapFocusedToViewModelV4 } from "./adapters/ui/views/viewModelMapperV4.js";
 import { AddChildService } from "./application/AddChildService.js";
 import { BoardCollectionService } from "./application/BoardCollectionService.js";
 import { EditNodeService } from "./application/EditNodeService.js";
@@ -105,6 +105,7 @@ import { ImportExportService } from "./application/ImportExportService.js";
 import { TreeNavigationService } from "./application/TreeNavigationService.js";
 import type { Clock } from "./domain/capabilities/Clock.js";
 import { BusinessScoreCardNode } from "./domain/nodes/BusinessScoreCardNode.js";
+import { v4TreeFromV3Root } from "./domain/v3Bridge/v4TreeFromV3Root.js";
 import { Timestamp } from "./domain/values/Timestamp.js";
 import { TextCard } from "./domain/nodes/TextCard.js";
 import { TextNode } from "./domain/nodes/TextNode.js";
@@ -162,14 +163,30 @@ async function main(): Promise<void> {
   const refresh = (): void => {
     const view = nav.getFocusedView();
     const current = boards.getCurrentBoard();
-    // §17.42 retired the per-board fresh-date colour the §17.21 /
-    // §17.31 wiring carried. The mapper now needs no board-level
-    // option; the focused-panel title uses a hard-coded bright
-    // off-white from CSS, and the timestamp gradient is fixed
-    // white → dark-grey inside `dateAgeColor`.
-    screen.view = view
-      ? mapFocusedToViewModel(view.center, view.childrenNodes)
-      : null;
+    // SPEC §17.93 — v3-retirement migration Phase B.5 read-side
+    // cutover. The v3 nav still drives focus state (its API is
+    // v3-typed and the write services downstream still consume v3
+    // nodes — write-side migration is Phase D), but the mapper is
+    // now §17.91's `viewModelMapperV4`. To bridge them we adapt
+    // the focused subtree v3 → v4 on every refresh via the §17.88
+    // `v4TreeFromV3Root` adapter rooted at `view.center`. The
+    // resulting v4 root + children feed straight into
+    // `mapFocusedToViewModelV4` (same VM contract → zero
+    // view-layer changes per §17.91 design intent). Per-refresh
+    // re-adaptation is wasteful at scale but tolerable on the
+    // kiosk's small trees (≤12 children × ~5-deep ~ 150 nodes
+    // max); the alternative — maintaining a synced v4 shadow tree
+    // — is reserved for Phase D when the write services migrate
+    // and the v3 root retires entirely. The §17.93 strand also
+    // lifted v3's `computed` flag onto v4 BSN (parallel to §17.91
+    // unit) after 5 e2e tests revealed the §17.89 structural rule
+    // dropped the kiosk's "computed=true placeholder" pattern.
+    if (view) {
+      const v4Sub = v4TreeFromV3Root(view.center, clock).root;
+      screen.view = mapFocusedToViewModelV4(v4Sub, v4Sub.children);
+    } else {
+      screen.view = null;
+    }
     screen.boardName = current.name;
     screen.breadcrumbPath = computeBreadcrumb(current.tree, nav.getFocusedId());
   };
