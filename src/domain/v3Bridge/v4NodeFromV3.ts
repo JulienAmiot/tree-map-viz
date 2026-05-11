@@ -126,8 +126,12 @@ function adaptBusinessScoreCardNode(
     );
     const v3Obj = node3.objective();
     const objective = ObjectiveV4.of(v3Obj.targetValue, v3Obj.targetDate);
+    // §17.91 — thread v3's display unit onto the v4 BSC's optional
+    // `unit` slot (partial resolution of §17.80 D1; full resolution
+    // moves to BSCv4 wrapper at Phase C).
+    const unit = node3.card.unit.value;
     v4Node = new BusinessScoreNode<number>(
-      id, title, weight, description, clock, range, objective,
+      id, title, weight, description, clock, range, objective, unit,
     );
   }
   for (const entry of node3.history()) {
