@@ -39,6 +39,22 @@ import { RangedValueNode } from "./RangedValueNode.js";
 export class BusinessScoreNode<T> extends RangedValueNode<T> {
   declare readonly range: LenientRange<T>;
 
+  /**
+   * Display unit for the BSC's value (e.g. `"%"`, `"ms"`, `"$"`).
+   * **§17.91 — partial resolution of §17.80 D1**. The §17.80 plan
+   * decided unit lives on the future BSCv4 visual wrapper (Phase C),
+   * not on the node itself. But the v4 view-model mapper landing at
+   * §17.91 needs unit to render BSC tiles without regressing
+   * (kiosk shows "75%", "200ms" — losing the suffix is a visible
+   * UX regression). BSCv4 wrapper is many strands away. §17.91
+   * lifts unit onto BusinessScoreNode as an optional field
+   * (default `""`) so the mapper has a place to read it from. When
+   * the BSCv4 wrapper ships in Phase C, unit moves there and this
+   * field becomes deletable. Optional + defaulted so existing call
+   * sites don't break.
+   */
+  readonly unit: string;
+
   constructor(
     id: string,
     title: string,
@@ -47,7 +63,9 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
     clock: Clock,
     range: LenientRange<T>,
     readonly objective: ObjectiveV4<T>,
+    unit: string = "",
   ) {
     super(id, title, weight, description, clock, range);
+    this.unit = unit;
   }
 }
