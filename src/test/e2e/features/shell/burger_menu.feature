@@ -20,16 +20,22 @@ Feature: Burger menu offers Import / Export / Boards / Settings entries
     Then the burger menu is closed
 
   @HE-???? @priority:high
-  Scenario: Tapping the burger trigger reveals exactly 4 items in order (\u00a717.31)
+  Scenario: Tapping the burger trigger reveals exactly 5 items in order (\u00a717.31, \u00a717.84)
     # SPEC §17.31 — Settings… joins Import / Export / Boards as the
-    # fourth menu item (last in the list).
+    # fourth menu item.
+    # SPEC §17.84 — About… joins as the fifth (last) menu item,
+    # surfacing the kiosk's running version (corrected from "4
+    # items" to "5 items" at §17.93 read-cutover sanity check; the
+    # §17.84 strand added the About entry but didn't update this
+    # scenario's count).
     When I tap the burger trigger
     Then the burger menu is open
-    And the burger menu has 4 items
+    And the burger menu has 5 items
     And the burger menu has an item with action "import"
     And the burger menu has an item with action "export"
     And the burger menu has an item with action "boards"
     And the burger menu has an item with action "settings"
+    And the burger menu has an item with action "about"
 
   @HE-???? @priority:high
   Scenario: Tapping the top bar but outside the burger closes only the menu

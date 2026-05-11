@@ -130,8 +130,26 @@ function adaptBusinessScoreCardNode(
     // `unit` slot (partial resolution of §17.80 D1; full resolution
     // moves to BSCv4 wrapper at Phase C).
     const unit = node3.card.unit.value;
+    // §17.93 — also thread v3's `computed` flag (partial reversal of
+    // the §17.89 structural-rule design call; surfaced by 5 e2e
+    // failures during the read-cutover when v4 lost v3's
+    // "placeholder + computed=true" pattern).
+    const computed = node3.computed;
+    // §17.93 — also thread v3's `eligibleForParentComputation` flag
+    // (sister of `computed`; the `mixedComputed` fixture's EmptyLeaf
+    // depends on it being honoured to be excluded from Root's mean).
+    const eligibleForParentComputation = node3.eligibleForParentComputation;
     v4Node = new BusinessScoreNode<number>(
-      id, title, weight, description, clock, range, objective, unit,
+      id,
+      title,
+      weight,
+      description,
+      clock,
+      range,
+      objective,
+      unit,
+      computed,
+      eligibleForParentComputation,
     );
   }
   for (const entry of node3.history()) {

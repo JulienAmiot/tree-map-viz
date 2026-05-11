@@ -1,3 +1,4 @@
+import { BusinessScoreNode } from "../nodes/BusinessScoreNode.js";
 import { HistorizableValueNode } from "../nodes/HistorizableValueNode.js";
 import type { Node } from "../nodes/Node.js";
 import { RangedValueNode } from "../nodes/RangedValueNode.js";
@@ -34,6 +35,16 @@ import { RangedValueNode } from "../nodes/RangedValueNode.js";
  * Returns `null` when no date can be derived.
  */
 export function currentValueDateIsoV4(node: Node): string | null {
+  // §17.93 — same flag gate as `computedValueV4`. A BSC marked
+  // v3 `computed=true` MUST NOT show its own history's date even
+  // when it has no children; the v3 contract is "I'm a future
+  // aggregator, my date is null until children fill in". For all
+  // other nodes the structural rule applies.
+  const isFlaggedComputed = node instanceof BusinessScoreNode && node.computed;
+
+  if (isFlaggedComputed) {
+    return mostRecentChildDateIsoV4(node);
+  }
   if (node.children.length === 0) {
     return ownLatestIso(node);
   }
