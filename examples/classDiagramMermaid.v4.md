@@ -232,6 +232,7 @@ classDiagram
 - [`classDiagramMermaid.v2.mermaid`](./classDiagramMermaid.v2.mermaid) — locked Option B reference (pre-§17.14).
 - [`classDiagramMermaid.v3.mermaid`](./classDiagramMermaid.v3.mermaid) — as-built snapshot (post-§17.14 + §17.28).
 - [`classDiagramMermaid.v4.mermaid`](./classDiagramMermaid.v4.mermaid) — target redesign (canonical source for this preview).
+- [`classDiagramMermaid.v5.mermaid`](./classDiagramMermaid.v5.mermaid) — **successor (round 7)**: introduces `ComputedNode<T>` + `ComputedBusinessScoreNode<T>` + `Computed<T>` interface + `Computation<T>` strategy hierarchy + `ComputationKind` enum + `ComputationRegistry`, retires `eligibleForParentComputation` in favour of broader `disabled` on `ValueNode<T>`. v4 above is now the historical record of what Phase A/B implemented; v5 is the live target.
 
 ## Rollout sketch (v4 → live code)
 
