@@ -417,4 +417,17 @@ describe("LocalStorageBoardCollectionRepository — adapter-specific", () => {
       expect(persisted.appMajor).toBe(7);
     });
   });
+
+  describe("\u00a717.86b read-only mode", () => {
+    it("save() is a no-op when isReadOnly() returns true, resumes when it flips back", async () => {
+      let readOnly = true;
+      const repo = new LocalStorageBoardCollectionRepository({ storage, isReadOnly: () => readOnly });
+      const snap: BoardCollectionSnapshot = { boards: [{ id: "x", name: "X", tree: tn("xr") }], currentBoardId: "x" };
+      await repo.save(snap);
+      expect(storage.getItem(STORAGE_KEY)).toBeNull();
+      readOnly = false;
+      await repo.save(snap);
+      expect(storage.getItem(STORAGE_KEY)).not.toBeNull();
+    });
+  });
 });

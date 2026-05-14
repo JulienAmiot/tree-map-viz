@@ -110,6 +110,8 @@ export type LocalStorageBoardCollectionRepositoryOptions = {
   onVersionMismatch?: (info: VersionMismatchInfo) => void;
   /** §17.86 — chain tried on a lower persisted major; empty until Phase E codec migration. */
   migrators?: readonly EnvelopeMigrator[];
+  /** §17.86b -- when `true`, `save()` is a no-op. Composition root flips a closure flag the banner toggles. */
+  isReadOnly?: () => boolean;
 };
 
 export class LocalStorageBoardCollectionRepository implements BoardCollectionRepository {
@@ -119,6 +121,7 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
   private readonly appMajor: number;
   private readonly onVersionMismatch: (info: VersionMismatchInfo) => void;
   private readonly migrators: readonly EnvelopeMigrator[];
+  private readonly isReadOnly: () => boolean;
 
   constructor(opts: LocalStorageBoardCollectionRepositoryOptions) {
     this.storage = opts.storage;
@@ -127,6 +130,7 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
     this.appMajor = opts.appMajor ?? APP_MAJOR;
     this.onVersionMismatch = opts.onVersionMismatch ?? noop;
     this.migrators = opts.migrators ?? [];
+    this.isReadOnly = opts.isReadOnly ?? alwaysFalse;
   }
 
   async load(): Promise<BoardCollectionSnapshot> {
@@ -205,6 +209,8 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
   }
 
   async save(snapshot: BoardCollectionSnapshot): Promise<void> {
+    if (this.isReadOnly()) return; // §17.86b read-only mode
+
     try {
       this.storage.setItem(this.key, this.serialize(snapshot));
     } catch (err) {
@@ -275,6 +281,9 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
 
 /** §17.86 — default `onVersionMismatch`; composition root replaces with banner-surface callback. */
 function noop(): void {}
+
+/** §17.86b — default `isReadOnly`; composition root replaces with a closure flag the banner flips. */
+function alwaysFalse(): boolean { return false; }
 
 function defaultSeed(): BoardCollectionSnapshot {
   // SPEC §17.21 — first-boot kiosk lands on the showcase board, which

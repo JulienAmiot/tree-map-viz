@@ -66,7 +66,11 @@
  *     suite doesn't need to wait for the settle window.
  */
 
-import { LocalStorageBoardCollectionRepository } from "./adapters/persistence/LocalStorageBoardCollectionRepository.js";
+import {
+  LocalStorageBoardCollectionRepository,
+  STORAGE_KEY as BOARD_COLLECTION_STORAGE_KEY,
+} from "./adapters/persistence/LocalStorageBoardCollectionRepository.js";
+import type { VersionMismatchInfo } from "./adapters/persistence/LocalStorageBoardCollectionRepository.js";
 import { decode, encode } from "./adapters/persistence/jsonCodec.js";
 import { HashRouter } from "./adapters/routing/HashRouter.js";
 import type { AddChildConfirmDetail } from "./adapters/ui/modal/AddChildModal.js";
@@ -125,15 +129,13 @@ async function main(): Promise<void> {
   // `getTime()` so a `NaN`-Date would surface here at the boundary.
   const clock: Clock = { now: () => Timestamp.of(new Date()) };
   const codec = { encode, decode };
-  // SPEC §17.86 — `console.warn` placeholder for the version-mismatch
-  // callback; §17.86b replaces with `<version-mismatch-banner>` injection.
+  // SPEC §17.86b -- mismatch buffered (raised inside load() before the screen lookup), replayed below.
+  let pendingMismatch: VersionMismatchInfo | null = null;
+  let readOnlyMode = false;
   const repo = new LocalStorageBoardCollectionRepository({
     storage: window.localStorage,
-    onVersionMismatch: (info) => {
-      console.warn(
-        `[tree-map-viz] §17.86 version mismatch (${info.kind}): persisted=v${info.persistedMajor.toString()}, running=v${info.runningMajor.toString()}`,
-      );
-    },
+    onVersionMismatch: (info) => { pendingMismatch = info; },
+    isReadOnly: () => readOnlyMode,
   });
   const boards = await BoardCollectionService.create(repo, idGen);
   const router = new HashRouter(window);
@@ -145,6 +147,17 @@ async function main(): Promise<void> {
   if (!screen) {
     throw new Error("composition: <tree-map-screen> not present in document");
   }
+
+  // SPEC §17.86b -- replay + wire the two banner actions.
+  if (pendingMismatch !== null) {
+    screen.surfaceMismatchBanner(pendingMismatch);
+    pendingMismatch = null;
+  }
+  screen.addEventListener("version-mismatch-continue-read-only", () => { readOnlyMode = true; });
+  screen.addEventListener("version-mismatch-reset", () => {
+    window.localStorage.removeItem(BOARD_COLLECTION_STORAGE_KEY);
+    window.location.reload();
+  });
 
   const persistCurrent = async (): Promise<void> => {
     await repo.save({

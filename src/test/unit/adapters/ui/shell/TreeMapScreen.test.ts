@@ -797,6 +797,31 @@ describe("<tree-map-screen>", () => {
     });
   });
 
+  describe("version-mismatch banner seam (\u00a717.86b)", () => {
+    const banner = (el: TreeMapScreen) => el.shadowRoot?.querySelector<HTMLElement>("version-mismatch-banner") ?? null;
+    it("renders empty banner by default; surface + dismiss propagate / clear info", async () => {
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
+      expect(banner(el)).not.toBeNull();
+      expect(el.currentMismatchBanner).toBeNull();
+      el.surfaceMismatchBanner({ kind: "future-data", persistedMajor: 2, runningMajor: 1 });
+      await el.updateComplete;
+      expect(el.currentMismatchBanner?.kind).toBe("future-data");
+      el.dismissMismatchBanner();
+      await el.updateComplete;
+      expect(el.currentMismatchBanner).toBeNull();
+    });
+    it("any of the three banner events clears the screen state automatically", async () => {
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
+      for (const evt of ["version-mismatch-continue-read-only", "version-mismatch-reset", "version-mismatch-dismiss"]) {
+        el.surfaceMismatchBanner({ kind: "migration-failed", persistedMajor: 0, runningMajor: 1 });
+        await el.updateComplete;
+        banner(el)!.dispatchEvent(new CustomEvent(evt, { bubbles: true, composed: true }));
+        await el.updateComplete;
+        expect(el.currentMismatchBanner).toBeNull();
+      }
+    });
+  });
+
   // -- SPEC §17.52 -- weight-edit popover seam ------------------------
 
   describe("weight-edit popover seam (\u00a717.52)", () => {
