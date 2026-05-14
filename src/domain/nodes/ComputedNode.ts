@@ -66,7 +66,7 @@ export class ComputedNode<T> extends HistorizableValueNode<T> implements Compute
   }
 
   override getValue(): T {
-    return this._strategy.apply(this.children) as T;
+    return this._strategy.apply(this.children);
   }
 
   override setValue(_value: T): void {
