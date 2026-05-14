@@ -25,7 +25,7 @@ class StubNonValueNode extends Node {
 }
 const num = (w: number, v: number) => new StubValueNode(w, () => v);
 const txt = (w: number, v: string) => new StubValueNode<string>(w, () => v);
-const disable = <T extends Node>(n: T): T => Object.assign(n, { disabled: true });
+const disable = <T extends ValueNode<unknown>>(n: T): T => { n.setDisabled(true); return n; };
 
 describe("ComputationKind + EmptyChildrenError (§17.95)", () => {
   it("has 6 stable-named singletons + frozen ALL", () => {

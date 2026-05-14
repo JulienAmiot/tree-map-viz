@@ -71,4 +71,19 @@ describe("ValueNode (§17.72 — v4 part 8: abstract ValueNode<T>)", () => {
     expect(n.getValue()).toBe("the body");
     expect(n.getDescription()).toBe("the body");
   });
+
+  describe("disabled flag (§17.99a — v5 round-7 D4 successor to v3 eligibleForParentComputation)", () => {
+    it("defaults to false on every freshly-constructed value node (existing kiosks stay enabled by construction)", () => {
+      expect(new TestValueNode("v", "V", Weight.of(1), "", 0).disabled).toBe(false);
+      expect(new TextLikeValueNode("t", "T", Weight.of(1), "body").disabled).toBe(false);
+    });
+
+    it("setDisabled(true) parks the node; setDisabled(false) reverses it (idempotent setter for §17.101 EditNodeServiceV4)", () => {
+      const n = new TestValueNode("v", "V", Weight.of(1), "", 0);
+      n.setDisabled(true);
+      expect(n.disabled).toBe(true);
+      n.setDisabled(false);
+      expect(n.disabled).toBe(false);
+    });
+  });
 });
