@@ -51,8 +51,7 @@ const buildBSC = (
     options.description ?? "",
     clock,
     lenient(),
-    options.objective ?? obj(),
-    options.unit ?? "",
+    { objective: options.objective ?? obj(), unit: options.unit ?? "" },
   );
   for (const [iso, v] of options.history ?? []) node.addValue(T(iso), v);
   return node;

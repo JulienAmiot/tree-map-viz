@@ -28,7 +28,7 @@ const buildBSN = (): BusinessScoreNode<number> =>
     "desc",
     fixedClock,
     LenientRange.of(0, 100, NumericComparator.INSTANCE),
-    ObjectiveV4.of(80, T("2026-12-31T00:00:00Z")),
+    { objective: ObjectiveV4.of(80, T("2026-12-31T00:00:00Z")) },
   );
 const buildSRN = (): StrictRangeNode<number> =>
   new StrictRangeNode<number>(

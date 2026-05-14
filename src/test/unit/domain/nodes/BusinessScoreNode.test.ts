@@ -22,7 +22,7 @@ const node = (
   objective: ObjectiveV4<number> = goal(),
   clockIso = "2026-05-10T12:00:00Z",
 ): BusinessScoreNode<number> =>
-  new BusinessScoreNode<number>("bsn-1", "Sales", Weight.of(1), "desc", clk(clockIso), range, objective);
+  new BusinessScoreNode<number>("bsn-1", "Sales", Weight.of(1), "desc", clk(clockIso), range, { objective });
 
 describe("BusinessScoreNode (§17.76 — v4 part 12: concrete range-bounded node with Objective)", () => {
   describe("inheritance chain (5-layer concrete leaf)", () => {

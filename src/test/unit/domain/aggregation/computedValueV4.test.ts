@@ -29,7 +29,7 @@ const buildBSC = (
   weight = 1,
   history: [string, number][] = [],
 ): BusinessScoreNode<number> => {
-  const node = new BusinessScoreNode<number>(id, id, w(weight), "", clock, lenient(), obj());
+  const node = new BusinessScoreNode<number>(id, id, w(weight), "", clock, lenient(), { objective: obj() });
   for (const [iso, v] of history) node.addValue(T(iso), v);
   return node;
 };
@@ -144,11 +144,13 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
     it("§17.93 — honours v3 eligibleForParentComputation=false: ineligible BSC children are excluded from the mean", () => {
       const parent = buildBSC("p");
       const ineligibleA = new BusinessScoreNode<number>(
-        "a", "a", w(1), "", clock, lenient(), obj(), "%", false, false,
+        "a", "a", w(1), "", clock, lenient(),
+        { objective: obj(), unit: "%", computed: false, eligibleForParentComputation: false },
       );
       ineligibleA.addValue(T("2026-01-01T00:00:00Z"), 10);
       const ineligibleB = new BusinessScoreNode<number>(
-        "b", "b", w(1), "", clock, lenient(), obj(), "%", false, false,
+        "b", "b", w(1), "", clock, lenient(),
+        { objective: obj(), unit: "%", computed: false, eligibleForParentComputation: false },
       );
       ineligibleB.addValue(T("2026-01-01T00:00:00Z"), 20);
       parent.attach(ineligibleA);
@@ -159,7 +161,8 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
 
     it("§17.93 — honours v3 computed=true: a flagged-computed leaf with own history returns childrenCount n=0 (not recordedValue)", () => {
       const flaggedComputed = new BusinessScoreNode<number>(
-        "f", "f", w(1), "", clock, lenient(), obj(), "%", true, false,
+        "f", "f", w(1), "", clock, lenient(),
+        { objective: obj(), unit: "%", computed: true, eligibleForParentComputation: false },
       );
       flaggedComputed.addValue(T("2026-01-01T00:00:00Z"), 99);
       const r = computedValueV4(flaggedComputed);
@@ -168,7 +171,8 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
 
     it("§17.93 — honours v3 computed=true on parent: ignores own history, aggregates from eligible children", () => {
       const flaggedComputed = new BusinessScoreNode<number>(
-        "f", "f", w(1), "", clock, lenient(), obj(), "%", true, false,
+        "f", "f", w(1), "", clock, lenient(),
+        { objective: obj(), unit: "%", computed: true, eligibleForParentComputation: false },
       );
       flaggedComputed.addValue(T("2026-01-01T00:00:00Z"), 99);
       flaggedComputed.attach(buildBSC("c1", 1, [["2026-02-01T00:00:00Z", 100]]));

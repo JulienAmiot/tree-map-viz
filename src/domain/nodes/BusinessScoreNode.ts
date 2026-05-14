@@ -111,6 +111,14 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
    */
   readonly eligibleForParentComputation: boolean;
 
+  readonly objective: ObjectiveV4<T>;
+
+  /**
+   * Constructor uses an options object for the `objective` + the three
+   * §17.91/§17.93 extras (`unit` / `computed` / `eligibleForParentComputation`)
+   * to keep the positional parameter count at 7 (Sonar S107 limit). The
+   * options object is mandatory because `objective` itself is mandatory.
+   */
   constructor(
     id: string,
     title: string,
@@ -118,14 +126,17 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
     description: string,
     clock: Clock,
     range: LenientRange<T>,
-    readonly objective: ObjectiveV4<T>,
-    unit: string = "",
-    computed: boolean = false,
-    eligibleForParentComputation: boolean = true,
+    options: {
+      objective: ObjectiveV4<T>;
+      unit?: string;
+      computed?: boolean;
+      eligibleForParentComputation?: boolean;
+    },
   ) {
     super(id, title, weight, description, clock, range);
-    this.unit = unit;
-    this.computed = computed;
-    this.eligibleForParentComputation = eligibleForParentComputation;
+    this.objective = options.objective;
+    this.unit = options.unit ?? "";
+    this.computed = options.computed ?? false;
+    this.eligibleForParentComputation = options.eligibleForParentComputation ?? true;
   }
 }

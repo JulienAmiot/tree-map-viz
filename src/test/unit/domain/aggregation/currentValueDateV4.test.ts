@@ -28,7 +28,7 @@ const buildBSC = (
   id: string,
   history: [string, number][] = [],
 ): BusinessScoreNode<number> => {
-  const node = new BusinessScoreNode<number>(id, id, w, "", clock, lenient(), obj());
+  const node = new BusinessScoreNode<number>(id, id, w, "", clock, lenient(), { objective: obj() });
   for (const [iso, v] of history) node.addValue(T(iso), v);
   return node;
 };

@@ -139,18 +139,12 @@ function adaptBusinessScoreCardNode(
     // (sister of `computed`; the `mixedComputed` fixture's EmptyLeaf
     // depends on it being honoured to be excluded from Root's mean).
     const eligibleForParentComputation = node3.eligibleForParentComputation;
-    v4Node = new BusinessScoreNode<number>(
-      id,
-      title,
-      weight,
-      description,
-      clock,
-      range,
+    v4Node = new BusinessScoreNode<number>(id, title, weight, description, clock, range, {
       objective,
       unit,
       computed,
       eligibleForParentComputation,
-    );
+    });
   }
   for (const entry of node3.history()) {
     v4Node.addValue(entry.asOf, entry.value);
