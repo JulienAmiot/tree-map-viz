@@ -26,22 +26,9 @@
  * collection as a single JSON document.
  *
  * §17.86 — Runtime version-mismatch handling. The envelope gains an
- * `appMajor: number` field at write time (sourced from {@link APP_MAJOR});
- * `load()` compares it against the running major and classifies into:
- *   - **equal** — load normally (hot path).
- *   - **lower** — try the migrator registry; on miss / failure invoke the
- *     `onVersionMismatch` callback with `{ kind: "migration-failed" }` and
- *     load with default tolerance (§17.42 forward-compat semantics).
- *   - **higher** — future data the running build can't safely consume;
- *     invoke `onVersionMismatch` with `{ kind: "future-data" }` and seed
- *     a fresh snapshot (caller surfaces the banner; the kiosk operator
- *     picks "Continue read-only" or "Reset and lose data" via §17.86b).
- *   - **legacy** (envelope predates §17.86, no `appMajor` field at all) —
- *     silently load (matches §17.42 / §17.14 / §17.63 tolerance pattern;
- *     first boot after upgrade should "just work").
- * The migrator registry ships empty in §17.86; the registry SHAPE is in
- * place for the Phase E codec migration (§17.97-ish) to slot a `v3 → v4`
- * migrator into.
+ * `appMajor: number` field at write time; `load()` classifies the
+ * persisted major against the running major into 4 branches (equal /
+ * lower / higher / legacy) — see {@link classifyAndMaybeMigrate}.
  */
 
 import type {
@@ -95,34 +82,18 @@ type WireBoard = {
 };
 type WireEnvelope = {
   v: number;
-  /**
-   * SPEC §17.86 — running app's MAJOR component at write time. Optional
-   * on read so envelopes from pre-§17.86 builds load cleanly via the
-   * "legacy" branch in {@link LocalStorageBoardCollectionRepository.load}.
-   */
+  /** §17.86 — optional so pre-§17.86 envelopes (no field) load via the legacy branch. */
   appMajor?: number;
   currentBoardId: string;
   boards: WireBoard[];
 };
 
-/**
- * §17.86 — surfaced to the composition root when {@link load} detects a
- * persisted `appMajor` that doesn't match the running build. The kiosk
- * UI displays a banner (§17.86b); the kind discriminates "we tried to
- * migrate but failed" from "this data is from a future release".
- */
+/** §17.86 — surfaced to the composition root on a major mismatch (see SPEC §17.86). */
 export type VersionMismatchInfo =
   | { kind: "migration-failed"; persistedMajor: number; runningMajor: number }
   | { kind: "future-data"; persistedMajor: number; runningMajor: number };
 
-/**
- * §17.86 — migrator function applied when the persisted major is lower
- * than the running major. Returns the new envelope on success, or
- * `undefined` to signal "I can't handle this jump" (the next migrator
- * in the chain tries, or the chain falls through to "migration-failed").
- * The registry ships empty; Phase E (§17.97-ish) registers the first
- * concrete migrator (v3 → v4 codec).
- */
+/** §17.86 — `undefined` means "this migrator doesn't handle the jump"; chain falls through. */
 export type EnvelopeMigrator = (
   envelope: WireEnvelope,
   from: number,
@@ -130,30 +101,14 @@ export type EnvelopeMigrator = (
 ) => WireEnvelope | undefined;
 
 export type LocalStorageBoardCollectionRepositoryOptions = {
-  /** The Storage to read/write. Inject jsdom's `localStorage` in app code, in-memory fakes in tests. */
   storage: Storage;
-  /** Storage key. Defaults to {@link STORAGE_KEY}. */
   key?: string;
-  /** Factory used by `load()` when storage is empty. Defaults to a single empty TextNode root. */
   seed?: () => BoardCollectionSnapshot;
-  /**
-   * §17.86 — running app's MAJOR component. Defaults to {@link APP_MAJOR}
-   * imported from `src/version.ts`. Tests inject a fixed value to
-   * exercise the mismatch branches without rebuilding the bundle.
-   */
+  /** §17.86 — running app's MAJOR; defaults to {@link APP_MAJOR}. */
   appMajor?: number;
-  /**
-   * §17.86 — invoked by `load()` when the persisted envelope's
-   * `appMajor` doesn't match the running build's major (and a migrator
-   * either isn't registered or fails). Composition root surfaces the
-   * banner; persistence stays UI-agnostic.
-   */
+  /** §17.86 — invoked on a major mismatch (callback is the §17.86b banner seam). */
   onVersionMismatch?: (info: VersionMismatchInfo) => void;
-  /**
-   * §17.86 — ordered list of migrators tried when the persisted major is
-   * lower than the running major. Empty by default — Phase E codec
-   * migration is the first expected consumer.
-   */
+  /** §17.86 — chain tried on a lower persisted major; empty until Phase E codec migration. */
   migrators?: readonly EnvelopeMigrator[];
 };
 
@@ -185,13 +140,8 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
     const envelope = JSON.parse(raw) as WireEnvelope;
     const compatible = this.classifyAndMaybeMigrate(envelope);
     if (compatible === null) {
-      // §17.86 future-data path: persisted major is HIGHER than running.
-      // The banner caller drives the kiosk operator's choice between
-      // "Continue read-only" and "Reset and lose data" via §17.86b.
-      // For now we seed (the safest fallback) and re-persist so the
-      // next load is stable; the original payload is overwritten on
-      // the seed write. If the operator picks "read-only" before the
-      // first save fires, they keep the seeded snapshot in memory.
+      // §17.86 future-data: seed + persist the seed (overwrites the
+      // future payload). §17.86b banner offers the operator a recovery.
       const seeded = this.buildSeed();
       this.storage.setItem(this.key, this.serialize(seeded));
       return seeded;
@@ -199,46 +149,20 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
     return this.envelopeToSnapshot(compatible);
   }
 
-  /**
-   * §17.86 — version-mismatch classifier. Returns the envelope to decode
-   * (possibly migrated) when load should proceed; returns `null` when
-   * load should refuse and seed (future-data case). Side-effects: fires
-   * the `onVersionMismatch` callback on the migration-failed + future
-   * paths.
-   */
+  /** §17.86 — returns envelope to decode (possibly migrated), or null on future-data refusal. */
   private classifyAndMaybeMigrate(envelope: WireEnvelope): WireEnvelope | null {
     const persistedMajor = envelope.appMajor;
-    // Legacy envelope (pre-§17.86) — no `appMajor` field at all. Silent
-    // tolerance per §17.42 / §17.14 / §17.63: first boot after upgrade
-    // should just work. Subsequent saves will stamp the current major.
-    if (typeof persistedMajor !== "number") {
-      return envelope;
-    }
-    if (persistedMajor === this.appMajor) {
-      return envelope;
-    }
+    if (typeof persistedMajor !== "number") return envelope; // legacy: silent (§17.42 pattern)
+    if (persistedMajor === this.appMajor) return envelope;
     if (persistedMajor < this.appMajor) {
       for (const migrate of this.migrators) {
         const migrated = migrate(envelope, persistedMajor, this.appMajor);
-        if (migrated !== undefined) {
-          return migrated;
-        }
+        if (migrated !== undefined) return migrated;
       }
-      this.onVersionMismatch({
-        kind: "migration-failed",
-        persistedMajor,
-        runningMajor: this.appMajor,
-      });
-      // Best-effort load with default tolerance — same as today's §17.42
-      // behaviour. The banner caller may surface a non-blocking warning.
+      this.onVersionMismatch({ kind: "migration-failed", persistedMajor, runningMajor: this.appMajor });
       return envelope;
     }
-    // persistedMajor > this.appMajor: future data.
-    this.onVersionMismatch({
-      kind: "future-data",
-      persistedMajor,
-      runningMajor: this.appMajor,
-    });
+    this.onVersionMismatch({ kind: "future-data", persistedMajor, runningMajor: this.appMajor });
     return null;
   }
 
@@ -349,10 +273,8 @@ export class LocalStorageBoardCollectionRepository implements BoardCollectionRep
   }
 }
 
-function noop(): void {
-  // §17.86 — default {@link LocalStorageBoardCollectionRepositoryOptions.onVersionMismatch}.
-  // The kiosk composition root replaces this with a banner-surface callback.
-}
+/** §17.86 — default `onVersionMismatch`; composition root replaces with banner-surface callback. */
+function noop(): void {}
 
 function defaultSeed(): BoardCollectionSnapshot {
   // SPEC §17.21 — first-boot kiosk lands on the showcase board, which

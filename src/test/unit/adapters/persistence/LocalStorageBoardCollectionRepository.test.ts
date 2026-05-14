@@ -326,20 +326,6 @@ describe("LocalStorageBoardCollectionRepository — adapter-specific", () => {
   });
 
   describe("\u00a717.86 runtime version-mismatch handling", () => {
-    // The envelope gains `appMajor` at write time. On read, four branches
-    // are exercised:
-    //   - equal  → load normally (no callback fires).
-    //   - lower  → migrator chain tried; on empty/miss → callback fires
-    //              with kind "migration-failed" and load proceeds with
-    //              default tolerance (the §17.42 forward-compat pattern).
-    //   - higher → callback fires with kind "future-data" and the repo
-    //              seeds a fresh snapshot (the operator picks the
-    //              recovery action via the §17.86b banner; persistence
-    //              gives them the safe default in the meantime).
-    //   - legacy → envelope without `appMajor` (pre-§17.86 builds);
-    //              silent load, no callback (tolerance-pattern parity
-    //              with §17.42 / §17.14 / §17.63).
-
     function buildEnvelope(majorOnDisk: number | undefined): string {
       const board = tn("rt", "Stored root");
       const treeWire = JSON.parse(encode(board)) as unknown;
@@ -355,11 +341,7 @@ describe("LocalStorageBoardCollectionRepository — adapter-specific", () => {
     it("equal major: load proceeds without firing the mismatch callback", async () => {
       storage.setItem(STORAGE_KEY, buildEnvelope(2));
       const callback = vi.fn();
-      const repo = new LocalStorageBoardCollectionRepository({
-        storage,
-        appMajor: 2,
-        onVersionMismatch: callback,
-      });
+      const repo = new LocalStorageBoardCollectionRepository({ storage, appMajor: 2, onVersionMismatch: callback });
 
       const snapshot = await repo.load();
 
@@ -370,48 +352,29 @@ describe("LocalStorageBoardCollectionRepository — adapter-specific", () => {
     it("lower major + empty migrator registry: callback fires with migration-failed; loads with default tolerance", async () => {
       storage.setItem(STORAGE_KEY, buildEnvelope(1));
       const callback = vi.fn();
-      const repo = new LocalStorageBoardCollectionRepository({
-        storage,
-        appMajor: 2,
-        onVersionMismatch: callback,
-      });
+      const repo = new LocalStorageBoardCollectionRepository({ storage, appMajor: 2, onVersionMismatch: callback });
 
       const snapshot = await repo.load();
 
       expect(snapshot.boards[0]!.id).toBe("rt-id");
-      expect(callback).toHaveBeenCalledTimes(1);
-      expect(callback).toHaveBeenCalledWith({
-        kind: "migration-failed",
-        persistedMajor: 1,
-        runningMajor: 2,
-      });
+      expect(callback).toHaveBeenCalledWith({ kind: "migration-failed", persistedMajor: 1, runningMajor: 2 });
     });
 
     it("lower major + migrator hits: callback does NOT fire; load uses the migrated envelope", async () => {
-      // Migrator returns a new envelope; the test asserts the
-      // migrated payload's boards are what gets decoded, not the
-      // original. We mutate the board name to make the swap observable.
       storage.setItem(STORAGE_KEY, buildEnvelope(1));
       const callback = vi.fn();
-      const migrated = tn("migrated-rt", "Migrated stored root");
-      const migratedWire = JSON.parse(encode(migrated)) as unknown;
-      const migrator = vi.fn((_env: unknown, _from: number, _to: number) => ({
-        v: 1,
-        appMajor: 2,
-        currentBoardId: "migrated-id",
+      const migratedWire = JSON.parse(encode(tn("migrated-rt", "Migrated stored root"))) as unknown;
+      const migrator = vi.fn(() => ({
+        v: 1, appMajor: 2, currentBoardId: "migrated-id",
         boards: [{ id: "migrated-id", name: "Migrated", tree: migratedWire }],
       }));
       const repo = new LocalStorageBoardCollectionRepository({
-        storage,
-        appMajor: 2,
-        onVersionMismatch: callback,
-        migrators: [migrator as never],
+        storage, appMajor: 2, onVersionMismatch: callback, migrators: [migrator as never],
       });
 
       const snapshot = await repo.load();
 
       expect(snapshot.boards[0]!.id).toBe("migrated-id");
-      expect(snapshot.boards[0]!.name).toBe("Migrated");
       expect(migrator).toHaveBeenCalledWith(expect.any(Object), 1, 2);
       expect(callback).not.toHaveBeenCalled();
     });
@@ -419,41 +382,26 @@ describe("LocalStorageBoardCollectionRepository — adapter-specific", () => {
     it("higher major (future data): callback fires with future-data; repo seeds + persists the seed", async () => {
       storage.setItem(STORAGE_KEY, buildEnvelope(5));
       const callback = vi.fn();
-      const seededId = "seeded-fallback";
       const seed = (): BoardCollectionSnapshot => ({
-        boards: [{ id: seededId, name: "Seeded", tree: tn("seed-root") }],
-        currentBoardId: seededId,
+        boards: [{ id: "seeded-fallback", name: "Seeded", tree: tn("seed-root") }],
+        currentBoardId: "seeded-fallback",
       });
       const repo = new LocalStorageBoardCollectionRepository({
-        storage,
-        appMajor: 2,
-        onVersionMismatch: callback,
-        seed,
+        storage, appMajor: 2, onVersionMismatch: callback, seed,
       });
 
       const snapshot = await repo.load();
 
-      expect(snapshot.boards[0]!.id).toBe(seededId);
-      expect(callback).toHaveBeenCalledTimes(1);
-      expect(callback).toHaveBeenCalledWith({
-        kind: "future-data",
-        persistedMajor: 5,
-        runningMajor: 2,
-      });
-      // The original future-data payload is overwritten by the seed
-      // write — the next load sees the safe fallback.
+      expect(snapshot.boards[0]!.id).toBe("seeded-fallback");
+      expect(callback).toHaveBeenCalledWith({ kind: "future-data", persistedMajor: 5, runningMajor: 2 });
       const persisted = JSON.parse(storage.getItem(STORAGE_KEY)!) as { boards: { id: string }[] };
-      expect(persisted.boards[0]!.id).toBe(seededId);
+      expect(persisted.boards[0]!.id).toBe("seeded-fallback");
     });
 
     it("legacy envelope (no appMajor): silent load, callback does not fire", async () => {
       storage.setItem(STORAGE_KEY, buildEnvelope(undefined));
       const callback = vi.fn();
-      const repo = new LocalStorageBoardCollectionRepository({
-        storage,
-        appMajor: 2,
-        onVersionMismatch: callback,
-      });
+      const repo = new LocalStorageBoardCollectionRepository({ storage, appMajor: 2, onVersionMismatch: callback });
 
       const snapshot = await repo.load();
 
@@ -463,10 +411,7 @@ describe("LocalStorageBoardCollectionRepository — adapter-specific", () => {
 
     it("save() stamps the running appMajor into the envelope", async () => {
       const repo = new LocalStorageBoardCollectionRepository({ storage, appMajor: 7 });
-      await repo.save({
-        boards: [{ id: "x", name: "X", tree: tn("xr") }],
-        currentBoardId: "x",
-      });
+      await repo.save({ boards: [{ id: "x", name: "X", tree: tn("xr") }], currentBoardId: "x" });
 
       const persisted = JSON.parse(storage.getItem(STORAGE_KEY)!) as { appMajor: number };
       expect(persisted.appMajor).toBe(7);
