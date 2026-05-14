@@ -1,8 +1,8 @@
 import type { Clock } from "../capabilities/Clock.js";
+import { ComputationCache } from "../computation/ComputationCache.js";
 import type { Computation } from "../computation/Computation.js";
 import type { ComputationKind } from "../computation/ComputationKind.js";
 import { ComputationOverrideError } from "../computation/ComputationOverrideError.js";
-import { ComputationRegistry } from "../computation/ComputationRegistry.js";
 import type { Computed } from "../computation/Computed.js";
 import type { ObjectiveV4 } from "../values/ObjectiveV4.js";
 import type { LenientRange } from "../values/Range.js";
@@ -20,53 +20,39 @@ import { BusinessScoreNode } from "./BusinessScoreNode.js";
  * ComputedBusinessScoreNode~T~` + `ComputedBusinessScoreNode~T~ ..|>
  * Computed~T~` in the v5 class diagram).
  *
- * The second concrete realisation of `Computed<T>` after §17.97
- * `ComputedNode<T>`. Both classes ship the same audit-only override contract
- * (`setValue` / `addValue` throw `ComputationOverrideError`, `getValue`
- * dispatches via the cached strategy resolved at `setComputationKind`); they
- * differ only in what they inherit: `ComputedNode<T>` extends
- * `HistorizableValueNode<T>` (history-only); `ComputedBusinessScoreNode<T>`
- * extends `BusinessScoreNode<T>` (history + range + objective + unit), so it
- * is what the kiosk operator picks when the auto-derived metric is ALSO
- * scored against a target.
+ * Second concrete realisation of `Computed<T>` after §17.97 `ComputedNode<T>`.
+ * Both classes share the audit-only override contract; they differ only in
+ * what they inherit. `ComputedNode<T>` extends `HistorizableValueNode<T>`
+ * (history-only — text-typed or raw-scalar auto-derived metrics);
+ * `ComputedBusinessScoreNode<T>` extends `BusinessScoreNode<T>` (history +
+ * range + objective + unit — auto-derived metric ALSO scored against a target).
  *
- * Three structural traits per §17.94 design (same shape as §17.97 modulo the
- * parent class):
- *  - **`getValue()` dispatches via the cached strategy** — returns
- *    `this._strategy.apply(this.children)`. The strategy is cached after
- *    `setComputationKind` per §17.94 risk row 6 (O(1) lookup amortised per
- *    kind change). Identical mechanism to §17.97.
+ * Three structural traits per §17.94 design:
+ *  - **`getValue()` dispatches via the cached strategy** — same
+ *    `ComputationCache<T>` composition as §17.97; the helper centralises the
+ *    cached `(kind, strategy)` pair + the §17.94 risk row 1 type-erasure cast.
  *  - **`setValue` + `addValue` throw `ComputationOverrideError`** per §17.94
- *    D5 — history is audit-only. The inherited
- *    `BusinessScoreNode<T>.range.requireValue` gate (§17.75 RangedValueNode
- *    addValue override) is bypassed because the override throws BEFORE
- *    delegating to `super.addValue` — but the lenient gate is a no-op anyway
- *    (§17.71 LenientRange), and no value is ever recorded so range
- *    conformity is moot by construction. `entries()` / `removeValue` /
- *    `range` / `objective` / `unit` all stay inherited unchanged.
+ *    D5. The inherited `BusinessScoreNode<T>.range.requireValue` gate (§17.75
+ *    `RangedValueNode<T>.addValue` override) is bypassed harmlessly because
+ *    the override throws BEFORE delegating to `super.addValue` — and the
+ *    lenient gate is a no-op anyway (§17.71 `LenientRange.requireValue` is
+ *    the empty op), so no behavioural contract is violated. `entries()` /
+ *    `removeValue` / `range` / `objective` / `unit` all stay inherited.
  *  - **`computed` band-aid hardwired to `true`** — the §17.93
- *    `BusinessScoreNode<T>.computed: boolean` flag (added as a v3-compat
- *    band-aid to keep the §17.93 read-side mapper rendering computed BSCs
- *    correctly) is forced to `true` in the super() call regardless of the
- *    operator's options. A `ComputedBusinessScoreNode<T>` IS computed by
- *    class identity — the flag becomes redundant once §17.91's successor
- *    learns to type-switch on this class (at which point a future strand
- *    can retire the flag entirely per the §17.93 docblock). Forcing it
- *    `true` keeps the existing §17.93 mapper happy WHEN this class first
- *    reaches the production bundle, without requiring any mapper change
- *    at §17.98. `eligibleForParentComputation` stays operator-controllable
- *    (it has independent semantics — "include this score in the parent's
- *    mean even though it's auto-derived").
- *
- * Type-erasure across the registry boundary follows the §17.97 pattern
- * verbatim: `ComputationRegistry.resolve(kind)` returns `Computation<number>`
- * (all 6 §17.95 strategies are numeric); cast to `Computation<T>` at the
- * constructor + `setComputationKind` sites. Today's only valid instantiation
- * is `ComputedBusinessScoreNode<number>`.
+ *    `BusinessScoreNode<T>.computed: boolean` field (v3-compat band-aid
+ *    keeping the §17.93 read-side mapper rendering computed BSCs correctly)
+ *    is forced to `true` in the `super()` call regardless of the operator's
+ *    options. A `ComputedBusinessScoreNode<T>` IS computed by class identity
+ *    — the flag becomes redundant once §17.91's successor learns to
+ *    type-switch on this class. Forcing it `true` keeps the existing §17.93
+ *    mapper happy WHEN this class first reaches the production bundle,
+ *    without requiring any mapper-side change at §17.98.
+ *    `eligibleForParentComputation` stays operator-controllable (independent
+ *    semantics — "include this score in the parent's mean even though it's
+ *    auto-derived").
  */
 export class ComputedBusinessScoreNode<T> extends BusinessScoreNode<T> implements Computed<T> {
-  private _kind: ComputationKind;
-  private _strategy: Computation<T>;
+  private readonly _cache: ComputationCache<T>;
 
   constructor(
     id: string,
@@ -88,20 +74,16 @@ export class ComputedBusinessScoreNode<T> extends BusinessScoreNode<T> implement
       computed: true,
       eligibleForParentComputation: options.eligibleForParentComputation,
     });
-    this._kind = options.initialKind;
-    this._strategy = ComputationRegistry.resolve(options.initialKind) as Computation<T>;
+    this._cache = new ComputationCache<T>(options.initialKind);
   }
 
-  get computationKind(): ComputationKind { return this._kind; }
-  get computation(): Computation<T> { return this._strategy; }
+  get computationKind(): ComputationKind { return this._cache.kind; }
+  get computation(): Computation<T> { return this._cache.strategy; }
 
-  setComputationKind(kind: ComputationKind): void {
-    this._kind = kind;
-    this._strategy = ComputationRegistry.resolve(kind) as Computation<T>;
-  }
+  setComputationKind(kind: ComputationKind): void { this._cache.set(kind); }
 
   override getValue(): T {
-    return this._strategy.apply(this.children);
+    return this._cache.strategy.apply(this.children);
   }
 
   override setValue(_value: T): void {
