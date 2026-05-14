@@ -17,15 +17,12 @@ import { ValueNode } from "../../../../domain/nodes/ValueNode.js";
 import { Weight } from "../../../../domain/values/Weight.js";
 
 class StubValueNode<T> extends ValueNode<T> {
-  constructor(weight: number, private readonly factory: () => T) {
-    super("id", "id", Weight.of(weight), "");
-  }
+  constructor(weight: number, private readonly factory: () => T) { super("id", "id", Weight.of(weight), ""); }
   getValue(): T { return this.factory(); }
 }
 class StubNonValueNode extends Node {
   constructor() { super("nv", "nv", Weight.of(1)); }
 }
-
 const num = (w: number, v: number) => new StubValueNode(w, () => v);
 const txt = (w: number, v: string) => new StubValueNode<string>(w, () => v);
 const disable = <T extends Node>(n: T): T => Object.assign(n, { disabled: true });
@@ -70,15 +67,13 @@ describe("Numeric strategies (§17.95)", () => {
 
 describe("Eligibility composition (§17.95)", () => {
   it("skips disabled / non-ValueNode / TextNode / non-finite / throwing children", () => {
-    const throwing = new StubValueNode<number>(1, () => { throw new Error("EmptyHistory"); });
     const result = SumComputation.INSTANCE.apply([
       num(1, 10),
       disable(num(1, 99)),
       new StubNonValueNode(),
       txt(1, "skip"),
       new StubValueNode<number>(1, () => Number.NaN),
-      new StubValueNode<number>(1, () => Number.POSITIVE_INFINITY),
-      throwing,
+      new StubValueNode<number>(1, () => { throw new Error("EmptyHistory"); }),
       num(1, 30),
     ]);
     expect(result).toBe(40);

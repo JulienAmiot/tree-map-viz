@@ -3,14 +3,11 @@ import { ValueNode } from "../nodes/ValueNode.js";
 
 /**
  * `Computation<T>` — abstract aggregation strategy (SPEC §17.95 / v5 round 7).
- * Concrete strategies filter children to their eligibility criterion then fold
- * to one T-valued aggregate. Two protected helpers:
- *  - `enabledValueNodes` composes (i) `instanceof ValueNode` + (ii) duck-typed
- *    `!isDisabled`. The duck-type is pre-wired for §17.99: when
- *    `ValueNode<T>.disabled: boolean` lands, the predicate just starts firing
- *    on the real field with zero changes here.
- *  - `tryReadNumber` defensively reads `getValue()`: swallows domain throws
- *    (e.g. `EmptyHistoryError`), rejects NaN / ±Infinity, returns `undefined`.
+ * Concrete strategies filter children via `enabledValueNodes` (composes
+ * `instanceof ValueNode` + duck-typed `!isDisabled` — the duck-type is
+ * pre-wired for §17.99, no changes here when `ValueNode.disabled` lands) then
+ * fold. Numeric strategies use `tryReadNumber` to read `getValue()` defensively
+ * (swallows domain throws, rejects NaN / ±Infinity).
  */
 export abstract class Computation<T> {
   abstract apply(children: readonly Node[]): T;
