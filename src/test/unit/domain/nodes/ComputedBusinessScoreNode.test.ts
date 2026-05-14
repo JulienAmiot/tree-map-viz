@@ -26,7 +26,7 @@ class StubChild extends ValueNode<number> {
 
 const build = (
   kind: ComputationKind,
-  extra: Partial<{ unit: string; eligibleForParentComputation: boolean }> = {},
+  extra: Partial<{ unit: string }> = {},
   ...values: number[]
 ): ComputedBusinessScoreNode<number> => {
   const node = new ComputedBusinessScoreNode<number>(
@@ -57,9 +57,11 @@ describe("ComputedBusinessScoreNode<T> — construction + BSC inheritance + Comp
     expect(node.computed).toBe(true);
   });
 
-  it("threads `eligibleForParentComputation` through to the parent slot (default true, override respected)", () => {
-    expect(build(ComputationKind.SUM).eligibleForParentComputation).toBe(true);
-    expect(build(ComputationKind.SUM, { eligibleForParentComputation: false }).eligibleForParentComputation).toBe(false);
+  it("inherits `disabled` from ValueNode<T> (§17.99a/§17.99b — operator opts auto-derived BSCs out of a parent's mean via setDisabled, not a constructor option)", () => {
+    const node = build(ComputationKind.SUM);
+    expect(node.disabled).toBe(false);
+    node.setDisabled(true);
+    expect(node.disabled).toBe(true);
   });
 });
 

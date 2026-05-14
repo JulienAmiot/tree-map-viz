@@ -89,35 +89,22 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
    */
   readonly computed: boolean;
 
-  /**
-   * V4 surface for v3's `eligibleForParentComputation` flag — the
-   * sister of `computed`. When `true` (v3 default for new BSCs),
-   * this BSC contributes to its parent's weighted mean. When
-   * `false`, the parent skips this child during aggregation
-   * (used to mark "future placeholder" nodes that shouldn't
-   * pollute the average yet).
-   *
-   * **§17.93 — same partial reversal of §17.89 as `computed`**.
-   * The `mixedComputed` e2e fixture's `EmptyLeaf` carries
-   * `eligibleForParentComputation: false`; v3 honoured that flag
-   * and excluded EmptyLeaf from Root's mean (Root.value = mean of
-   * just ChildA + ChildB = (100+60)/2 = 80). v4's structural
-   * rule treated every RangedValueNode child as eligible, so
-   * EmptyLeaf got pulled into the average ((100+60+0)/3 = 53.33),
-   * breaking the e2e assertion. §17.93 restores the flag (default
-   * `true`), threaded through §17.81 adapter, gated in §17.89
-   * `collectEligibleChildren`. Same Phase C migration path —
-   * when BSCv4 wrapper ships the flag moves there.
-   */
-  readonly eligibleForParentComputation: boolean;
-
   readonly objective: ObjectiveV4<T>;
 
   /**
-   * Constructor uses an options object for the `objective` + the three
-   * §17.91/§17.93 extras (`unit` / `computed` / `eligibleForParentComputation`)
-   * to keep the positional parameter count at 7 (Sonar S107 limit). The
-   * options object is mandatory because `objective` itself is mandatory.
+   * Constructor uses an options object for the `objective` + the two
+   * remaining §17.91/§17.93 band-aid extras (`unit` / `computed`) to keep
+   * the positional parameter count at 7 (Sonar S107 limit). The options
+   * object is mandatory because `objective` itself is mandatory.
+   *
+   * **§17.99b retirement** — the `eligibleForParentComputation` option key
+   * (added by §17.93 as the second band-aid sister of `computed`) is dropped
+   * here. The v5 round-7 D4 successor `ValueNode<T>.disabled` (landed at
+   * §17.99a) replaces it with broader semantics; the §17.81 v3-bridge
+   * adapter now translates v3 `eligibleForParentComputation: false` to a
+   * post-construction `setDisabled(true)` call on the produced v4 node.
+   * `unit` and `computed` band-aids stay (retire at §17.99c with the BSCv4
+   * wrapper).
    */
   constructor(
     id: string,
@@ -130,13 +117,11 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
       objective: ObjectiveV4<T>;
       unit?: string;
       computed?: boolean;
-      eligibleForParentComputation?: boolean;
     },
   ) {
     super(id, title, weight, description, clock, range);
     this.objective = options.objective;
     this.unit = options.unit ?? "";
     this.computed = options.computed ?? false;
-    this.eligibleForParentComputation = options.eligibleForParentComputation ?? true;
   }
 }

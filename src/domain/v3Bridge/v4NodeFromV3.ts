@@ -48,9 +48,13 @@ export class UnknownV3NodeKindError extends Error {
  *     (default lenient unbounded) or StrictRangeNode<number> (via
  *     override). v3 Objective<T> 3-tuple → v4 ObjectiveV4<T> 2-tuple
  *     (initialValue dropped; targetValue → value; targetDate → at).
- *     Description preserved via `identity.description.value`. The
- *     v3 `eligibleForParentComputation` / `computed` flags drop —
- *     v4 doesn't model contributions on the Node directly.
+ *     Description preserved via `identity.description.value`. The v3
+ *     `computed` flag is threaded onto v4 BSN's §17.93 band-aid slot;
+ *     v3's `eligibleForParentComputation: false` is migrated post-§17.99b
+ *     to v4 `ValueNode<T>.disabled = true` (broader v5 round-7 D4 semantics
+ *     — exclude from aggregation AND grey out in UI); the migration runs
+ *     uniformly across both the BSN + StrictRangeNode branches since both
+ *     inherit `setDisabled` from `ValueNode<T>`.
  *
  * Children walked recursively; order preserved through `attach`.
  *
@@ -133,21 +137,26 @@ function adaptBusinessScoreCardNode(
     // §17.93 — also thread v3's `computed` flag (partial reversal of
     // the §17.89 structural-rule design call; surfaced by 5 e2e
     // failures during the read-cutover when v4 lost v3's
-    // "placeholder + computed=true" pattern).
+    // "placeholder + computed=true" pattern). The `computed` band-aid
+    // retires at §17.99c with the BSCv4 wrapper.
     const computed = node3.computed;
-    // §17.93 — also thread v3's `eligibleForParentComputation` flag
-    // (sister of `computed`; the `mixedComputed` fixture's EmptyLeaf
-    // depends on it being honoured to be excluded from Root's mean).
-    const eligibleForParentComputation = node3.eligibleForParentComputation;
     v4Node = new BusinessScoreNode<number>(id, title, weight, description, clock, range, {
       objective,
       unit,
       computed,
-      eligibleForParentComputation,
     });
   }
   for (const entry of node3.history()) {
     v4Node.addValue(entry.asOf, entry.value);
+  }
+  // §17.99b — translate v3's `eligibleForParentComputation: false` to v4
+  // `disabled: true` (v5 round-7 D4 broader successor: exclude from
+  // aggregation AND grey out in UI). v3's flag defaults `true` for
+  // every BSC; only the explicit `false` opt-out crosses the bridge.
+  // Set uniformly on both branches since `setDisabled` is inherited
+  // from `ValueNode<T>` (BSN + StrictRangeNode both qualify).
+  if (!node3.eligibleForParentComputation) {
+    v4Node.setDisabled(true);
   }
   return v4Node;
 }
