@@ -16,6 +16,8 @@ import {
 
 export const ABOUT_CANCEL_EVENT = "about-cancel";
 const REPO_URL = "https://github.com/JulienAmiot/tree-map-viz";
+/** §17.87 — operator-facing "What's new" link; back-filled per `package.json#version` entry, kept in sync via `.cursor/rules/keep-changelog-in-sync.mdc`. */
+const CHANGELOG_URL = `${REPO_URL}/blob/master/CHANGELOG.md`;
 
 @customElement("about-modal")
 export class AboutModal extends LitElement {
@@ -59,6 +61,7 @@ export class AboutModal extends LitElement {
           <div class="row"><span class="label">Version</span><span class="value" data-testid="about-version">v${APP_VERSION}</span></div>
           <div class="row"><span class="label">Build date</span><span class="value" data-testid="about-build-date">${BUILD_DATE}</span></div>
           <div class="row"><span class="label">Repository</span><span class="value"><a href=${REPO_URL} target="_blank" rel="noopener noreferrer" data-testid="about-repo-link">${REPO_URL}</a></span></div>
+          <div class="row"><span class="label">What's new</span><span class="value"><a href=${CHANGELOG_URL} target="_blank" rel="noopener noreferrer" data-testid="about-changelog-link">Changelog</a></span></div>
         </div>
         <div class="actions"><button type="button" class="btn" data-testid="modal-cancel" @click=${this.cancel}>Close</button></div>
       </section>

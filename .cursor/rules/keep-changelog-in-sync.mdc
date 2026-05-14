@@ -1,0 +1,67 @@
+---
+description: Keep CHANGELOG.md in sync with package.json#version bumps
+alwaysApply: true
+---
+
+# Keep `CHANGELOG.md` in sync with semver bumps
+
+`CHANGELOG.md` is the **user-facing release-notes log** (companion to
+`docs/SPEC.md`'s exhaustive as-built record). It is read by the **About**
+modal's "What's new" link inside the kiosk, so every bumped semver MUST have
+a section in this file by the time the bumping strand merges.
+
+Sister rule: `.cursor/rules/keep-readme-in-sync.mdc` (functional README sync).
+
+## Trigger
+
+Edit `CHANGELOG.md` in the **same commit** as any strand that:
+
+- Bumps `package.json#version`'s **X** (major, breaking JSON shape) — MUST.
+- Bumps `package.json#version`'s **Y** (minor, user-visible new capability) —
+  MUST.
+- Lands a **Z** strand whose effect is still visible to the operator
+  (UI polish, animation tweak, accessibility fix, copy edit) — RECOMMENDED;
+  attach to the next pending section (`[Unreleased]`).
+
+## Skip when
+
+- Pure internal refactor or test-only strand that doesn't change anything the
+  operator can observe.
+- `sonar.projectVersion` bump only (the Sonar leak baseline is independent
+  from `package.json#version`).
+- Planning-only strands (SPEC §17.80 / §17.82 / §17.94 pattern) — they don't
+  bump `package.json#version`.
+
+## Procedure
+
+1. If a `[Unreleased]` section exists, promote it to the new version header
+   (`## [0.Y.Z] — YYYY-MM-DD`) and re-open a fresh empty `[Unreleased]` on
+   top.
+2. Group entries under standard Keep-a-Changelog buckets — `Added`,
+   `Changed`, `Removed`, `Deprecated`, `Fixed`, `Security`.
+3. Reference the SPEC strand IDs in the entry (e.g. "(§17.87)") so a reader
+   can jump to the full as-built rationale.
+4. Update the comparison link footer to point the new tag at the previous
+   one.
+
+## Example
+
+A strand that adds an "Undo last edit" button and bumps `0.2.0 → 0.3.0`:
+
+```md
+## [0.3.0] — 2026-06-01
+
+### Added
+
+- **Undo last edit** button on the parent identity strip (§17.99). Restores
+  the previous value / objective / weight of the most recently edited node.
+```
+
+Plus the footer link gains `[0.3.0]: .../compare/v0.2.0...v0.3.0`.
+
+## Why this is automated
+
+The kiosk operator surfaces `CHANGELOG.md` via the About modal's link, so
+"what's new in this version?" is one tap away from the focused tree. A
+forgotten section turns into a dead link or an empty notes page — both
+worse than the small overhead of editing the file at bump-time.
