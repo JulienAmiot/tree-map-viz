@@ -1,0 +1,49 @@
+---
+description: Keep README.md in sync with user-observable feature changes
+alwaysApply: true
+---
+
+# Keep `README.md` in sync with feature changes
+
+`README.md` is the project's **high-level functional spec** (companion to
+`docs/SPEC.md`, which holds the exhaustive as-built log). When a strand
+changes user-observable behaviour, `README.md` must be updated in the same
+commit.
+
+## Trigger
+
+Update `README.md` when a strand adds, removes, or modifies anything in:
+
+- **§2 Core features** — the kiosk's behaviour, node kinds, animations,
+  routing, import/export, version handling.
+- **§3 Architecture at a glance** — the Lit custom-element table, the
+  hexagonal layer map, or any new top-level directory under `src/`.
+- **§4 Tech stack** — adding/removing a runtime or build-time dependency.
+- **§5 Development** — adding/renaming an npm script the user is expected
+  to run.
+- **§7 Documentation map** — new docs or renamed/retired ones.
+
+## Skip when
+
+- Pure internal refactor that doesn't change user-visible behaviour or the
+  public surface (`src/main.ts` composition + the Lit element catalogue).
+- Planning-only strands (NO TS code; SPEC §17.80 / §17.82 / §17.94 pattern).
+- `sonar.projectVersion` bumps, leak-baseline resets, lint-config tweaks.
+
+## Procedure
+
+1. Edit the relevant section(s) of `README.md` in the **same commit** as
+   the feature change. Do NOT defer to a follow-up.
+2. Keep the README **functional**, not implementation-detail (those go in
+   `docs/SPEC.md`).
+3. If a new Lit custom element ships, add a row to the §3 table.
+4. If a new npm script ships, add a line under §5.
+
+## Example
+
+A strand that adds a `<my-new-modal>` Lit element accessible from the
+burger menu:
+
+- `docs/SPEC.md` — append the full as-built row in the §17.0 table.
+- `README.md` — add `<my-new-modal>` to the §3 table AND mention the new
+  burger-menu entry under §2 (Core features → Editing).
