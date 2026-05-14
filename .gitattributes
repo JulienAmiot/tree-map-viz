@@ -1,0 +1,8 @@
+# SPEC §17.85 — the schema-snapshot files are compared byte-for-byte by
+# `src/test/unit/adapters/persistence/wireSnapshots.test.ts`. The test
+# emits LF via `JSON.stringify` regardless of platform, so the on-disk
+# fixture MUST stay LF on all checkouts (Windows operators, Linux CI,
+# macOS contributors). Without this rule, `core.autocrlf=true` on
+# Windows would silently flip the files to CRLF in the working tree
+# and the test would fail with a baffling whitespace-only diff.
+src/test/snapshots/*.snap.json text eol=lf
