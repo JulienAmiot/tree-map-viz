@@ -1,8 +1,8 @@
 import type { Clock } from "../capabilities/Clock.js";
+import { ComputationCache } from "../computation/ComputationCache.js";
 import type { Computation } from "../computation/Computation.js";
 import type { ComputationKind } from "../computation/ComputationKind.js";
 import { ComputationOverrideError } from "../computation/ComputationOverrideError.js";
-import { ComputationRegistry } from "../computation/ComputationRegistry.js";
 import type { Computed } from "../computation/Computed.js";
 import type { Timestamp } from "../values/Timestamp.js";
 import type { Weight } from "../values/Weight.js";
@@ -18,31 +18,27 @@ import { HistorizableValueNode } from "./HistorizableValueNode.js";
  * Sibling of `TextNodeV4` (§17.74) and `RangedValueNode<T>` (§17.75) under
  * `HistorizableValueNode<T>`. First round-7 strand to exercise the §17.95
  * strategy chassis + §17.96 `Computed<T>` interface from a real value-node
- * subclass; first round-7 file to reach the production bundle (was only
- * tree-shaken pre-§17.97).
+ * subclass.
  *
  * Three structural traits per §17.94 design:
  *  - **`getValue()` dispatches via the cached strategy** — returns
- *    `this._strategy.apply(this.children)`. The strategy is cached after
- *    `setComputationKind` per §17.94 risk row 6 (O(1) lookup amortised per
- *    kind change; the alternative — registry lookup on every getValue —
- *    was rejected).
+ *    `this._cache.strategy.apply(this.children)`. The strategy cache is the
+ *    §17.98-extracted `ComputationCache<T>` helper (deduplicates the cached
+ *    `(kind, strategy)` pair shared with `ComputedBusinessScoreNode<T>`).
+ *    Strategy resolved O(1) per kind change per §17.94 risk row 6.
  *  - **`setValue` + `addValue` throw `ComputationOverrideError`** per §17.94
- *    D5 — history is audit-only. The inherited `HistorizableValueNode.history`
- *    field stays readable via the inherited `entries()` getter, but no public
- *    method on this strand can populate it; future write-side strands will
- *    add a stamping path (audit-only by construction). `removeValue` stays
- *    inherited — operator can prune the audit trail without violating the
- *    "no overwrite" contract.
- *  - **Type-erasure across the registry boundary** — `ComputationRegistry`
- *    returns `Computation<number>` (all 6 §17.95 strategies are numeric);
- *    `ComputedNode<T>` casts to `Computation<T>` at the constructor +
- *    `setComputationKind` sites. Matches the §17.94 risk row 1 type-erasure
- *    intent; today's only valid instantiation is `ComputedNode<number>`.
+ *    D5 — history is audit-only. The inherited `entries()` getter stays
+ *    readable but is never operator-populated through this strand; future
+ *    write-side strands at §17.101+ will add a stamping path. `removeValue`
+ *    stays inherited (operator can prune the audit trail without violating
+ *    the "no overwrite" contract).
+ *  - **Type-erasure across the registry boundary** — moved to
+ *    `ComputationCache<T>` at §17.98 (was inline here pre-§17.98 + duplicated
+ *    in `ComputedBusinessScoreNode<T>`; the cache now owns the single
+ *    canonical cast site). See `ComputationCache.ts`'s docblock.
  */
 export class ComputedNode<T> extends HistorizableValueNode<T> implements Computed<T> {
-  private _kind: ComputationKind;
-  private _strategy: Computation<T>;
+  private readonly _cache: ComputationCache<T>;
 
   constructor(
     id: string,
@@ -53,20 +49,16 @@ export class ComputedNode<T> extends HistorizableValueNode<T> implements Compute
     initialKind: ComputationKind,
   ) {
     super(id, title, weight, description, clock);
-    this._kind = initialKind;
-    this._strategy = ComputationRegistry.resolve(initialKind) as Computation<T>;
+    this._cache = new ComputationCache<T>(initialKind);
   }
 
-  get computationKind(): ComputationKind { return this._kind; }
-  get computation(): Computation<T> { return this._strategy; }
+  get computationKind(): ComputationKind { return this._cache.kind; }
+  get computation(): Computation<T> { return this._cache.strategy; }
 
-  setComputationKind(kind: ComputationKind): void {
-    this._kind = kind;
-    this._strategy = ComputationRegistry.resolve(kind) as Computation<T>;
-  }
+  setComputationKind(kind: ComputationKind): void { this._cache.set(kind); }
 
   override getValue(): T {
-    return this._strategy.apply(this.children);
+    return this._cache.strategy.apply(this.children);
   }
 
   override setValue(_value: T): void {
