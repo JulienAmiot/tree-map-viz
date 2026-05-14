@@ -1,4 +1,4 @@
-import { BusinessScoreNode } from "../nodes/BusinessScoreNode.js";
+import { ComputedBusinessScoreNode } from "../nodes/ComputedBusinessScoreNode.js";
 import type { Node } from "../nodes/Node.js";
 import { RangedValueNode } from "../nodes/RangedValueNode.js";
 import type { Timestamp } from "../values/Timestamp.js";
@@ -70,22 +70,23 @@ export type ComputedValueResultV4<T = unknown> =
 export function computedValueV4<T>(
   node: RangedValueNode<T>,
 ): ComputedValueResultV4<T> {
-  // §17.93 — when v3's `computed=true` flag is set on a v4 BSC
-  // (threaded through the §17.81 adapter), short-circuit straight
-  // to the children-aggregation branch even if the BSC has its
-  // own history. v3 honoured the flag by ignoring own history;
-  // v4's structural rule (§17.89) ignored the flag and used own
-  // history. The cutover at §17.93 surfaced 5 e2e failures from
-  // the `computed=true` placeholder pattern; this gate restores
-  // v3 behaviour without abandoning the structural default.
-  // StrictRangeNode has no `computed` slot (no v3 namesake) and
-  // always falls through to the structural rule.
-  const isFlaggedComputed = node instanceof BusinessScoreNode && node.computed;
+  // §17.99c — polymorphic resolution of v3's `computed: true` BSC
+  // pattern. The §17.93 band-aid read `node instanceof BusinessScoreNode
+  // && node.computed` (a flag on the v4 BSN slot); §17.99c retires
+  // that flag and substitutes the §17.98 `ComputedBusinessScoreNode<T>`
+  // subclass at the §17.81 v3-bridge adapter for every v3 BSC with
+  // `computed: true`. This check switches from the band-aid read to
+  // a single `instanceof` against the new subclass — same observable
+  // behaviour on every live data shape (the children-aggregation
+  // branch fires uniformly, leaf history is ignored), polymorphic
+  // resolution end-to-end. StrictRangeNode + plain BSN both fall
+  // through to the structural rule (no v3 `computed: true` analogue).
+  const isComputedBSC = node instanceof ComputedBusinessScoreNode;
 
-  if (!isFlaggedComputed && node.children.length === 0) {
+  if (!isComputedBSC && node.children.length === 0) {
     return leafResult(node);
   }
-  if (isFlaggedComputed && node.children.length === 0) {
+  if (isComputedBSC && node.children.length === 0) {
     return { kind: "childrenCount", n: 0 };
   }
 

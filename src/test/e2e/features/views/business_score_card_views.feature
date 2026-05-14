@@ -21,7 +21,13 @@ Feature: BusinessScoreCard views render the (role × computed) matrix
   @HE-???? @priority:high
   Scenario: asParent + computed=true renders the weighted mean with a Σ badge and a children-derived date (§17.18)
     Then the focused title is "Root"
-    And the focused value is "80.0 %"
+    # §17.99c landed the proper v5 polymorphic recursion: ChildA is now
+    # ComputedBusinessScoreNode (no own-history; aggregate = GrandLeaf=80),
+    # so Root.mean = (ChildA.aggregate=80, ChildB.history=60) / 2 = 70.0.
+    # The pre-§17.99c value 80.0 was the §17.93 band-aid one-level rule
+    # (ChildA.history=100 contributing directly); §17.99c retires that
+    # quirk along with the BSN.computed field that gated it.
+    And the focused value is "70.0 %"
     And the focused node has a computed badge
     And the focused value has a date
 

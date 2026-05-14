@@ -1,6 +1,8 @@
 import type { Clock } from "../capabilities/Clock.js";
+import { ComputationKind } from "../computation/ComputationKind.js";
 import { BusinessScoreCardNode } from "../nodes/BusinessScoreCardNode.js";
 import { BusinessScoreNode } from "../nodes/BusinessScoreNode.js";
+import { ComputedBusinessScoreNode } from "../nodes/ComputedBusinessScoreNode.js";
 import type { Node } from "../nodes/Node.js";
 import { StrictRangeNode } from "../nodes/StrictRangeNode.js";
 import { TextNode } from "../nodes/TextNode.js";
@@ -44,17 +46,27 @@ export class UnknownV3NodeKindError extends Error {
  *   - v3 TextNode → v4 TextNodeV4. Title from `identity.title.value`;
  *     description dropped (TextNodeV4 hardcodes `""` per §17.15).
  *     History copied verbatim via `addValue(asOf, value)`.
- *   - v3 BusinessScoreCardNode<number> → v4 BusinessScoreNode<number>
- *     (default lenient unbounded) or StrictRangeNode<number> (via
- *     override). v3 Objective<T> 3-tuple → v4 ObjectiveV4<T> 2-tuple
- *     (initialValue dropped; targetValue → value; targetDate → at).
- *     Description preserved via `identity.description.value`. The v3
- *     `computed` flag is threaded onto v4 BSN's §17.93 band-aid slot;
- *     v3's `eligibleForParentComputation: false` is migrated post-§17.99b
- *     to v4 `ValueNode<T>.disabled = true` (broader v5 round-7 D4 semantics
+ *   - v3 BusinessScoreCardNode<number> → one of three v4 leaf kinds:
+ *     **(a)** `StrictRangeNode<number>` when `opts.overrides` flags the id
+ *     with `strictRange: true` (the per-id strictness override; wins over
+ *     `computed: true` since v5 has no `ComputedStrictRangeNode` analogue);
+ *     **(b)** `ComputedBusinessScoreNode<number>` (§17.98, computed BSC
+ *     subclass) when v3's `computed: true` flag is set — the §17.99c
+ *     polymorphic resolution of the §17.93 cutover-time band-aid;
+ *     `ComputationKind.WEIGHTED_AVERAGE` preserves the v3 weighted-mean
+ *     semantics that §17.93's `computedValueV4` was implementing via its
+ *     own traversal loop; history copy is SKIPPED (CBSN history is audit-only
+ *     per §17.94 D5, and v3's `computed: true` BSCs ignored their own
+ *     history anyway in `computedValueV4`, so observable behaviour is
+ *     preserved); **(c)** plain `BusinessScoreNode<number>` otherwise (the
+ *     default v3 score branch). v3 Objective<T> 3-tuple → v4 ObjectiveV4<T>
+ *     2-tuple (initialValue dropped; targetValue → value; targetDate → at).
+ *     Description preserved via `identity.description.value`. v3's
+ *     `eligibleForParentComputation: false` is migrated post-§17.99b to
+ *     v4 `ValueNode<T>.disabled = true` (broader v5 round-7 D4 semantics
  *     — exclude from aggregation AND grey out in UI); the migration runs
- *     uniformly across both the BSN + StrictRangeNode branches since both
- *     inherit `setDisabled` from `ValueNode<T>`.
+ *     uniformly across all three v4 leaf kinds since `setDisabled` is
+ *     inherited from `ValueNode<T>`.
  *
  * Children walked recursively; order preserved through `attach`.
  *
@@ -110,14 +122,20 @@ function adaptBusinessScoreCardNode(
   node3: BusinessScoreCardNode<number>,
   clock: Clock,
   opts: V3ToV4Options,
-): BusinessScoreNode<number> | StrictRangeNode<number> {
+): BusinessScoreNode<number> | ComputedBusinessScoreNode<number> | StrictRangeNode<number> {
   const { id, weight } = node3;
   const title = node3.identity.title.value;
   const description = node3.identity.description.value;
   const override = opts.overrides?.get(id);
-  let v4Node: BusinessScoreNode<number> | StrictRangeNode<number>;
+  let v4Node:
+    | BusinessScoreNode<number>
+    | ComputedBusinessScoreNode<number>
+    | StrictRangeNode<number>;
 
   if (override?.strictRange === true) {
+    // Branch (a) — strictRange override wins over `computed: true` since
+    // v5 has no `ComputedStrictRangeNode` analogue. No live data hits
+    // this combo today; documented as a §17.99c corner case.
     const min = override.min ?? Number.NEGATIVE_INFINITY;
     const max = override.max ?? Number.POSITIVE_INFINITY;
     const range = StrictRange.of(min, max, NumericComparator.INSTANCE);
@@ -132,29 +150,46 @@ function adaptBusinessScoreCardNode(
     const objective = ObjectiveV4.of(v3Obj.targetValue, v3Obj.targetDate);
     // §17.91 — thread v3's display unit onto the v4 BSC's optional
     // `unit` slot (partial resolution of §17.80 D1; full resolution
-    // moves to BSCv4 wrapper at Phase C).
+    // moves to BSCv4 wrapper when cards are wired into the read path).
     const unit = node3.card.unit.value;
-    // §17.93 — also thread v3's `computed` flag (partial reversal of
-    // the §17.89 structural-rule design call; surfaced by 5 e2e
-    // failures during the read-cutover when v4 lost v3's
-    // "placeholder + computed=true" pattern). The `computed` band-aid
-    // retires at §17.99c with the BSCv4 wrapper.
-    const computed = node3.computed;
-    v4Node = new BusinessScoreNode<number>(id, title, weight, description, clock, range, {
-      objective,
-      unit,
-      computed,
-    });
+    if (node3.computed) {
+      // Branch (b) — §17.99c polymorphic resolution of v3's `computed: true`
+      // flag (the §17.93 band-aid retired at §17.99c). `WEIGHTED_AVERAGE`
+      // preserves v3's weighted-mean-of-children semantics that §17.93's
+      // `computedValueV4` was implementing via its own traversal loop.
+      v4Node = new ComputedBusinessScoreNode<number>(
+        id,
+        title,
+        weight,
+        description,
+        clock,
+        range,
+        { objective, unit, initialKind: ComputationKind.WEIGHTED_AVERAGE },
+      );
+    } else {
+      // Branch (c) — plain v3 score (default).
+      v4Node = new BusinessScoreNode<number>(id, title, weight, description, clock, range, {
+        objective,
+        unit,
+      });
+    }
   }
-  for (const entry of node3.history()) {
-    v4Node.addValue(entry.asOf, entry.value);
+  // History copy SKIPPED on the CBSN branch — its `addValue` throws
+  // ComputationOverrideError (audit-only history per §17.94 D5). v3's
+  // `computed: true` BSCs ignored their own history in `computedValueV4`
+  // anyway (children-aggregation branch fires regardless of leaf
+  // history), so observable behaviour is preserved.
+  if (!(v4Node instanceof ComputedBusinessScoreNode)) {
+    for (const entry of node3.history()) {
+      v4Node.addValue(entry.asOf, entry.value);
+    }
   }
   // §17.99b — translate v3's `eligibleForParentComputation: false` to v4
   // `disabled: true` (v5 round-7 D4 broader successor: exclude from
   // aggregation AND grey out in UI). v3's flag defaults `true` for
   // every BSC; only the explicit `false` opt-out crosses the bridge.
-  // Set uniformly on both branches since `setDisabled` is inherited
-  // from `ValueNode<T>` (BSN + StrictRangeNode both qualify).
+  // Set uniformly on all three branches since `setDisabled` is inherited
+  // from `ValueNode<T>` (BSN + CBSN + StrictRangeNode all qualify).
   if (!node3.eligibleForParentComputation) {
     v4Node.setDisabled(true);
   }

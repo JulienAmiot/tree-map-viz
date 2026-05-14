@@ -1,4 +1,3 @@
-import { BusinessScoreNode } from "../nodes/BusinessScoreNode.js";
 import { HistorizableValueNode } from "../nodes/HistorizableValueNode.js";
 import type { Node } from "../nodes/Node.js";
 import { RangedValueNode } from "../nodes/RangedValueNode.js";
@@ -32,19 +31,21 @@ import { RangedValueNode } from "../nodes/RangedValueNode.js";
  * BSC with children always recurses; a BSC with no children uses
  * its own history. Same structural rule, two helpers.
  *
+ * **§17.99c retirement of the §17.93 `isFlaggedComputed` gate**: the
+ * §17.93 band-aid (lift v3's `computed: true` flag onto v4 BSN, gate
+ * own-history reads on it) is retired. v3 `computed: true` BSCs now
+ * type-substitute to `ComputedBusinessScoreNode<T>` at the §17.81
+ * adapter, and CBSN's `addValue` throws `ComputationOverrideError`
+ * (audit-only history per §17.94 D5), so CBSN's `entries()` is
+ * GUARANTEED empty for the lifetime of every instance. The
+ * structural rule alone now produces the v3-equivalent semantic for
+ * every reachable CBSN state (CBSN leaf → empty entries → null;
+ * CBSN parent → recurses children) without the explicit flag/class
+ * check. The §17.93 cutover-time gate becomes redundant dead code.
+ *
  * Returns `null` when no date can be derived.
  */
 export function currentValueDateIsoV4(node: Node): string | null {
-  // §17.93 — same flag gate as `computedValueV4`. A BSC marked
-  // v3 `computed=true` MUST NOT show its own history's date even
-  // when it has no children; the v3 contract is "I'm a future
-  // aggregator, my date is null until children fill in". For all
-  // other nodes the structural rule applies.
-  const isFlaggedComputed = node instanceof BusinessScoreNode && node.computed;
-
-  if (isFlaggedComputed) {
-    return mostRecentChildDateIsoV4(node);
-  }
   if (node.children.length === 0) {
     return ownLatestIso(node);
   }

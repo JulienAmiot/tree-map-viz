@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
 import { computedValueV4 } from "../../../../domain/aggregation/computedValueV4.js";
+import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js";
+import { ComputedBusinessScoreNode } from "../../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../../../../domain/nodes/TextNodeV4.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
@@ -145,13 +147,13 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       const parent = buildBSC("p");
       const ineligibleA = new BusinessScoreNode<number>(
         "a", "a", w(1), "", clock, lenient(),
-        { objective: obj(), unit: "%", computed: false },
+        { objective: obj(), unit: "%" },
       );
       ineligibleA.setDisabled(true);
       ineligibleA.addValue(T("2026-01-01T00:00:00Z"), 10);
       const ineligibleB = new BusinessScoreNode<number>(
         "b", "b", w(1), "", clock, lenient(),
-        { objective: obj(), unit: "%", computed: false },
+        { objective: obj(), unit: "%" },
       );
       ineligibleB.setDisabled(true);
       ineligibleB.addValue(T("2026-01-01T00:00:00Z"), 20);
@@ -174,25 +176,23 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       expect(r.value).toBe(80);
     });
 
-    it("§17.93 — honours v3 computed=true: a flagged-computed leaf with own history returns childrenCount n=0 (not recordedValue)", () => {
-      const flaggedComputed = new BusinessScoreNode<number>(
+    it("§17.99c — ComputedBusinessScoreNode leaf with no children returns childrenCount n=0 (audit-only history is always empty; structural rule still fires the childrenCount fallback because there's no own number to read)", () => {
+      const cbsn = new ComputedBusinessScoreNode<number>(
         "f", "f", w(1), "", clock, lenient(),
-        { objective: obj(), unit: "%", computed: true },
+        { objective: obj(), unit: "%", initialKind: ComputationKind.WEIGHTED_AVERAGE },
       );
-      flaggedComputed.addValue(T("2026-01-01T00:00:00Z"), 99);
-      const r = computedValueV4(flaggedComputed);
+      const r = computedValueV4(cbsn);
       expect(r).toEqual({ kind: "childrenCount", n: 0 });
     });
 
-    it("§17.93 — honours v3 computed=true on parent: ignores own history, aggregates from eligible children", () => {
-      const flaggedComputed = new BusinessScoreNode<number>(
+    it("§17.99c — ComputedBusinessScoreNode parent aggregates from eligible children via the v3-equivalent weighted-mean traversal (computedValueV4 owns the loop; CBSN's strategy.dispatch via getValue() is not on this read path)", () => {
+      const cbsn = new ComputedBusinessScoreNode<number>(
         "f", "f", w(1), "", clock, lenient(),
-        { objective: obj(), unit: "%", computed: true },
+        { objective: obj(), unit: "%", initialKind: ComputationKind.WEIGHTED_AVERAGE },
       );
-      flaggedComputed.addValue(T("2026-01-01T00:00:00Z"), 99);
-      flaggedComputed.attach(buildBSC("c1", 1, [["2026-02-01T00:00:00Z", 100]]));
-      flaggedComputed.attach(buildBSC("c2", 1, [["2026-02-01T00:00:00Z", 60]]));
-      const r = computedValueV4(flaggedComputed);
+      cbsn.attach(buildBSC("c1", 1, [["2026-02-01T00:00:00Z", 100]]));
+      cbsn.attach(buildBSC("c2", 1, [["2026-02-01T00:00:00Z", 60]]));
+      const r = computedValueV4(cbsn);
       expect(r.kind).toBe("computedValue");
       if (r.kind !== "computedValue") return;
       expect(r.value).toBe(80);

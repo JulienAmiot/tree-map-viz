@@ -6,9 +6,11 @@ import {
   type NodeOverride,
 } from "../../../../domain/v3Bridge/v4NodeFromV3.js";
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
+import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
 import { BusinessScoreCard } from "../../../../domain/nodes/BusinessScoreCard.js";
 import { BusinessScoreCardNode } from "../../../../domain/nodes/BusinessScoreCardNode.js";
 import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js";
+import { ComputedBusinessScoreNode } from "../../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
 import { TextCard } from "../../../../domain/nodes/TextCard.js";
 import { TextNode } from "../../../../domain/nodes/TextNode.js";
@@ -52,7 +54,7 @@ const buildV3BSC = (
     ident(title, description),
     w,
     card,
-    flags.computed ?? true,
+    flags.computed ?? false,
     flags.eligibleForParentComputation ?? true,
   );
 };
@@ -133,6 +135,44 @@ describe("v4NodeFromV3 (§17.81 — Phase A.1: recursive v3→v4 Node adapter)",
     expect(v4.children[1]).toBeInstanceOf(BusinessScoreNode);
     expect(v4.children[1].children[0].id).toBe("c2c");
     expect(v4.children[1].children[0]).toBeInstanceOf(TextNodeV4);
+  });
+
+  describe("§17.99c — v3 `computed: true` BSCs type-substitute to v4 `ComputedBusinessScoreNode<T>` (polymorphic resolution of the §17.93 band-aid)", () => {
+    it("v3 BSC with computed=false (default) produces a plain BusinessScoreNode (NOT a ComputedBusinessScoreNode)", () => {
+      const v3 = buildV3BSC("plain", "Score", "");
+      const v4 = v4NodeFromV3(v3, clock) as BusinessScoreNode<number>;
+      expect(v4).toBeInstanceOf(BusinessScoreNode);
+      expect(v4).not.toBeInstanceOf(ComputedBusinessScoreNode);
+    });
+
+    it("v3 BSC with computed=true produces a ComputedBusinessScoreNode preserving range / objective / unit + WEIGHTED_AVERAGE strategy (v3-equivalent semantics)", () => {
+      const v3 = buildV3BSC("auto", "Auto", "", [], undefined, { computed: true });
+      const v4 = v4NodeFromV3(v3, clock) as ComputedBusinessScoreNode<number>;
+      expect(v4).toBeInstanceOf(ComputedBusinessScoreNode);
+      expect(v4).toBeInstanceOf(BusinessScoreNode);
+      expect(v4.computationKind).toBe(ComputationKind.WEIGHTED_AVERAGE);
+      expect(v4.objective.value).toBe(100);
+      expect(v4.unit).toBe("%");
+    });
+
+    it("v3 BSC with computed=true SKIPS history copy (CBSN audit-only history per §17.94 D5; v3 ignored own history anyway in the children-aggregation branch)", () => {
+      const v3 = buildV3BSC("auto", "Auto", "", [
+        ["2026-01-01T00:00:00Z", 10],
+        ["2026-02-01T00:00:00Z", 20],
+      ], undefined, { computed: true });
+      const v4 = v4NodeFromV3(v3, clock) as ComputedBusinessScoreNode<number>;
+      expect(v4.entries()).toEqual([]);
+    });
+
+    it("strictRange override wins over computed=true (no ComputedStrictRangeNode analogue in v5; documented §17.99c corner case)", () => {
+      const v3 = buildV3BSC("auto", "Auto", "", [], undefined, { computed: true });
+      const overrides = new Map<string, NodeOverride>([
+        ["auto", { strictRange: true, min: 0, max: 100 }],
+      ]);
+      const v4 = v4NodeFromV3(v3, clock, { overrides });
+      expect(v4).toBeInstanceOf(StrictRangeNode);
+      expect(v4).not.toBeInstanceOf(ComputedBusinessScoreNode);
+    });
   });
 
   describe("§17.99b — v3 `eligibleForParentComputation` migrates to v4 `ValueNode<T>.disabled`", () => {
