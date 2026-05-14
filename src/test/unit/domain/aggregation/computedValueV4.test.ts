@@ -141,17 +141,19 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       expect(r.value).toBe(100);
     });
 
-    it("§17.93 — honours v3 eligibleForParentComputation=false: ineligible BSC children are excluded from the mean", () => {
+    it("§17.99b — disabled BSC children are excluded from the mean (replaces the §17.93 v3 eligibleForParentComputation=false read)", () => {
       const parent = buildBSC("p");
       const ineligibleA = new BusinessScoreNode<number>(
         "a", "a", w(1), "", clock, lenient(),
-        { objective: obj(), unit: "%", computed: false, eligibleForParentComputation: false },
+        { objective: obj(), unit: "%", computed: false },
       );
+      ineligibleA.setDisabled(true);
       ineligibleA.addValue(T("2026-01-01T00:00:00Z"), 10);
       const ineligibleB = new BusinessScoreNode<number>(
         "b", "b", w(1), "", clock, lenient(),
-        { objective: obj(), unit: "%", computed: false, eligibleForParentComputation: false },
+        { objective: obj(), unit: "%", computed: false },
       );
+      ineligibleB.setDisabled(true);
       ineligibleB.addValue(T("2026-01-01T00:00:00Z"), 20);
       parent.attach(ineligibleA);
       parent.attach(ineligibleB);
@@ -159,10 +161,23 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       expect(r).toEqual({ kind: "childrenCount", n: 2 });
     });
 
+    it("§17.99b — disabled StrictRangeNode children are also excluded (collectEligibleChildren reads the ValueNode<T> field, not a BSN-specific slot)", () => {
+      const parent = buildBSC("p");
+      const eligible = buildBSC("a", 1, [["2026-01-01T00:00:00Z", 80]]);
+      const disabledStrict = buildStrictBSC("b", 1, [0, 100], [["2026-01-01T00:00:00Z", 20]]);
+      disabledStrict.setDisabled(true);
+      parent.attach(eligible);
+      parent.attach(disabledStrict);
+      const r = computedValueV4(parent);
+      expect(r.kind).toBe("computedValue");
+      if (r.kind !== "computedValue") return;
+      expect(r.value).toBe(80);
+    });
+
     it("§17.93 — honours v3 computed=true: a flagged-computed leaf with own history returns childrenCount n=0 (not recordedValue)", () => {
       const flaggedComputed = new BusinessScoreNode<number>(
         "f", "f", w(1), "", clock, lenient(),
-        { objective: obj(), unit: "%", computed: true, eligibleForParentComputation: false },
+        { objective: obj(), unit: "%", computed: true },
       );
       flaggedComputed.addValue(T("2026-01-01T00:00:00Z"), 99);
       const r = computedValueV4(flaggedComputed);
@@ -172,7 +187,7 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
     it("§17.93 — honours v3 computed=true on parent: ignores own history, aggregates from eligible children", () => {
       const flaggedComputed = new BusinessScoreNode<number>(
         "f", "f", w(1), "", clock, lenient(),
-        { objective: obj(), unit: "%", computed: true, eligibleForParentComputation: false },
+        { objective: obj(), unit: "%", computed: true },
       );
       flaggedComputed.addValue(T("2026-01-01T00:00:00Z"), 99);
       flaggedComputed.attach(buildBSC("c1", 1, [["2026-02-01T00:00:00Z", 100]]));

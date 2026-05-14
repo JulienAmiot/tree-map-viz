@@ -125,14 +125,15 @@ function collectEligibleChildren(
   const out: RangedValueNode<unknown>[] = [];
   for (const child of children) {
     if (!(child instanceof RangedValueNode)) continue;
-    // §17.93 — honour v3's `eligibleForParentComputation` flag
-    // (only carried on BusinessScoreNode; StrictRangeNode has no
-    // v3 namesake so it's always eligible). Mirror v3's semantic:
-    // when the operator marks a BSC "ineligible for parent
-    // computation" the parent's mean must skip it. Surfaced by
-    // the `mixedComputed` fixture's EmptyLeaf at the §17.93
-    // cutover.
-    if (child instanceof BusinessScoreNode && !child.eligibleForParentComputation) continue;
+    // §17.99b — replaced the BSN-specific `!child.eligibleForParentComputation`
+    // band-aid read with the v5 round-7 D4 `ValueNode<T>.disabled` field
+    // (landed at §17.99a). Broader semantics + lives one layer up the
+    // hierarchy so StrictRangeNode children honour it too without the
+    // §17.93-era instanceof asymmetry. v3 sources flagged
+    // `eligibleForParentComputation: false` cross the §17.81 bridge as
+    // `disabled: true`, preserving the `mixedComputed` fixture's
+    // EmptyLeaf semantics surfaced at the §17.93 cutover.
+    if (child.disabled) continue;
     out.push(child as RangedValueNode<unknown>);
   }
   return out;

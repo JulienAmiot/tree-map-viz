@@ -46,10 +46,12 @@ import { BusinessScoreNode } from "./BusinessScoreNode.js";
  *    — the flag becomes redundant once §17.91's successor learns to
  *    type-switch on this class. Forcing it `true` keeps the existing §17.93
  *    mapper happy WHEN this class first reaches the production bundle,
- *    without requiring any mapper-side change at §17.98.
- *    `eligibleForParentComputation` stays operator-controllable (independent
- *    semantics — "include this score in the parent's mean even though it's
- *    auto-derived").
+ *    without requiring any mapper-side change at §17.98. The §17.93 sister
+ *    band-aid `eligibleForParentComputation` is retired at §17.99b — the
+ *    constructor option is gone; if an operator needs an auto-derived BSC
+ *    excluded from a parent's mean they call `node.setDisabled(true)` on
+ *    the produced instance (the §17.99a successor field on `ValueNode<T>`
+ *    with broader UI-grey-out semantics).
  */
 export class ComputedBusinessScoreNode<T> extends BusinessScoreNode<T> implements Computed<T> {
   private readonly _cache: ComputationCache<T>;
@@ -65,14 +67,12 @@ export class ComputedBusinessScoreNode<T> extends BusinessScoreNode<T> implement
       objective: ObjectiveV4<T>;
       initialKind: ComputationKind;
       unit?: string;
-      eligibleForParentComputation?: boolean;
     },
   ) {
     super(id, title, weight, description, clock, range, {
       objective: options.objective,
       unit: options.unit,
       computed: true,
-      eligibleForParentComputation: options.eligibleForParentComputation,
     });
     this._cache = new ComputationCache<T>(options.initialKind);
   }

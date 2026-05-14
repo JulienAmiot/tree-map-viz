@@ -39,6 +39,7 @@ const buildV3BSC = (
   description: string,
   history: [string, number][] = [],
   objective: Objective<number> = Objective.of(0, 100, T("2026-12-31T00:00:00Z")),
+  flags: { computed?: boolean; eligibleForParentComputation?: boolean } = {},
 ): BusinessScoreCardNode<number> => {
   const tvs = history.map(([iso, v]) => TimestampedValue.of(v, T(iso)));
   const card = BusinessScoreCard.of<number>(
@@ -46,7 +47,14 @@ const buildV3BSC = (
     objective,
     tvs,
   );
-  return new BusinessScoreCardNode<number>(id, ident(title, description), w, card, true, true);
+  return new BusinessScoreCardNode<number>(
+    id,
+    ident(title, description),
+    w,
+    card,
+    flags.computed ?? true,
+    flags.eligibleForParentComputation ?? true,
+  );
 };
 
 describe("v4NodeFromV3 (§17.81 — Phase A.1: recursive v3→v4 Node adapter)", () => {
@@ -125,6 +133,35 @@ describe("v4NodeFromV3 (§17.81 — Phase A.1: recursive v3→v4 Node adapter)",
     expect(v4.children[1]).toBeInstanceOf(BusinessScoreNode);
     expect(v4.children[1].children[0].id).toBe("c2c");
     expect(v4.children[1].children[0]).toBeInstanceOf(TextNodeV4);
+  });
+
+  describe("§17.99b — v3 `eligibleForParentComputation` migrates to v4 `ValueNode<T>.disabled`", () => {
+    it("v3 BSC with eligibleForParentComputation=true (default) produces a v4 node with disabled=false", () => {
+      const v3 = buildV3BSC("eligible", "Sales", "");
+      const v4 = v4NodeFromV3(v3, clock) as BusinessScoreNode<number>;
+      expect(v4.disabled).toBe(false);
+    });
+
+    it("v3 BSC with eligibleForParentComputation=false produces a v4 BSN with disabled=true", () => {
+      const v3 = buildV3BSC("parked", "Future score", "", [], undefined, {
+        eligibleForParentComputation: false,
+      });
+      const v4 = v4NodeFromV3(v3, clock) as BusinessScoreNode<number>;
+      expect(v4).toBeInstanceOf(BusinessScoreNode);
+      expect(v4.disabled).toBe(true);
+    });
+
+    it("the disabled migration also fires on the StrictRangeNode branch (setDisabled inherited from ValueNode<T>)", () => {
+      const v3 = buildV3BSC("strict-parked", "Latency", "ms", [], undefined, {
+        eligibleForParentComputation: false,
+      });
+      const overrides = new Map<string, NodeOverride>([
+        ["strict-parked", { strictRange: true, min: 0, max: 100 }],
+      ]);
+      const v4 = v4NodeFromV3(v3, clock, { overrides }) as StrictRangeNode<number>;
+      expect(v4).toBeInstanceOf(StrictRangeNode);
+      expect(v4.disabled).toBe(true);
+    });
   });
 
   it("throws UnknownV3NodeKindError on a TreeNode subclass that is neither TextNode nor BusinessScoreCardNode", () => {
