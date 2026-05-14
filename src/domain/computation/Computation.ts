@@ -4,9 +4,10 @@ import { ValueNode } from "../nodes/ValueNode.js";
 /**
  * `Computation<T>` — abstract aggregation strategy (SPEC §17.95 / v5 round 7).
  * Concrete strategies filter children via `enabledValueNodes` (composes
- * `instanceof ValueNode` + duck-typed `!isDisabled` — the duck-type is
- * pre-wired for §17.99, no changes here when `ValueNode.disabled` lands) then
- * fold. Numeric strategies use `tryReadNumber` to read `getValue()` defensively
+ * `instanceof ValueNode` + the real `ValueNode<T>.disabled` field landed at
+ * §17.99a — was a duck-typed predicate pre-§17.99a, kept the same call shape
+ * so this filter site needs no change beyond the helper's body) then fold.
+ * Numeric strategies use `tryReadNumber` to read `getValue()` defensively
  * (swallows domain throws, rejects NaN / ±Infinity).
  */
 export abstract class Computation<T> {
@@ -16,8 +17,7 @@ export abstract class Computation<T> {
     children: readonly Node[],
   ): readonly ValueNode<unknown>[] {
     return children.filter(
-      (c): c is ValueNode<unknown> =>
-        c instanceof ValueNode && !isDisabled(c),
+      (c): c is ValueNode<unknown> => c instanceof ValueNode && !c.disabled,
     );
   }
 
@@ -29,8 +29,4 @@ export abstract class Computation<T> {
       return undefined;
     }
   }
-}
-
-function isDisabled(child: Node): boolean {
-  return (child as Partial<{ disabled: boolean }>).disabled === true;
 }
