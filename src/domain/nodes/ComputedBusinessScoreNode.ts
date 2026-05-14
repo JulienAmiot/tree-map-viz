@@ -38,20 +38,19 @@ import { BusinessScoreNode } from "./BusinessScoreNode.js";
  *    lenient gate is a no-op anyway (§17.71 `LenientRange.requireValue` is
  *    the empty op), so no behavioural contract is violated. `entries()` /
  *    `removeValue` / `range` / `objective` / `unit` all stay inherited.
- *  - **`computed` band-aid hardwired to `true`** — the §17.93
- *    `BusinessScoreNode<T>.computed: boolean` field (v3-compat band-aid
- *    keeping the §17.93 read-side mapper rendering computed BSCs correctly)
- *    is forced to `true` in the `super()` call regardless of the operator's
- *    options. A `ComputedBusinessScoreNode<T>` IS computed by class identity
- *    — the flag becomes redundant once §17.91's successor learns to
- *    type-switch on this class. Forcing it `true` keeps the existing §17.93
- *    mapper happy WHEN this class first reaches the production bundle,
- *    without requiring any mapper-side change at §17.98. The §17.93 sister
- *    band-aid `eligibleForParentComputation` is retired at §17.99b — the
- *    constructor option is gone; if an operator needs an auto-derived BSC
- *    excluded from a parent's mean they call `node.setDisabled(true)` on
- *    the produced instance (the §17.99a successor field on `ValueNode<T>`
- *    with broader UI-grey-out semantics).
+ *  - **Computed-ness is now class identity** — §17.98 originally forced the
+ *    §17.93 `BusinessScoreNode<T>.computed: boolean` band-aid to `true` in
+ *    the `super()` call so the §17.93 read-side mapper would render
+ *    auto-derived BSCs correctly without requiring any mapper-side change
+ *    at §17.98. The §17.99c retirement strand drops the band-aid field
+ *    entirely; computed BSC detection is now a polymorphic `node instanceof
+ *    ComputedBusinessScoreNode` check at the `computedValueV4` aggregation
+ *    site (the only v4 consumer of the band-aid prior to retirement; the
+ *    view-model mapper never read it). The §17.93 sister band-aid
+ *    `eligibleForParentComputation` is retired at §17.99b — operators
+ *    needing an auto-derived BSC excluded from a parent's mean call
+ *    `node.setDisabled(true)` on the produced instance (the §17.99a
+ *    successor field on `ValueNode<T>` with broader UI-grey-out semantics).
  */
 export class ComputedBusinessScoreNode<T> extends BusinessScoreNode<T> implements Computed<T> {
   private readonly _cache: ComputationCache<T>;
@@ -72,7 +71,6 @@ export class ComputedBusinessScoreNode<T> extends BusinessScoreNode<T> implement
     super(id, title, weight, description, clock, range, {
       objective: options.objective,
       unit: options.unit,
-      computed: true,
     });
     this._cache = new ComputationCache<T>(options.initialKind);
   }

@@ -52,11 +52,6 @@ describe("ComputedBusinessScoreNode<T> — construction + BSC inheritance + Comp
     expect(node.unit).toBe("%");
   });
 
-  it("hardwires `computed: true` regardless of options (§17.98 — class IS computed by identity)", () => {
-    const node = build(ComputationKind.AVERAGE);
-    expect(node.computed).toBe(true);
-  });
-
   it("inherits `disabled` from ValueNode<T> (§17.99a/§17.99b — operator opts auto-derived BSCs out of a parent's mean via setDisabled, not a constructor option)", () => {
     const node = build(ComputationKind.SUM);
     expect(node.disabled).toBe(false);

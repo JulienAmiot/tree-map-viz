@@ -12,7 +12,10 @@ Feature: BusinessScoreCard value aggregation modes
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge
     And I reload the kiosk
-    Then the focused value is "80.0 %"
+    # §17.99c — see business_score_card_views.feature for the rationale.
+    # Root.mean = (ChildA.aggregate=80, ChildB.history=60) / 2 = 70.0
+    # post-substitution (was 80.0 under the §17.93 band-aid).
+    Then the focused value is "70.0 %"
     And the focused node has a computed badge
     And the focused value has a date
 
