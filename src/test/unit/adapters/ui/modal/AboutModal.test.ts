@@ -44,6 +44,21 @@ describe("<about-modal> (\u00a717.84)", () => {
     expect(rel).toMatch(/\bnoreferrer\b/);
   });
 
+  it("renders a safe Changelog link to CHANGELOG.md on master (\u00a717.87)", async () => {
+    const el = await mountLitElement<AboutModal>("about-modal", (e) => {
+      e.open = true;
+    });
+    const link = fieldOf(el, "about-changelog-link") as HTMLAnchorElement;
+    expect(link.tagName).toBe("A");
+    expect(link.getAttribute("href")).toBe(
+      "https://github.com/JulienAmiot/tree-map-viz/blob/master/CHANGELOG.md",
+    );
+    expect(link.target).toBe("_blank");
+    const rel = link.getAttribute("rel") ?? "";
+    expect(rel).toMatch(/\bnoopener\b/);
+    expect(rel).toMatch(/\bnoreferrer\b/);
+  });
+
   it("Close / close-X / backdrop dispatch `about-cancel` (bubbles+composed)", async () => {
     const el = await mountLitElement<AboutModal>("about-modal", (e) => {
       e.open = true;

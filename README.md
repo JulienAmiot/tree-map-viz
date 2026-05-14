@@ -116,7 +116,8 @@ which preserves the audit trail of operator-recorded inputs.
 
 - The kiosk stamps its semver into the bundle (`__APP_VERSION__` +
   `__APP_BUILD_DATE__`) and surfaces it via the burger menu's **About**
-  modal.
+  modal, alongside a link to [`CHANGELOG.md`](CHANGELOG.md) ("What's new"
+  per release).
 - Every saved envelope carries the major version it was written with
   (`appMajor`). On load, the persistence adapter classifies into one of four
   branches — **equal** (load), **lower** (try injected migrators, else load
@@ -249,6 +250,7 @@ These are binding constraints (and the bar each PR is held to):
 | File                                                 | Purpose                                                 |
 | ---------------------------------------------------- | ------------------------------------------------------- |
 | `README.md` (this file)                              | High-level functional spec (what the product does)      |
+| `CHANGELOG.md`                                       | User-facing release notes per `package.json#version`    |
 | `docs/SPEC.md`                                       | Living implementation log + open decisions              |
 | `examples/classDiagramMermaid.v4.md` / `.mermaid`    | Current implemented domain model (Phase A + B shipped)  |
 | `examples/classDiagramMermaid.v5.md` / `.mermaid`    | Target v5 design (Computation strategy + `disabled`)    |
