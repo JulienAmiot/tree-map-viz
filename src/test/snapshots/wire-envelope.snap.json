@@ -1,5 +1,6 @@
 {
   "v": 1,
+  "appMajor": 0,
   "currentBoardId": "board1",
   "boards": [
     {

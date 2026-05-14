@@ -125,7 +125,20 @@ async function main(): Promise<void> {
   // `getTime()` so a `NaN`-Date would surface here at the boundary.
   const clock: Clock = { now: () => Timestamp.of(new Date()) };
   const codec = { encode, decode };
-  const repo = new LocalStorageBoardCollectionRepository({ storage: window.localStorage });
+  // SPEC §17.86 — runtime version-mismatch handler. The persistence
+  // adapter compares the persisted envelope's `appMajor` against the
+  // running build's major and invokes this callback on a mismatch.
+  // §17.86 surfaces it as a `console.warn` placeholder; §17.86b
+  // replaces this with a `<version-mismatch-banner>` injected into
+  // `<tree-map-screen>` ("Continue read-only" / "Reset and lose data").
+  const repo = new LocalStorageBoardCollectionRepository({
+    storage: window.localStorage,
+    onVersionMismatch: (info) => {
+      console.warn(
+        `[tree-map-viz] §17.86 version mismatch (${info.kind}): persisted=v${info.persistedMajor.toString()}, running=v${info.runningMajor.toString()}`,
+      );
+    },
+  });
   const boards = await BoardCollectionService.create(repo, idGen);
   const router = new HashRouter(window);
 
