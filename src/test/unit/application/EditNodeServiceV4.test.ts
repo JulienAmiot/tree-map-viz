@@ -3,11 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EditNodeServiceV4 } from "../../../application/EditNodeServiceV4.js";
 import type { Clock } from "../../../domain/capabilities/Clock.js";
 import { BusinessScoreCardV4 } from "../../../domain/cards/BusinessScoreCardV4.js";
+import { ComputationKind } from "../../../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
+import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusinessScoreNode.js";
+import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
+import { StrictRangeNode } from "../../../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
 import { NumericComparator } from "../../../domain/values/Comparator.js";
 import { ObjectiveV4 } from "../../../domain/values/ObjectiveV4.js";
-import { LenientRange } from "../../../domain/values/Range.js";
+import { LenientRange, StrictRange } from "../../../domain/values/Range.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
 import { Unit } from "../../../domain/values/Unit.js";
 import { Weight } from "../../../domain/values/Weight.js";
@@ -100,6 +104,77 @@ describe("EditNodeServiceV4 (§17.101a — Phase C skeleton + 2 v3-compat kinds 
     expect(bsn.title).toBe(before.title);
     expect(bsn.objective).toBe(before.obj);
     expect(card.getUnit()).toBe(before.unit);
+  });
+
+  it("StrictRange edit + appendValue — common edits propagate; in-range appendValue succeeds; out-of-range surfaces { ok: false } with rollback", async () => {
+    const range = StrictRange.of(0, 100, NumericComparator.INSTANCE);
+    const node = new StrictRangeNode<number>("sr1", "Saturation", Weight.of(1), "old", clock, range);
+    const r = await svc.editFields(node, {
+      kind: "StrictRange", title: "CPU sat", weight: 4, description: "core busy %", disabled: true,
+    });
+    expect(r.ok).toBe(true);
+    expect(node.title).toBe("CPU sat");
+    expect(node.weight.value).toBe(4);
+    expect(node.getDescription()).toBe("core busy %");
+    expect(node.disabled).toBe(true);
+
+    const inRange = await svc.appendValue(node, 75);
+    expect(inRange.ok).toBe(true);
+    expect(node.getValue()).toBe(75);
+
+    const before = node.entries().length;
+    const outOfRange = await svc.appendValue(node, 150);
+    expect(outOfRange.ok).toBe(false);
+    expect(node.entries()).toHaveLength(before);
+  });
+
+  it("Computed edit — setComputationKind flips strategy + common edits propagate; appendValue rejected (audit-only history)", async () => {
+    const node = new ComputedNode<number>("c1", "Mean", Weight.of(1), "", clock, ComputationKind.AVERAGE);
+    const r = await svc.editFields(node, {
+      kind: "Computed", title: "Sum of children", description: "auto", disabled: false, computationKind: ComputationKind.SUM,
+    });
+    expect(r.ok).toBe(true);
+    expect(node.title).toBe("Sum of children");
+    expect(node.getDescription()).toBe("auto");
+    expect(node.computationKind).toBe(ComputationKind.SUM);
+
+    const append = await svc.appendValue(node, 42);
+    expect(append.ok).toBe(false);
+    if (!append.ok) expect(append.reason).toMatch(/computation|override|computed/i);
+  });
+
+  it("ComputedBusinessScore edit — title + description + objective + unit + computationKind + disabled all atomic; kind exact-class match (BSN payload rejected)", async () => {
+    const range = LenientRange.of(0, 1_000, NumericComparator.INSTANCE);
+    const node = new ComputedBusinessScoreNode<number>(
+      "cbsn1", "Auto-score", Weight.of(2), "", clock, range,
+      {
+        objective: ObjectiveV4.of(50, Timestamp.of(new Date("2027-01-01T00:00:00Z"))),
+        unit: "pts",
+        initialKind: ComputationKind.AVERAGE,
+      },
+    );
+    const card = new BusinessScoreCardV4(node, Unit.of("pts"));
+    const cards = new Map([["cbsn1", card]]);
+
+    const wrongKind = await svc.editFields(node, { kind: "BusinessScore", title: "X" }, { cards });
+    expect(wrongKind.ok).toBe(false);
+
+    const r = await svc.editFields(node, {
+      kind: "ComputedBusinessScore",
+      title: "Composite KPI",
+      description: "rolled up",
+      objective: { value: 90, at: new Date("2027-12-31T00:00:00Z") },
+      unit: "%",
+      computationKind: ComputationKind.WEIGHTED_AVERAGE,
+      disabled: true,
+    }, { cards });
+    expect(r.ok).toBe(true);
+    expect(node.title).toBe("Composite KPI");
+    expect(node.getDescription()).toBe("rolled up");
+    expect(node.objective.value).toBe(90);
+    expect(card.getUnit().value).toBe("%");
+    expect(node.computationKind).toBe(ComputationKind.WEIGHTED_AVERAGE);
+    expect(node.disabled).toBe(true);
   });
 
   it("appendValue — Text + BSC; default asOf uses clock; type mismatch + persist-throw → { ok: false } with rollback", async () => {
