@@ -5,7 +5,12 @@ import type { AddChildPayloadV4 } from "../../../application/AddChildServiceV4.j
 import type { IdGenerator } from "../../../application/ports/IdGenerator.js";
 import type { Clock } from "../../../domain/capabilities/Clock.js";
 import { MAX_CHILDREN_V4 } from "../../../domain/capacity/childrenCapacityV4.js";
+import { ComputationKind } from "../../../domain/computation/ComputationKind.js";
+import { ComputationOverrideError } from "../../../domain/computation/ComputationOverrideError.js";
 import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
+import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusinessScoreNode.js";
+import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
+import { StrictRangeNode } from "../../../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
 import { Weight } from "../../../domain/values/Weight.js";
@@ -132,6 +137,97 @@ describe("AddChildServiceV4 (§17.100a — Phase C skeleton + 2 v3-compat kinds)
     }
     expect(parent.children).toHaveLength(0);
     expect(persist).not.toHaveBeenCalled();
+  });
+
+  it("StrictRange (§17.100b) — bounded min/max + history + descending range + out-of-range rejection + disabled", async () => {
+    const parent = makeRoot();
+    const ok = await svc.addChild(parent, {
+      kind: "StrictRange",
+      title: "Latency p95",
+      description: "ms",
+      min: 0,
+      max: 1_000,
+      initialHistory: [
+        { value: 250, asOf: new Date("2026-04-01T00:00:00Z") },
+        { value: 320, asOf: new Date("2026-04-15T00:00:00Z") },
+      ],
+      disabled: true,
+    });
+    expect(ok.ok).toBe(true);
+    if (ok.ok) {
+      const srn = ok.child as StrictRangeNode<number>;
+      expect(srn).toBeInstanceOf(StrictRangeNode);
+      expect(srn.range.minimalValue).toBe(0);
+      expect(srn.range.maximalValue).toBe(1_000);
+      expect(srn.getValue()).toBe(320);
+      expect(srn.disabled).toBe(true);
+    }
+
+    // descending range [100..0] is direction-agnostic per §17.71 sign-product trick
+    const desc = await svc.addChild(parent, {
+      kind: "StrictRange", title: "Defects", min: 100, max: 0,
+      initialHistory: [{ value: 50, asOf: new Date("2026-04-01T00:00:00Z") }],
+    });
+    expect(desc.ok).toBe(true);
+
+    // out-of-range entry surfaces as { ok: false }
+    const oor = await svc.addChild(parent, {
+      kind: "StrictRange", title: "Saturation", min: 0, max: 100,
+      initialHistory: [{ value: 250, asOf: new Date("2026-04-01T00:00:00Z") }],
+    });
+    expect(oor.ok).toBe(false);
+    if (!oor.ok) expect(oor.reason).toMatch(/out of range/i);
+  });
+
+  it("Computed (§17.100b) — all 6 ComputationKinds + ComputationOverrideError on addValue + disabled", async () => {
+    for (const kind of ComputationKind.ALL) {
+      const r = await svc.addChild(makeRoot(`p-${kind.name}`), {
+        kind: "Computed", title: `T-${kind.name}`, computationKind: kind,
+      });
+      expect(r.ok).toBe(true);
+      if (r.ok) {
+        const cn = r.child as ComputedNode<number>;
+        expect(cn).toBeInstanceOf(ComputedNode);
+        expect(cn.computationKind).toBe(kind);
+      }
+    }
+    const r = await svc.addChild(makeRoot(), {
+      kind: "Computed", title: "X", computationKind: ComputationKind.AVERAGE, disabled: true,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const cn = r.child as ComputedNode<number>;
+      expect(cn.disabled).toBe(true);
+      expect(() => cn.addValue(Timestamp.of(new Date("2026-05-01T00:00:00Z")), 1)).toThrow(
+        ComputationOverrideError,
+      );
+    }
+  });
+
+  it("ComputedBusinessScore (§17.100b) — objective + unit + computationKind + audit-only addValue + disabled", async () => {
+    const r = await svc.addChild(makeRoot(), {
+      kind: "ComputedBusinessScore",
+      title: "Aggregate score",
+      description: "weighted mean of child KPIs",
+      weight: 3,
+      unit: "%",
+      objective: { value: 95, at: new Date("2026-12-31T00:00:00Z") },
+      computationKind: ComputationKind.WEIGHTED_AVERAGE,
+      disabled: true,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const cbsn = r.child as ComputedBusinessScoreNode<number>;
+      expect(cbsn).toBeInstanceOf(ComputedBusinessScoreNode);
+      expect(cbsn.computationKind).toBe(ComputationKind.WEIGHTED_AVERAGE);
+      expect(cbsn.unit).toBe("%");
+      expect(cbsn.objective.value).toBe(95);
+      expect(cbsn.weight.value).toBe(3);
+      expect(cbsn.disabled).toBe(true);
+      expect(() => cbsn.addValue(Timestamp.of(new Date("2026-05-01T00:00:00Z")), 1)).toThrow(
+        ComputationOverrideError,
+      );
+    }
   });
 
   it("persistence boundary — rolls back attach if persist throws (atomicity); uses injected idGen verbatim", async () => {
