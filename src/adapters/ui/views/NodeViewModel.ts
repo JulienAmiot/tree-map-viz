@@ -11,26 +11,12 @@
  * or `TimestampedValue`.
  */
 
-export type NodeKind =
-  | "TextNode"
-  | "BusinessScoreCardNode"
-  | "ComputedNode"
-  | "ComputedBusinessScoreNode";
+export type NodeKind = "TextNode" | "BusinessScoreCardNode" | "ComputedNode" | "ComputedBusinessScoreNode";
 
 /** SPEC §17.104 — Lit-friendly mirror of `ComputationKind` names (§17.95 / §17.94 D2). */
-export type ComputationKindName =
-  | "SUM"
-  | "AVERAGE"
-  | "MIN"
-  | "MAX"
-  | "WEIGHTED_AVERAGE"
-  | "COUNT";
+export type ComputationKindName = "SUM" | "AVERAGE" | "MIN" | "MAX" | "WEIGHTED_AVERAGE" | "COUNT";
 
-/**
- * SPEC §17.104 — auto-derived numeric value for Computed* tiles.
- * `numeric` = strategy applied successfully; `empty` = no contributing
- * children (the mapper bakes the human reason).
- */
+/** SPEC §17.104 — auto-derived value for Computed* tiles (numeric / empty-children). */
 export type ComputedValueViewModel =
   | { readonly kind: "numeric"; readonly value: number; readonly unit: string }
   | { readonly kind: "empty"; readonly reason: string };
@@ -218,13 +204,7 @@ export type BusinessScoreCardNodeViewModel = {
   readonly objective: BusinessScoreCardObjectiveViewModel;
 };
 
-/**
- * SPEC §17.104 — VM for `ComputedNode<T>` tiles. Renders Σ badge +
- * auto-derived value + a `setComputationKind` dropdown that dispatches
- * `computation-kind-change` from `<computed-card>`. The shell wires
- * the event at §17.110 cutover. `availableKinds` ordering matches the
- * §17.95 `ComputationKind.ALL` array.
- */
+/** SPEC §17.104 — `ComputedNode<T>` tiles. `availableKinds` ordering matches `ComputationKind.ALL`. */
 export type ComputedNodeViewModel = {
   readonly kind: "ComputedNode";
   readonly id: string;

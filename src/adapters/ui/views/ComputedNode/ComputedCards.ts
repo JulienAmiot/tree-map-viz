@@ -50,18 +50,26 @@ function renderKindDropdown(
   </select>`;
 }
 
+function unitSpan(unit: string): TemplateResult | typeof nothing {
+  return unit ? html`<span class="unit">&nbsp;${unit}</span>` : nothing;
+}
+
+function unitSuffix(unit: string): TemplateResult | typeof nothing {
+  return unit ? html`&nbsp;${unit}` : nothing;
+}
+
 function renderComputedValue(value: ComputedValueViewModel): TemplateResult {
   if (value.kind === "empty") {
     return html`<span class="value" data-testid="value" data-value-kind="empty">${value.reason}</span>`;
   }
   return html`<span class="value" data-testid="value" data-value-kind="numeric"
-    >${value.value}${value.unit ? html`<span class="unit">&nbsp;${value.unit}</span>` : nothing}</span>`;
+    >${value.value}${unitSpan(value.unit)}</span>`;
 }
 
 function renderObjectiveRow(obj: BusinessScoreCardObjectiveViewModel): TemplateResult {
   return html`<div class="target-row" data-testid="target-row">
     <span class="target-icon" data-testid="target-icon" aria-hidden="true"></span>
-    <span class="target-text" data-testid="target-text">${obj.targetValue}${obj.unit ? html`&nbsp;${obj.unit}` : nothing}</span>
+    <span class="target-text" data-testid="target-text">${obj.targetValue}${unitSuffix(obj.unit)}</span>
   </div>`;
 }
 
