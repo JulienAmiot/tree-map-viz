@@ -3,16 +3,25 @@ import { describe, expect, it } from "vitest";
 import { JsonDecodeError } from "../../../../adapters/persistence/jsonCodec.js";
 import {
   createJsonCodecV4,
-  JsonCodecV4NotYetImplementedError,
+  JsonCodecV4EncodeError,
 } from "../../../../adapters/persistence/jsonCodecV4.js";
+import { buildSampleTreeV4 } from "../../../../adapters/sampleDataV4.js";
+import { BusinessScoreCardV4 } from "../../../../domain/cards/BusinessScoreCardV4.js";
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
 import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../../../domain/nodes/ComputedBusinessScoreNode.js";
+import { ComputedNode } from "../../../../domain/nodes/ComputedNode.js";
+import type { Node } from "../../../../domain/nodes/Node.js";
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../../../../domain/nodes/TextNodeV4.js";
 import { Tree } from "../../../../domain/Tree.js";
+import { NumericComparator } from "../../../../domain/values/Comparator.js";
+import { ObjectiveV4 } from "../../../../domain/values/ObjectiveV4.js";
+import { LenientRange, StrictRange } from "../../../../domain/values/Range.js";
 import { Timestamp } from "../../../../domain/values/Timestamp.js";
+import { Unit } from "../../../../domain/values/Unit.js";
+import { Weight } from "../../../../domain/values/Weight.js";
 
 const NOW = new Date("2026-05-16T12:00:00Z");
 const clock: Clock = { now: () => Timestamp.of(NOW) };
@@ -175,9 +184,69 @@ describe("jsonCodecV4 (§17.105 — decode-side adapter)", () => {
         .toThrow(/unknown nodeType "Mystery"/);
     });
 
-    it("encode throws JsonCodecV4NotYetImplementedError until §17.106 lands the encode path", () => {
-      const tree = codec.decode(JSON.stringify(bscWire({ id: "root" })));
-      expect(() => codec.encode(tree)).toThrow(JsonCodecV4NotYetImplementedError);
+  });
+
+  describe("§17.106a — v4-native encode (decode rewrite remains §17.106b's job)", () => {
+    const TARGET = Timestamp.of(new Date("2026-12-31T00:00:00.000Z"));
+    const T1 = Timestamp.of(new Date("2026-04-22T18:25:43.511Z"));
+    const lenient = (): LenientRange<number> => LenientRange.of(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, NumericComparator.INSTANCE);
+
+    it("envelope = {schemaVersion:\"v4.0\", root, cards[]}; cards sidecar serialised as flat [{nodeId,unit}] list", () => {
+      const bsn = new BusinessScoreNode<number>("root", "Root", Weight.of(1), "d", clock, lenient(), { objective: ObjectiveV4.of(100, TARGET), unit: "%" });
+      const cards = new Map<string, BusinessScoreCardV4<unknown>>();
+      cards.set("root", new BusinessScoreCardV4(bsn, Unit.percent()));
+      const json = JSON.parse(codec.encode(new Tree(bsn, cards))) as Record<string, unknown>;
+      expect(json.schemaVersion).toBe("v4.0");
+      expect(json.cards).toEqual([{ nodeId: "root", unit: "%" }]);
+      expect((json.root as { kind: string }).kind).toBe("BusinessScoreNode");
+    });
+
+    it("TextNodeV4 + BusinessScoreNode emit per-kind shapes; disabled OMITTED when false / EMITTED when true; unit OMITTED when empty; range uses null sentinel for ±Infinity", () => {
+      const t = new TextNodeV4("t", "Notes", Weight.of(1), clock);
+      t.addValue(T1, "hello");
+      const tWire = JSON.parse(codec.encode(new Tree(t))).root as Record<string, unknown>;
+      expect(tWire.kind).toBe("TextNodeV4");
+      expect(tWire.history).toEqual([{ value: "hello", at: T1.moment.toISOString() }]);
+      expect("disabled" in tWire).toBe(false);
+      t.setDisabled(true);
+      expect((JSON.parse(codec.encode(new Tree(t))).root as Record<string, unknown>).disabled).toBe(true);
+      const bsn = new BusinessScoreNode<number>("b", "B", Weight.of(1), "d", clock, lenient(), { objective: ObjectiveV4.of(100, TARGET) });
+      const bsnWire = JSON.parse(codec.encode(new Tree(bsn))).root as Record<string, unknown>;
+      expect(bsnWire.range).toEqual({ kind: "lenient", min: null, max: null });
+      expect("unit" in bsnWire).toBe(false);
+    });
+
+    it("ComputedBusinessScoreNode emits computationKind + NO history; ComputedNode emits computationKind only (no range/objective/history); StrictRangeNode emits strict range with finite bounds + history", () => {
+      const cbsn = new ComputedBusinessScoreNode<number>("agg", "Agg", Weight.of(1), "d", clock, lenient(), { objective: ObjectiveV4.of(50, TARGET), initialKind: ComputationKind.WEIGHTED_AVERAGE });
+      const cbsnWire = JSON.parse(codec.encode(new Tree(cbsn))).root as Record<string, unknown>;
+      expect(cbsnWire.kind).toBe("ComputedBusinessScoreNode");
+      expect(cbsnWire.computationKind).toBe("WEIGHTED_AVERAGE");
+      expect("history" in cbsnWire).toBe(false);
+
+      const cn = new ComputedNode<number>("c", "C", Weight.of(1), "events", clock, ComputationKind.COUNT);
+      const cnWire = JSON.parse(codec.encode(new Tree(cn))).root as Record<string, unknown>;
+      expect(cnWire).toEqual({ kind: "ComputedNode", id: "c", title: "C", weight: 1, description: "events", computationKind: "COUNT", children: [] });
+
+      const srn = new StrictRangeNode<number>("s", "S", Weight.of(1), "0-100", clock, StrictRange.of(0, 100, NumericComparator.INSTANCE));
+      srn.addValue(T1, 70);
+      const srnWire = JSON.parse(codec.encode(new Tree(srn))).root as Record<string, unknown>;
+      expect(srnWire.kind).toBe("StrictRangeNodeV4");
+      expect(srnWire.range).toEqual({ kind: "strict", min: 0, max: 100 });
+      expect(srnWire.history).toEqual([{ value: 70, at: T1.moment.toISOString() }]);
+    });
+
+    it("encodes nested children recursively + preserves child order across kinds (sampleDataV4 composite tree round-trips its node ID list verbatim through encode→JSON.parse)", () => {
+      const tree = buildSampleTreeV4(clock);
+      const wire = JSON.parse(codec.encode(tree)) as { root: { children: { id: string; kind: string; children: unknown[] }[] } };
+      const collectIds = (n: { id: string; children: unknown[] }): string[] =>
+        [n.id, ...(n.children as { id: string; children: unknown[] }[]).flatMap(collectIds)];
+      expect(collectIds(wire.root as { id: string; children: unknown[] })).toEqual(tree.nodes().map((n) => n.id));
+    });
+
+    it("encode throws JsonCodecV4EncodeError on unsupported Node subclass (defensive guard for future kinds added without codec extension; \u00a717.106b decoder will mirror this on unknown kinds)", () => {
+      class MysteryNode { id = "z"; title = "z"; constructor() { /* not a v4 Node */ } get weight() { return Weight.of(1); } get children(): never[] { return []; } get disabled() { return false; } }
+      const fake = new MysteryNode() as unknown as Node;
+      expect(() => codec.encode(new Tree(fake))).toThrow(JsonCodecV4EncodeError);
     });
   });
 });
