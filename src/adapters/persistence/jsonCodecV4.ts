@@ -1,62 +1,40 @@
 import type { TreeCodecV4 } from "../../application/ports/TreeCodecV4.js";
 import type { Clock } from "../../domain/capabilities/Clock.js";
-import type { BusinessScoreCardV4 } from "../../domain/cards/BusinessScoreCardV4.js";
+import { BusinessScoreCardV4 } from "../../domain/cards/BusinessScoreCardV4.js";
+import { ComputationKind } from "../../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../../domain/nodes/ComputedNode.js";
 import type { Node } from "../../domain/nodes/Node.js";
 import { StrictRangeNode } from "../../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../../domain/nodes/TextNodeV4.js";
+import type { ValueNode } from "../../domain/nodes/ValueNode.js";
 import { Tree } from "../../domain/Tree.js";
-import { v4TreeFromV3Root } from "../../domain/v3Bridge/v4TreeFromV3Root.js";
-import type { V3ToV4Options } from "../../domain/v3Bridge/v4NodeFromV3.js";
-import type { LenientRange, StrictRange } from "../../domain/values/Range.js";
-
-import { decode as decodeV3 } from "./jsonCodec.js";
+import { NumericComparator } from "../../domain/values/Comparator.js";
+import { ObjectiveV4 } from "../../domain/values/ObjectiveV4.js";
+import { LenientRange, StrictRange } from "../../domain/values/Range.js";
+import { Timestamp } from "../../domain/values/Timestamp.js";
+import { Unit } from "../../domain/values/Unit.js";
+import { Weight } from "../../domain/values/Weight.js";
 
 /**
- * §17.105 + §17.106a — `TreeCodecV4` adapter. Decode still composes the
- * v3 codec with the §17.81 / §17.88 bridge (carries the §17.99c
- * polymorphic resolution + §17.99b disabled migration + §17.100.5 cards
- * sidecar build). Encode is the §17.106a v4-native walker landed here.
- *
- * **§17.106 split into 106a + 106b** (operator decision 2026-05-16 after
- * the single-strand B+D+E plan hit the §17.53 300-`new_lines` ceiling at
- * 688 actual lines): 106a ships the encoder + the v4-native wire shape,
- * with decode UNTOUCHED on the §17.105 composition path. 106b rewrites
- * decode to walk the v4-native wire shape directly (the only path that
- * can round-trip the round-7 `ComputedNode` + `StrictRangeNode` kinds —
- * the v3 codec rejects unknown nodeTypes, so the v4-only kinds emitted
- * here cannot decode through the composition shim).
- *
- * **Round-trip status between 106a and 106b**: BROKEN for any tree
- * containing a `ComputedNode` or `StrictRangeNode` — `encode` produces
- * v4-native JSON with `kind: "ComputedNodeV4"` / `kind: "StrictRangeNodeV4"`,
- * which `decode` cannot parse (the v3 codec throws `JsonDecodeError` at
- * `/nodeType`). Trees that contain ONLY `TextNodeV4` /
- * `BusinessScoreNode` / `ComputedBusinessScoreNode` round-trip
- * successfully because the encoder emits the v4-native `kind` strings
- * for those too AND `decode` rejects them too — so round-trip works
- * ONLY through 106b. **§17.107 LocalStorageBoardCollectionRepositoryV4
- * MUST wait for 106b** to land before its save→load cycle can work.
- *
- * **Wire schema "v4.0"** — top-level `{ schemaVersion, root, cards[] }`
- * envelope; per-kind node shape:
- *  - `TextNodeV4` → `{ kind, id, title, weight, history, disabled?, children }`
- *  - `BusinessScoreNode` → adds `description, unit?, range, objective, history`
- *  - `ComputedBusinessScoreNode` → BSN minus `history`, plus `computationKind`
- *    (no history because `addValue` throws per §17.94 D5 — audit-only)
- *  - `ComputedNode` → `{ kind, id, title, weight, description,
- *    computationKind, disabled?, children }` (no range/objective/history)
- *  - `StrictRangeNode` → `{ kind: "StrictRangeNodeV4", …, range, history }`
- *
- * `range` serialises as `{ kind: "strict"|"lenient", min, max }` with
- * `null` for `±Infinity` (JSON has no Infinity literal). Comparator
- * NOT serialised — every numeric range today uses
- * `NumericComparator.INSTANCE`; 106b's decoder will hardcode it on
- * reconstruction. Cards sidecar emitted as flat `[{ nodeId, unit }, …]`
- * list to keep the wire JSON-friendly.
+ * §17.106a + §17.106b — `TreeCodecV4` v4-native codec. Encode/decode
+ * walk the "v4.0" wire (`{ schemaVersion, root, cards[] }`); per-kind
+ * discriminant under `kind`; Computed* omit history (audit-only,
+ * §17.94 D5); range uses `null` for `±Infinity`; comparator hardcoded
+ * to `NumericComparator.INSTANCE`; cards sidecar resolved via DFS.
+ * Legacy v3 migration relocated to §17.107 adapter.
  */
+export class JsonCodecV4DecodeError extends Error {
+  constructor(
+    readonly pointer: string,
+    reason: string,
+  ) {
+    super(`jsonCodecV4 decode error at ${pointer}: ${reason}`);
+    this.name = "JsonCodecV4DecodeError";
+  }
+}
+
 export class JsonCodecV4EncodeError extends Error {
   constructor(reason: string) {
     super(`jsonCodecV4 encode error: ${reason}`);
@@ -66,14 +44,10 @@ export class JsonCodecV4EncodeError extends Error {
 
 const SCHEMA_VERSION = "v4.0";
 
-export function createJsonCodecV4(
-  clock: Clock,
-  opts: V3ToV4Options = {},
-): TreeCodecV4 {
+export function createJsonCodecV4(clock: Clock): TreeCodecV4 {
   return {
     decode(text: string): Tree {
-      const v3Root = decodeV3(text);
-      return v4TreeFromV3Root(v3Root, clock, opts);
+      return decodeTree(text, clock);
     },
     encode(tree: Tree): string {
       return JSON.stringify({
@@ -177,4 +151,170 @@ function encodeCards(cards: ReadonlyMap<string, BusinessScoreCardV4<unknown>>): 
     out.push({ nodeId, unit: card.getUnit().value });
   }
   return out;
+}
+
+function decodeTree(text: string, clock: Clock): Tree {
+  let parsed: unknown;
+  try { parsed = JSON.parse(text); }
+  catch (err) { throw new JsonCodecV4DecodeError("/", `not valid JSON: ${(err as Error).message}`); }
+  const env = requireObject(parsed, "/");
+  if (env["schemaVersion"] !== SCHEMA_VERSION) throw new JsonCodecV4DecodeError("/schemaVersion", `expected "${SCHEMA_VERSION}", got ${JSON.stringify(env["schemaVersion"])}`);
+  const root = decodeNode(env["root"], "/root", clock);
+  return new Tree(root, decodeCards(requireArray(env, "cards", "/"), root, "/cards"));
+}
+
+function decodeNode(raw: unknown, p: string, clock: Clock): Node {
+  const obj = requireObject(raw, p);
+  const kind = requireString(obj, "kind", p);
+  const id = requireString(obj, "id", p);
+  const title = requireString(obj, "title", p);
+  const w = Weight.of(requireNumber(obj, "weight", p));
+  let node: ValueNode<unknown>;
+  if (kind === "TextNodeV4") {
+    const t = new TextNodeV4(id, title, w, clock);
+    for (const h of decodeHistory(obj, p, "string")) t.addValue(h.at, h.value as string);
+    node = t;
+  } else if (kind === "BusinessScoreNode") {
+    const bsn = buildBSN(id, title, w, obj, p, clock);
+    for (const h of decodeHistory(obj, p, "number")) bsn.addValue(h.at, h.value as number);
+    node = bsn;
+  } else if (kind === "ComputedBusinessScoreNode") {
+    node = buildCBSN(id, title, w, obj, p, clock);
+  } else if (kind === "ComputedNode") {
+    node = new ComputedNode<unknown>(id, title, w, requireString(obj, "description", p), clock, decodeComputationKind(obj, p));
+  } else if (kind === "StrictRangeNodeV4") {
+    const srn = new StrictRangeNode<number>(id, title, w, requireString(obj, "description", p), clock, decodeRange(obj, p, "strict", StrictRange.of));
+    for (const h of decodeHistory(obj, p, "number")) srn.addValue(h.at, h.value as number);
+    node = srn;
+  } else {
+    throw new JsonCodecV4DecodeError(joinPointer(p, "kind"), `unknown kind "${kind}"`);
+  }
+  if (obj["disabled"] === true) node.setDisabled(true);
+  const cp = joinPointer(p, "children");
+  requireArray(obj, "children", p).forEach((c, i) => node.attach(decodeNode(c, joinPointer(cp, String(i)), clock)));
+  return node;
+}
+
+function buildBSN(id: string, title: string, w: Weight, obj: Record<string, unknown>, p: string, clock: Clock): BusinessScoreNode<number> {
+  const unit = optionalString(obj, "unit");
+  const objective = decodeObjective(obj, p);
+  return new BusinessScoreNode<number>(id, title, w, requireString(obj, "description", p), clock, decodeRange(obj, p, "lenient", LenientRange.of),
+    unit === undefined ? { objective } : { objective, unit });
+}
+
+function buildCBSN(id: string, title: string, w: Weight, obj: Record<string, unknown>, p: string, clock: Clock): ComputedBusinessScoreNode<number> {
+  const unit = optionalString(obj, "unit");
+  const objective = decodeObjective(obj, p);
+  const initialKind = decodeComputationKind(obj, p);
+  return new ComputedBusinessScoreNode<number>(id, title, w, requireString(obj, "description", p), clock, decodeRange(obj, p, "lenient", LenientRange.of),
+    unit === undefined ? { objective, initialKind } : { objective, initialKind, unit });
+}
+
+function decodeHistory(obj: Record<string, unknown>, p: string, vt: "string" | "number"): { at: Timestamp; value: unknown }[] {
+  const hp = joinPointer(p, "history");
+  return requireArray(obj, "history", p).map((entry, i) => {
+    const ep = joinPointer(hp, String(i));
+    const e = requireObject(entry, ep);
+    const at = decodeIsoTimestamp(requireString(e, "at", ep), joinPointer(ep, "at"));
+    const v = e["value"];
+    const vp = joinPointer(ep, "value");
+    if (vt === "string" ? typeof v !== "string" : (typeof v !== "number" || !Number.isFinite(v))) {
+      throw new JsonCodecV4DecodeError(vp, `expected ${vt === "string" ? "string" : "finite number"}, got ${typeOf(v)}`);
+    }
+    return { at, value: v };
+  });
+}
+
+function decodeObjective(obj: Record<string, unknown>, p: string): ObjectiveV4<number> {
+  const op = joinPointer(p, "objective");
+  const raw = requireObject(obj["objective"], op);
+  return ObjectiveV4.of(requireNumber(raw, "value", op), decodeIsoTimestamp(requireString(raw, "at", op), joinPointer(op, "at")));
+}
+
+function decodeRange<R>(obj: Record<string, unknown>, p: string, expected: "strict" | "lenient", ctor: (min: number, max: number, c: typeof NumericComparator.INSTANCE) => R): R {
+  const rp = joinPointer(p, "range");
+  const raw = requireObject(obj["range"], rp);
+  const kind = requireString(raw, "kind", rp);
+  if (kind !== expected) throw new JsonCodecV4DecodeError(joinPointer(rp, "kind"), `expected "${expected}", got "${kind}"`);
+  return ctor(decodeBound(raw["min"], joinPointer(rp, "min"), Number.NEGATIVE_INFINITY), decodeBound(raw["max"], joinPointer(rp, "max"), Number.POSITIVE_INFINITY), NumericComparator.INSTANCE);
+}
+
+function decodeBound(raw: unknown, p: string, sentinel: number): number {
+  if (raw === null) return sentinel;
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  throw new JsonCodecV4DecodeError(p, `expected finite number or null, got ${typeOf(raw)}`);
+}
+
+function decodeComputationKind(obj: Record<string, unknown>, p: string): ComputationKind {
+  const name = requireString(obj, "computationKind", p);
+  const resolved = ComputationKind.fromName(name);
+  if (resolved === undefined) throw new JsonCodecV4DecodeError(joinPointer(p, "computationKind"), `unknown ComputationKind name "${name}"`);
+  return resolved;
+}
+
+function decodeCards(rawList: unknown[], root: Node, p: string): ReadonlyMap<string, BusinessScoreCardV4<unknown>> {
+  const out = new Map<string, BusinessScoreCardV4<unknown>>();
+  rawList.forEach((entry, i) => {
+    const ip = joinPointer(p, String(i));
+    const e = requireObject(entry, ip);
+    const nodeId = requireString(e, "nodeId", ip);
+    const node = findById(root, nodeId);
+    if (!(node instanceof BusinessScoreNode)) throw new JsonCodecV4DecodeError(joinPointer(ip, "nodeId"), `no BusinessScoreNode (or subclass) found with id "${nodeId}"`);
+    out.set(nodeId, new BusinessScoreCardV4(node, Unit.of(requireString(e, "unit", ip))));
+  });
+  return out;
+}
+
+function findById(node: Node, id: string): Node | undefined {
+  if (node.id === id) return node;
+  for (const child of node.children) {
+    const hit = findById(child, id);
+    if (hit !== undefined) return hit;
+  }
+  return undefined;
+}
+
+function decodeIsoTimestamp(raw: string, p: string): Timestamp {
+  const ms = Date.parse(raw);
+  if (Number.isNaN(ms)) throw new JsonCodecV4DecodeError(p, `not a valid ISO-8601 date: "${raw}"`);
+  return Timestamp.of(new Date(ms));
+}
+
+function requireObject(raw: unknown, p: string): Record<string, unknown> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new JsonCodecV4DecodeError(p, `expected object, got ${typeOf(raw)}`);
+  return raw as Record<string, unknown>;
+}
+
+function requireString(obj: Record<string, unknown>, key: string, parent: string): string {
+  const v = obj[key];
+  if (typeof v !== "string") throw new JsonCodecV4DecodeError(joinPointer(parent, key), `expected string, got ${typeOf(v)}`);
+  return v;
+}
+
+function optionalString(obj: Record<string, unknown>, key: string): string | undefined {
+  const v = obj[key];
+  return typeof v === "string" ? v : undefined;
+}
+
+function requireNumber(obj: Record<string, unknown>, key: string, parent: string): number {
+  const v = obj[key];
+  if (typeof v !== "number" || !Number.isFinite(v)) throw new JsonCodecV4DecodeError(joinPointer(parent, key), `expected finite number, got ${typeOf(v)}`);
+  return v;
+}
+
+function requireArray(obj: Record<string, unknown>, key: string, parent: string): unknown[] {
+  const v = obj[key];
+  if (!Array.isArray(v)) throw new JsonCodecV4DecodeError(joinPointer(parent, key), `expected array, got ${typeOf(v)}`);
+  return v;
+}
+
+function joinPointer(parent: string, token: string): string {
+  const escaped = token.replace(/~/g, "~0").replace(/\//g, "~1");
+  return parent === "/" || parent === "" ? `/${escaped}` : `${parent}/${escaped}`;
+}
+
+function typeOf(v: unknown): string {
+  if (v === null) return "null";
+  if (Array.isArray(v)) return "array";
+  return typeof v;
 }
