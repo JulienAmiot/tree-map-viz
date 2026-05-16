@@ -73,50 +73,62 @@ export class EditNodeServiceV4 {
     cards: CardRegistry | undefined,
   ): { undo: () => void; error: unknown } {
     const undos: Array<() => void> = [];
-    const undo = (): void => { for (let i = undos.length - 1; i >= 0; i--) undos[i]!(); };
+    const undo = (): void => { for (const a of [...undos].reverse()) a(); };
     try {
-      if (payload.title !== undefined) {
-        const t = payload.title.trim();
-        if (t === "") throw new Error("Title cannot be empty");
-        const prev = node.title;
-        node.setTitle(t);
-        undos.push(() => node.setTitle(prev));
-      }
-      if (payload.weight !== undefined) {
-        const prev = node.weight;
-        node.setWeight(Weight.of(payload.weight));
-        undos.push(() => node.setWeight(prev));
-      }
+      EditNodeServiceV4.applyCommonEdits(node, payload, undos);
       if (payload.kind === "BusinessScore") {
-        const bsn = node as BusinessScoreNode<number>;
-        if (payload.description !== undefined) {
-          const prev = bsn.getDescription();
-          bsn.setDescription(payload.description);
-          undos.push(() => bsn.setDescription(prev));
-        }
-        if (payload.objective !== undefined) {
-          const prev = bsn.objective;
-          bsn.setObjective(ObjectiveV4.of(payload.objective.value, Timestamp.of(payload.objective.at)));
-          undos.push(() => bsn.setObjective(prev));
-        }
-        if (payload.unit !== undefined) {
-          const card = cards?.get(bsn.id) as BusinessScoreCardV4<number> | undefined;
-          if (card === undefined) throw new Error(`Cannot set unit on BSN "${bsn.id}" — no card in registry`);
-          const prev = card.getUnit();
-          card.setUnit(Unit.of(payload.unit));
-          undos.push(() => card.setUnit(prev));
-        }
-      }
-      if (payload.disabled !== undefined) {
-        const target = node as TextNodeV4 | BusinessScoreNode<number>;
-        const prev = target.disabled;
-        target.setDisabled(payload.disabled);
-        undos.push(() => target.setDisabled(prev));
+        EditNodeServiceV4.applyBusinessScoreEdits(node as BusinessScoreNode<number>, payload, cards, undos);
       }
     } catch (error) {
       return { undo, error };
     }
     return { undo, error: null };
+  }
+
+  private static applyCommonEdits(node: Node, payload: EditNodePayloadV4, undos: Array<() => void>): void {
+    if (payload.title !== undefined) {
+      const t = payload.title.trim();
+      if (t === "") throw new Error("Title cannot be empty");
+      const prev = node.title;
+      node.setTitle(t);
+      undos.push(() => node.setTitle(prev));
+    }
+    if (payload.weight !== undefined) {
+      const prev = node.weight;
+      node.setWeight(Weight.of(payload.weight));
+      undos.push(() => node.setWeight(prev));
+    }
+    if (payload.disabled !== undefined) {
+      const target = node as TextNodeV4 | BusinessScoreNode<number>;
+      const prev = target.disabled;
+      target.setDisabled(payload.disabled);
+      undos.push(() => target.setDisabled(prev));
+    }
+  }
+
+  private static applyBusinessScoreEdits(
+    bsn: BusinessScoreNode<number>,
+    payload: Extract<EditNodePayloadV4, { kind: "BusinessScore" }>,
+    cards: CardRegistry | undefined,
+    undos: Array<() => void>,
+  ): void {
+    if (payload.description !== undefined) {
+      const prev = bsn.getDescription();
+      bsn.setDescription(payload.description);
+      undos.push(() => bsn.setDescription(prev));
+    }
+    if (payload.objective !== undefined) {
+      const prev = bsn.objective;
+      bsn.setObjective(ObjectiveV4.of(payload.objective.value, Timestamp.of(payload.objective.at)));
+      undos.push(() => bsn.setObjective(prev));
+    }
+    if (payload.unit !== undefined) {
+      const card = cards?.get(bsn.id) as BusinessScoreCardV4<number> | undefined;
+      if (card === undefined) throw new Error(`Cannot set unit on BSN "${bsn.id}" — no card in registry`);
+      const prev = card.getUnit();
+      card.setUnit(Unit.of(payload.unit));
+      undos.push(() => card.setUnit(prev));
+    }
   }
 
   private static applyAppendValue(node: Node, value: string | number, asOf: Timestamp): () => void {
