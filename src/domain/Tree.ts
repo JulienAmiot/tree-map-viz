@@ -1,3 +1,4 @@
+import type { BusinessScoreCardV4 } from "./cards/BusinessScoreCardV4.js";
 import type { Node } from "./nodes/Node.js";
 
 /**
@@ -30,8 +31,24 @@ import type { Node } from "./nodes/Node.js";
  * mutation surface (`Node "0..1" o-- "0..*" Node : children / parent`,
  * with `attach` / `detach` as the maintenance methods).
  */
+/**
+ * Sidecar visual-layer card collection keyed by hosted-node id
+ * (SPEC §17.100.5). Populated by `v4TreeFromV3Root` for v3 BSCs that
+ * carry a non-empty unit; empty by default for trees built outside
+ * the v3 bridge (e.g. from `AddChildServiceV4` until the modal grows
+ * a unit dropdown). Consumers like `viewModelMapperV4` read
+ * `cards.get(node.id)?.getUnit()` first and fall back to the §17.91
+ * legacy `BusinessScoreNode.unit` getter when the entry is absent.
+ */
+export type CardRegistry = ReadonlyMap<string, BusinessScoreCardV4<unknown>>;
+
 export class Tree {
-  constructor(readonly root: Node) {}
+  static readonly EMPTY_CARDS: CardRegistry = new Map();
+  readonly cards: CardRegistry;
+
+  constructor(readonly root: Node, cards: CardRegistry = Tree.EMPTY_CARDS) {
+    this.cards = cards;
+  }
 
   /**
    * Pre-order DFS lookup by id. Returns the first node whose `id`

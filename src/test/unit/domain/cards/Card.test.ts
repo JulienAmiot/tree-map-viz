@@ -12,6 +12,7 @@ import { NumericComparator } from "../../../../domain/values/Comparator.js";
 import { ObjectiveV4 } from "../../../../domain/values/ObjectiveV4.js";
 import { LenientRange, StrictRange } from "../../../../domain/values/Range.js";
 import { Timestamp } from "../../../../domain/values/Timestamp.js";
+import { Unit } from "../../../../domain/values/Unit.js";
 import { Weight } from "../../../../domain/values/Weight.js";
 
 const T = (iso: string): Timestamp => Timestamp.of(new Date(iso));
@@ -63,14 +64,18 @@ describe("Card hierarchy (§17.78 — v4 part 14: visual cards hosting v4 nodes)
   });
 
   describe("BusinessScoreCardV4<T> extends Card<BusinessScoreNode<T>>", () => {
-    it("hosts a BusinessScoreNode<T> with full inherited surface accessible through getNode()", () => {
+    it("hosts a BusinessScoreNode<T> + unit Unit VO accessible via getNode() and getUnit() (§17.100.5)", () => {
       const node = buildBSN();
-      const card = new BusinessScoreCardV4<number>(node);
+      const unit = Unit.of("%");
+      const card = new BusinessScoreCardV4<number>(node, unit);
       expect(card).toBeInstanceOf(BusinessScoreCardV4);
       expect(card).toBeInstanceOf(Card);
       expect(card.getNode()).toBe(node);
       expect(card.getNode()).toBeInstanceOf(BusinessScoreNode);
       expect(card.getNode().objective.value).toBe(80);
+      expect(card.unit).toBe(unit);
+      expect(card.getUnit()).toBe(unit);
+      expect(card.getUnit().value).toBe("%");
     });
   });
 

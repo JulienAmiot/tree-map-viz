@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
+import { BusinessScoreCardV4 } from "../../../../domain/cards/BusinessScoreCardV4.js";
 import { BusinessScoreCard } from "../../../../domain/nodes/BusinessScoreCard.js";
 import { BusinessScoreCardNode } from "../../../../domain/nodes/BusinessScoreCardNode.js";
 import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js";
@@ -44,13 +45,10 @@ const buildV3BSC = (
   description: string,
   history: [string, number][] = [],
   objective: Objective<number> = Objective.of(0, 100, T("2026-12-31T00:00:00Z")),
+  unit = "%",
 ): BusinessScoreCardNode<number> => {
   const tvs = history.map(([iso, v]) => TimestampedValue.of(v, T(iso)));
-  const card = BusinessScoreCard.of<number>(
-    { value: "%" } as never,
-    objective,
-    tvs,
-  );
+  const card = BusinessScoreCard.of<number>({ value: unit } as never, objective, tvs);
   return new BusinessScoreCardNode<number>(id, ident(title, description), w, card, true, true);
 };
 
@@ -150,5 +148,31 @@ describe("v4TreeFromV3Root (§17.88 — Phase A.2: wraps the §17.81 adapter res
     const root = buildV3BSC("only-bsc", "single", "");
     const tree = v4TreeFromV3Root(root, clock);
     expect(tree.root).toBeInstanceOf(BusinessScoreNode);
+  });
+
+  it("§17.100.5 — populates tree.cards for every v3 BSC with a non-empty unit; skips empty-unit BSCs and Text nodes", () => {
+    const root = buildV3Text("root", "r");
+    const withUnit = buildV3BSC("pct", "P", "", [], undefined, "%");
+    const withUnit2 = buildV3BSC("ms", "L", "", [], undefined, "ms");
+    const noUnit = buildV3BSC("blank", "B", "", [], undefined, "");
+    const txtChild = buildV3Text("txt", "T");
+    root.attach(withUnit);
+    root.attach(withUnit2);
+    root.attach(noUnit);
+    root.attach(txtChild);
+
+    const tree = v4TreeFromV3Root(root, clock);
+
+    expect(tree.cards.size).toBe(2);
+    expect(tree.cards.has("root")).toBe(false);
+    expect(tree.cards.has("txt")).toBe(false);
+    expect(tree.cards.has("blank")).toBe(false);
+
+    const pctCard = tree.cards.get("pct");
+    expect(pctCard).toBeInstanceOf(BusinessScoreCardV4);
+    expect(pctCard?.getUnit().value).toBe("%");
+    expect(pctCard?.getNode()).toBe(tree.findById("pct"));
+
+    expect(tree.cards.get("ms")?.getUnit().value).toBe("ms");
   });
 });

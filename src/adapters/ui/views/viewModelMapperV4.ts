@@ -13,6 +13,8 @@ import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
 import type { Node } from "../../../domain/nodes/Node.js";
 import { RangedValueNode } from "../../../domain/nodes/RangedValueNode.js";
 import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
+import type { CardRegistry } from "../../../domain/Tree.js";
+import { Tree } from "../../../domain/Tree.js";
 
 import { dateAgeColor } from "./dateAgeColor.js";
 import type {
@@ -71,10 +73,17 @@ export class ViewModelMappingErrorV4 extends Error {
   }
 }
 
-/** Same shape as v3's `MapToViewModelOptions`. */
+/** Same shape as v3's `MapToViewModelOptions` plus the §17.100.5 cards sidecar. */
 export interface MapToViewModelOptionsV4 {
   /** Defaults to `new Date()`. Pass for deterministic tests. */
   readonly now?: Date;
+  /**
+   * §17.100.5 — sidecar card registry produced by `v4TreeFromV3Root`.
+   * When a card is present for a BSN id, its `getUnit()` value wins over
+   * the §17.91 legacy `BusinessScoreNode.unit` getter. Absent entries
+   * fall back to the legacy getter. Defaults to an empty registry.
+   */
+  readonly cards?: CardRegistry;
 }
 
 export function mapNodeToViewModelV4(
@@ -115,7 +124,8 @@ function mapBSCNode(
   options: MapToViewModelOptionsV4,
 ): NodeViewModel {
   const dateIso = currentValueDateIsoV4(node) ?? "";
-  const value = mapBusinessScoreValueV4(node);
+  const unit = resolveUnit(node, options);
+  const value = mapBusinessScoreValueV4(node, unit);
   return {
     kind: "BusinessScoreCardNode",
     id: node.id,
@@ -124,8 +134,22 @@ function mapBSCNode(
     value,
     dateIso,
     dateColor: dateIso ? colorFor(dateIso, options) : "",
-    objective: mapBusinessScoreObjectiveV4(node, value, options),
+    objective: mapBusinessScoreObjectiveV4(node, value, unit, options),
   };
+}
+
+/**
+ * §17.100.5 — single resolution point for the BSC's display unit:
+ * sidecar card wins (Unit VO → .value), else legacy `BusinessScoreNode.unit`
+ * getter (the §17.91 band-aid), else "" for StrictRangeNode etc.
+ */
+function resolveUnit(
+  node: RangedValueNode<number>,
+  options: MapToViewModelOptionsV4,
+): string {
+  const card = (options.cards ?? Tree.EMPTY_CARDS).get(node.id);
+  if (card !== undefined) return card.getUnit().value;
+  return node instanceof BusinessScoreNode ? node.unit : "";
 }
 
 function colorFor(dateIso: string, options: MapToViewModelOptionsV4): string {
@@ -134,9 +158,9 @@ function colorFor(dateIso: string, options: MapToViewModelOptionsV4): string {
 
 function mapBusinessScoreValueV4(
   node: RangedValueNode<number>,
+  unit: string,
 ): BusinessScoreCardValueViewModel {
   const result = computedValueV4(node);
-  const unit = node instanceof BusinessScoreNode ? node.unit : "";
   switch (result.kind) {
     case "recordedValue":
       return {
@@ -166,16 +190,16 @@ function mapBusinessScoreValueV4(
 function mapBusinessScoreObjectiveV4(
   node: RangedValueNode<number>,
   value: BusinessScoreCardValueViewModel,
+  unit: string,
   options: MapToViewModelOptionsV4,
 ): BusinessScoreCardObjectiveViewModel {
   if (!(node instanceof BusinessScoreNode)) {
-    return emptyObjectiveVM("");
+    return emptyObjectiveVM(unit);
   }
 
   const objective = node.objective;
   const targetValue = Number(objective.value);
   const targetDateIso = objective.at.moment.toISOString();
-  const unit = node.unit;
 
   // §17.91 — v4 ObjectiveV4 is 2-tuple (value, at) vs v3's 3-tuple
   // (initialValue, targetValue, targetDate). v3's gradient ramp went

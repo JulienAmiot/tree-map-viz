@@ -204,8 +204,10 @@ async function main(): Promise<void> {
     // unit) after 5 e2e tests revealed the §17.89 structural rule
     // dropped the kiosk's "computed=true placeholder" pattern.
     if (view) {
-      const v4Sub = v4TreeFromV3Root(view.center, clock).root;
-      screen.view = mapFocusedToViewModelV4(v4Sub, v4Sub.children);
+      const v4Tree = v4TreeFromV3Root(view.center, clock);
+      screen.view = mapFocusedToViewModelV4(v4Tree.root, v4Tree.root.children, {
+        cards: v4Tree.cards,
+      });
     } else {
       screen.view = null;
     }
