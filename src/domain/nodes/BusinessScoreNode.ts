@@ -55,7 +55,7 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
    */
   readonly unit: string;
 
-  readonly objective: ObjectiveV4<T>;
+  objective: ObjectiveV4<T>;
 
   /**
    * Constructor uses an options object for the `objective` + the remaining
@@ -97,5 +97,10 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
     super(id, title, weight, description, clock, range);
     this.objective = options.objective;
     this.unit = options.unit ?? "";
+  }
+
+  /** §17.101a — operator-facing mutator for `EditNodeServiceV4`. */
+  setObjective(objective: ObjectiveV4<T>): void {
+    this.objective = objective;
   }
 }
