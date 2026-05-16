@@ -1,59 +1,33 @@
 /**
- * `<computed-card>` + `<computed-business-score-card>` — Lit
- * components for the round-7 Computed* node kinds (SPEC §17.104).
- *
- * Both tiles render an auto-derived value alongside a Σ aggregation
- * badge (visual signal: "this number was computed from children, not
- * recorded by the operator") and a kind-switching `<select>` that
- * dispatches a `computation-kind-change` custom event when the
- * operator picks a different aggregation strategy. The shell wires
- * the event to `EditNodeServiceV4.editFields(node, { kind: "Computed"
- * | "ComputedBusinessScore", computationKind })` at the §17.110 Phase
- * E cutover; today the components dispatch with no production
- * listener (the v4 view-model mapper at §17.91 doesn't produce the
- * new VM kinds yet either — that wiring is a follow-on strand).
- *
- * `<computed-business-score-card>` additionally renders the BSC-style
- * objective row + corner timestamp (CBSN extends `BusinessScoreNode`,
- * so the operator-facing affordances mirror a plain BSC tile —
- * §17.40 target row + §17.41 trend arrow surfaces). The renderers are
- * inlined here rather than reused from the §17.40 `valueTemplate`
- * because that module's helpers are typed against the v3
- * `BusinessScoreCardNodeViewModel`, which has a different `value`
- * shape (`computedMean | recordedValue | childrenCount` vs the
- * §17.104 `numeric | empty` `ComputedValueViewModel`). Re-typing the
- * §17.40 helpers polymorphically would touch v3 code paths beyond
- * §17.104's scope; inlining 2 small renderers keeps the strand
- * additive.
+ * `<computed-card>` + `<computed-business-score-card>` (SPEC §17.104).
+ * Both tiles render Σ badge + auto-derived value + a kind dropdown
+ * that dispatches `computation-kind-change` for the shell to wire to
+ * `EditNodeServiceV4` at §17.110 cutover. CBSC additionally renders
+ * the BSC-style objective row + corner timestamp. Renderers are
+ * inlined rather than reused from §17.40's `valueTemplate` because
+ * those helpers are typed against the v3 BSC VM (different value
+ * shape); polymorphic re-typing would touch v3 beyond §17.104 scope.
  */
 
-import { LitElement, html, css, nothing } from "lit";
-import type { TemplateResult } from "lit";
+import { LitElement, html, css, nothing, type TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import type {
-  BusinessScoreCardObjectiveViewModel,
-  ComputationKindName,
-  ComputedBusinessScoreNodeViewModel,
-  ComputedNodeViewModel,
-  ComputedValueViewModel,
-  TrendArrowDirection,
+  BusinessScoreCardObjectiveViewModel, ComputationKindName,
+  ComputedBusinessScoreNodeViewModel, ComputedNodeViewModel,
+  ComputedValueViewModel, TrendArrowDirection,
 } from "../NodeViewModel.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 
-/** SPEC §17.104 — custom event name + payload shape for the operator's kind-switching gesture. */
+/** SPEC §17.104 — custom event name + payload shape for the kind-switching gesture. */
 export const COMPUTATION_KIND_CHANGE_EVENT = "computation-kind-change";
-export type ComputationKindChangeDetail = {
-  readonly nodeId: string;
-  readonly newKind: ComputationKindName;
-};
+export type ComputationKindChangeDetail = { readonly nodeId: string; readonly newKind: ComputationKindName };
 
 const sharedStyles = css`
   .computed-badge { font-size: 1.4vh; opacity: 0.7; margin-right: 0.3em; }
   .kind-dropdown {
-    font-size: 1.2vh; margin-top: 0.4em; background: transparent;
-    color: inherit; border: 1px solid currentColor;
-    border-radius: 0.2em; padding: 0.1em 0.3em;
+    font-size: 1.2vh; margin-top: 0.4em; background: transparent; color: inherit;
+    border: 1px solid currentColor; border-radius: 0.2em; padding: 0.1em 0.3em;
   }
   .target-row { font-size: 1.2vh; opacity: 0.85; margin-top: 0.3em; }
 `;
@@ -62,22 +36,14 @@ const TREND_GLYPHS: Record<TrendArrowDirection, string> = {
   up: "\u2191", "up-right": "\u2197", right: "\u2192", "down-right": "\u2198", down: "\u2193",
 };
 
-function dispatchKindChange(el: HTMLElement, nodeId: string, newKind: ComputationKindName): void {
-  el.dispatchEvent(
-    new CustomEvent<ComputationKindChangeDetail>(COMPUTATION_KIND_CHANGE_EVENT, {
-      bubbles: true, composed: true, detail: { nodeId, newKind },
-    }),
-  );
-}
-
 function renderKindDropdown(
-  host: HTMLElement,
-  nodeId: string,
-  current: ComputationKindName,
-  available: readonly ComputationKindName[],
+  host: HTMLElement, nodeId: string, current: ComputationKindName, available: readonly ComputationKindName[],
 ): TemplateResult {
   const onChange = (ev: Event): void => {
-    dispatchKindChange(host, nodeId, (ev.target as HTMLSelectElement).value as ComputationKindName);
+    host.dispatchEvent(new CustomEvent<ComputationKindChangeDetail>(COMPUTATION_KIND_CHANGE_EVENT, {
+      bubbles: true, composed: true,
+      detail: { nodeId, newKind: (ev.target as HTMLSelectElement).value as ComputationKindName },
+    }));
   };
   return html`<select class="kind-dropdown" data-testid="kind-dropdown" @change=${onChange}>
     ${available.map((k) => html`<option value=${k} ?selected=${k === current}>${k}</option>`)}
@@ -89,8 +55,7 @@ function renderComputedValue(value: ComputedValueViewModel): TemplateResult {
     return html`<span class="value" data-testid="value" data-value-kind="empty">${value.reason}</span>`;
   }
   return html`<span class="value" data-testid="value" data-value-kind="numeric"
-    >${value.value}${value.unit ? html`<span class="unit">&nbsp;${value.unit}</span>` : nothing}</span
-  >`;
+    >${value.value}${value.unit ? html`<span class="unit">&nbsp;${value.unit}</span>` : nothing}</span>`;
 }
 
 function renderObjectiveRow(obj: BusinessScoreCardObjectiveViewModel): TemplateResult {
@@ -102,12 +67,16 @@ function renderObjectiveRow(obj: BusinessScoreCardObjectiveViewModel): TemplateR
 
 function renderTrend(obj: BusinessScoreCardObjectiveViewModel): TemplateResult | typeof nothing {
   if (obj.trendArrow === null) return nothing;
-  return html`<span class="trend-arrow" data-testid="trend-arrow" data-direction=${obj.trendArrow} role="img" aria-label="Trend">${TREND_GLYPHS[obj.trendArrow]}</span>`;
+  return html`<span class="trend-arrow" data-testid="trend-arrow" data-direction=${obj.trendArrow}
+    role="img" aria-label="Trend">${TREND_GLYPHS[obj.trendArrow]}</span>`;
 }
 
-function formatDateIso(iso: string): string {
-  const ms = Date.parse(iso);
-  return Number.isNaN(ms) ? iso : new Date(ms).toLocaleDateString();
+function renderTimestamp(dateIso: string, dateColor: string): TemplateResult | typeof nothing {
+  if (!dateIso) return nothing;
+  const ms = Date.parse(dateIso);
+  const label = Number.isNaN(ms) ? dateIso : new Date(ms).toLocaleDateString();
+  const styleAttr = dateColor ? `--age-color: ${dateColor}` : "";
+  return html`<time class="timestamp" data-testid="value-date" datetime=${dateIso} style=${styleAttr}>${label}</time>`;
 }
 
 @customElement("computed-card")
@@ -115,7 +84,7 @@ export class ComputedCard extends LitElement {
   @property({ attribute: false })
   vm: ComputedNodeViewModel | null = null;
 
-  static styles = [tileLayoutStyles, sharedStyles];
+  static readonly styles = [tileLayoutStyles, sharedStyles];
 
   render(): TemplateResult {
     if (!this.vm) return html``;
@@ -137,17 +106,14 @@ export class ComputedBusinessScoreCard extends LitElement {
   @property({ attribute: false })
   vm: ComputedBusinessScoreNodeViewModel | null = null;
 
-  static styles = [tileLayoutStyles, sharedStyles];
+  static readonly styles = [tileLayoutStyles, sharedStyles];
 
   render(): TemplateResult {
     if (!this.vm) return html``;
     const { dateIso, dateColor, objective } = this.vm;
     return html`
       <h2 class="title" data-testid="title" data-view-kind="ComputedBusinessScoreNode" data-id=${this.vm.id}>${this.vm.title}</h2>
-      ${dateIso
-        ? html`<time class="timestamp" data-testid="value-date" datetime=${dateIso}
-            style=${dateColor ? `--age-color: ${dateColor}` : ""}>${formatDateIso(dateIso)}</time>`
-        : nothing}
+      ${renderTimestamp(dateIso, dateColor)}
       <div class="value-area" data-testid="value-row">
         <div class="value-row">
           <span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>

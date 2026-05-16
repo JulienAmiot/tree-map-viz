@@ -38,14 +38,8 @@ if (!nodeViewRegistry.isFrozen()) {
     asParent: "business-score-card-as-parent",
     asChild: "business-score-card-as-child",
   });
-  // SPEC §17.104 — Computed* kinds reuse the same tag for both roles
-  // (the kind-switching dropdown + Σ badge are the operator-facing
-  // surface; the asParent/asChild role distinction collapses for
-  // computed tiles because the value-area is identical in both).
-  nodeViewRegistry.register("ComputedNode", {
-    asParent: "computed-card",
-    asChild: "computed-card",
-  });
+  // §17.104 — Computed* tiles reuse the same tag for both roles (value-area identical).
+  nodeViewRegistry.register("ComputedNode", { asParent: "computed-card", asChild: "computed-card" });
   nodeViewRegistry.register("ComputedBusinessScoreNode", {
     asParent: "computed-business-score-card",
     asChild: "computed-business-score-card",
@@ -68,9 +62,6 @@ export type {
   TextNodeViewModel,
 } from "./NodeViewModel.js";
 export { nodeViewRegistry, NodeViewRegistryError } from "./nodeViewRegistry.js";
-export {
-  COMPUTATION_KIND_CHANGE_EVENT,
-  type ComputationKindChangeDetail,
-} from "./ComputedNode/ComputedCards.js";
+export { COMPUTATION_KIND_CHANGE_EVENT, type ComputationKindChangeDetail } from "./ComputedNode/ComputedCards.js";
 export { PLUS_TILE_ACTIVATE_EVENT } from "./plus/PlusTile.js";
 export type { PlusTileActivateDetail } from "./plus/PlusTile.js";

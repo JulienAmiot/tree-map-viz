@@ -17,15 +17,7 @@ export type NodeKind =
   | "ComputedNode"
   | "ComputedBusinessScoreNode";
 
-/**
- * SPEC §17.104 — Lit-friendly mirror of the `ComputationKind` enum
- * names (the v4 domain singleton at `src/domain/computation/`).
- * Six inhabitants per §17.94 D2; the operator-facing dropdown on
- * `<computed-card>` / `<computed-business-score-card>` enumerates
- * these in display order. View layer stays string-typed so the VM
- * remains JSON-shaped + domain types never reach Lit reactive
- * updates (same §5 invariant as v3).
- */
+/** SPEC §17.104 — Lit-friendly mirror of `ComputationKind` names (§17.95 / §17.94 D2). */
 export type ComputationKindName =
   | "SUM"
   | "AVERAGE"
@@ -35,14 +27,9 @@ export type ComputationKindName =
   | "COUNT";
 
 /**
- * SPEC §17.104 — auto-derived numeric value for a Computed* node's
- * tile. `numeric` is the happy path (the strategy applied to the
- * children produced a finite number); `empty` covers the
- * EmptyChildrenError / "no contributing children" branches (the
- * mapper bakes the human-readable reason so the view stays a pure
- * consumer). Pre-§17.104 Computed* nodes weren't reachable through
- * the view-model mapper at all — this VM lands the surface; the
- * mapper wires through it at a follow-on strand.
+ * SPEC §17.104 — auto-derived numeric value for Computed* tiles.
+ * `numeric` = strategy applied successfully; `empty` = no contributing
+ * children (the mapper bakes the human reason).
  */
 export type ComputedValueViewModel =
   | { readonly kind: "numeric"; readonly value: number; readonly unit: string }
@@ -232,20 +219,11 @@ export type BusinessScoreCardNodeViewModel = {
 };
 
 /**
- * SPEC §17.104 — VM for `ComputedNode<T>` tiles. The auto-derived
- * value renders alongside a Σ aggregation badge (visual marker:
- * "this number was computed from children, not recorded by the
- * operator") and a kind-switching dropdown (operator-facing
- * `setComputationKind` surface, dispatches the
- * `computation-kind-change` event from `<computed-card>` /
- * `<computed-business-score-card>`). The shell wires the event to
- * `EditNodeServiceV4.editFields(node, { kind: "Computed", computationKind })`
- * at the §17.110 Phase E cutover; today the components dispatch
- * with no listener.
- *
- * `availableKinds` is duplicated on every VM so the mapper retains
- * a single source of truth for ordering (matches the §17.95 enum's
- * `ALL` array) and the views stay enum-free.
+ * SPEC §17.104 — VM for `ComputedNode<T>` tiles. Renders Σ badge +
+ * auto-derived value + a `setComputationKind` dropdown that dispatches
+ * `computation-kind-change` from `<computed-card>`. The shell wires
+ * the event at §17.110 cutover. `availableKinds` ordering matches the
+ * §17.95 `ComputationKind.ALL` array.
  */
 export type ComputedNodeViewModel = {
   readonly kind: "ComputedNode";
@@ -256,15 +234,7 @@ export type ComputedNodeViewModel = {
   readonly availableKinds: readonly ComputationKindName[];
 };
 
-/**
- * SPEC §17.104 — VM for `ComputedBusinessScoreNode<T>` tiles.
- * Same Σ badge + kind dropdown as `ComputedNodeViewModel`, plus
- * the BSC-style objective row + corner timestamp (CBSN extends
- * BusinessScoreNode<T>, so the operator-facing affordances mirror
- * a BSC tile). The trend arrow + warning color stay derivative of
- * the objective payload like §17.40 / §17.41 / §17.44 do for plain
- * BSCs.
- */
+/** SPEC §17.104 — `ComputedBusinessScoreNode<T>` tiles: ComputedNode VM + BSC objective row + timestamp. */
 export type ComputedBusinessScoreNodeViewModel = {
   readonly kind: "ComputedBusinessScoreNode";
   readonly id: string;
