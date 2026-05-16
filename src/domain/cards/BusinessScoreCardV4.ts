@@ -28,11 +28,19 @@ import { Card } from "./Card.js";
  * `card.getNode().objective.value` get the right type at every step.
  */
 export class BusinessScoreCardV4<T> extends Card<BusinessScoreNode<T>> {
-  constructor(node: BusinessScoreNode<T>, readonly unit: Unit) {
+  unit: Unit;
+
+  constructor(node: BusinessScoreNode<T>, unit: Unit) {
     super(node);
+    this.unit = unit;
   }
 
   getUnit(): Unit {
     return this.unit;
+  }
+
+  /** §17.101a — operator-facing mutator for `EditNodeServiceV4`. */
+  setUnit(unit: Unit): void {
+    this.unit = unit;
   }
 }
