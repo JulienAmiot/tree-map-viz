@@ -65,7 +65,7 @@ export class BoardCollectionServiceV4 {
     if (trimmed.length === 0) return { ok: false, reason: "Board name cannot be empty." };
     const idx = this.boards.findIndex((b) => b.id === boardId);
     if (idx === -1) return { ok: false, reason: "Board not found." };
-    const existing = this.boards[idx]!;
+    const existing = this.boards[idx];
     this.boards[idx] = { id: existing.id, name: trimmed, tree: existing.tree };
     await this.persist();
     return { ok: true };
@@ -85,7 +85,7 @@ export class BoardCollectionServiceV4 {
   async updateSettings(boardId: string, settings: { readonly name?: string }): Promise<Outcome> {
     const idx = this.boards.findIndex((b) => b.id === boardId);
     if (idx === -1) return { ok: false, reason: "Board not found." };
-    const existing = this.boards[idx]!;
+    const existing = this.boards[idx];
     let nextName = existing.name;
     if (settings.name !== undefined) {
       const trimmed = settings.name.trim();
@@ -101,7 +101,7 @@ export class BoardCollectionServiceV4 {
   async replaceCurrentTree(tree: Tree): Promise<void> {
     const idx = this.boards.findIndex((b) => b.id === this.currentBoardId);
     if (idx === -1) throw new Error(`BoardCollectionServiceV4 invariant violated: currentBoardId='${this.currentBoardId}' has no matching board.`);
-    const existing = this.boards[idx]!;
+    const existing = this.boards[idx];
     this.boards[idx] = { id: existing.id, name: existing.name, tree };
     await this.persist();
   }
@@ -113,7 +113,7 @@ export class BoardCollectionServiceV4 {
     if (this.boards.length <= 1) return { ok: false, reason: "Cannot delete the last remaining board." };
     const wasCurrent = boardId === this.currentBoardId;
     this.boards.splice(idx, 1);
-    if (wasCurrent) this.currentBoardId = this.boards[0]!.id;
+    if (wasCurrent) this.currentBoardId = this.boards[0].id;
     await this.persist();
     return { ok: true };
   }
