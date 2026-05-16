@@ -7,7 +7,10 @@ import {
 } from "../../../../../adapters/ui/views/viewModelMapperV4.js";
 import type { Clock } from "../../../../../domain/capabilities/Clock.js";
 import { BusinessScoreCardV4 } from "../../../../../domain/cards/BusinessScoreCardV4.js";
+import { ComputationKind } from "../../../../../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../../../../../domain/nodes/BusinessScoreNode.js";
+import { ComputedBusinessScoreNode } from "../../../../../domain/nodes/ComputedBusinessScoreNode.js";
+import { ComputedNode } from "../../../../../domain/nodes/ComputedNode.js";
 import { Node } from "../../../../../domain/nodes/Node.js";
 import { StrictRangeNode } from "../../../../../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../../../../../domain/nodes/TextNodeV4.js";
@@ -272,6 +275,81 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       if (childSlot.slot !== "node") throw new Error();
       if (childSlot.vm.kind !== "TextNode") throw new Error();
       expect(childSlot.vm.value.dateColor).toMatch(/^rgb\(/);
+    });
+  });
+
+  describe("§17.104b — ComputedNode + ComputedBusinessScoreNode branches", () => {
+    const KIND_NAMES = ComputationKind.ALL.map((k) => k.name);
+
+    it("ComputedNode → ComputedNode VM with strategy-applied numeric value, computationKind name + availableKinds list", () => {
+      const node = new ComputedNode<number>("cn", "Sum", w(), "", clock, ComputationKind.SUM);
+      node.attach(buildBSC("c1", { history: [["2026-01-01T00:00:00Z", 10]] }));
+      node.attach(buildBSC("c2", { history: [["2026-01-01T00:00:00Z", 7]] }));
+      const vm = mapNodeToViewModelV4(node);
+      expect(vm).toMatchObject({
+        kind: "ComputedNode",
+        id: "cn",
+        title: "Sum",
+        value: { kind: "numeric", value: 17, unit: "" },
+        computationKind: "SUM",
+      });
+      if (vm.kind !== "ComputedNode") throw new Error("expected ComputedNode");
+      expect(vm.availableKinds).toEqual(KIND_NAMES);
+    });
+
+    it("ComputedNode with no eligible children → empty VM carrying the EmptyChildrenError reason; setComputationKind flips the dropdown", () => {
+      const node = new ComputedNode<number>("cn", "Avg", w(), "", clock, ComputationKind.AVERAGE);
+      const vm = mapNodeToViewModelV4(node);
+      if (vm.kind !== "ComputedNode") throw new Error("expected ComputedNode");
+      expect(vm.value.kind).toBe("empty");
+      if (vm.value.kind !== "empty") throw new Error();
+      expect(vm.value.reason).toMatch(/AVERAGE/);
+
+      node.setComputationKind(ComputationKind.MAX);
+      const flipped = mapNodeToViewModelV4(node);
+      if (flipped.kind !== "ComputedNode") throw new Error();
+      expect(flipped.computationKind).toBe("MAX");
+    });
+
+    it("ComputedBusinessScoreNode → CBSC VM with strategy value + BSC objective row + corner timestamp; trend arrow stays null (no recorded-value branch)", () => {
+      const cbsn = new ComputedBusinessScoreNode<number>(
+        "cbsn", "Avg score", w(), "Quarter rollup", clock, lenient(),
+        { objective: obj(100, "2026-12-31T00:00:00Z"), initialKind: ComputationKind.AVERAGE, unit: "%" },
+      );
+      cbsn.attach(buildBSC("c1", { weight: 1, history: [["2026-04-01T00:00:00Z", 40]] }));
+      cbsn.attach(buildBSC("c2", { weight: 1, history: [["2026-06-01T00:00:00Z", 80]] }));
+      const vm = mapNodeToViewModelV4(cbsn, { now: NOW });
+      expect(vm).toMatchObject({
+        kind: "ComputedBusinessScoreNode",
+        id: "cbsn",
+        title: "Avg score",
+        description: "Quarter rollup",
+        value: { kind: "numeric", value: 60, unit: "%" },
+        computationKind: "AVERAGE",
+        dateIso: "2026-06-01T00:00:00.000Z",
+      });
+      if (vm.kind !== "ComputedBusinessScoreNode") throw new Error();
+      expect(vm.availableKinds).toEqual(KIND_NAMES);
+      expect(vm.objective.targetValue).toBe(100);
+      expect(vm.objective.targetDateIso).toBe("2026-12-31T00:00:00.000Z");
+      expect(vm.objective.unit).toBe("%");
+      expect(vm.objective.valueColor).toMatch(/^rgb\(/);
+      expect(vm.objective.warningColor).toBe("");
+      expect(vm.objective.trendArrow).toBeNull();
+      expect(vm.dateColor).toMatch(/^rgb\(/);
+    });
+
+    it("CBSN unit resolved through the §17.100.5 card sidecar when present (same precedence as BSC)", () => {
+      const cbsn = new ComputedBusinessScoreNode<number>(
+        "cbsn", "X", w(), "", clock, lenient(),
+        { objective: obj(), initialKind: ComputationKind.SUM, unit: "old" },
+      );
+      cbsn.attach(buildBSC("c1", { history: [["2026-04-01T00:00:00Z", 5]] }));
+      const cards = new Map([["cbsn", new BusinessScoreCardV4(cbsn as unknown as BusinessScoreNode<number>, Unit.of("kg"))]]);
+      const vm = mapNodeToViewModelV4(cbsn, { cards });
+      if (vm.kind !== "ComputedBusinessScoreNode" || vm.value.kind !== "numeric") throw new Error();
+      expect(vm.value.unit).toBe("kg");
+      expect(vm.objective.unit).toBe("kg");
     });
   });
 

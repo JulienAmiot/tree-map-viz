@@ -9,7 +9,11 @@ import {
   warningGradientColorAt,
 } from "../../../domain/aggregation/objectiveProgress.js";
 import { shouldRenderPlusTileV4 } from "../../../domain/capacity/childrenCapacityV4.js";
+import { ComputationKind } from "../../../domain/computation/ComputationKind.js";
+import { EmptyChildrenError } from "../../../domain/computation/EmptyChildrenError.js";
 import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
+import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusinessScoreNode.js";
+import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
 import type { Node } from "../../../domain/nodes/Node.js";
 import { RangedValueNode } from "../../../domain/nodes/RangedValueNode.js";
 import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
@@ -21,6 +25,10 @@ import type {
   BusinessScoreCardObjectiveViewModel,
   BusinessScoreCardValueViewModel,
   ChildSlotViewModel,
+  ComputationKindName,
+  ComputedBusinessScoreNodeViewModel,
+  ComputedNodeViewModel,
+  ComputedValueViewModel,
   FocusedTreeViewModel,
   NodeViewModel,
 } from "./NodeViewModel.js";
@@ -93,6 +101,17 @@ export function mapNodeToViewModelV4(
   if (node instanceof TextNodeV4) {
     return mapTextNode(node, options);
   }
+  // §17.104b — ComputedBusinessScoreNode MUST be checked before
+  // RangedValueNode (its grandparent) so the §17.104 CBSC VM wins
+  // over the legacy BSC VM. ComputedNode does NOT extend
+  // RangedValueNode, so its branch order is free — placed near CBSN
+  // for grouped readability.
+  if (node instanceof ComputedBusinessScoreNode) {
+    return mapComputedBusinessScoreNode(node as ComputedBusinessScoreNode<number>, options);
+  }
+  if (node instanceof ComputedNode) {
+    return mapComputedNode(node as ComputedNode<number>);
+  }
   if (node instanceof RangedValueNode) {
     return mapBSCNode(node as RangedValueNode<number>, options);
   }
@@ -134,7 +153,9 @@ function mapBSCNode(
     value,
     dateIso,
     dateColor: dateIso ? colorFor(dateIso, options) : "",
-    objective: mapBusinessScoreObjectiveV4(node, value, unit, options),
+    objective: mapBusinessScoreObjectiveV4(
+      node, numericValueOf(value), value.kind === "recordedValue", unit, options,
+    ),
   };
 }
 
@@ -187,9 +208,20 @@ function mapBusinessScoreValueV4(
  * range` only); it falls back to the empty-objective VM that
  * mirrors v3's degenerate-objective behaviour.
  */
+/**
+ * §17.104b — signature refactored to take `currentNumber: number | null`
+ * + `isRecordedValue: boolean` directly rather than a v3-shape
+ * `BusinessScoreCardValueViewModel`. Same caller-observable behaviour,
+ * but now polymorphic across the §17.40 BSC value VM AND the §17.104
+ * `ComputedValueViewModel` (the CBSN mapper passes its strategy-applied
+ * number + `false` because computed values never qualify as
+ * recorded — same data-source restriction the §17.41 trend arrow + §17.44
+ * warning glyph carry).
+ */
 function mapBusinessScoreObjectiveV4(
   node: RangedValueNode<number>,
-  value: BusinessScoreCardValueViewModel,
+  currentNumber: number | null,
+  isRecordedValue: boolean,
   unit: string,
   options: MapToViewModelOptionsV4,
 ): BusinessScoreCardObjectiveViewModel {
@@ -211,7 +243,6 @@ function mapBusinessScoreObjectiveV4(
   const entries = node.entries();
   const initialValue = entries.length > 0 ? Number(entries[0].value) : 0;
 
-  const currentNumber = numericValueOf(value);
   const valueColor =
     currentNumber === null
       ? ""
@@ -221,7 +252,7 @@ function mapBusinessScoreObjectiveV4(
 
   let warningColor = "";
   let trendArrow: BusinessScoreCardObjectiveViewModel["trendArrow"] = null;
-  if (value.kind === "recordedValue") {
+  if (isRecordedValue) {
     const points = entries.map((tv) => ({
       dateMs: tv.asOf.moment.getTime(),
       value: Number(tv.value),
@@ -264,6 +295,83 @@ function numericValueOf(
     case "childrenCount":
       return value.n > 0 ? value.n : null;
   }
+}
+
+/**
+ * §17.104b — `ComputationKind.ALL` ordering frozen into the
+ * `ComputationKindName` string array the view layer expects on every
+ * Computed* VM. Single source of truth shared by both Computed* mappers.
+ * The cast is safe because `ComputationKind.name` is one of the six
+ * `ComputationKindName` inhabitants by construction (§17.95 singletons).
+ */
+const AVAILABLE_KIND_NAMES: readonly ComputationKindName[] = Object.freeze(
+  ComputationKind.ALL.map((k) => k.name as ComputationKindName),
+);
+
+/**
+ * §17.104b — resolve a Computed* node's auto-derived value VM by
+ * dispatching through its cached strategy (`node.getValue()`). The
+ * §17.95 numeric strategies throw `EmptyChildrenError` when no
+ * eligible child survives; the catch surfaces a structured "empty"
+ * VM with the error's human reason. Non-finite numeric results
+ * (NaN / ±Infinity, e.g. from `AverageComputation` on a list whose
+ * sum overflows) ALSO surface as empty so the view never paints a
+ * meaningless glyph.
+ */
+function computedValueVM(
+  node: ComputedNode<number> | ComputedBusinessScoreNode<number>,
+  unit: string,
+): ComputedValueViewModel {
+  try {
+    const raw = Number(node.getValue());
+    if (!Number.isFinite(raw)) {
+      return { kind: "empty", reason: `${node.computationKind.name} produced a non-finite result` };
+    }
+    return { kind: "numeric", value: raw, unit };
+  } catch (err) {
+    if (err instanceof EmptyChildrenError) {
+      return { kind: "empty", reason: err.message };
+    }
+    throw err;
+  }
+}
+
+function mapComputedNode(node: ComputedNode<number>): ComputedNodeViewModel {
+  return {
+    kind: "ComputedNode",
+    id: node.id,
+    title: node.title,
+    value: computedValueVM(node, ""),
+    computationKind: node.computationKind.name as ComputationKindName,
+    availableKinds: AVAILABLE_KIND_NAMES,
+  };
+}
+
+function mapComputedBusinessScoreNode(
+  node: ComputedBusinessScoreNode<number>,
+  options: MapToViewModelOptionsV4,
+): ComputedBusinessScoreNodeViewModel {
+  const dateIso = currentValueDateIsoV4(node) ?? "";
+  const unit = resolveUnit(node, options);
+  const value = computedValueVM(node, unit);
+  const currentNumber = value.kind === "numeric" ? value.value : null;
+  return {
+    kind: "ComputedBusinessScoreNode",
+    id: node.id,
+    title: node.title,
+    description: node.getDescription(),
+    value,
+    computationKind: node.computationKind.name as ComputationKindName,
+    availableKinds: AVAILABLE_KIND_NAMES,
+    dateIso,
+    dateColor: dateIso ? colorFor(dateIso, options) : "",
+    // CBSN values are strategy-applied — never "recorded" per §17.94 D5
+    // (their addValue throws ComputationOverrideError), so the §17.41
+    // trend arrow + §17.44 warning glyph stay suppressed by passing
+    // `isRecordedValue = false`. The §17.40 valueColor gradient still
+    // paints because it only needs a finite numeric value.
+    objective: mapBusinessScoreObjectiveV4(node, currentNumber, false, unit, options),
+  };
 }
 
 /**
