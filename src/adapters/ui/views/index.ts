@@ -21,6 +21,7 @@
 
 import "./BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import "./BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
+import "./ComputedNode/ComputedCards.js";
 import "./NodeView.js";
 import "./TextNode/TextNodeAsChild.js";
 import "./TextNode/TextNodeAsParent.js";
@@ -37,6 +38,12 @@ if (!nodeViewRegistry.isFrozen()) {
     asParent: "business-score-card-as-parent",
     asChild: "business-score-card-as-child",
   });
+  // §17.104 — Computed* tiles reuse the same tag for both roles (value-area identical).
+  nodeViewRegistry.register("ComputedNode", { asParent: "computed-card", asChild: "computed-card" });
+  nodeViewRegistry.register("ComputedBusinessScoreNode", {
+    asParent: "computed-business-score-card",
+    asChild: "computed-business-score-card",
+  });
   nodeViewRegistry.freeze();
 }
 
@@ -44,6 +51,10 @@ export type {
   BusinessScoreCardNodeViewModel,
   BusinessScoreCardValueViewModel,
   ChildSlotViewModel,
+  ComputationKindName,
+  ComputedBusinessScoreNodeViewModel,
+  ComputedNodeViewModel,
+  ComputedValueViewModel,
   FocusedTreeViewModel,
   NodeKind,
   NodeRole,
@@ -51,5 +62,6 @@ export type {
   TextNodeViewModel,
 } from "./NodeViewModel.js";
 export { nodeViewRegistry, NodeViewRegistryError } from "./nodeViewRegistry.js";
+export { COMPUTATION_KIND_CHANGE_EVENT, type ComputationKindChangeDetail } from "./ComputedNode/ComputedCards.js";
 export { PLUS_TILE_ACTIVATE_EVENT } from "./plus/PlusTile.js";
 export type { PlusTileActivateDetail } from "./plus/PlusTile.js";

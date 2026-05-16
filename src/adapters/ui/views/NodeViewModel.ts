@@ -11,7 +11,15 @@
  * or `TimestampedValue`.
  */
 
-export type NodeKind = "TextNode" | "BusinessScoreCardNode";
+export type NodeKind = "TextNode" | "BusinessScoreCardNode" | "ComputedNode" | "ComputedBusinessScoreNode";
+
+/** SPEC §17.104 — Lit-friendly mirror of `ComputationKind` names (§17.95 / §17.94 D2). */
+export type ComputationKindName = "SUM" | "AVERAGE" | "MIN" | "MAX" | "WEIGHTED_AVERAGE" | "COUNT";
+
+/** SPEC §17.104 — auto-derived value for Computed* tiles (numeric / empty-children). */
+export type ComputedValueViewModel =
+  | { readonly kind: "numeric"; readonly value: number; readonly unit: string }
+  | { readonly kind: "empty"; readonly reason: string };
 
 /**
  * Where a node is being rendered:
@@ -196,7 +204,35 @@ export type BusinessScoreCardNodeViewModel = {
   readonly objective: BusinessScoreCardObjectiveViewModel;
 };
 
-export type NodeViewModel = TextNodeViewModel | BusinessScoreCardNodeViewModel;
+/** SPEC §17.104 — `ComputedNode<T>` tiles. `availableKinds` ordering matches `ComputationKind.ALL`. */
+export type ComputedNodeViewModel = {
+  readonly kind: "ComputedNode";
+  readonly id: string;
+  readonly title: string;
+  readonly value: ComputedValueViewModel;
+  readonly computationKind: ComputationKindName;
+  readonly availableKinds: readonly ComputationKindName[];
+};
+
+/** SPEC §17.104 — `ComputedBusinessScoreNode<T>` tiles: ComputedNode VM + BSC objective row + timestamp. */
+export type ComputedBusinessScoreNodeViewModel = {
+  readonly kind: "ComputedBusinessScoreNode";
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly value: ComputedValueViewModel;
+  readonly computationKind: ComputationKindName;
+  readonly availableKinds: readonly ComputationKindName[];
+  readonly dateIso: string;
+  readonly dateColor: string;
+  readonly objective: BusinessScoreCardObjectiveViewModel;
+};
+
+export type NodeViewModel =
+  | TextNodeViewModel
+  | BusinessScoreCardNodeViewModel
+  | ComputedNodeViewModel
+  | ComputedBusinessScoreNodeViewModel;
 
 /**
  * One slot in the focused view's children grid. Either a regular node tile
