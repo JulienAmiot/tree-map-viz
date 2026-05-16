@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import type { Clock } from "../../../domain/capabilities/Clock.js";
+import { BusinessScoreCardV4 } from "../../../domain/cards/BusinessScoreCardV4.js";
+import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
 import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
 import { Tree } from "../../../domain/Tree.js";
+import { NumericComparator } from "../../../domain/values/Comparator.js";
+import { ObjectiveV4 } from "../../../domain/values/ObjectiveV4.js";
+import { LenientRange } from "../../../domain/values/Range.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
+import { Unit } from "../../../domain/values/Unit.js";
 import { Weight } from "../../../domain/values/Weight.js";
 
 const clk: Clock = { now: () => Timestamp.of(new Date("2026-05-10T12:00:00Z")) };
@@ -108,6 +114,24 @@ describe("Tree (§17.79 — v4 part 15: container closing the v4 class-diagram s
       expect(Object.isFrozen(snapshot)).toBe(true);
       expect(() => (snapshot as unknown as TextNodeV4[]).push(mkNode("x"))).toThrow();
       expect(tree.nodes()).toHaveLength(6);
+    });
+  });
+
+  describe("cards sidecar (§17.100.5 — visual-layer registry keyed by node id)", () => {
+    it("defaults to the shared empty registry when omitted; non-empty map is preserved by reference", () => {
+      const t1 = new Tree(mkNode("solo"));
+      expect(t1.cards).toBe(Tree.EMPTY_CARDS);
+      expect(t1.cards.size).toBe(0);
+
+      const bsn = new BusinessScoreNode<number>(
+        "b", "B", w, "", clk,
+        LenientRange.of(0, 100, NumericComparator.INSTANCE),
+        { objective: ObjectiveV4.of(80, Timestamp.of(new Date("2026-12-31T00:00:00Z"))) },
+      );
+      const cards = new Map([["b", new BusinessScoreCardV4(bsn, Unit.of("%"))]]);
+      const t2 = new Tree(mkNode("solo"), cards);
+      expect(t2.cards).toBe(cards);
+      expect(t2.cards.get("b")?.getUnit().value).toBe("%");
     });
   });
 });

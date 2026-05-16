@@ -6,6 +6,7 @@ import {
   ViewModelMappingErrorV4,
 } from "../../../../../adapters/ui/views/viewModelMapperV4.js";
 import type { Clock } from "../../../../../domain/capabilities/Clock.js";
+import { BusinessScoreCardV4 } from "../../../../../domain/cards/BusinessScoreCardV4.js";
 import { BusinessScoreNode } from "../../../../../domain/nodes/BusinessScoreNode.js";
 import { Node } from "../../../../../domain/nodes/Node.js";
 import { StrictRangeNode } from "../../../../../domain/nodes/StrictRangeNode.js";
@@ -14,6 +15,7 @@ import { NumericComparator } from "../../../../../domain/values/Comparator.js";
 import { ObjectiveV4 } from "../../../../../domain/values/ObjectiveV4.js";
 import { LenientRange, StrictRange } from "../../../../../domain/values/Range.js";
 import { Timestamp } from "../../../../../domain/values/Timestamp.js";
+import { Unit } from "../../../../../domain/values/Unit.js";
 import { Weight } from "../../../../../domain/values/Weight.js";
 
 const T = (iso: string): Timestamp => Timestamp.of(new Date(iso));
@@ -270,6 +272,48 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       if (childSlot.slot !== "node") throw new Error();
       if (childSlot.vm.kind !== "TextNode") throw new Error();
       expect(childSlot.vm.value.dateColor).toMatch(/^rgb\(/);
+    });
+  });
+
+  describe("§17.100.5 — cards sidecar overrides BSN.unit getter; fallback preserved", () => {
+    it("card.getUnit() wins over BSN.unit for both value VM and objective VM", () => {
+      const node = buildBSC("b", {
+        unit: "old-bsn-unit",
+        history: [["2026-04-01T00:00:00Z", 42]],
+      });
+      const cards = new Map([["b", new BusinessScoreCardV4(node, Unit.of("$"))]]);
+      const vm = mapNodeToViewModelV4(node, { cards });
+      if (vm.kind !== "BusinessScoreCardNode") throw new Error();
+      if (vm.value.kind !== "recordedValue") throw new Error();
+      expect(vm.value.unit).toBe("$");
+      expect(vm.objective.unit).toBe("$");
+    });
+
+    it("absent card → falls back to BSN.unit (legacy §17.91 path); empty cards map equivalent to omitted", () => {
+      const node = buildBSC("b", { unit: "ms", history: [["2026-04-01T00:00:00Z", 9]] });
+      const vmEmpty = mapNodeToViewModelV4(node, { cards: new Map() });
+      const vmOmitted = mapNodeToViewModelV4(node);
+      if (vmEmpty.kind !== "BusinessScoreCardNode" || vmOmitted.kind !== "BusinessScoreCardNode") throw new Error();
+      if (vmEmpty.value.kind !== "recordedValue" || vmOmitted.value.kind !== "recordedValue") throw new Error();
+      expect(vmEmpty.value.unit).toBe("ms");
+      expect(vmOmitted.value.unit).toBe("ms");
+      expect(vmEmpty.objective.unit).toBe("ms");
+    });
+
+    it("mapFocusedToViewModelV4 threads cards through to every child's VM", () => {
+      const center = buildBSC("p", { unit: "old" });
+      const child = buildBSC("c", { unit: "old-child", history: [["2026-04-01T00:00:00Z", 5]] });
+      const cards = new Map([
+        ["p", new BusinessScoreCardV4(center, Unit.of("kg"))],
+        ["c", new BusinessScoreCardV4(child, Unit.of("g"))],
+      ]);
+      const focused = mapFocusedToViewModelV4(center, [child], { cards });
+      if (focused.center.kind !== "BusinessScoreCardNode") throw new Error();
+      expect(focused.center.objective.unit).toBe("kg");
+      const slot = focused.children[0];
+      if (slot.slot !== "node" || slot.vm.kind !== "BusinessScoreCardNode") throw new Error();
+      if (slot.vm.value.kind !== "recordedValue") throw new Error();
+      expect(slot.vm.value.unit).toBe("g");
     });
   });
 });
