@@ -5,75 +5,46 @@
  * into application services. Layered import contract: this file is the
  * single allowed bridge from `domain` + `application` to `adapters`.
  *
- * Phase 5 wiring (DT-9 — BDD harness):
- *   IdGen → LocalStorageRepo → BoardCollectionService.create
- *   → TreeNavigationService over the current board's tree
- *   → HashRouter ↔ navigation (URL is the source of truth for focus)
- *   → `<tree-map-screen>` rendered through a plain VM
- *   → Test bridge installed iff `?test=1` (lazy import, tree-shaken otherwise)
+ * §17.110 Phase E cutover — every wiring slot now constructs the v4
+ * successor: `LocalStorageBoardCollectionRepositoryV4` over the
+ * §17.106 `createJsonCodecV4`-built codec, `BoardCollectionServiceV4`,
+ * `TreeNavigationServiceV4` (v4 `Tree` over the board's root),
+ * `AddChildServiceV4` + `EditNodeServiceV4` (`Clock`-injected per
+ * §17.100a/§17.101a), `ImportExportServiceV4`. The §17.88 per-refresh
+ * `v4TreeFromV3Root` bridge is gone — the v4 nav already returns a
+ * `Tree` whose nodes feed `mapFocusedToViewModelV4` directly.
  *
- * Phase 6 wiring (DT-5 — Lit views):
- *   + `mapFocusedToViewModel` translates `FocusedTreeView` (domain types)
- *     into the plain `FocusedTreeViewModel` consumed by `<tree-map-screen>`
- *     and the `<node-view>` dispatcher. Domain types still never cross the
- *     UI property boundary; the mapper itself sits under `adapters/ui/views/`.
+ * **Modal payload translation shims** — `EditNodeModal` / `AddChildModal`
+ * still emit v3-shaped payloads (the v4-native modal migration is a
+ * follow-on strand). `toV4AddChildPayload` + `toV4EditPayload` rewrite
+ * the kind tag (`BusinessScoreCardNode` → `BusinessScore` or
+ * `ComputedBusinessScore` when `computed:true`, defaulting to
+ * `ComputationKind.AVERAGE` per the §17.99c migration choice) and the
+ * objective shape (`{initialValue, targetValue, targetDate}` →
+ * `{value: targetValue, at: targetDate}`; `initialValue` becomes the
+ * `initialHistory` seed on Add when absent).
  *
- * Phase 7 wiring (DT-6 — Lit shell + chrome):
- *   + The shell now also receives `boardName` (from the current board on
- *     `BoardCollectionService`) and a `breadcrumbPath` (from
- *     `walkPath(boardTree, focusedId)` mapped to plain `{ id, title }`).
- *     Both are recomputed on every refresh, so the permanent top bar
- *     stays in sync with the focus + board state.
- *   + The shell emits `breadcrumb-navigate` `{ nodeId }` when the user taps
- *     an ancestor segment; the composition root drives `nav.focusByUuid` +
- *     `refresh()` synchronously and also `router.push(...)` so the URL stays
- *     in sync with focus state (SPEC §11.3). `router.push` uses
- *     `history.pushState`, which does NOT fire `hashchange`, so the
- *     `router.onChange` listener wouldn't see internal navigation; we drive
- *     the state update locally and let `router.onChange` cover external
- *     changes (browser back/forward, manual hash edits, the test bridge).
- *   + `burger-menu-action` `{ action }`:
- *     - `import` / `export` wire to `ImportExportService` (SPEC §17.33).
- *       Export streams a JSON download via a transient `<a>`; Import
- *       opens a native file picker, decodes, then replaces the
- *       current board's tree atomically (validate-before-replace).
- *     - `boards` lands in §17.34 (boards-panel modal); placeholder
- *       log today.
- *     - `settings` opens `<board-settings-modal>` (§17.31).
+ * **`computation-kind-change` wiring** — §17.104 `<computed-card>` /
+ * `<computed-business-score-card>` dispatch this event on the
+ * dropdown's `change`; the handler routes to
+ * `EditNodeServiceV4.editFields` with `{ computationKind: ... }`
+ * resolved through `ComputationKind.fromName`.
  *
- * Phase 8 wiring (DT-7 — Add-child modal):
- *   + `AddChildService` lands here. Its `Persister` callback re-saves the
- *     current board collection through the `BoardCollectionRepository`
- *     port; the in-memory tree mutation done by `parent.attach(child)` is
- *     captured by `repo.save({ boards: list, currentBoardId })` because
- *     each board's `tree` is the same reference the service mutated.
- *   + `add-child-confirm` `{ parentId, payload }` triggers
- *     `AddChildService.addChild(parent, payload)`. On success the modal
- *     closes and `refresh()` repaints the focused view (with the new
- *     child + the now-correctly-budgeted plus-tile slot, per
- *     `shouldRenderPlusTile`). On failure the screen renders an inline
- *     error and the modal stays open for retry.
- *
- * Phase 9 wiring (drill animation), rewritten in §17.32:
- *   + `tile-drill` `{ nodeId }` from `<children-grid>` triggers
- *     `screen.runDrillAnimation(nodeId, commit)` where `commit` runs the
- *     same `nav.focusByUuid + router.push + refresh` triple that the
- *     breadcrumb handler uses. The `nodeId` lets the shell locate the
- *     tapped tile and morph it (FLIP-style) into the parent-identity-
- *     strip's bounding rect while siblings fade out. Reduced-motion
- *     (or testBridge `dismissAnimations`) makes the helper short-
- *     circuit the animation and commit synchronously, so the e2e
- *     suite doesn't need to wait for the settle window.
+ * **§17.86 version-mismatch + §17.86b read-only banner** removed —
+ * the v4 LSR (§17.107) deliberately deferred those features; if a
+ * future operator runtime needs them they port back in a follow-on
+ * strand. **e2e test bridge** — `testBridge` wraps the v4 codec with
+ * a v3-fallback decode so the existing v3-shaped fixtures under
+ * `src/test/e2e/fixtures/trees/*.json` keep round-tripping until they
+ * are re-written in v4 wire.
  */
 
-import {
-  LocalStorageBoardCollectionRepository,
-  STORAGE_KEY as BOARD_COLLECTION_STORAGE_KEY,
-} from "./adapters/persistence/LocalStorageBoardCollectionRepository.js";
-import type { VersionMismatchInfo } from "./adapters/persistence/LocalStorageBoardCollectionRepository.js";
-import { decode, encode } from "./adapters/persistence/jsonCodec.js";
+import { LocalStorageBoardCollectionRepositoryV4 } from "./adapters/persistence/LocalStorageBoardCollectionRepositoryV4.js";
+import { decode as decodeV3 } from "./adapters/persistence/jsonCodec.js";
+import { createJsonCodecV4, JsonCodecV4DecodeError } from "./adapters/persistence/jsonCodecV4.js";
 import { HashRouter } from "./adapters/routing/HashRouter.js";
 import type { AddChildConfirmDetail } from "./adapters/ui/modal/AddChildModal.js";
+import type { AddChildPayload } from "./application/AddChildService.js";
 import type {
   BoardSettingsConfirmDetail,
   BoardSettingsDeleteDetail,
@@ -86,6 +57,7 @@ import type {
   EditNodeConfirmDetail,
   EditNodeTarget,
 } from "./adapters/ui/modal/EditNodeModal.js";
+import type { EditNodePayload } from "./application/EditNodeService.js";
 import type {
   BreadcrumbNavigateDetail,
   BreadcrumbSegment,
@@ -98,27 +70,34 @@ import type {
 } from "./adapters/ui/shell/ParentIdentityStrip.js";
 import "./adapters/ui/shell/TreeMapScreen.js";
 import type { TreeMapScreen } from "./adapters/ui/shell/TreeMapScreen.js";
+import type { ComputationKindChangeDetail } from "./adapters/ui/views/ComputedNode/ComputedCards.js";
 import type { InlineEditWeightDetail } from "./adapters/ui/views/childWeight/weightEditEvents.js";
 import type { InlineEditTitleDetail } from "./adapters/ui/views/inlineEditEvents.js";
 import type { InlineEditValueDetail } from "./adapters/ui/views/inlineEditEvents.js";
 import { mapFocusedToViewModelV4 } from "./adapters/ui/views/viewModelMapperV4.js";
-import { AddChildService } from "./application/AddChildService.js";
-import { BoardCollectionService } from "./application/BoardCollectionService.js";
-import { EditNodeService } from "./application/EditNodeService.js";
-import { ImportExportService } from "./application/ImportExportService.js";
-import { TreeNavigationService } from "./application/TreeNavigationService.js";
+import {
+  AddChildServiceV4,
+  type AddChildPayloadV4,
+} from "./application/AddChildServiceV4.js";
+import { BoardCollectionServiceV4 } from "./application/BoardCollectionServiceV4.js";
+import {
+  EditNodeServiceV4,
+  type EditNodePayloadV4,
+} from "./application/EditNodeServiceV4.js";
+import { ImportExportServiceV4 } from "./application/ImportExportServiceV4.js";
+import { TreeNavigationServiceV4 } from "./application/TreeNavigationServiceV4.js";
+import type { TreeCodecV4 } from "./application/ports/TreeCodecV4.js";
 import type { Clock } from "./domain/capabilities/Clock.js";
-import { BusinessScoreCardNode } from "./domain/nodes/BusinessScoreCardNode.js";
+import { ComputationKind } from "./domain/computation/ComputationKind.js";
+import { BusinessScoreNode } from "./domain/nodes/BusinessScoreNode.js";
+import { ComputedBusinessScoreNode } from "./domain/nodes/ComputedBusinessScoreNode.js";
+import { ComputedNode } from "./domain/nodes/ComputedNode.js";
+import type { Node } from "./domain/nodes/Node.js";
+import { StrictRangeNode } from "./domain/nodes/StrictRangeNode.js";
+import { TextNodeV4 } from "./domain/nodes/TextNodeV4.js";
+import { Tree } from "./domain/Tree.js";
 import { v4TreeFromV3Root } from "./domain/v3Bridge/v4TreeFromV3Root.js";
 import { Timestamp } from "./domain/values/Timestamp.js";
-import { TextCard } from "./domain/nodes/TextCard.js";
-import { TextNode } from "./domain/nodes/TextNode.js";
-import type { TreeNode } from "./domain/nodes/TreeNode.js";
-import { findNodeById, walkPath } from "./domain/treeQueries.js";
-import { Description } from "./domain/values/Description.js";
-import { NodeIdentity } from "./domain/values/NodeIdentity.js";
-import { TimestampedValue } from "./domain/values/TimestampedValue.js";
-import { Title } from "./domain/values/Title.js";
 import { Weight } from "./domain/values/Weight.js";
 import "./index.css";
 
@@ -128,36 +107,22 @@ async function main(): Promise<void> {
   // IdGenerator's no-adapter-file pattern). `Timestamp.of` validates
   // `getTime()` so a `NaN`-Date would surface here at the boundary.
   const clock: Clock = { now: () => Timestamp.of(new Date()) };
-  const codec = { encode, decode };
-  // SPEC §17.86b -- mismatch buffered (raised inside load() before the screen lookup), replayed below.
-  let pendingMismatch: VersionMismatchInfo | null = null;
-  let readOnlyMode = false;
-  const repo = new LocalStorageBoardCollectionRepository({
+  const codec = createJsonCodecV4(clock);
+  const repo = new LocalStorageBoardCollectionRepositoryV4({
     storage: window.localStorage,
-    onVersionMismatch: (info) => { pendingMismatch = info; },
-    isReadOnly: () => readOnlyMode,
+    codec,
+    clock,
   });
-  const boards = await BoardCollectionService.create(repo, idGen);
+  const boards = await BoardCollectionServiceV4.create(repo, idGen);
   const router = new HashRouter(window);
 
   const board = boards.getCurrentBoard();
-  const nav = new TreeNavigationService(board.tree);
+  const nav = new TreeNavigationServiceV4(board.tree);
 
   const screen = document.querySelector<TreeMapScreen>("tree-map-screen");
   if (!screen) {
     throw new Error("composition: <tree-map-screen> not present in document");
   }
-
-  // SPEC §17.86b -- replay + wire the two banner actions.
-  if (pendingMismatch !== null) {
-    screen.surfaceMismatchBanner(pendingMismatch);
-    pendingMismatch = null;
-  }
-  screen.addEventListener("version-mismatch-continue-read-only", () => { readOnlyMode = true; });
-  screen.addEventListener("version-mismatch-reset", () => {
-    window.localStorage.removeItem(BOARD_COLLECTION_STORAGE_KEY);
-    window.location.reload();
-  });
 
   const persistCurrent = async (): Promise<void> => {
     await repo.save({
@@ -165,16 +130,9 @@ async function main(): Promise<void> {
       currentBoardId: boards.getCurrentBoardId(),
     });
   };
-  const addChildSvc = new AddChildService(idGen, persistCurrent);
-  const editNodeSvc = new EditNodeService(clock, persistCurrent);
-  // SPEC §17.33 — Phase 10 wiring half A. The Import / Export menu items
-  // ride on `ImportExportService`'s validate-before-replace contract:
-  // a successful decode replaces the current board's tree atomically
-  // through `boards.replaceCurrentTree` (which preserves the board's
-  // name); a failed decode never touches the in-memory tree. Surfacing follows the §17.33 decision: `window.alert(reason)`
-  // for the rare error path, kiosk-acceptable for an op operators
-  // rarely hit.
-  const importExportSvc = new ImportExportService(
+  const addChildSvc = new AddChildServiceV4(idGen, clock, persistCurrent);
+  const editNodeSvc = new EditNodeServiceV4(clock, persistCurrent);
+  const importExportSvc = new ImportExportServiceV4(
     codec,
     () => boards.getCurrentBoard().tree,
     async (tree) => {
@@ -185,28 +143,9 @@ async function main(): Promise<void> {
   const refresh = (): void => {
     const view = nav.getFocusedView();
     const current = boards.getCurrentBoard();
-    // SPEC §17.93 — v3-retirement migration Phase B.5 read-side
-    // cutover. The v3 nav still drives focus state (its API is
-    // v3-typed and the write services downstream still consume v3
-    // nodes — write-side migration is Phase D), but the mapper is
-    // now §17.91's `viewModelMapperV4`. To bridge them we adapt
-    // the focused subtree v3 → v4 on every refresh via the §17.88
-    // `v4TreeFromV3Root` adapter rooted at `view.center`. The
-    // resulting v4 root + children feed straight into
-    // `mapFocusedToViewModelV4` (same VM contract → zero
-    // view-layer changes per §17.91 design intent). Per-refresh
-    // re-adaptation is wasteful at scale but tolerable on the
-    // kiosk's small trees (≤12 children × ~5-deep ~ 150 nodes
-    // max); the alternative — maintaining a synced v4 shadow tree
-    // — is reserved for Phase D when the write services migrate
-    // and the v3 root retires entirely. The §17.93 strand also
-    // lifted v3's `computed` flag onto v4 BSN (parallel to §17.91
-    // unit) after 5 e2e tests revealed the §17.89 structural rule
-    // dropped the kiosk's "computed=true placeholder" pattern.
     if (view) {
-      const v4Tree = v4TreeFromV3Root(view.center, clock);
-      screen.view = mapFocusedToViewModelV4(v4Tree.root, v4Tree.root.children, {
-        cards: v4Tree.cards,
+      screen.view = mapFocusedToViewModelV4(view.center, view.childrenNodes, {
+        cards: current.tree.cards,
       });
     } else {
       screen.view = null;
@@ -218,12 +157,12 @@ async function main(): Promise<void> {
   screen.addEventListener("add-child-confirm", (e) => {
     void (async () => {
       const detail = (e as CustomEvent<AddChildConfirmDetail>).detail;
-      const parent = findNodeById(boards.getCurrentBoard().tree, detail.parentId);
+      const parent = current().findById(detail.parentId);
       if (!parent) {
         screen.setAddChildError(`Parent node "${detail.parentId}" not found.`);
         return;
       }
-      const result = await addChildSvc.addChild(parent, detail.payload);
+      const result = await addChildSvc.addChild(parent, toV4AddChildPayload(detail.payload, clock));
       if (!result.ok) {
         screen.setAddChildError(result.reason);
         return;
@@ -236,68 +175,41 @@ async function main(): Promise<void> {
   screen.addEventListener("breadcrumb-navigate", (e) => {
     const detail = (e as CustomEvent<BreadcrumbNavigateDetail>).detail;
     const r = nav.focusByUuid(detail.nodeId);
-    if (!r.ok) {
-      return;
-    }
-    router.push({
-      boardId: boards.getCurrentBoardId(),
-      focusNodeUuid: detail.nodeId,
-    });
+    if (!r.ok) return;
+    router.push({ boardId: boards.getCurrentBoardId(), focusNodeUuid: detail.nodeId });
     refresh();
   });
 
-  // SPEC §17.23 — the close-X on the focused-panel strip emits this event
-  // with the parent's id. Same commit triple as breadcrumb-navigate; we
-  // intentionally do NOT animate (the §17.20 drill-out cue `encap--leave`
-  // is deferred). If `focusByUuid` rejects (stale id), we silently
-  // ignore — the strip won't render the X next refresh anyway.
+  // SPEC §17.23 — close-X on the focused-panel strip emits this event
+  // with the parent's id. Stale id (rejection) silently no-ops.
   screen.addEventListener("focus-close-to-parent", (e) => {
     const detail = (e as CustomEvent<FocusCloseToParentDetail>).detail;
     const r = nav.focusByUuid(detail.parentId);
-    if (!r.ok) {
-      return;
-    }
-    router.push({
-      boardId: boards.getCurrentBoardId(),
-      focusNodeUuid: detail.parentId,
-    });
+    if (!r.ok) return;
+    router.push({ boardId: boards.getCurrentBoardId(), focusNodeUuid: detail.parentId });
     refresh();
   });
 
-  // SPEC §17.28 — the pencil button on the focused-panel strip emits
-  // `edit-node-open { nodeId }`. The composition root resolves the
-  // domain node from the current board's tree, builds the pre-edit
-  // snapshot (the modal is a pure consumer that doesn't know about
-  // `TreeNode`), and asks the screen to open `<edit-node-modal>`. A
-  // stale id (the focused id changed between render and tap) silently
-  // no-ops; the strip won't render the pencil for an absent vm.
   screen.addEventListener("edit-node-open", (e) => {
     const detail = (e as CustomEvent<EditNodeOpenDetail>).detail;
-    const node = findNodeById(boards.getCurrentBoard().tree, detail.nodeId);
-    if (!node) {
-      return;
-    }
+    const node = current().findById(detail.nodeId);
+    if (!node) return;
     const target = buildEditTarget(node);
-    if (!target) {
-      return;
-    }
+    if (!target) return;
     screen.openEditNodeModal(target);
   });
 
-  // SPEC §17.28 — modal Confirm path. The service is the conversion
-  // boundary: it folds the plain payload into domain value objects,
-  // applies the partial update in place, persists, and rolls back on
-  // failure. On success we close the modal and refresh; on failure
-  // the modal stays open and surfaces the reason inline.
   screen.addEventListener("edit-node-confirm", (e) => {
     void (async () => {
       const detail = (e as CustomEvent<EditNodeConfirmDetail>).detail;
-      const node = findNodeById(boards.getCurrentBoard().tree, detail.nodeId);
+      const node = current().findById(detail.nodeId);
       if (!node) {
         screen.setEditNodeError(`Node "${detail.nodeId}" not found.`);
         return;
       }
-      const result = await editNodeSvc.editFields(node, detail.payload);
+      const result = await editNodeSvc.editFields(node, toV4EditPayload(detail.payload), {
+        cards: boards.getCurrentBoard().tree.cards,
+      });
       if (!result.ok) {
         screen.setEditNodeError(result.reason);
         return;
@@ -307,113 +219,67 @@ async function main(): Promise<void> {
     })();
   });
 
-  // SPEC §17.28 — inline title edit on the focused-panel views. Same
-  // service path as the modal confirm, but with a one-field payload
-  // (just `title`). Rejection (e.g. empty title trips `Title.of`)
-  // surfaces silently — the view restores the previous title on its
-  // next refresh because we don't call `refresh()` on failure.
   screen.addEventListener("inline-edit-title", (e) => {
     void (async () => {
       const detail = (e as CustomEvent<InlineEditTitleDetail>).detail;
-      const node = findNodeById(boards.getCurrentBoard().tree, detail.nodeId);
-      if (!node) {
-        return;
-      }
-      const kind = inferKind(node);
-      if (!kind) {
-        return;
-      }
-      const result = await editNodeSvc.editFields(node, {
-        kind,
-        title: detail.title,
-      });
-      if (!result.ok) {
-        // Force a refresh anyway so the view re-paints with the
-        // pre-edit title (the local input reverts to whatever the
-        // VM says, which is unchanged because the rollback restored
-        // it).
-        refresh();
-        return;
-      }
+      const node = current().findById(detail.nodeId);
+      if (!node) return;
+      const kind = inferV4Kind(node);
+      if (!kind) return;
+      await editNodeSvc.editFields(node, { kind, title: detail.title } as EditNodePayloadV4);
       refresh();
     })();
   });
 
-  // SPEC §17.28 — inline value edit on the focused-panel views.
-  // Appends a new `TimestampedValue` to the node's history; the date
-  // defaults to "now" (the inline edit doesn't expose a date field —
-  // the kiosk operator's "I just measured this" flow). The view
-  // re-renders from the latest history entry on `refresh()`.
   screen.addEventListener("inline-edit-value", (e) => {
     void (async () => {
       const detail = (e as CustomEvent<InlineEditValueDetail>).detail;
-      const node = findNodeById(boards.getCurrentBoard().tree, detail.nodeId);
-      if (!node) {
-        return;
-      }
-      // SPEC §17.57 — `appendValue`'s `asOf` is optional; when the
-      // inline-edit detail omits it the service stamps the entry with
-      // `clock.now()`. The `?? new Date()` fallback that used to live
-      // here is gone (no `new Date()` outside the composition root's
-      // `clock` binding any more for the inline value-edit path).
-      const result = await editNodeSvc.appendValue(node, detail.value, detail.asOf);
-      if (!result.ok) {
-        refresh();
-        return;
-      }
+      const node = current().findById(detail.nodeId);
+      if (!node) return;
+      await editNodeSvc.appendValue(node, detail.value, detail.asOf);
       refresh();
     })();
   });
 
-  // SPEC §17.52 — child-tile inline weight edit. Dispatched by
-  // `<weight-edit-popover>` once the operator releases the slider
-  // thumb (the native `change` event on `<input type="range">`,
-  // i.e. commit-on-release). Same service path as the modal's
-  // weight field but with a one-field payload (just `weight`); the
-  // kind is inferred from the in-memory node so the operator
-  // doesn't have to know whether the tile is a TextNode or a BSC.
-  // Domain rejection (e.g. `Weight.of` rejects an out-of-range
-  // value because of a stale browser slipping past the slider's
-  // min / max) surfaces silently — the view re-renders from the
-  // unchanged tree on the failure path's `refresh()`.
   screen.addEventListener("inline-edit-weight", (e) => {
     void (async () => {
       const detail = (e as CustomEvent<InlineEditWeightDetail>).detail;
-      const node = findNodeById(boards.getCurrentBoard().tree, detail.nodeId);
-      if (!node) {
-        return;
-      }
-      const kind = inferKind(node);
-      if (!kind) {
-        return;
-      }
-      const result = await editNodeSvc.editFields(node, {
-        kind,
-        weight: detail.weight,
-      });
-      if (!result.ok) {
-        refresh();
-        return;
-      }
+      const node = current().findById(detail.nodeId);
+      if (!node) return;
+      const kind = inferV4Kind(node);
+      if (!kind) return;
+      await editNodeSvc.editFields(node, { kind, weight: detail.weight } as EditNodePayloadV4);
+      refresh();
+    })();
+  });
+
+  // SPEC §17.110 — §17.104 dropdown switches the Computed* node's
+  // strategy via EditNodeServiceV4 (atomic + rolled-back on persist
+  // failure, same as the modal path). The dropdown only renders on
+  // nodes that already are Computed* so the kind-match in the
+  // service never rejects on the happy path; an unknown name (e.g.
+  // a stale build's enum) surfaces as `{ ok: false }` and the next
+  // refresh re-paints the unchanged dropdown.
+  screen.addEventListener("computation-kind-change", (e) => {
+    void (async () => {
+      const detail = (e as CustomEvent<ComputationKindChangeDetail>).detail;
+      const node = current().findById(detail.nodeId);
+      if (!node) return;
+      const computationKind = ComputationKind.fromName(detail.newKind);
+      if (!computationKind) return;
+      const kind = computedKindFor(node);
+      if (!kind) return;
+      await editNodeSvc.editFields(node, { kind, computationKind } as EditNodePayloadV4);
       refresh();
     })();
   });
 
   screen.addEventListener("tile-drill", (e) => {
     const detail = (e as CustomEvent<TileDrillDetail>).detail;
-    // §17.32 — the screen needs the tapped nodeId so it can locate the
-    // tile element + drive the FLIP morph from its current position to
-    // the parent-identity-strip's bounding rect. The commit closure is
-    // unchanged from §17.20.
     screen.runDrillAnimation(detail.nodeId, () => {
       const r = nav.focusByUuid(detail.nodeId);
-      if (!r.ok) {
-        return;
-      }
-      router.push({
-        boardId: boards.getCurrentBoardId(),
-        focusNodeUuid: detail.nodeId,
-      });
+      if (!r.ok) return;
+      router.push({ boardId: boards.getCurrentBoardId(), focusNodeUuid: detail.nodeId });
       refresh();
     });
   });
@@ -421,66 +287,22 @@ async function main(): Promise<void> {
   screen.addEventListener("burger-menu-action", (e) => {
     const detail = (e as CustomEvent<BurgerMenuActionDetail>).detail;
     if (detail.action === "settings") {
-      // SPEC §17.31 — open the board-settings modal pre-filled with
-      // the current board. `canDelete` is false when the collection
-      // holds a single board (the `getCurrentBoard` invariant).
-      const current = boards.getCurrentBoard();
-      screen.openBoardSettingsModal({
-        boardId: current.id,
-        name: current.name,
-        canDelete: boards.list().length > 1,
-      });
+      const cur = boards.getCurrentBoard();
+      screen.openBoardSettingsModal({ boardId: cur.id, name: cur.name, canDelete: boards.list().length > 1 });
       return;
     }
-    if (detail.action === "export") {
-      // SPEC §17.33 — write the current board's tree to a JSON file
-      // the operator can save somewhere else (USB stick / cloud).
-      // Synchronous code path: encode into a string, wrap in a Blob,
-      // and trigger a download via a transient `<a download>`. The
-      // navigation, persistence, and view layer are not touched.
-      runExport();
-      return;
-    }
-    if (detail.action === "import") {
-      // SPEC §17.33 — open a native file picker, read the chosen
-      // JSON, run it through `ImportExportService.importIntoCurrentBoard`
-      // which validates with the codec BEFORE replacing the in-memory
-      // tree. On success the navigation service is re-seated over the
-      // new tree (the prior `focusedId` almost certainly does not
-      // exist in the imported tree), the URL is replaced (not pushed
-      // — destructive ops don't accumulate history), and the view
-      // refreshes. On failure `window.alert(reason)` surfaces the
-      // codec's error message; the existing tree stays put.
-      void runImport();
-      return;
-    }
+    if (detail.action === "export") { runExport(); return; }
+    if (detail.action === "import") { void runImport(); return; }
     if (detail.action === "boards") {
-      // SPEC §17.34 — open the collection-level boards panel. The
-      // composition root assembles a plain snapshot from
-      // `BoardCollectionService.list()` (id + name only — domain
-      // `tree`s never cross the modal boundary) so the modal stays a
-      // pure consumer.
       screen.openBoardsPanelModal({
         boards: boards.list().map((b) => ({ id: b.id, name: b.name })),
         currentBoardId: boards.getCurrentBoardId(),
       });
       return;
     }
-    if (detail.action === "about") {
-      // §17.84 — read-only modal; reads version constants directly.
-      screen.openAboutModal();
-      return;
-    }
+    if (detail.action === "about") screen.openAboutModal();
   });
 
-  /**
-   * SPEC §17.33 — export the current board's tree to a JSON file.
-   * The download is triggered via a transient `<a>` so the browser
-   * uses its native "Save as…" mechanism; no new modal, no kiosk
-   * chrome. The blob URL is revoked after a short delay so the
-   * download has time to start (revoking immediately can race the
-   * kick-off in some browsers).
-   */
   function runExport(): void {
     const json = importExportSvc.exportCurrentTree();
     const blob = new Blob([json], { type: "application/json" });
@@ -494,20 +316,6 @@ async function main(): Promise<void> {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  /**
-   * SPEC §17.33 — open a native file picker for JSON, decode the
-   * chosen file, and replace the current board's tree on success.
-   * Uses a transient `<input type="file">` (appended to the body,
-   * removed after the change handler runs) so production gets a
-   * standard file picker and Playwright e2e can intercept the
-   * `filechooser` event for deterministic seeding.
-   *
-   * Error handling honours the §17.33 decision: a decode failure
-   * (or an empty selection / read error) becomes a `window.alert`;
-   * the import never replaces the tree on failure (the
-   * validate-before-replace contract from §17.3 is preserved by
-   * `ImportExportService`).
-   */
   async function runImport(): Promise<void> {
     const input = document.createElement("input");
     input.type = "file";
@@ -516,115 +324,60 @@ async function main(): Promise<void> {
     document.body.appendChild(input);
     try {
       await new Promise<void>((resolve) => {
-        input.addEventListener(
-          "change",
-          () => {
-            void (async () => {
-              try {
-                const file = input.files?.[0];
-                if (!file) {
-                  return;
-                }
-                const text = await file.text();
-                const result = await importExportSvc.importIntoCurrentBoard(text);
-                if (!result.ok) {
-                  window.alert(`Import failed: ${result.reason}`);
-                  return;
-                }
-                // Re-seat the navigation service over the new tree —
-                // the old `focusedId` almost certainly does not exist
-                // in the freshly-decoded tree, and a stale focus
-                // would silently break `getFocusedView` (`findNodeById`
-                // would return null). `replaceTree(...)` snaps the
-                // focus to the new root.
-                const newCurrent = boards.getCurrentBoard();
-                nav.replaceTree(newCurrent.tree);
-                router.replace({
-                  boardId: newCurrent.id,
-                  focusNodeUuid: newCurrent.tree.id,
-                });
-                refresh();
-              } finally {
-                resolve();
-              }
-            })();
-          },
-          { once: true },
-        );
+        input.addEventListener("change", () => {
+          void (async () => {
+            try {
+              const file = input.files?.[0];
+              if (!file) return;
+              const text = await file.text();
+              const result = await importExportSvc.importIntoCurrentBoard(text);
+              if (!result.ok) { window.alert(`Import failed: ${result.reason}`); return; }
+              const newCurrent = boards.getCurrentBoard();
+              nav.replaceTree(newCurrent.tree);
+              router.replace({ boardId: newCurrent.id, focusNodeUuid: newCurrent.tree.root.id });
+              refresh();
+            } finally { resolve(); }
+          })();
+        }, { once: true });
         input.click();
       });
     } finally {
-      if (input.parentNode === document.body) {
-        document.body.removeChild(input);
-      }
+      if (input.parentNode === document.body) document.body.removeChild(input);
     }
   }
 
   screen.addEventListener("board-settings-confirm", (e) => {
     void (async () => {
       const detail = (e as CustomEvent<BoardSettingsConfirmDetail>).detail;
-      const result = await boards.updateSettings(detail.boardId, {
-        name: detail.name,
-      });
-      if (!result.ok) {
-        screen.setBoardSettingsError(result.reason);
-        return;
-      }
+      const result = await boards.updateSettings(detail.boardId, { name: detail.name });
+      if (!result.ok) { screen.setBoardSettingsError(result.reason); return; }
       screen.closeBoardSettingsModal();
       refresh();
     })();
   });
 
-  // SPEC §17.34 — boards-panel switch. The service's same-id guard
-  // makes this a no-op when the row matches the current board, but
-  // the modal already filters those out by rendering the `(current)`
-  // badge instead of a Switch button. On success we re-seat the
-  // navigation service over the newly-current board's tree and
-  // `replace` the URL (destructive jump — no history entry); on
-  // failure surface the reason inline.
   screen.addEventListener("boards-panel-switch", (e) => {
     void (async () => {
       const detail = (e as CustomEvent<BoardsPanelSwitchDetail>).detail;
       const result = await boards.switchTo(detail.boardId);
-      if (!result.ok) {
-        screen.setBoardsPanelError(result.reason);
-        return;
-      }
+      if (!result.ok) { screen.setBoardsPanelError(result.reason); return; }
       const newCurrent = boards.getCurrentBoard();
       nav.replaceTree(newCurrent.tree);
-      router.replace({
-        boardId: newCurrent.id,
-        focusNodeUuid: newCurrent.tree.id,
-      });
+      router.replace({ boardId: newCurrent.id, focusNodeUuid: newCurrent.tree.root.id });
       screen.closeBoardsPanelModal();
       refresh();
     })();
   });
 
-  // SPEC §17.34 — boards-panel create. We seed every brand-new
-  // board with a one-node TextNode root titled with the board's
-  // name (a single welcome `TimestampedValue` so `currentValue()`
-  // doesn't throw `EmptyHistoryError` on the first render). The
-  // service is the conversion boundary — it generates the board id
-  // through `idGen` and persists. After a successful create the
-  // collection's `currentBoardId` already points at the new board
-  // (per `BoardCollectionService.createBoard`), so re-seating
-  // navigation + URL is the same triple as `switchTo`.
   screen.addEventListener("boards-panel-create", (e) => {
     void (async () => {
       const detail = (e as CustomEvent<BoardsPanelCreateDetail>).detail;
       const seedTree = makeNewBoardSeedTree(detail.name, idGen, clock);
       const result = await boards.createBoard(detail.name, seedTree);
-      if (!result.ok) {
-        screen.setBoardsPanelError(result.reason);
-        return;
-      }
+      if (!result.ok) { screen.setBoardsPanelError(result.reason); return; }
       const newCurrent = boards.getCurrentBoard();
       nav.replaceTree(newCurrent.tree);
-      router.replace({
-        boardId: newCurrent.id,
-        focusNodeUuid: newCurrent.tree.id,
-      });
+      router.replace({ boardId: newCurrent.id, focusNodeUuid: newCurrent.tree.root.id });
       screen.closeBoardsPanelModal();
       refresh();
     })();
@@ -634,120 +387,129 @@ async function main(): Promise<void> {
     void (async () => {
       const detail = (e as CustomEvent<BoardSettingsDeleteDetail>).detail;
       const result = await boards.deleteBoard(detail.boardId);
-      if (!result.ok) {
-        screen.setBoardSettingsError(result.reason);
-        return;
-      }
-      // After a delete the current board may have changed; refresh
-      // the tree (router stays on the old board id but the focus
-      // resolves to the new current's root via the fallback path).
+      if (!result.ok) { screen.setBoardSettingsError(result.reason); return; }
       const newCurrent = boards.getCurrentBoard();
-      const newRootId = newCurrent.tree.id;
-      // Re-seat the navigation service to the (now-current) board's
-      // tree root so the next refresh resolves valid focus.
       nav.replaceTree(newCurrent.tree);
-      router.replace({
-        boardId: newCurrent.id,
-        focusNodeUuid: newRootId,
-      });
+      router.replace({ boardId: newCurrent.id, focusNodeUuid: newCurrent.tree.root.id });
       screen.closeBoardSettingsModal();
       refresh();
     })();
   });
 
+  function current(): Tree {
+    return boards.getCurrentBoard().tree;
+  }
+
   const startRoute = router.current();
   if (startRoute && startRoute.boardId === boards.getCurrentBoardId()) {
     nav.focusByUuid(startRoute.focusNodeUuid);
   } else {
-    router.replace({ boardId: boards.getCurrentBoardId(), focusNodeUuid: nav.getRoot().id });
+    router.replace({ boardId: boards.getCurrentBoardId(), focusNodeUuid: nav.getRoot().root.id });
   }
   refresh();
 
   router.onChange((state) => {
-    if (!state || state.boardId !== boards.getCurrentBoardId()) {
-      return;
-    }
+    if (!state || state.boardId !== boards.getCurrentBoardId()) return;
     const r = nav.focusByUuid(state.focusNodeUuid);
     if (!r.ok) {
-      router.replace({ boardId: boards.getCurrentBoardId(), focusNodeUuid: nav.getRoot().id });
-      nav.focusByUuid(nav.getRoot().id);
+      const rootId = nav.getRoot().root.id;
+      router.replace({ boardId: boards.getCurrentBoardId(), focusNodeUuid: rootId });
+      nav.focusByUuid(rootId);
     }
     refresh();
   });
 
   if (new URL(window.location.href).searchParams.get("test") === "1") {
     const { installTestBridge } = await import("./adapters/testBridge.js");
-    installTestBridge(window, { repo, codec, router });
+    installTestBridge(window, { repo, codec: codecWithV3Fallback(codec, clock), router });
   }
-}
-
-function computeBreadcrumb(
-  root: TreeNode<unknown>,
-  focusedId: string,
-): readonly BreadcrumbSegment[] {
-  const path = walkPath(root, focusedId);
-  if (!path) {
-    return [];
-  }
-  return path.map((n) => ({ id: n.id, title: n.identity.title.value }));
 }
 
 /**
- * SPEC §17.28 — build the pre-edit snapshot the modal consumes from a
- * domain node. Encoded here (not in the modal) because translating
- * `TreeNode → EditNodeTarget` is the same domain → plain-data boundary
- * the rest of the composition root crosses; the modal stays a pure
- * consumer. Returns `null` for unknown subclasses so the caller can
- * silently no-op (defensive — every TreeNode in the codebase is one
- * of the two known kinds today).
- *
- * `objective.targetDateIso` is the UTC ISO `YYYY-MM-DD` slice expected
- * by `<input type="date">`; the modal converts it back to a real `Date`
- * on confirm.
+ * SPEC §17.110 — wrap the strict v4 codec with a v3-fallback decode
+ * for the testBridge so legacy v3-shape fixtures under
+ * `src/test/e2e/fixtures/trees/*.json` keep round-tripping. Same
+ * one-way fallback as the §17.107 LSR adapter: decode v3 → bridge
+ * to v4 Tree. Encode is always v4-native.
  */
-function buildEditTarget(node: TreeNode<unknown>): EditNodeTarget | null {
-  const title = node.identity.title.value;
-  const weight = node.weight.value;
-  if (node instanceof TextNode) {
-    return {
-      nodeId: node.id,
-      kind: "TextNode",
-      title,
-      weight,
-    };
+function codecWithV3Fallback(codec: TreeCodecV4, clock: Clock): TreeCodecV4 {
+  return {
+    encode: (tree) => codec.encode(tree),
+    decode: (text) => {
+      try { return codec.decode(text); }
+      catch (err) {
+        if (err instanceof JsonCodecV4DecodeError) return v4TreeFromV3Root(decodeV3(text), clock);
+        throw err;
+      }
+    },
+  };
+}
+
+function computeBreadcrumb(tree: Tree, focusedId: string): readonly BreadcrumbSegment[] {
+  const focused = tree.findById(focusedId);
+  if (!focused) return [];
+  const path: Node[] = [];
+  let cursor: Node | undefined = focused;
+  while (cursor) {
+    path.unshift(cursor);
+    cursor = cursor.parent ?? undefined;
   }
-  if (node instanceof BusinessScoreCardNode) {
-    const objective = node.card.objective;
+  return path.map((n) => ({ id: n.id, title: n.title }));
+}
+
+/**
+ * SPEC §17.110 — v4 successor to the v3 `buildEditTarget`. The modal
+ * is still v3-typed (`EditNodeTarget` carries `BusinessScoreCardNode`
+ * as a kind tag); the round-7 leaf kinds (StrictRange, Computed,
+ * ComputedBusinessScore) silently no-op here pending a v4-native
+ * modal in a follow-on strand.
+ */
+function buildEditTarget(node: Node): EditNodeTarget | null {
+  if (node instanceof TextNodeV4) {
+    return { nodeId: node.id, kind: "TextNode", title: node.title, weight: node.weight.value };
+  }
+  if (node instanceof BusinessScoreNode && !(node instanceof ComputedBusinessScoreNode)) {
+    const obj = node.objective;
     return {
       nodeId: node.id,
       kind: "BusinessScoreCardNode",
-      title,
-      description: node.identity.description.value,
-      weight,
-      unit: node.card.unit.value,
+      title: node.title,
+      description: node.getDescription(),
+      weight: node.weight.value,
+      unit: node.unit,
       objective: {
-        initialValue: Number(objective.initialValue),
-        targetValue: Number(objective.targetValue),
-        targetDateIso: objective.targetDate.moment.toISOString().slice(0, 10),
+        initialValue: 0,
+        targetValue: Number(obj.value),
+        targetDateIso: obj.at.moment.toISOString().slice(0, 10),
       },
-      computed: node.computed,
-      eligibleForParentComputation: node.eligibleForParentComputation,
+      computed: false,
+      eligibleForParentComputation: !node.disabled,
     };
   }
   return null;
 }
 
+/** SPEC §17.110 — kind tag for `computation-kind-change` (Computed* only). */
+function computedKindFor(node: Node): "Computed" | "ComputedBusinessScore" | null {
+  if (node instanceof ComputedBusinessScoreNode) return "ComputedBusinessScore";
+  if (node instanceof ComputedNode) return "Computed";
+  return null;
+}
+
 /**
- * SPEC §17.33 — derive a filesystem-friendly download name from
- * the current board's user-visible name. Lower-cases, replaces
- * whitespace + filesystem-illegal chars with `-`, collapses runs,
- * and trims to a sane length. Falls back to `board` if the cleaned
- * string is empty (e.g. a board named with only emoji on a
- * platform whose filesystem rejects non-ASCII filenames).
- *
- * The browser's "Save as…" dialog still lets the operator rename
- * the file, so this is just a sensible default — not a contract.
+ * SPEC §17.110 — per-kind discriminator used by the inline edit
+ * paths. Returns the v4 service's kind tag (or `null` for the
+ * three round-7 leaf kinds the inline UIs don't surface yet).
  */
+function inferV4Kind(node: Node): EditNodePayloadV4["kind"] | null {
+  if (node instanceof TextNodeV4) return "TextNode";
+  if (node instanceof ComputedBusinessScoreNode) return "ComputedBusinessScore";
+  if (node instanceof BusinessScoreNode) return "BusinessScore";
+  if (node instanceof StrictRangeNode) return "StrictRange";
+  if (node instanceof ComputedNode) return "Computed";
+  return null;
+}
+
 function exportFileName(boardName: string): string {
   const slug = boardName
     .trim()
@@ -758,39 +520,92 @@ function exportFileName(boardName: string): string {
   return `${slug || "board"}.json`;
 }
 
-/** SPEC §17.28 — per-kind discriminator used by the inline-edit-title path. */
-function inferKind(
-  node: TreeNode<unknown>,
-): "TextNode" | "BusinessScoreCardNode" | null {
-  if (node instanceof TextNode) return "TextNode";
-  if (node instanceof BusinessScoreCardNode) return "BusinessScoreCardNode";
-  return null;
+/**
+ * SPEC §17.110 — v4 successor to the v3 `makeNewBoardSeedTree`.
+ * Seeds a fresh board with a single `TextNodeV4` root titled with
+ * the board's name and one history entry stamped "now" so the
+ * focused-panel view has a value to render on day one.
+ */
+function makeNewBoardSeedTree(boardName: string, idGen: () => string, clock: Clock): Tree {
+  const trimmed = boardName.trim() || "New board";
+  const root = new TextNodeV4(idGen(), trimmed, Weight.of(1), clock);
+  root.addValue(clock.now(), `Welcome to **${trimmed}**.`);
+  return new Tree(root);
 }
 
 /**
- * SPEC §17.34 — build a minimal, non-empty tree for a freshly-created
- * board. The new board lands on a single `TextNode` root titled with
- * the board's name, weight 1, and a one-entry history dated "now"
- * carrying a friendly welcome message. Why not an empty `TextCard`?
- * `TextNode.currentValue()` throws `EmptyHistoryError` for an empty
- * history (per §3); the focused-panel view tolerates that today, but
- * shipping a brand-new board with a visible value gives the operator
- * something to drill on top of (and exercises the rendering path on
- * day one). The text content is intentionally short — operators will
- * inline-edit it (§17.28) within minutes.
+ * SPEC §17.110 — `AddChildModal` still emits v3-shaped
+ * `AddChildPayload`. Map to v4: `BusinessScoreCardNode` →
+ * `BusinessScore` (or `ComputedBusinessScore` when `computed:true`,
+ * defaulting to `ComputationKind.AVERAGE` per the §17.99c bridge
+ * choice); v3 `objective.initialValue` becomes an `initialHistory`
+ * seed entry stamped at `clock.now()` when no explicit history
+ * was provided.
  */
-function makeNewBoardSeedTree(
-  boardName: string,
-  idGen: () => string,
-  clock: Clock,
-): TreeNode<unknown> {
-  const id = idGen();
-  const trimmed = boardName.trim() || "New board";
-  const identity = NodeIdentity.of(Title.of(trimmed), Description.of(""));
-  const card = TextCard.of([
-    TimestampedValue.of(`Welcome to **${trimmed}**.`, clock.now()),
-  ]);
-  return new TextNode(id, identity, Weight.of(1), card);
+function toV4AddChildPayload(payload: AddChildPayload, clock: Clock): AddChildPayloadV4 {
+  if (payload.kind === "TextNode") {
+    return {
+      kind: "TextNode",
+      title: payload.title,
+      weight: payload.weight,
+      initialHistory: payload.initialHistory,
+    };
+  }
+  const objective = {
+    value: payload.objective.targetValue,
+    at: payload.objective.targetDate,
+  };
+  const seededHistory = payload.initialHistory ?? [
+    { value: payload.objective.initialValue, asOf: new Date(clock.now().moment) },
+  ];
+  if (payload.computed) {
+    return {
+      kind: "ComputedBusinessScore",
+      title: payload.title,
+      description: payload.description,
+      weight: payload.weight,
+      unit: payload.unit,
+      objective,
+      computationKind: ComputationKind.AVERAGE,
+      disabled: payload.eligibleForParentComputation === false,
+    };
+  }
+  return {
+    kind: "BusinessScore",
+    title: payload.title,
+    description: payload.description,
+    weight: payload.weight,
+    unit: payload.unit,
+    objective,
+    disabled: payload.eligibleForParentComputation === false,
+    initialHistory: seededHistory,
+  };
+}
+
+/**
+ * SPEC §17.110 — `EditNodeModal` still emits v3-shaped
+ * `EditNodePayload`. Map to v4: rename `BusinessScoreCardNode` kind
+ * to `BusinessScore`; drop the v3 `initialValue` field (v4 makes
+ * history canonical and edits never re-seed initial history);
+ * rewrite the objective shape; ignore v3-only `computed` /
+ * `eligibleForParentComputation` flags on the edit path (kind
+ * morphing isn't allowed by the v4 service — the §17.99c migration
+ * already pinned the kind at load).
+ */
+function toV4EditPayload(payload: EditNodePayload): EditNodePayloadV4 {
+  if (payload.kind === "TextNode") {
+    return { kind: "TextNode", title: payload.title, weight: payload.weight };
+  }
+  return {
+    kind: "BusinessScore",
+    title: payload.title,
+    description: payload.description,
+    weight: payload.weight,
+    unit: payload.unit,
+    objective: payload.objective
+      ? { value: payload.objective.targetValue, at: payload.objective.targetDate }
+      : undefined,
+  };
 }
 
 void main().catch((err: unknown) => {
