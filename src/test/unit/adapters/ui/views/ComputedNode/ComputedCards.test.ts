@@ -2,17 +2,12 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import "../../../../../../adapters/ui/views/ComputedNode/ComputedCards.js";
 import {
-  COMPUTATION_KIND_CHANGE_EVENT,
-  type ComputationKindChangeDetail,
-  type ComputedBusinessScoreCard,
-  type ComputedCard,
+  COMPUTATION_KIND_CHANGE_EVENT, type ComputationKindChangeDetail,
+  type ComputedBusinessScoreCard, type ComputedCard,
 } from "../../../../../../adapters/ui/views/ComputedNode/ComputedCards.js";
 import type {
-  BusinessScoreCardObjectiveViewModel,
-  ComputationKindName,
-  ComputedBusinessScoreNodeViewModel,
-  ComputedNodeViewModel,
-  ComputedValueViewModel,
+  BusinessScoreCardObjectiveViewModel, ComputationKindName,
+  ComputedBusinessScoreNodeViewModel, ComputedNodeViewModel, ComputedValueViewModel,
 } from "../../../../../../adapters/ui/views/NodeViewModel.js";
 import { cleanupLitFixtures, mountLitElement } from "../../../../../fixtures/litElementFixture.js";
 
@@ -51,7 +46,7 @@ async function captureKindChange(el: HTMLElement, newKind: ComputationKindName):
 }
 
 describe("<computed-card> (\u00a717.104)", () => {
-  it("renders title + \u03a3 + numeric value + dropdown preselected, AND empty-reason variant omits the unit slot", async () => {
+  it("renders title + \u03a3 + numeric value + dropdown preselected, AND empty-reason variant omits the unit slot, AND dispatches computation-kind-change on dropdown change", async () => {
     const okEl = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" }, "WEIGHTED_AVERAGE");
     });
@@ -63,6 +58,7 @@ describe("<computed-card> (\u00a717.104)", () => {
     const dropdown = okSr.querySelector<HTMLSelectElement>('[data-testid="kind-dropdown"]')!;
     expect(dropdown.options.length).toBe(ALL_KINDS.length);
     expect(dropdown.value).toBe("WEIGHTED_AVERAGE");
+    expect(await captureKindChange(okEl, "MAX")).toEqual([{ nodeId: "c-1", newKind: "MAX" }]);
 
     const emptyEl = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = computedVm({ kind: "empty", reason: "no contributing children" });
@@ -71,13 +67,6 @@ describe("<computed-card> (\u00a717.104)", () => {
     expect(emptyValue?.getAttribute("data-value-kind")).toBe("empty");
     expect(emptyValue?.textContent?.trim()).toBe("no contributing children");
     expect(emptyEl.shadowRoot!.querySelector(".unit")).toBeNull();
-  });
-
-  it("dispatches a bubbling+composed computation-kind-change event with the new kind when the dropdown changes", async () => {
-    const el = await mountLitElement<ComputedCard>("computed-card", (e) => {
-      e.vm = computedVm({ kind: "numeric", value: 1, unit: "" }, "SUM");
-    });
-    expect(await captureKindChange(el, "MAX")).toEqual([{ nodeId: "c-1", newKind: "MAX" }]);
   });
 });
 
