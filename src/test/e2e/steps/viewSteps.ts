@@ -445,6 +445,62 @@ Then(
   },
 );
 
+Then("no rendered value overflows its tile horizontally", async ({ page }) => {
+  // SPEC §17.116-followup-3 — the `.value` font-size rule's per-
+  // character width cap (160cqi / max(2, --char-count)) must keep
+  // every rendered value glyph inside the tile body width regardless
+  // of digit count. Operator-reported failure mode pre-followup-3
+  // was 8-digit values overflowing a ~200 px wide tile (the legacy
+  // flat clamp(1.5rem, 42cqmin, 22rem) rule honoured only the
+  // height envelope; with white-space: nowrap defeating wrap, the
+  // text spilled the tile's right edge). We assert the contract on
+  // every rendered `[data-testid="value"]` inside `<children-grid>`:
+  // its bounding-rect width must be ≤ the enclosing tile's
+  // bounding-rect width. The `.value` rule retains the `nowrap` +
+  // `keep-all` belt so the text is a single line; the width cap is
+  // what keeps that line inside the tile. We do NOT measure the
+  // parent-identity-strip's focused value here (that scenario lives
+  // alongside §17.39 / §17.45); the children-grid coverage is the
+  // operator-visible surface the followup-3 patch targeted.
+  const probes = await page.evaluate(() => {
+    const grid = document
+      .querySelector("tree-map-screen")
+      ?.shadowRoot?.querySelector("children-grid");
+    const tiles = Array.from(
+      grid?.shadowRoot?.querySelectorAll<HTMLElement>('.tile[data-slot="node"]') ?? [],
+    );
+    return tiles.flatMap((tile) => {
+      // `<children-grid>` wraps each node slot in a `.tile` div whose
+      // first child is a `<node-view>` dispatcher (see ChildrenGrid.ts).
+      // The dispatcher's shadow root contains the per-view custom element
+      // (e.g. `<business-score-card-as-child>` or `<computed-card>`)
+      // which in turn owns the `[data-testid="value"]` span in its own
+      // shadow. We drill through both shadow roots to reach the value.
+      const dispatcher = tile.querySelector("node-view") as HTMLElement | null;
+      const perView = dispatcher?.shadowRoot?.firstElementChild as HTMLElement | null;
+      const value = perView?.shadowRoot?.querySelector<HTMLElement>('[data-testid="value"]');
+      if (!value) return [];
+      const tileRect = tile.getBoundingClientRect();
+      const valueRect = value.getBoundingClientRect();
+      return [{
+        tileWidth: tileRect.width,
+        valueWidth: valueRect.width,
+        text: value.textContent?.trim() ?? "",
+      }];
+    });
+  });
+  expect(probes.length).toBeGreaterThan(0);
+  // SPEC §17.116-followup-3 — tolerance covers sub-pixel rounding
+  // from the cqi / clamp arithmetic. 2px on a 1080p kiosk is ≈ 0.1 %
+  // of the viewport width, which is well below the "visible overflow"
+  // threshold the operator's eye picks up.
+  for (const probe of probes) {
+    expect(probe.tileWidth).toBeGreaterThan(0);
+    expect(probe.valueWidth).toBeGreaterThan(0);
+    expect(probe.valueWidth).toBeLessThanOrEqual(probe.tileWidth + 2);
+  }
+});
+
 Then("every child tile has a visible border", async ({ page }) => {
   // SPEC §17.17 — child tiles must be visually distinguishable from
   // each other; the border is one of the two cues (the other is the

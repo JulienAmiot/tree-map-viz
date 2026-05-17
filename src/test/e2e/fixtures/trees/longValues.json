@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "v4.0",
+  "root": {
+    "kind": "ComputedBusinessScoreNode",
+    "id": "Root",
+    "title": "Root",
+    "weight": 1,
+    "description": "Long-value fixture for SPEC §17.116-followup-3 (value font-size fits the tile width regardless of digit count).",
+    "range": { "kind": "lenient", "min": null, "max": null },
+    "objective": { "value": 1000000, "at": "2026-12-31T00:00:00.000Z" },
+    "computationKind": "SUM",
+    "unit": "EUR",
+    "children": [
+      {
+        "kind": "BusinessScoreNode",
+        "id": "WideValue",
+        "title": "WideValue",
+        "weight": 1,
+        "description": "Recorded BSC whose latest value renders as an 8-character glyph after the 2-decimal clamp; the §17.116-followup-3 width cap (160cqi / N) must shrink the font so the figure does not overflow the tile.",
+        "range": { "kind": "lenient", "min": null, "max": null },
+        "objective": { "value": 100000, "at": "2026-12-31T00:00:00.000Z" },
+        "unit": "EUR",
+        "history": [
+          { "value": 12345.6789, "at": "2026-04-30T00:00:00.000Z" }
+        ],
+        "children": []
+      },
+      {
+        "kind": "BusinessScoreNode",
+        "id": "WiderValue",
+        "title": "WiderValue",
+        "weight": 1,
+        "description": "Recorded BSC whose latest value renders as a 9-character glyph (negative sign + 7 digits + decimal).",
+        "range": { "kind": "lenient", "min": null, "max": null },
+        "objective": { "value": 100000, "at": "2026-12-31T00:00:00.000Z" },
+        "unit": "EUR",
+        "history": [
+          { "value": -987654.32, "at": "2026-04-30T00:00:00.000Z" }
+        ],
+        "children": []
+      }
+    ]
+  },
+  "cards": [
+    { "nodeId": "Root", "unit": "EUR" },
+    { "nodeId": "WideValue", "unit": "EUR" },
+    { "nodeId": "WiderValue", "unit": "EUR" }
+  ]
+}

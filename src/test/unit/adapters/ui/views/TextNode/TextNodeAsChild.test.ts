@@ -170,9 +170,20 @@ describe("<text-node-as-child>", () => {
     expect(cssText).toMatch(
       /\.timestamp\s*\{[\s\S]*?font-size:\s*1\.15vh/,
     );
-    // Value cqmin coefficient bumped from 36cqmin to 42cqmin.
+    // Value cqmin coefficient bumped from 36cqmin to 42cqmin (§17.46);
+    // §17.116-followup-3 nested the cqmin cap inside a min() with a
+    // per-character width cap (160cqi / max(2, var(--char-count, 2)))
+    // so long values shrink to fit the tile width. The 1.5rem floor +
+    // 22rem ceiling + 42cqmin height cap survive the followup-3
+    // change unchanged; we pin those three literals individually so a
+    // future tweak that drops any one of them out of the rule fails
+    // fast at test-time.
+    expect(cssText).toMatch(/\.value\s*\{[\s\S]*?font-size:\s*clamp\(/);
+    expect(cssText).toMatch(/\.value\s*\{[\s\S]*?42cqmin/);
+    expect(cssText).toMatch(/\.value\s*\{[\s\S]*?1\.5rem/);
+    expect(cssText).toMatch(/\.value\s*\{[\s\S]*?22rem/);
     expect(cssText).toMatch(
-      /\.value\s*\{[\s\S]*?font-size:\s*clamp\(\s*1\.5rem\s*,\s*42cqmin\s*,\s*22rem\s*\)/,
+      /\.value\s*\{[\s\S]*?160cqi\s*\/\s*max\(\s*2\s*,\s*var\(\s*--char-count/,
     );
   });
 });
