@@ -6,7 +6,7 @@ import {
   mostRecentChildDateIso,
 } from "../../../../domain/aggregation/currentValueDate.js";
 import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js";
-import { TextNodeV4 } from "../../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
 import { Objective } from "../../../../domain/values/Objective.js";
 import { LenientRange } from "../../../../domain/values/Range.js";
@@ -33,14 +33,14 @@ const buildBSC = (
   return node;
 };
 
-const buildText = (id: string, history: [string, string][] = []): TextNodeV4 => {
-  const node = new TextNodeV4(id, id, w, clock);
+const buildText = (id: string, history: [string, string][] = []): TextNode => {
+  const node = new TextNode(id, id, w, clock);
   for (const [iso, v] of history) node.addValue(T(iso), v);
   return node;
 };
 
 describe("currentValueDateIso (§17.89 — Phase B.1: v4-aware date helper, structural rule)", () => {
-  it("leaf TextNodeV4: returns most-recent entry's asOf as ISO", () => {
+  it("leaf TextNode: returns most-recent entry's asOf as ISO", () => {
     const text = buildText("t", [
       ["2026-01-01T00:00:00Z", "Q1"],
       ["2026-04-01T00:00:00Z", "Q2"],
@@ -60,7 +60,7 @@ describe("currentValueDateIso (§17.89 — Phase B.1: v4-aware date helper, stru
     expect(currentValueDateIso(buildBSC("empty"))).toBeNull();
   });
 
-  it("leaf TextNodeV4 with empty history: returns null", () => {
+  it("leaf TextNode with empty history: returns null", () => {
     expect(currentValueDateIso(buildText("empty"))).toBeNull();
   });
 
@@ -82,7 +82,7 @@ describe("currentValueDateIso (§17.89 — Phase B.1: v4-aware date helper, stru
     expect(currentValueDateIso(root)).toBe("2026-08-01T00:00:00.000Z");
   });
 
-  it("parent BSC with TextNodeV4 children: text children's dates also count toward the most-recent", () => {
+  it("parent BSC with TextNode children: text children's dates also count toward the most-recent", () => {
     const parent = buildBSC("p");
     parent.attach(buildBSC("num", [["2026-01-01T00:00:00Z", 10]]));
     parent.attach(buildText("note", [["2026-09-01T00:00:00Z", "later note"]]));

@@ -1,7 +1,7 @@
 {
 	"schemaVersion": "v4.0",
 	"root": {
-		"kind": "TextNodeV4",
+		"kind": "TextNode",
 		"id": "MD-ROOT",
 		"title": "Markdown demo",
 		"weight": 1,

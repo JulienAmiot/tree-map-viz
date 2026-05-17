@@ -36,7 +36,7 @@ import { HistorizableValueNode } from "./HistorizableValueNode.js";
  * `range1 === range2` iff both consumers got the same factory output).
  *
  * No v3 namesake — `RangedValueNode<T>` ships under its v4-final
- * name (no V4 suffix needed, unlike §17.74's `TextNodeV4`).
+ * name (no V4 suffix needed, unlike §17.74's `TextNode`).
  */
 export abstract class RangedValueNode<T> extends HistorizableValueNode<T> {
   protected constructor(

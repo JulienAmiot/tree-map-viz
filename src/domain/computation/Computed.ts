@@ -8,7 +8,7 @@ import type { ComputationKind } from "./ComputationKind.js";
  * `classDiagramMermaid.v5.mermaid`).
  *
  * Two concrete implementers ship in later strands: `ComputedNode<T>` (§17.97;
- * sibling of `TextNodeV4` / `RangedValueNode` under `HistorizableValueNode<T>`,
+ * sibling of `TextNode` / `RangedValueNode` under `HistorizableValueNode<T>`,
  * plain auto-derived value) and `ComputedBusinessScoreNode<T>` (§17.98;
  * extends `BusinessScoreNode<T>`, auto-derived value PLUS range + objective).
  * §17.94 D3 — the enum + the resolved strategy live on the interface (not

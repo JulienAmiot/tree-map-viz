@@ -1,7 +1,7 @@
 {
   "schemaVersion": "v4.0",
   "root": {
-    "kind": "TextNodeV4",
+    "kind": "TextNode",
     "id": "TXT-ROOT",
     "title": "Quarterly review",
     "weight": 1,
@@ -10,7 +10,7 @@
     ],
     "children": [
       {
-        "kind": "TextNodeV4",
+        "kind": "TextNode",
         "id": "TXT-A",
         "title": "Region",
         "weight": 1,
@@ -20,7 +20,7 @@
         "children": []
       },
       {
-        "kind": "TextNodeV4",
+        "kind": "TextNode",
         "id": "TXT-B",
         "title": "Bare",
         "weight": 1,

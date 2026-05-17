@@ -41,7 +41,7 @@ export type ComputedValueResult<T = unknown> =
  *     `childrenCount` with `n = 0`.
  *   - **Parent BSC** (has children): aggregate from eligible
  *     children. A child is **eligible** iff (a) it is a
- *     `RangedValueNode` (TextNodeV4 children never contribute —
+ *     `RangedValueNode` (TextNode children never contribute —
  *     text doesn't aggregate), AND (b) recursive
  *     `computedValue(child)` produces a finite number (either
  *     `recordedValue` with numeric `value`, or nested

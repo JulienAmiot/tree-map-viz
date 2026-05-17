@@ -12,7 +12,7 @@ import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
 import { StrictRangeNode } from "../../../domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { Tree } from "../../../domain/Tree.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
 
@@ -26,7 +26,7 @@ describe("showcaseSeedV4 (§17.109 — v4 showcase board)", () => {
     expect(board.name).toBe(SHOWCASE_BOARD_NAME_V4);
     expect(board.tree).toBeInstanceOf(Tree);
     expect(board.tree.root.id).toBe("showcase-root");
-    expect(board.tree.root).toBeInstanceOf(TextNodeV4);
+    expect(board.tree.root).toBeInstanceOf(TextNode);
   });
 
   it("preserves every v3-showcase stable ID (e2e fixture continuity) AND adds the round-7 demo subtree (activity / cpu-saturation / activity-incident)", () => {
@@ -39,7 +39,7 @@ describe("showcaseSeedV4 (§17.109 — v4 showcase board)", () => {
     for (const id of v3Ids) expect(tree.findById(id), `missing v3 id ${id}`).toBeDefined();
     expect(tree.findById("activity")).toBeInstanceOf(ComputedNode);
     expect(tree.findById("cpu-saturation")).toBeInstanceOf(StrictRangeNode);
-    expect(tree.findById("activity-incident")).toBeInstanceOf(TextNodeV4);
+    expect(tree.findById("activity-incident")).toBeInstanceOf(TextNode);
   });
 
   it("§17.99c polymorphic substitution lands first-class: engineering/sales/bench are ComputedBusinessScoreNode; product + sales children are plain BusinessScoreNode", () => {

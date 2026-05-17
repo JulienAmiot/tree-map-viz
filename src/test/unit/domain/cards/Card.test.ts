@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
-import { BusinessScoreCardV4 } from "../../../../domain/cards/BusinessScoreCardV4.js";
+import { BusinessScoreCard } from "../../../../domain/cards/BusinessScoreCard.js";
 import { Card } from "../../../../domain/cards/Card.js";
 import { StrictRangeCard } from "../../../../domain/cards/StrictRangeCard.js";
-import { TextCardV4 } from "../../../../domain/cards/TextCardV4.js";
+import { TextCard } from "../../../../domain/cards/TextCard.js";
 import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js";
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "../../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
 import { Objective } from "../../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../../domain/values/Range.js";
@@ -20,7 +20,7 @@ const clk = (iso: string): Clock => ({ now: () => T(iso) });
 const weight = Weight.of(1);
 const fixedClock = clk("2026-05-10T12:00:00Z");
 
-const buildText = (): TextNodeV4 => new TextNodeV4("t-1", "Title", weight, fixedClock);
+const buildText = (): TextNode => new TextNode("t-1", "Title", weight, fixedClock);
 const buildBSN = (): BusinessScoreNode<number> =>
   new BusinessScoreNode<number>(
     "b-1",
@@ -45,30 +45,30 @@ describe("Card hierarchy (§17.78 — v4 part 14: visual cards hosting v4 nodes)
   describe("abstract Card<N extends Node>", () => {
     it("can only be instantiated through a concrete subclass; node + getNode() expose the hosted node", () => {
       const txt = buildText();
-      const card = new TextCardV4(txt);
+      const card = new TextCard(txt);
       expect(card).toBeInstanceOf(Card);
       expect(card.node).toBe(txt);
       expect(card.getNode()).toBe(txt);
     });
   });
 
-  describe("TextCardV4 extends Card<TextNodeV4>", () => {
-    it("hosts a TextNodeV4 reference-equal to the constructor argument", () => {
+  describe("TextCard extends Card<TextNode>", () => {
+    it("hosts a TextNode reference-equal to the constructor argument", () => {
       const node = buildText();
-      const card = new TextCardV4(node);
-      expect(card).toBeInstanceOf(TextCardV4);
+      const card = new TextCard(node);
+      expect(card).toBeInstanceOf(TextCard);
       expect(card).toBeInstanceOf(Card);
       expect(card.getNode()).toBe(node);
-      expect(card.getNode()).toBeInstanceOf(TextNodeV4);
+      expect(card.getNode()).toBeInstanceOf(TextNode);
     });
   });
 
-  describe("BusinessScoreCardV4<T> extends Card<BusinessScoreNode<T>>", () => {
+  describe("BusinessScoreCard<T> extends Card<BusinessScoreNode<T>>", () => {
     it("hosts a BusinessScoreNode<T> + unit Unit VO accessible via getNode() and getUnit() (§17.100.5)", () => {
       const node = buildBSN();
       const unit = Unit.of("%");
-      const card = new BusinessScoreCardV4<number>(node, unit);
-      expect(card).toBeInstanceOf(BusinessScoreCardV4);
+      const card = new BusinessScoreCard<number>(node, unit);
+      expect(card).toBeInstanceOf(BusinessScoreCard);
       expect(card).toBeInstanceOf(Card);
       expect(card.getNode()).toBe(node);
       expect(card.getNode()).toBeInstanceOf(BusinessScoreNode);

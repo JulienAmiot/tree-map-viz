@@ -1,11 +1,11 @@
 import type { Clock } from "../domain/capabilities/Clock.js";
-import { BusinessScoreCardV4 } from "../domain/cards/BusinessScoreCardV4.js";
+import { BusinessScoreCard } from "../domain/cards/BusinessScoreCard.js";
 import { ComputationKind } from "../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../domain/nodes/ComputedNode.js";
 import { StrictRangeNode } from "../domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../domain/nodes/TextNode.js";
 import { Tree, type CardRegistry } from "../domain/Tree.js";
 import { NumericComparator } from "../domain/values/Comparator.js";
 import { Objective } from "../domain/values/Objective.js";
@@ -19,7 +19,7 @@ import { Weight } from "../domain/values/Weight.js";
  * "demo tree for development" role: a hand-built fixture exercising every
  * concrete node kind the v4 class diagram declares, plus the round-7 D2
  * Computed* additions (§17.97 `ComputedNode<T>` + §17.98
- * `ComputedBusinessScoreNode<T>`) and the §17.100.5 `BusinessScoreCardV4`
+ * `ComputedBusinessScoreNode<T>`) and the §17.100.5 `BusinessScoreCard`
  * sidecar so the §17.91 / §17.104b view-model mapper can render every
  * branch end-to-end without any v3 → v4 adaptation step.
  *
@@ -33,7 +33,7 @@ import { Weight } from "../domain/values/Weight.js";
  * count), CBSN branches into 2 BSN leaves carrying history + objective +
  * unit, ComputedNode branches into a StrictRangeNode + a TextNode (two
  * heterogeneous "events" the CountComputation tallies). One BSN gets a
- * matching `BusinessScoreCardV4` entry in the returned tree's
+ * matching `BusinessScoreCard` entry in the returned tree's
  * `CardRegistry` so the §17.100.5 card-based unit precedence is exercised
  * (the BSN's `unit` slot is set to a sentinel `"BSN-fallback"` the card
  * overrides with the v4 `Unit` value; the §17.91 mapper reads the card
@@ -55,7 +55,7 @@ export function buildSampleTreeV4(clock: Clock): Tree {
     NumericComparator.INSTANCE,
   );
 
-  const root = new TextNodeV4("org", "Organization", Weight.of(2), clock);
+  const root = new TextNode("org", "Organization", Weight.of(2), clock);
   root.addValue(t2, "Organization");
 
   const health = new ComputedBusinessScoreNode<number>(
@@ -91,12 +91,12 @@ export function buildSampleTreeV4(clock: Clock): Tree {
   saturation.addValue(t2, 70);
   activity.attach(saturation);
 
-  const note = new TextNodeV4("note", "Quarterly note", Weight.of(1), clock);
+  const note = new TextNode("note", "Quarterly note", Weight.of(1), clock);
   note.addValue(t2, "Q2 stable");
   activity.attach(note);
 
   const cards: CardRegistry = new Map([
-    ["sales", new BusinessScoreCardV4(sales, Unit.percent())],
+    ["sales", new BusinessScoreCard(sales, Unit.percent())],
   ]);
 
   return new Tree(root, cards);

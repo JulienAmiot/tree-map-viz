@@ -42,7 +42,7 @@
         "children": []
       },
       {
-        "kind": "TextNodeV4",
+        "kind": "TextNode",
         "id": "TEXT-INELIGIBLE",
         "title": "Just text",
         "weight": 1,

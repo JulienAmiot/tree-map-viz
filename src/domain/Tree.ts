@@ -1,4 +1,4 @@
-import type { BusinessScoreCardV4 } from "./cards/BusinessScoreCardV4.js";
+import type { BusinessScoreCard } from "./cards/BusinessScoreCard.js";
 import type { Node } from "./nodes/Node.js";
 
 /**
@@ -40,7 +40,7 @@ import type { Node } from "./nodes/Node.js";
  * `cards.get(node.id)?.getUnit()` first and fall back to the §17.91
  * legacy `BusinessScoreNode.unit` getter when the entry is absent.
  */
-export type CardRegistry = ReadonlyMap<string, BusinessScoreCardV4<unknown>>;
+export type CardRegistry = ReadonlyMap<string, BusinessScoreCard<unknown>>;
 
 export class Tree {
   static readonly EMPTY_CARDS: CardRegistry = new Map();

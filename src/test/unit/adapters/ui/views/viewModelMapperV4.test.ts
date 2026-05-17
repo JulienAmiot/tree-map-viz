@@ -6,14 +6,14 @@ import {
   ViewModelMappingErrorV4,
 } from "../../../../../adapters/ui/views/viewModelMapperV4.js";
 import type { Clock } from "../../../../../domain/capabilities/Clock.js";
-import { BusinessScoreCardV4 } from "../../../../../domain/cards/BusinessScoreCardV4.js";
+import { BusinessScoreCard } from "../../../../../domain/cards/BusinessScoreCard.js";
 import { ComputationKind } from "../../../../../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../../../../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../../../../../domain/nodes/ComputedNode.js";
 import { Node } from "../../../../../domain/nodes/Node.js";
 import { StrictRangeNode } from "../../../../../domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "../../../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../../../domain/nodes/TextNode.js";
 import { NumericComparator } from "../../../../../domain/values/Comparator.js";
 import { Objective } from "../../../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../../../domain/values/Range.js";
@@ -65,14 +65,14 @@ const buildBSC = (
 const buildText = (
   id: string,
   options: { title?: string; weight?: number; history?: [string, string][] } = {},
-): TextNodeV4 => {
-  const node = new TextNodeV4(id, options.title ?? id, w(options.weight ?? 1), clock);
+): TextNode => {
+  const node = new TextNode(id, options.title ?? id, w(options.weight ?? 1), clock);
   for (const [iso, v] of options.history ?? []) node.addValue(T(iso), v);
   return node;
 };
 
 describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)", () => {
-  describe("mapNodeToViewModelV4 — TextNodeV4 branch", () => {
+  describe("mapNodeToViewModelV4 — TextNode branch", () => {
     it("maps id/title and the latest history entry's value + ISO date", () => {
       const text = buildText("t1", {
         title: "Sales notes",
@@ -125,7 +125,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       });
     });
 
-    it("description on TextNodeV4-style getDescription override is respected (mirrors v3 §17.15 indirectly)", () => {
+    it("description on TextNode-style getDescription override is respected (mirrors v3 §17.15 indirectly)", () => {
       const bsc = buildBSC("b", { description: "from-field" });
       const vm = mapNodeToViewModelV4(bsc);
       if (vm.kind !== "BusinessScoreCardNode") throw new Error("expected BSC");
@@ -226,7 +226,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
   });
 
   describe("error path", () => {
-    it("throws ViewModelMappingErrorV4 on a v4 Node that is neither TextNodeV4 nor RangedValueNode", () => {
+    it("throws ViewModelMappingErrorV4 on a v4 Node that is neither TextNode nor RangedValueNode", () => {
       class StubNode extends Node {
         constructor() {
           super("stub", "Stub", w(1));
@@ -345,7 +345,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
         { objective: obj(), initialKind: ComputationKind.SUM, unit: "old" },
       );
       cbsn.attach(buildBSC("c1", { history: [["2026-04-01T00:00:00Z", 5]] }));
-      const cards = new Map([["cbsn", new BusinessScoreCardV4(cbsn as unknown as BusinessScoreNode<number>, Unit.of("kg"))]]);
+      const cards = new Map([["cbsn", new BusinessScoreCard(cbsn as unknown as BusinessScoreNode<number>, Unit.of("kg"))]]);
       const vm = mapNodeToViewModelV4(cbsn, { cards });
       if (vm.kind !== "ComputedBusinessScoreNode" || vm.value.kind !== "numeric") throw new Error();
       expect(vm.value.unit).toBe("kg");
@@ -359,7 +359,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
         unit: "old-bsn-unit",
         history: [["2026-04-01T00:00:00Z", 42]],
       });
-      const cards = new Map([["b", new BusinessScoreCardV4(node, Unit.of("$"))]]);
+      const cards = new Map([["b", new BusinessScoreCard(node, Unit.of("$"))]]);
       const vm = mapNodeToViewModelV4(node, { cards });
       if (vm.kind !== "BusinessScoreCardNode") throw new Error();
       if (vm.value.kind !== "recordedValue") throw new Error();
@@ -382,8 +382,8 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       const center = buildBSC("p", { unit: "old" });
       const child = buildBSC("c", { unit: "old-child", history: [["2026-04-01T00:00:00Z", 5]] });
       const cards = new Map([
-        ["p", new BusinessScoreCardV4(center, Unit.of("kg"))],
-        ["c", new BusinessScoreCardV4(child, Unit.of("g"))],
+        ["p", new BusinessScoreCard(center, Unit.of("kg"))],
+        ["c", new BusinessScoreCard(child, Unit.of("g"))],
       ]);
       const focused = mapFocusedToViewModelV4(center, [child], { cards });
       if (focused.center.kind !== "BusinessScoreCardNode") throw new Error();

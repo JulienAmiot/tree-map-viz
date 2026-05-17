@@ -11,20 +11,20 @@ import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
 import { StrictRangeNode } from "../../../domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
 import { Weight } from "../../../domain/values/Weight.js";
 
 const clock: Clock = { now: () => Timestamp.of(new Date("2026-05-16T10:00:00Z")) };
-const makeRoot = (id = "root"): TextNodeV4 =>
-  new TextNodeV4(id, "Root", Weight.of(1), clock);
+const makeRoot = (id = "root"): TextNode =>
+  new TextNode(id, "Root", Weight.of(1), clock);
 const sequentialIdGen = (prefix = "uuid"): IdGenerator => {
   let n = 0;
   return () => `${prefix}-${++n}`;
 };
-const fillToCap = (parent: TextNodeV4): void => {
+const fillToCap = (parent: TextNode): void => {
   for (let i = 0; i < MAX_CHILDREN; i++) {
-    parent.attach(new TextNodeV4(`existing-${i}`, `E-${i}`, Weight.of(1), clock));
+    parent.attach(new TextNode(`existing-${i}`, `E-${i}`, Weight.of(1), clock));
   }
 };
 
@@ -62,19 +62,19 @@ describe("AddChildServiceV4 (§17.100a — Phase C skeleton + 2 v3-compat kinds)
     });
     expect(r1.ok).toBe(true);
     if (r1.ok) {
-      expect(r1.child).toBeInstanceOf(TextNodeV4);
+      expect(r1.child).toBeInstanceOf(TextNode);
       expect(r1.child.id).toBe("uuid-1");
       expect(r1.child.title).toBe("Notes");
       expect(r1.child.parent).toBe(parent);
-      expect((r1.child as TextNodeV4).getValue()).toBe("newest");
-      expect((r1.child as TextNodeV4).entries()).toHaveLength(2);
+      expect((r1.child as TextNode).getValue()).toBe("newest");
+      expect((r1.child as TextNode).entries()).toHaveLength(2);
     }
 
     const r2 = await svc.addChild(parent, { kind: "TextNode", title: "Quick" });
     expect(r2.ok).toBe(true);
     if (r2.ok) {
       expect(r2.child.weight.value).toBe(1);
-      expect((r2.child as TextNodeV4).entries()).toHaveLength(0);
+      expect((r2.child as TextNode).entries()).toHaveLength(0);
     }
     expect(parent.children).toHaveLength(2);
     expect(persist).toHaveBeenCalledTimes(2);

@@ -97,7 +97,7 @@ import { ComputedBusinessScoreNode } from "./domain/nodes/ComputedBusinessScoreN
 import { ComputedNode } from "./domain/nodes/ComputedNode.js";
 import type { Node } from "./domain/nodes/Node.js";
 import { StrictRangeNode } from "./domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "./domain/nodes/TextNodeV4.js";
+import { TextNode } from "./domain/nodes/TextNode.js";
 import { Tree } from "./domain/Tree.js";
 import { Timestamp } from "./domain/values/Timestamp.js";
 import { Weight } from "./domain/values/Weight.js";
@@ -447,7 +447,7 @@ function computeBreadcrumb(tree: Tree, focusedId: string): readonly BreadcrumbSe
  * modal in a follow-on strand.
  */
 function buildEditTarget(node: Node): EditNodeTarget | null {
-  if (node instanceof TextNodeV4) {
+  if (node instanceof TextNode) {
     return { nodeId: node.id, kind: "TextNode", title: node.title, weight: node.weight.value };
   }
   if (node instanceof BusinessScoreNode && !(node instanceof ComputedBusinessScoreNode)) {
@@ -484,7 +484,7 @@ function computedKindFor(node: Node): "Computed" | "ComputedBusinessScore" | nul
  * three round-7 leaf kinds the inline UIs don't surface yet).
  */
 function inferV4Kind(node: Node): EditNodePayloadV4["kind"] | null {
-  if (node instanceof TextNodeV4) return "TextNode";
+  if (node instanceof TextNode) return "TextNode";
   if (node instanceof ComputedBusinessScoreNode) return "ComputedBusinessScore";
   if (node instanceof BusinessScoreNode) return "BusinessScore";
   if (node instanceof StrictRangeNode) return "StrictRange";
@@ -504,13 +504,13 @@ function exportFileName(boardName: string): string {
 
 /**
  * SPEC §17.110 — v4 successor to the v3 `makeNewBoardSeedTree`.
- * Seeds a fresh board with a single `TextNodeV4` root titled with
+ * Seeds a fresh board with a single `TextNode` root titled with
  * the board's name and one history entry stamped "now" so the
  * focused-panel view has a value to render on day one.
  */
 function makeNewBoardSeedTree(boardName: string, idGen: () => string, clock: Clock): Tree {
   const trimmed = boardName.trim() || "New board";
-  const root = new TextNodeV4(idGen(), trimmed, Weight.of(1), clock);
+  const root = new TextNode(idGen(), trimmed, Weight.of(1), clock);
   root.addValue(clock.now(), `Welcome to **${trimmed}**.`);
   return new Tree(root);
 }

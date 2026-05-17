@@ -7,7 +7,7 @@ import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
 import { StrictRangeNode } from "../../../domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
 
 const NOW = new Date("2026-05-16T00:00:00Z");
@@ -20,13 +20,13 @@ describe("sampleDataV4 (§17.108 — v4 fixture builder)", () => {
     expect(ids).toEqual(["org", "health", "sales", "ops", "activity", "cpu", "note"]);
 
     const byId = (id: string) => tree.findById(id);
-    expect(byId("org")).toBeInstanceOf(TextNodeV4);
+    expect(byId("org")).toBeInstanceOf(TextNode);
     expect(byId("health")).toBeInstanceOf(ComputedBusinessScoreNode);
     expect(byId("sales")).toBeInstanceOf(BusinessScoreNode);
     expect(byId("ops")).toBeInstanceOf(BusinessScoreNode);
     expect(byId("activity")).toBeInstanceOf(ComputedNode);
     expect(byId("cpu")).toBeInstanceOf(StrictRangeNode);
-    expect(byId("note")).toBeInstanceOf(TextNodeV4);
+    expect(byId("note")).toBeInstanceOf(TextNode);
 
     expect(tree.cards.has("sales")).toBe(true);
     expect(tree.cards.get("sales")?.getUnit().value).toBe("%");

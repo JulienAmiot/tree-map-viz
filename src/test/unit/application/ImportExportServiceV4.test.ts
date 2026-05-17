@@ -3,13 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ImportExportServiceV4 } from "../../../application/ImportExportServiceV4.js";
 import type { TreeCodecV4 } from "../../../application/ports/TreeCodecV4.js";
 import type { Clock } from "../../../domain/capabilities/Clock.js";
-import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { Tree } from "../../../domain/Tree.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
 import { Weight } from "../../../domain/values/Weight.js";
 
 const clock: Clock = { now: () => Timestamp.of(new Date("2026-05-16T16:00:00Z")) };
-const freshTree = (rootId: string): Tree => new Tree(new TextNodeV4(rootId, "Root", Weight.of(1), clock));
+const freshTree = (rootId: string): Tree => new Tree(new TextNode(rootId, "Root", Weight.of(1), clock));
 
 const inMemoryCodec = (decodeMap: Record<string, Tree>): TreeCodecV4 => ({
   encode: vi.fn((tree: Tree) => JSON.stringify({ id: tree.root.id })),

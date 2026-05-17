@@ -4,17 +4,10 @@ import type { Weight } from "../values/Weight.js";
 import { HistorizableValueNode } from "./HistorizableValueNode.js";
 
 /**
- * `TextNodeV4` — v4 concrete text-typed node (SPEC §17.74; mirrors
- * `class TextNode { +getValue() String }` in the v4 class diagram, with
- * `HistorizableValueNode~T~ <|-- TextNode` binding `T = string`). The
- * v4 successor to v3's `TextNode` (`src/domain/nodes/TextNode.ts`).
- *
- * The class name carries a temporary `V4` suffix because v3's
- * `TextNode` already owns the `TextNode` filename + class name and the
- * strict-additive precedent from §17.72 / §17.73 forbids touching v3
- * files. The suffix drops at the eventual v3-retirement strand (a
- * single rename + import-path updates change, no logic delta). The
- * v4 diagram's authoritative class name is `TextNode`.
+ * `TextNode` — v4 concrete text-typed node (SPEC §17.74 / §17.114b;
+ * mirrors `class TextNode { +getValue() String }` in the v4 class
+ * diagram, with `HistorizableValueNode~T~ <|-- TextNode` binding
+ * `T = string`). v3's same-name class retired at §17.112 Phase F.
  *
  * Two structural traits per the diagram:
  *
@@ -40,7 +33,7 @@ import { HistorizableValueNode } from "./HistorizableValueNode.js";
  *     viewModelMapper) call `node.getDescription()` uniformly without
  *     branching on node kind. The `_description` field inherited from
  *     `ValueNode<string>` (§17.72) stays empty by convention for
- *     TextNodeV4 instances; the constructor accepts only id / title
+ *     TextNode instances; the constructor accepts only id / title
  *     / weight / clock — description is hard-wired to `""`.
  *
  * Because `getDescription()` ignores the parent's `_description`
@@ -48,11 +41,11 @@ import { HistorizableValueNode } from "./HistorizableValueNode.js";
  * passing one would be misleading (the field is shadowed by the
  * override anyway). `setDescription()` inherited from ValueNode
  * stays accessible for completeness but has no rendering effect on
- * a TextNodeV4; this is the v4-correct shape (the diagram's
+ * a TextNode; this is the v4-correct shape (the diagram's
  * `<|-- TextNode` arrow doesn't introduce a description field on
  * TextNode itself).
  */
-export class TextNodeV4 extends HistorizableValueNode<string> {
+export class TextNode extends HistorizableValueNode<string> {
   constructor(id: string, title: string, weight: Weight, clock: Clock) {
     super(id, title, weight, "", clock);
   }

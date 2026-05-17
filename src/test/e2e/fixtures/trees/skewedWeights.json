@@ -1,14 +1,14 @@
 {
   "schemaVersion": "v4.0",
   "root": {
-    "kind": "TextNodeV4",
+    "kind": "TextNode",
     "id": "skewed-root",
     "title": "Skewed weights",
     "weight": 1,
     "history": [],
     "children": [
       {
-        "kind": "TextNodeV4",
+        "kind": "TextNode",
         "id": "heavy",
         "title": "Heavy",
         "weight": 10,
@@ -16,7 +16,7 @@
         "children": []
       },
       {
-        "kind": "TextNodeV4",
+        "kind": "TextNode",
         "id": "light1",
         "title": "Light 1",
         "weight": 1,
@@ -24,7 +24,7 @@
         "children": []
       },
       {
-        "kind": "TextNodeV4",
+        "kind": "TextNode",
         "id": "light2",
         "title": "Light 2",
         "weight": 1,
@@ -32,7 +32,7 @@
         "children": []
       },
       {
-        "kind": "TextNodeV4",
+        "kind": "TextNode",
         "id": "light3",
         "title": "Light 3",
         "weight": 1,

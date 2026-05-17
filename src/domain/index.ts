@@ -47,15 +47,15 @@ export { EmptyChildrenError } from "./computation/EmptyChildrenError.js";
 export { ComputationOverrideError } from "./computation/ComputationOverrideError.js";
 
 export { Card } from "./cards/Card.js";
-export { BusinessScoreCardV4 } from "./cards/BusinessScoreCardV4.js";
-export { TextCardV4 } from "./cards/TextCardV4.js";
+export { BusinessScoreCard } from "./cards/BusinessScoreCard.js";
+export { TextCard } from "./cards/TextCard.js";
 export { StrictRangeCard } from "./cards/StrictRangeCard.js";
 
 export { Node } from "./nodes/Node.js";
 export { ValueNode } from "./nodes/ValueNode.js";
 export { HistorizableValueNode, TimestampNotFoundError } from "./nodes/HistorizableValueNode.js";
 export { RangedValueNode } from "./nodes/RangedValueNode.js";
-export { TextNodeV4 } from "./nodes/TextNodeV4.js";
+export { TextNode } from "./nodes/TextNode.js";
 export { BusinessScoreNode } from "./nodes/BusinessScoreNode.js";
 export { StrictRangeNode } from "./nodes/StrictRangeNode.js";
 export { ComputedNode } from "./nodes/ComputedNode.js";

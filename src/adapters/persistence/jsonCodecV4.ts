@@ -1,13 +1,13 @@
 import type { TreeCodecV4 } from "../../application/ports/TreeCodecV4.js";
 import type { Clock } from "../../domain/capabilities/Clock.js";
-import { BusinessScoreCardV4 } from "../../domain/cards/BusinessScoreCardV4.js";
+import { BusinessScoreCard } from "../../domain/cards/BusinessScoreCard.js";
 import { ComputationKind } from "../../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../../domain/nodes/ComputedNode.js";
 import type { Node } from "../../domain/nodes/Node.js";
 import { StrictRangeNode } from "../../domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../domain/nodes/TextNode.js";
 import type { ValueNode } from "../../domain/nodes/ValueNode.js";
 import { Tree } from "../../domain/Tree.js";
 import { NumericComparator } from "../../domain/values/Comparator.js";
@@ -62,7 +62,7 @@ export function createJsonCodecV4(clock: Clock): TreeCodecV4 {
 // — Encode walker (§17.106a) — //
 
 function encodeNode(node: Node): Record<string, unknown> {
-  if (node instanceof TextNodeV4) return encodeTextNode(node);
+  if (node instanceof TextNode) return encodeTextNode(node);
   if (node instanceof ComputedBusinessScoreNode) return encodeCBSN(node);
   if (node instanceof BusinessScoreNode) return encodeBSN(node);
   if (node instanceof ComputedNode) return encodeCN(node);
@@ -70,7 +70,7 @@ function encodeNode(node: Node): Record<string, unknown> {
   throw new JsonCodecV4EncodeError(`unsupported v4 Node subclass "${node.constructor.name}" (id="${node.id}")`);
 }
 
-function commonFields(node: TextNodeV4 | BusinessScoreNode<number> | ComputedNode<unknown> | StrictRangeNode<number>): Record<string, unknown> {
+function commonFields(node: TextNode | BusinessScoreNode<number> | ComputedNode<unknown> | StrictRangeNode<number>): Record<string, unknown> {
   const out: Record<string, unknown> = {
     id: node.id,
     title: node.title,
@@ -81,9 +81,9 @@ function commonFields(node: TextNodeV4 | BusinessScoreNode<number> | ComputedNod
   return out;
 }
 
-function encodeTextNode(node: TextNodeV4): Record<string, unknown> {
+function encodeTextNode(node: TextNode): Record<string, unknown> {
   return {
-    kind: "TextNodeV4",
+    kind: "TextNode",
     ...commonFields(node),
     history: node.entries().map((tv) => ({ value: tv.value, at: tv.asOf.moment.toISOString() })),
   };
@@ -145,7 +145,7 @@ function encodeRange(
   };
 }
 
-function encodeCards(cards: ReadonlyMap<string, BusinessScoreCardV4<unknown>>): Record<string, unknown>[] {
+function encodeCards(cards: ReadonlyMap<string, BusinessScoreCard<unknown>>): Record<string, unknown>[] {
   const out: Record<string, unknown>[] = [];
   for (const [nodeId, card] of cards) {
     out.push({ nodeId, unit: card.getUnit().value });
@@ -170,8 +170,8 @@ function decodeNode(raw: unknown, p: string, clock: Clock): Node {
   const title = requireString(obj, "title", p);
   const w = Weight.of(requireNumber(obj, "weight", p));
   let node: ValueNode<unknown>;
-  if (kind === "TextNodeV4") {
-    const t = new TextNodeV4(id, title, w, clock);
+  if (kind === "TextNode") {
+    const t = new TextNode(id, title, w, clock);
     for (const h of decodeHistory(obj, p, "string")) t.addValue(h.at, h.value as string);
     node = t;
   } else if (kind === "BusinessScoreNode") {
@@ -252,15 +252,15 @@ function decodeComputationKind(obj: Record<string, unknown>, p: string): Computa
   return resolved;
 }
 
-function decodeCards(rawList: unknown[], root: Node, p: string): ReadonlyMap<string, BusinessScoreCardV4<unknown>> {
-  const out = new Map<string, BusinessScoreCardV4<unknown>>();
+function decodeCards(rawList: unknown[], root: Node, p: string): ReadonlyMap<string, BusinessScoreCard<unknown>> {
+  const out = new Map<string, BusinessScoreCard<unknown>>();
   rawList.forEach((entry, i) => {
     const ip = joinPointer(p, String(i));
     const e = requireObject(entry, ip);
     const nodeId = requireString(e, "nodeId", ip);
     const node = findById(root, nodeId);
     if (!(node instanceof BusinessScoreNode)) throw new JsonCodecV4DecodeError(joinPointer(ip, "nodeId"), `no BusinessScoreNode (or subclass) found with id "${nodeId}"`);
-    out.set(nodeId, new BusinessScoreCardV4(node, Unit.of(requireString(e, "unit", ip))));
+    out.set(nodeId, new BusinessScoreCard(node, Unit.of(requireString(e, "unit", ip))));
   });
   return out;
 }
