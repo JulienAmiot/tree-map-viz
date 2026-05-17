@@ -5,14 +5,22 @@
  * into application services. Layered import contract: this file is the
  * single allowed bridge from `domain` + `application` to `adapters`.
  *
- * §17.110 Phase E cutover — every wiring slot now constructs the v4
+ * §17.110 Phase E cutover — every wiring slot constructs the v4
  * successor: `LocalStorageBoardCollectionRepositoryV4` over the
  * §17.106 `createJsonCodecV4`-built codec, `BoardCollectionServiceV4`,
  * `TreeNavigationServiceV4` (v4 `Tree` over the board's root),
  * `AddChildServiceV4` + `EditNodeServiceV4` (`Clock`-injected per
- * §17.100a/§17.101a), `ImportExportServiceV4`. The §17.88 per-refresh
- * `v4TreeFromV3Root` bridge is gone — the v4 nav already returns a
- * `Tree` whose nodes feed `mapFocusedToViewModelV4` directly.
+ * §17.100a/§17.101a), `ImportExportServiceV4`.
+ *
+ * §17.112 Phase F v3 sweep — the v3 codec + bridge + nodes + cards +
+ * VOs + capabilities + services + ports + adapters are all gone. The
+ * §17.110 `codecWithV3Fallback` testBridge wrapper retires alongside
+ * the LSR's v3-fallback decode shim (the §17.107 silent-migration
+ * window closed: any operator install that booted a §17.110+ build
+ * has already re-emitted its persisted envelope as `v: 2` v4-native).
+ * Pre-§17.110 `v: 1` envelopes now surface a clean load error; e2e
+ * fixtures under `src/test/e2e/fixtures/trees/*.json` are converted
+ * to the v4 wire envelope shape in this same strand.
  *
  * **Modal payload translation shims** — `EditNodeModal` / `AddChildModal`
  * still emit v3-shaped payloads (the v4-native modal migration is a
@@ -22,29 +30,25 @@
  * `ComputationKind.AVERAGE` per the §17.99c migration choice) and the
  * objective shape (`{initialValue, targetValue, targetDate}` →
  * `{value: targetValue, at: targetDate}`; `initialValue` becomes the
- * `initialHistory` seed on Add when absent).
+ * `initialHistory` seed on Add when absent). The two payload types
+ * (`AddChildPayload`, `EditNodePayload`) moved from the (deleted)
+ * v3 application services into the modal files themselves in this
+ * strand — adapter-owned outbound contracts, no application reach.
  *
  * **`computation-kind-change` wiring** — §17.104 `<computed-card>` /
  * `<computed-business-score-card>` dispatch this event on the
  * dropdown's `change`; the handler routes to
  * `EditNodeServiceV4.editFields` with `{ computationKind: ... }`
  * resolved through `ComputationKind.fromName`.
- *
- * **§17.86 version-mismatch + §17.86b read-only banner** removed —
- * the v4 LSR (§17.107) deliberately deferred those features; if a
- * future operator runtime needs them they port back in a follow-on
- * strand. **e2e test bridge** — `testBridge` wraps the v4 codec with
- * a v3-fallback decode so the existing v3-shaped fixtures under
- * `src/test/e2e/fixtures/trees/*.json` keep round-tripping until they
- * are re-written in v4 wire.
  */
 
 import { LocalStorageBoardCollectionRepositoryV4 } from "./adapters/persistence/LocalStorageBoardCollectionRepositoryV4.js";
-import { decode as decodeV3 } from "./adapters/persistence/jsonCodec.js";
-import { createJsonCodecV4, JsonCodecV4DecodeError } from "./adapters/persistence/jsonCodecV4.js";
+import { createJsonCodecV4 } from "./adapters/persistence/jsonCodecV4.js";
 import { HashRouter } from "./adapters/routing/HashRouter.js";
-import type { AddChildConfirmDetail } from "./adapters/ui/modal/AddChildModal.js";
-import type { AddChildPayload } from "./application/AddChildService.js";
+import type {
+  AddChildConfirmDetail,
+  AddChildPayload,
+} from "./adapters/ui/modal/AddChildModal.js";
 import type {
   BoardSettingsConfirmDetail,
   BoardSettingsDeleteDetail,
@@ -55,9 +59,9 @@ import type {
 } from "./adapters/ui/modal/BoardsPanelModal.js";
 import type {
   EditNodeConfirmDetail,
+  EditNodePayload,
   EditNodeTarget,
 } from "./adapters/ui/modal/EditNodeModal.js";
-import type { EditNodePayload } from "./application/EditNodeService.js";
 import type {
   BreadcrumbNavigateDetail,
   BreadcrumbSegment,
@@ -86,7 +90,6 @@ import {
 } from "./application/EditNodeServiceV4.js";
 import { ImportExportServiceV4 } from "./application/ImportExportServiceV4.js";
 import { TreeNavigationServiceV4 } from "./application/TreeNavigationServiceV4.js";
-import type { TreeCodecV4 } from "./application/ports/TreeCodecV4.js";
 import type { Clock } from "./domain/capabilities/Clock.js";
 import { ComputationKind } from "./domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "./domain/nodes/BusinessScoreNode.js";
@@ -96,7 +99,6 @@ import type { Node } from "./domain/nodes/Node.js";
 import { StrictRangeNode } from "./domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "./domain/nodes/TextNodeV4.js";
 import { Tree } from "./domain/Tree.js";
-import { v4TreeFromV3Root } from "./domain/v3Bridge/v4TreeFromV3Root.js";
 import { Timestamp } from "./domain/values/Timestamp.js";
 import { Weight } from "./domain/values/Weight.js";
 import "./index.css";
@@ -421,28 +423,8 @@ async function main(): Promise<void> {
 
   if (new URL(window.location.href).searchParams.get("test") === "1") {
     const { installTestBridge } = await import("./adapters/testBridge.js");
-    installTestBridge(window, { repo, codec: codecWithV3Fallback(codec, clock), router });
+    installTestBridge(window, { repo, codec, router });
   }
-}
-
-/**
- * SPEC §17.110 — wrap the strict v4 codec with a v3-fallback decode
- * for the testBridge so legacy v3-shape fixtures under
- * `src/test/e2e/fixtures/trees/*.json` keep round-tripping. Same
- * one-way fallback as the §17.107 LSR adapter: decode v3 → bridge
- * to v4 Tree. Encode is always v4-native.
- */
-function codecWithV3Fallback(codec: TreeCodecV4, clock: Clock): TreeCodecV4 {
-  return {
-    encode: (tree) => codec.encode(tree),
-    decode: (text) => {
-      try { return codec.decode(text); }
-      catch (err) {
-        if (err instanceof JsonCodecV4DecodeError) return v4TreeFromV3Root(decodeV3(text), clock);
-        throw err;
-      }
-    },
-  };
 }
 
 function computeBreadcrumb(tree: Tree, focusedId: string): readonly BreadcrumbSegment[] {

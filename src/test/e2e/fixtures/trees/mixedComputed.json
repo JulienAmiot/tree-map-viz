@@ -1,82 +1,76 @@
 {
-  "nodeType": "BusinessScoreCard",
-  "id": "Root",
-  "title": "Root",
-  "description": "Computed root",
-  "targetValue": 100,
-  "minimalValue": 0,
-  "unit": "%",
-  "historizedValues": [
-    { "value": 1, "date": "2026-04-22T18:25:43.511Z" }
-  ],
-  "computed": true,
-  "eligibleForParentComputation": false,
-  "weight": 1,
-  "childrenNodes": [
-    {
-      "nodeType": "BusinessScoreCard",
-      "id": "ChildA",
-      "title": "ChildA",
-      "description": "Computed branch",
-      "targetValue": 100,
-      "minimalValue": 0,
-      "unit": "%",
-      "historizedValues": [
-        { "value": 100, "date": "2026-04-22T18:25:43.511Z" }
-      ],
-      "computed": true,
-      "eligibleForParentComputation": true,
-      "weight": 1,
-      "childrenNodes": [
-        {
-          "nodeType": "BusinessScoreCard",
-          "id": "GrandLeaf",
-          "title": "GrandLeaf",
-          "description": "Recorded grandchild",
-          "targetValue": 100,
-          "minimalValue": 0,
-          "unit": "%",
-          "historizedValues": [
-            { "value": 80, "date": "2026-04-22T18:25:43.511Z" }
-          ],
-          "computed": false,
-          "eligibleForParentComputation": true,
-          "weight": 1,
-          "childrenNodes": []
-        }
-      ]
-    },
-    {
-      "nodeType": "BusinessScoreCard",
-      "id": "ChildB",
-      "title": "ChildB",
-      "description": "Recorded child",
-      "targetValue": 100,
-      "minimalValue": 0,
-      "unit": "%",
-      "historizedValues": [
-        { "value": 60, "date": "2026-04-22T18:25:43.511Z" }
-      ],
-      "computed": false,
-      "eligibleForParentComputation": true,
-      "weight": 1,
-      "childrenNodes": []
-    },
-    {
-      "nodeType": "BusinessScoreCard",
-      "id": "EmptyLeaf",
-      "title": "EmptyLeaf",
-      "description": "Computed leaf with no children",
-      "targetValue": 100,
-      "minimalValue": 0,
-      "unit": "%",
-      "historizedValues": [
-        { "value": 0, "date": "2026-04-22T18:25:43.511Z" }
-      ],
-      "computed": true,
-      "eligibleForParentComputation": false,
-      "weight": 1,
-      "childrenNodes": []
-    }
+  "schemaVersion": "v4.0",
+  "root": {
+    "kind": "ComputedBusinessScoreNode",
+    "id": "Root",
+    "title": "Root",
+    "weight": 1,
+    "description": "Computed root",
+    "range": { "kind": "lenient", "min": null, "max": null },
+    "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+    "computationKind": "WEIGHTED_AVERAGE",
+    "unit": "%",
+    "children": [
+      {
+        "kind": "ComputedBusinessScoreNode",
+        "id": "ChildA",
+        "title": "ChildA",
+        "weight": 1,
+        "description": "Computed branch",
+        "range": { "kind": "lenient", "min": null, "max": null },
+        "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+        "computationKind": "WEIGHTED_AVERAGE",
+        "unit": "%",
+        "children": [
+          {
+            "kind": "BusinessScoreNode",
+            "id": "GrandLeaf",
+            "title": "GrandLeaf",
+            "weight": 1,
+            "description": "Recorded grandchild",
+            "range": { "kind": "lenient", "min": null, "max": null },
+            "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+            "unit": "%",
+            "history": [
+              { "value": 80, "at": "2026-04-22T18:25:43.511Z" }
+            ],
+            "children": []
+          }
+        ]
+      },
+      {
+        "kind": "BusinessScoreNode",
+        "id": "ChildB",
+        "title": "ChildB",
+        "weight": 1,
+        "description": "Recorded child",
+        "range": { "kind": "lenient", "min": null, "max": null },
+        "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+        "unit": "%",
+        "history": [
+          { "value": 60, "at": "2026-04-22T18:25:43.511Z" }
+        ],
+        "children": []
+      },
+      {
+        "kind": "ComputedBusinessScoreNode",
+        "id": "EmptyLeaf",
+        "title": "EmptyLeaf",
+        "weight": 1,
+        "description": "Computed leaf with no children",
+        "range": { "kind": "lenient", "min": null, "max": null },
+        "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+        "computationKind": "WEIGHTED_AVERAGE",
+        "unit": "%",
+        "children": []
+      }
+    ]
+  },
+  "cards": [
+    { "nodeId": "Root", "unit": "%" },
+    { "nodeId": "ChildA", "unit": "%" },
+    { "nodeId": "GrandLeaf", "unit": "%" },
+    { "nodeId": "ChildB", "unit": "%" },
+    { "nodeId": "EmptyLeaf", "unit": "%" }
   ]
 }

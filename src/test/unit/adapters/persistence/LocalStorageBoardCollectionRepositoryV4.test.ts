@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { encode as encodeV3 } from "../../../../adapters/persistence/jsonCodec.js";
 import { createJsonCodecV4 } from "../../../../adapters/persistence/jsonCodecV4.js";
 import {
   LocalStorageBoardCollectionRepositoryV4,
@@ -8,11 +7,9 @@ import {
   StorageFullErrorV4,
 } from "../../../../adapters/persistence/LocalStorageBoardCollectionRepositoryV4.js";
 import { buildSampleTreeV4 } from "../../../../adapters/sampleDataV4.js";
-import { buildShowcaseBoard } from "../../../../adapters/showcaseSeed.js";
 import { SHOWCASE_BOARD_ID_V4 } from "../../../../adapters/showcaseSeedV4.js";
 import type { BoardCollectionSnapshotV4, BoardV4 } from "../../../../application/ports/BoardCollectionRepositoryV4.js";
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
-import { ComputedBusinessScoreNode } from "../../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { Timestamp } from "../../../../domain/values/Timestamp.js";
 
 const NOW = new Date("2026-05-17T00:00:00Z");
@@ -69,24 +66,15 @@ describe("LocalStorageBoardCollectionRepositoryV4 (§17.107)", () => {
     expect([...roundtripped.cards.keys()].sort()).toEqual([...original.cards.keys()].sort());
   });
 
-  it("v3-fallback shim: a v:1 envelope (v3-shape trees) loads through v3 jsonCodec + v4TreeFromV3Root bridge — §17.99c polymorphic substitution lifts `computed:true` BSCs to ComputedBusinessScoreNode + next save re-emits as v:2 v4-native", async () => {
-    const v3Board = buildShowcaseBoard(NOW);
+  it("§17.112 v3 sweep: a v:1 envelope (pre-§17.110 cutover wire) surfaces a clean unsupported-version error — the v3-fallback shim retired with the v3 source files", async () => {
     const legacyEnvelope = {
       v: 1,
-      currentBoardId: v3Board.id,
-      boards: [{ id: v3Board.id, name: v3Board.name, tree: JSON.parse(encodeV3(v3Board.tree)) as unknown }],
+      currentBoardId: "any",
+      boards: [{ id: "any", name: "Any", tree: { nodeType: "TextNode", id: "any", title: "Any", description: "", weight: 1, historizedValues: [], childrenNodes: [] } }],
     };
     const storage = new InMemoryStorage();
     storage.setItem(STORAGE_KEY_V4, JSON.stringify(legacyEnvelope));
-    const repo = newRepo(storage);
-    const loaded = await repo.load();
-    expect(loaded.currentBoardId).toBe(v3Board.id);
-    const tree = loaded.boards[0]!.tree;
-    const engineering = tree.findById("engineering");
-    expect(engineering).toBeInstanceOf(ComputedBusinessScoreNode);
-    await repo.save(loaded);
-    const persisted = JSON.parse(storage.getItem(STORAGE_KEY_V4)!) as { v: number };
-    expect(persisted.v).toBe(2);
+    await expect(newRepo(storage).load()).rejects.toThrow(/unsupported envelope version "v: 1"/);
   });
 
   it("save surfaces StorageFullErrorV4 on quota-exceeded (DOMException name + legacy code 22 + Firefox NS_ERROR_DOM_QUOTA_REACHED all detected) AND propagates other errors verbatim", async () => {
@@ -115,16 +103,14 @@ describe("LocalStorageBoardCollectionRepositoryV4 (§17.107)", () => {
     }
   });
 
-  it("belt-and-braces: a v:2 envelope whose per-board tree fails v4 decode (JsonCodecV4DecodeError) falls back to v3 codec + bridge on that tree — kiosk stays recoverable from a corrupted post-cutover payload", async () => {
-    const v3Board = buildShowcaseBoard(NOW);
-    const mixedEnvelope = {
+  it("§17.112 v3 sweep: a v:2 envelope whose per-board tree fails v4 decode now throws verbatim — belt-and-braces v3 recovery retired with the v3 source files", async () => {
+    const corruptedEnvelope = {
       v: 2,
-      currentBoardId: v3Board.id,
-      boards: [{ id: v3Board.id, name: v3Board.name, tree: JSON.parse(encodeV3(v3Board.tree)) as unknown }],
+      currentBoardId: "any",
+      boards: [{ id: "any", name: "Any", tree: { schemaVersion: "v3.0", root: {}, cards: [] } }],
     };
     const storage = new InMemoryStorage();
-    storage.setItem(STORAGE_KEY_V4, JSON.stringify(mixedEnvelope));
-    const loaded = await newRepo(storage).load();
-    expect(loaded.boards[0]!.tree.findById("engineering")).toBeInstanceOf(ComputedBusinessScoreNode);
+    storage.setItem(STORAGE_KEY_V4, JSON.stringify(corruptedEnvelope));
+    await expect(newRepo(storage).load()).rejects.toThrow(/v4\.0/);
   });
 });

@@ -1,5 +1,4 @@
 import type { Weight } from "../values/Weight.js";
-import { AlreadyAttachedError, NotAChildError } from "./TreeNode.js";
 
 /**
  * `Node` — v4 abstract base of the node hierarchy (SPEC §17.72; mirrors
@@ -10,12 +9,26 @@ import { AlreadyAttachedError, NotAChildError } from "./TreeNode.js";
  * dissolves the v3 `Title` / `NodeIdentity` VOs; description splits off
  * onto `ValueNode<T>` — see `ValueNode.ts`).
  *
- * `attach` / `detach` errors are imported from the v3 `TreeNode.ts` for
- * now — they are domain concepts that don't change in v4 and will migrate
- * to this file when v3 retires. Mutability matches the v3 setter pattern
- * (`setTitle` / `setWeight` swap the reference; `id` is permanently
- * `readonly`).
+ * `attach` / `detach` errors live in this file post-§17.112 v3 sweep
+ * (originally hosted by the v3 `TreeNode.ts` and re-imported here while
+ * v3 was alive; the §17.111 docblock predicted "will migrate to this
+ * file when v3 retires" and §17.112 closes that loop). Mutability
+ * matches the v3 setter pattern (`setTitle` / `setWeight` swap the
+ * reference; `id` is permanently `readonly`).
  */
+export class AlreadyAttachedError extends Error {
+  constructor(childId: string) {
+    super(`Node "${childId}" is already attached to a parent`);
+    this.name = "AlreadyAttachedError";
+  }
+}
+
+export class NotAChildError extends Error {
+  constructor(childId: string, parentId: string) {
+    super(`Node "${childId}" is not a child of "${parentId}"`);
+    this.name = "NotAChildError";
+  }
+}
 export abstract class Node {
   private _parent: Node | null = null;
   private readonly _children: Node[] = [];

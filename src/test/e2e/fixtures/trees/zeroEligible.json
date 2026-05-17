@@ -1,57 +1,59 @@
 {
-  "nodeType": "BusinessScoreCard",
-  "id": "ROOT",
-  "title": "Mixed root",
-  "description": "Computed parent with no eligible children",
-  "targetValue": 100,
-  "minimalValue": 0,
-  "unit": "%",
-  "historizedValues": [
-    { "value": 99, "date": "2026-04-22T18:25:43.511Z" }
-  ],
-  "computed": true,
-  "eligibleForParentComputation": false,
-  "weight": 1,
-  "childrenNodes": [
-    {
-      "nodeType": "BusinessScoreCard",
-      "id": "INELIGIBLE-A",
-      "title": "Ineligible A",
-      "description": "Not eligible",
-      "targetValue": 100,
-      "minimalValue": 0,
-      "unit": "%",
-      "historizedValues": [
-        { "value": 10, "date": "2026-04-22T18:25:43.511Z" }
-      ],
-      "computed": false,
-      "eligibleForParentComputation": false,
-      "weight": 1,
-      "childrenNodes": []
-    },
-    {
-      "nodeType": "BusinessScoreCard",
-      "id": "INELIGIBLE-B",
-      "title": "Ineligible B",
-      "description": "Not eligible",
-      "targetValue": 100,
-      "minimalValue": 0,
-      "unit": "%",
-      "historizedValues": [
-        { "value": 20, "date": "2026-04-22T18:25:43.511Z" }
-      ],
-      "computed": false,
-      "eligibleForParentComputation": false,
-      "weight": 1,
-      "childrenNodes": []
-    },
-    {
-      "nodeType": "TextNode",
-      "id": "TEXT-INELIGIBLE",
-      "title": "Just text",
-      "description": "Text children never contribute",
-      "weight": 1,
-      "childrenNodes": []
-    }
+  "schemaVersion": "v4.0",
+  "root": {
+    "kind": "ComputedBusinessScoreNode",
+    "id": "ROOT",
+    "title": "Mixed root",
+    "weight": 1,
+    "description": "Computed parent with no eligible children",
+    "range": { "kind": "lenient", "min": null, "max": null },
+    "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+    "computationKind": "WEIGHTED_AVERAGE",
+    "unit": "%",
+    "children": [
+      {
+        "kind": "BusinessScoreNode",
+        "id": "INELIGIBLE-A",
+        "title": "Ineligible A",
+        "weight": 1,
+        "disabled": true,
+        "description": "Not eligible",
+        "range": { "kind": "lenient", "min": null, "max": null },
+        "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+        "unit": "%",
+        "history": [
+          { "value": 10, "at": "2026-04-22T18:25:43.511Z" }
+        ],
+        "children": []
+      },
+      {
+        "kind": "BusinessScoreNode",
+        "id": "INELIGIBLE-B",
+        "title": "Ineligible B",
+        "weight": 1,
+        "disabled": true,
+        "description": "Not eligible",
+        "range": { "kind": "lenient", "min": null, "max": null },
+        "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+        "unit": "%",
+        "history": [
+          { "value": 20, "at": "2026-04-22T18:25:43.511Z" }
+        ],
+        "children": []
+      },
+      {
+        "kind": "TextNodeV4",
+        "id": "TEXT-INELIGIBLE",
+        "title": "Just text",
+        "weight": 1,
+        "history": [],
+        "children": []
+      }
+    ]
+  },
+  "cards": [
+    { "nodeId": "ROOT", "unit": "%" },
+    { "nodeId": "INELIGIBLE-A", "unit": "%" },
+    { "nodeId": "INELIGIBLE-B", "unit": "%" }
   ]
 }

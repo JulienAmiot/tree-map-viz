@@ -74,7 +74,6 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
-import type { EditNodePayload } from "../../../application/EditNodeService.js";
 import {
   modalFrameStyles,
   renderModalCloseX,
@@ -82,6 +81,39 @@ import {
 
 export const EDIT_NODE_CONFIRM_EVENT = "edit-node-confirm";
 export const EDIT_NODE_CANCEL_EVENT = "edit-node-cancel";
+
+/**
+ * Partial-edit payload the modal dispatches on confirm. v3 used to host
+ * this type on `EditNodeService`; §17.112 v3 sweep moved it here so the
+ * modal owns its own outbound contract and main.ts's translation shim
+ * `toV4EditPayload` consumes it from the adapter side without crossing
+ * back into a (now-deleted) v3 application service. Shape is the v3
+ * 2-kind union verbatim (`TextNode` / `BusinessScoreCardNode`); main.ts
+ * rewrites to v4 before handing off to `EditNodeServiceV4`. The v3
+ * §17.28 contract still applies on the modal side: kind is required
+ * and must match the target's existing kind; history is appended via
+ * the inline value-edit seam, not through this payload.
+ */
+export type EditNodePayload =
+  | {
+      readonly kind: "TextNode";
+      readonly title?: string;
+      readonly weight?: number;
+    }
+  | {
+      readonly kind: "BusinessScoreCardNode";
+      readonly title?: string;
+      readonly description?: string;
+      readonly weight?: number;
+      readonly unit?: string;
+      readonly objective?: {
+        readonly initialValue: number;
+        readonly targetValue: number;
+        readonly targetDate: Date;
+      };
+      readonly computed?: boolean;
+      readonly eligibleForParentComputation?: boolean;
+    };
 
 /** Pre-edit snapshot supplied by the composition root when opening the modal. */
 export type EditNodeTarget =

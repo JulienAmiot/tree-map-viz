@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { Node } from "../../../../domain/nodes/Node.js";
 import {
   AlreadyAttachedError,
+  Node,
   NotAChildError,
-} from "../../../../domain/nodes/TreeNode.js";
+} from "../../../../domain/nodes/Node.js";
 import { Weight } from "../../../../domain/values/Weight.js";
 
 class TestNode extends Node {
