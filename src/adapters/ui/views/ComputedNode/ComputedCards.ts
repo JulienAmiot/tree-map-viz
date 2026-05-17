@@ -20,10 +20,19 @@
  *    `formatAge`; the locale date is no longer surfaced on the tile.
  *  - **Warning-fill when not computable** — the `empty` and any
  *    `childrenCount` branches of `ComputedValueViewModel` render the
- *    tile's value-area as a full-tile `⚠` glyph styled like the
- *    §17.24 PlusTile (dashed border, muted colour, cqmin-sized
- *    glyph filling the tile). Was a small inline glyph or "n
- *    children" / reason text pre-§17.116.
+ *    tile's value-area as a full-tile `⚠` glyph in a muted colour
+ *    at cqmin-sized scale. Was a small inline glyph or "n
+ *    children" / reason text pre-§17.116. SPEC §17.116-followup
+ *    dropped the §17.24 PlusTile dashed border + corner-radius on
+ *    operator feedback — the glyph alone carries the "cannot
+ *    compute" signal at-a-glance.
+ *  - **CBSN host is a column flex container** (§17.116-followup) so
+ *    `.metric-pane` fills the body below the title + kind-label and
+ *    its bottom edge coincides with the tile's bottom edge. The
+ *    `<time class="timestamp">` is parented inside `.metric-pane`
+ *    (SPEC §17.30 / §17.45 parity), so the pane-fills-body rule
+ *    is what makes "bottom-right of the tile" land at the actual
+ *    tile bottom-right rather than the figure's bottom-right.
  *
  * The `COMPUTATION_KIND_CHANGE_EVENT` + `ComputationKindChangeDetail`
  * exports are preserved (the wiring lives in `main.ts` and routes to
@@ -67,6 +76,37 @@ const sharedStyles = css`
      absolute .timestamp (declared on tileLayoutStyles) anchors to
      the pane's edges, mirroring the v3 BSC asParent layout. */
   .metric-pane { position: relative; }
+`;
+
+/**
+ * CBSN-only overrides — landed in §17.116-followup so the timestamp's
+ * "bottom-right of the tile" contract holds visually on the CBSN
+ * element. Pre-followup the host was the default `display: block`
+ * from `tileLayoutStyles`, which made `.metric-pane` a content-sized
+ * block sitting under the title + kind-label (its bottom hugged the
+ * figure, not the tile bottom). Since the `<time class="timestamp">`
+ * is parented inside `.metric-pane` (the SPEC §17.30 / §17.45 parity
+ * contract relies on that placement so the parent CBSN's timestamp
+ * shares its containing block with a child BSC's), the date pinned
+ * to the figure's bottom-right rather than the tile's.
+ *
+ * The fix turns the CBSN host into a column flex container and lets
+ * `.metric-pane` grow (`flex: 1 1 auto`) to fill the body below
+ * `.title` + `.kind-label`. With the pane now spanning to the tile's
+ * bottom edge, the timestamp's `bottom: 0.2rem` offset (declared on
+ * `tileLayoutStyles .timestamp`) resolves at the tile's bottom-right
+ * — operator-correct without touching the shared timestamp rule or
+ * the plain `<computed-card>` layout (which has no metric-pane and
+ * keeps the default block layout from `tileLayoutStyles`).
+ *
+ * `min-height: 0` is the standard flex-item escape hatch for
+ * preventing the intrinsic content size of `.value-area` (which
+ * declares an explicit `height: calc(100% - 3vh)`) from blocking
+ * the flex shrink axis on tiny tiles.
+ */
+const cbsnHostStyles = css`
+  :host { display: flex; flex-direction: column; }
+  .metric-pane { flex: 1 1 auto; min-height: 0; }
 `;
 
 const TREND_GLYPHS: Record<TrendArrowDirection, string> = {
@@ -209,7 +249,7 @@ export class ComputedBusinessScoreCard extends LitElement {
   @property({ attribute: false })
   vm: ComputedBusinessScoreNodeViewModel | null = null;
 
-  static readonly styles = [tileLayoutStyles, sharedStyles];
+  static readonly styles = [tileLayoutStyles, sharedStyles, cbsnHostStyles];
 
   render(): TemplateResult {
     if (!this.vm) return html``;
