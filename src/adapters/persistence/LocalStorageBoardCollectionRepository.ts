@@ -5,7 +5,7 @@ import type {
 } from "../../application/ports/BoardCollectionRepository.js";
 import type { TreeCodec } from "../../application/ports/TreeCodec.js";
 import type { Clock } from "../../domain/capabilities/Clock.js";
-import { buildShowcaseBoardV4 } from "../showcaseSeedV4.js";
+import { buildShowcaseBoard } from "../showcaseSeed.js";
 
 /**
  * §17.107 — `BoardCollectionRepository` adapter backed by `Storage`
@@ -32,22 +32,22 @@ import { buildShowcaseBoardV4 } from "../showcaseSeedV4.js";
  * recovery is gone too: a corrupted `v: 2` tree throws verbatim from
  * the §17.106b codec.
  */
-export class StorageFullErrorV4 extends Error {
+export class StorageFullError extends Error {
   constructor(cause?: unknown) {
     super("Local storage quota exceeded — cannot persist the v4 board collection.");
-    this.name = "StorageFullErrorV4";
+    this.name = "StorageFullError";
     if (cause !== undefined) (this as unknown as { cause: unknown }).cause = cause;
   }
 }
 
-export const STORAGE_KEY_V4 = "tree-map-viz/board-collection/v1";
+export const STORAGE_KEY = "tree-map-viz/board-collection/v1";
 
-const ENVELOPE_VERSION_V4 = 2;
+const ENVELOPE_VERSION = 2;
 
 type WireBoard = { id: string; name: string; tree: unknown };
 type WireEnvelope = { v: number; currentBoardId: string; boards: WireBoard[] };
 
-export type LocalStorageBoardCollectionRepositoryV4Options = {
+export type LocalStorageBoardCollectionRepositoryOptions = {
   storage: Storage;
   codec: TreeCodec;
   clock: Clock;
@@ -55,18 +55,18 @@ export type LocalStorageBoardCollectionRepositoryV4Options = {
   seed?: () => BoardCollectionSnapshot;
 };
 
-export class LocalStorageBoardCollectionRepositoryV4 implements BoardCollectionRepository {
+export class LocalStorageBoardCollectionRepository implements BoardCollectionRepository {
   private readonly storage: Storage;
   private readonly codec: TreeCodec;
   private readonly clock: Clock;
   private readonly key: string;
   private readonly buildSeed: () => BoardCollectionSnapshot;
 
-  constructor(opts: LocalStorageBoardCollectionRepositoryV4Options) {
+  constructor(opts: LocalStorageBoardCollectionRepositoryOptions) {
     this.storage = opts.storage;
     this.codec = opts.codec;
     this.clock = opts.clock;
-    this.key = opts.key ?? STORAGE_KEY_V4;
+    this.key = opts.key ?? STORAGE_KEY;
     this.buildSeed = opts.seed ?? (() => defaultSeed(this.clock));
   }
 
@@ -84,14 +84,14 @@ export class LocalStorageBoardCollectionRepositoryV4 implements BoardCollectionR
     try {
       this.storage.setItem(this.key, this.serialize(snapshot));
     } catch (err) {
-      if (isQuotaExceeded(err)) throw new StorageFullErrorV4(err);
+      if (isQuotaExceeded(err)) throw new StorageFullError(err);
       throw err;
     }
   }
 
   private serialize(snapshot: BoardCollectionSnapshot): string {
     const envelope: WireEnvelope = {
-      v: ENVELOPE_VERSION_V4,
+      v: ENVELOPE_VERSION,
       currentBoardId: snapshot.currentBoardId,
       boards: snapshot.boards.map((b) => ({
         id: b.id,
@@ -106,22 +106,22 @@ export class LocalStorageBoardCollectionRepositoryV4 implements BoardCollectionR
     let parsed: unknown;
     try { parsed = JSON.parse(raw); }
     catch (err) {
-      throw new Error(`LocalStorageBoardCollectionRepositoryV4: stored payload is not valid JSON (${(err as Error).message})`);
+      throw new Error(`LocalStorageBoardCollectionRepository: stored payload is not valid JSON (${(err as Error).message})`);
     }
     if (typeof parsed !== "object" || parsed === null) {
-      throw new Error("LocalStorageBoardCollectionRepositoryV4: stored payload is not an object");
+      throw new Error("LocalStorageBoardCollectionRepository: stored payload is not an object");
     }
     const env = parsed as Partial<WireEnvelope>;
     if (typeof env.currentBoardId !== "string" || !Array.isArray(env.boards)) {
-      throw new Error("LocalStorageBoardCollectionRepositoryV4: stored payload is missing required fields");
+      throw new Error("LocalStorageBoardCollectionRepository: stored payload is missing required fields");
     }
     return env as WireEnvelope;
   }
 
   private envelopeToSnapshot(env: WireEnvelope): BoardCollectionSnapshot {
-    if (env.v !== ENVELOPE_VERSION_V4) {
+    if (env.v !== ENVELOPE_VERSION) {
       throw new Error(
-        `LocalStorageBoardCollectionRepositoryV4: unsupported envelope version "v: ${String(env.v)}" — expected "v: ${String(ENVELOPE_VERSION_V4)}" (pre-§17.110 v: 1 envelopes are no longer migrated; reset storage to recover)`,
+        `LocalStorageBoardCollectionRepository: unsupported envelope version "v: ${String(env.v)}" — expected "v: ${String(ENVELOPE_VERSION)}" (pre-§17.110 v: 1 envelopes are no longer migrated; reset storage to recover)`,
       );
     }
     const boards: Board[] = env.boards.map((b) => ({
@@ -134,7 +134,7 @@ export class LocalStorageBoardCollectionRepositoryV4 implements BoardCollectionR
 }
 
 function defaultSeed(clock: Clock): BoardCollectionSnapshot {
-  const board = buildShowcaseBoardV4(clock);
+  const board = buildShowcaseBoard(clock);
   return { boards: [board], currentBoardId: board.id };
 }
 

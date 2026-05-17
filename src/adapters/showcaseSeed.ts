@@ -44,8 +44,8 @@ import { Weight } from "../domain/values/Weight.js";
  * verbatim and retires at §17.112+ Phase F deletion.
  */
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-export const SHOWCASE_BOARD_ID_V4 = "showcase-board-v4";
-export const SHOWCASE_BOARD_NAME_V4 = "Showcase v4";
+export const SHOWCASE_BOARD_ID = "showcase-board-v4";
+export const SHOWCASE_BOARD_NAME = "Showcase v4";
 
 function lenient(): LenientRange<number> {
   return LenientRange.of(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, NumericComparator.INSTANCE);
@@ -57,7 +57,7 @@ function startOfUtcHour(d: Date): Date {
   return r;
 }
 
-export function buildShowcaseTreeV4(clock: Clock, now: Date = new Date()): Tree {
+export function buildShowcaseTree(clock: Clock, now: Date = new Date()): Tree {
   const todayDate = startOfUtcHour(now);
   const today = Timestamp.of(todayDate);
   const days = (n: number): Timestamp =>
@@ -185,10 +185,10 @@ export function buildShowcaseTreeV4(clock: Clock, now: Date = new Date()): Tree 
   return new Tree(root, cards);
 }
 
-export function buildShowcaseBoardV4(clock: Clock, now: Date = new Date()): Board {
+export function buildShowcaseBoard(clock: Clock, now: Date = new Date()): Board {
   return {
-    id: SHOWCASE_BOARD_ID_V4,
-    name: SHOWCASE_BOARD_NAME_V4,
-    tree: buildShowcaseTreeV4(clock, now),
+    id: SHOWCASE_BOARD_ID,
+    name: SHOWCASE_BOARD_NAME,
+    tree: buildShowcaseTree(clock, now),
   };
 }

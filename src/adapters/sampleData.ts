@@ -45,7 +45,7 @@ import { Weight } from "../domain/values/Weight.js";
  * computed-node strategy result varies with real Date.now if the caller
  * passes `SystemClock`).
  */
-export function buildSampleTreeV4(clock: Clock): Tree {
+export function buildSampleTree(clock: Clock): Tree {
   const targetDate = Timestamp.of(new Date("2026-12-31T00:00:00Z"));
   const t1 = Timestamp.of(new Date("2026-04-22T18:25:43.511Z"));
   const t2 = Timestamp.of(new Date("2026-04-23T18:25:43.511Z"));

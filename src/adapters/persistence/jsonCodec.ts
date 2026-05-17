@@ -25,26 +25,26 @@ import { Weight } from "../../domain/values/Weight.js";
  * to `NumericComparator.INSTANCE`; cards sidecar resolved via DFS.
  * Legacy v3 migration relocated to §17.107 adapter.
  */
-export class JsonCodecV4DecodeError extends Error {
+export class JsonCodecDecodeError extends Error {
   constructor(
     readonly pointer: string,
     reason: string,
   ) {
-    super(`jsonCodecV4 decode error at ${pointer}: ${reason}`);
-    this.name = "JsonCodecV4DecodeError";
+    super(`jsonCodec decode error at ${pointer}: ${reason}`);
+    this.name = "JsonCodecDecodeError";
   }
 }
 
-export class JsonCodecV4EncodeError extends Error {
+export class JsonCodecEncodeError extends Error {
   constructor(reason: string) {
-    super(`jsonCodecV4 encode error: ${reason}`);
-    this.name = "JsonCodecV4EncodeError";
+    super(`jsonCodec encode error: ${reason}`);
+    this.name = "JsonCodecEncodeError";
   }
 }
 
 const SCHEMA_VERSION = "v4.0";
 
-export function createJsonCodecV4(clock: Clock): TreeCodec {
+export function createJsonCodec(clock: Clock): TreeCodec {
   return {
     decode(text: string): Tree {
       return decodeTree(text, clock);
@@ -67,7 +67,7 @@ function encodeNode(node: Node): Record<string, unknown> {
   if (node instanceof BusinessScoreNode) return encodeBSN(node);
   if (node instanceof ComputedNode) return encodeCN(node);
   if (node instanceof StrictRangeNode) return encodeStrictRangeNode(node);
-  throw new JsonCodecV4EncodeError(`unsupported v4 Node subclass "${node.constructor.name}" (id="${node.id}")`);
+  throw new JsonCodecEncodeError(`unsupported v4 Node subclass "${node.constructor.name}" (id="${node.id}")`);
 }
 
 function commonFields(node: TextNode | BusinessScoreNode<number> | ComputedNode<unknown> | StrictRangeNode<number>): Record<string, unknown> {
@@ -156,9 +156,9 @@ function encodeCards(cards: ReadonlyMap<string, BusinessScoreCard<unknown>>): Re
 function decodeTree(text: string, clock: Clock): Tree {
   let parsed: unknown;
   try { parsed = JSON.parse(text); }
-  catch (err) { throw new JsonCodecV4DecodeError("/", `not valid JSON: ${(err as Error).message}`); }
+  catch (err) { throw new JsonCodecDecodeError("/", `not valid JSON: ${(err as Error).message}`); }
   const env = requireObject(parsed, "/");
-  if (env["schemaVersion"] !== SCHEMA_VERSION) throw new JsonCodecV4DecodeError("/schemaVersion", `expected "${SCHEMA_VERSION}", got ${JSON.stringify(env["schemaVersion"])}`);
+  if (env["schemaVersion"] !== SCHEMA_VERSION) throw new JsonCodecDecodeError("/schemaVersion", `expected "${SCHEMA_VERSION}", got ${JSON.stringify(env["schemaVersion"])}`);
   const root = decodeNode(env["root"], "/root", clock);
   return new Tree(root, decodeCards(requireArray(env, "cards", "/"), root, "/cards"));
 }
@@ -187,7 +187,7 @@ function decodeNode(raw: unknown, p: string, clock: Clock): Node {
     for (const h of decodeHistory(obj, p, "number")) srn.addValue(h.at, h.value as number);
     node = srn;
   } else {
-    throw new JsonCodecV4DecodeError(joinPointer(p, "kind"), `unknown kind "${kind}"`);
+    throw new JsonCodecDecodeError(joinPointer(p, "kind"), `unknown kind "${kind}"`);
   }
   if (obj["disabled"] === true) node.setDisabled(true);
   const cp = joinPointer(p, "children");
@@ -219,7 +219,7 @@ function decodeHistory(obj: Record<string, unknown>, p: string, vt: "string" | "
     const v = e["value"];
     const vp = joinPointer(ep, "value");
     if (vt === "string" ? typeof v !== "string" : (typeof v !== "number" || !Number.isFinite(v))) {
-      throw new JsonCodecV4DecodeError(vp, `expected ${vt === "string" ? "string" : "finite number"}, got ${typeOf(v)}`);
+      throw new JsonCodecDecodeError(vp, `expected ${vt === "string" ? "string" : "finite number"}, got ${typeOf(v)}`);
     }
     return { at, value: v };
   });
@@ -235,20 +235,20 @@ function decodeRange<R>(obj: Record<string, unknown>, p: string, expected: "stri
   const rp = joinPointer(p, "range");
   const raw = requireObject(obj["range"], rp);
   const kind = requireString(raw, "kind", rp);
-  if (kind !== expected) throw new JsonCodecV4DecodeError(joinPointer(rp, "kind"), `expected "${expected}", got "${kind}"`);
+  if (kind !== expected) throw new JsonCodecDecodeError(joinPointer(rp, "kind"), `expected "${expected}", got "${kind}"`);
   return ctor(decodeBound(raw["min"], joinPointer(rp, "min"), Number.NEGATIVE_INFINITY), decodeBound(raw["max"], joinPointer(rp, "max"), Number.POSITIVE_INFINITY), NumericComparator.INSTANCE);
 }
 
 function decodeBound(raw: unknown, p: string, sentinel: number): number {
   if (raw === null) return sentinel;
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
-  throw new JsonCodecV4DecodeError(p, `expected finite number or null, got ${typeOf(raw)}`);
+  throw new JsonCodecDecodeError(p, `expected finite number or null, got ${typeOf(raw)}`);
 }
 
 function decodeComputationKind(obj: Record<string, unknown>, p: string): ComputationKind {
   const name = requireString(obj, "computationKind", p);
   const resolved = ComputationKind.fromName(name);
-  if (resolved === undefined) throw new JsonCodecV4DecodeError(joinPointer(p, "computationKind"), `unknown ComputationKind name "${name}"`);
+  if (resolved === undefined) throw new JsonCodecDecodeError(joinPointer(p, "computationKind"), `unknown ComputationKind name "${name}"`);
   return resolved;
 }
 
@@ -259,7 +259,7 @@ function decodeCards(rawList: unknown[], root: Node, p: string): ReadonlyMap<str
     const e = requireObject(entry, ip);
     const nodeId = requireString(e, "nodeId", ip);
     const node = findById(root, nodeId);
-    if (!(node instanceof BusinessScoreNode)) throw new JsonCodecV4DecodeError(joinPointer(ip, "nodeId"), `no BusinessScoreNode (or subclass) found with id "${nodeId}"`);
+    if (!(node instanceof BusinessScoreNode)) throw new JsonCodecDecodeError(joinPointer(ip, "nodeId"), `no BusinessScoreNode (or subclass) found with id "${nodeId}"`);
     out.set(nodeId, new BusinessScoreCard(node, Unit.of(requireString(e, "unit", ip))));
   });
   return out;
@@ -276,18 +276,18 @@ function findById(node: Node, id: string): Node | undefined {
 
 function decodeIsoTimestamp(raw: string, p: string): Timestamp {
   const ms = Date.parse(raw);
-  if (Number.isNaN(ms)) throw new JsonCodecV4DecodeError(p, `not a valid ISO-8601 date: "${raw}"`);
+  if (Number.isNaN(ms)) throw new JsonCodecDecodeError(p, `not a valid ISO-8601 date: "${raw}"`);
   return Timestamp.of(new Date(ms));
 }
 
 function requireObject(raw: unknown, p: string): Record<string, unknown> {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new JsonCodecV4DecodeError(p, `expected object, got ${typeOf(raw)}`);
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new JsonCodecDecodeError(p, `expected object, got ${typeOf(raw)}`);
   return raw as Record<string, unknown>;
 }
 
 function requireString(obj: Record<string, unknown>, key: string, parent: string): string {
   const v = obj[key];
-  if (typeof v !== "string") throw new JsonCodecV4DecodeError(joinPointer(parent, key), `expected string, got ${typeOf(v)}`);
+  if (typeof v !== "string") throw new JsonCodecDecodeError(joinPointer(parent, key), `expected string, got ${typeOf(v)}`);
   return v;
 }
 
@@ -298,13 +298,13 @@ function optionalString(obj: Record<string, unknown>, key: string): string | und
 
 function requireNumber(obj: Record<string, unknown>, key: string, parent: string): number {
   const v = obj[key];
-  if (typeof v !== "number" || !Number.isFinite(v)) throw new JsonCodecV4DecodeError(joinPointer(parent, key), `expected finite number, got ${typeOf(v)}`);
+  if (typeof v !== "number" || !Number.isFinite(v)) throw new JsonCodecDecodeError(joinPointer(parent, key), `expected finite number, got ${typeOf(v)}`);
   return v;
 }
 
 function requireArray(obj: Record<string, unknown>, key: string, parent: string): unknown[] {
   const v = obj[key];
-  if (!Array.isArray(v)) throw new JsonCodecV4DecodeError(joinPointer(parent, key), `expected array, got ${typeOf(v)}`);
+  if (!Array.isArray(v)) throw new JsonCodecDecodeError(joinPointer(parent, key), `expected array, got ${typeOf(v)}`);
   return v;
 }
 

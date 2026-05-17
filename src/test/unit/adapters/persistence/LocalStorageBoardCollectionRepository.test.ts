@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import { createJsonCodecV4 } from "../../../../adapters/persistence/jsonCodecV4.js";
+import { createJsonCodec } from "../../../../adapters/persistence/jsonCodec.js";
 import {
-  LocalStorageBoardCollectionRepositoryV4,
-  STORAGE_KEY_V4,
-  StorageFullErrorV4,
-} from "../../../../adapters/persistence/LocalStorageBoardCollectionRepositoryV4.js";
-import { buildSampleTreeV4 } from "../../../../adapters/sampleDataV4.js";
-import { SHOWCASE_BOARD_ID_V4 } from "../../../../adapters/showcaseSeedV4.js";
+  LocalStorageBoardCollectionRepository,
+  STORAGE_KEY,
+  StorageFullError,
+} from "../../../../adapters/persistence/LocalStorageBoardCollectionRepository.js";
+import { buildSampleTree } from "../../../../adapters/sampleData.js";
+import { SHOWCASE_BOARD_ID } from "../../../../adapters/showcaseSeed.js";
 import type { BoardCollectionSnapshot, Board } from "../../../../application/ports/BoardCollectionRepository.js";
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
 import { Timestamp } from "../../../../domain/values/Timestamp.js";
 
 const NOW = new Date("2026-05-17T00:00:00Z");
 const clock: Clock = { now: () => Timestamp.of(NOW) };
-const codec = createJsonCodecV4(clock);
+const codec = createJsonCodec(clock);
 
 class InMemoryStorage implements Storage {
   private map = new Map<string, string>();
@@ -27,26 +27,26 @@ class InMemoryStorage implements Storage {
 }
 
 function newRepo(storage: Storage = new InMemoryStorage(), seed?: () => BoardCollectionSnapshot) {
-  return new LocalStorageBoardCollectionRepositoryV4({ storage, codec, clock, seed });
+  return new LocalStorageBoardCollectionRepository({ storage, codec, clock, seed });
 }
 
 function sampleBoard(id: string, name: string): Board {
-  return { id, name, tree: buildSampleTreeV4(clock) };
+  return { id, name, tree: buildSampleTree(clock) };
 }
 
-describe("LocalStorageBoardCollectionRepositoryV4 (§17.107)", () => {
-  it("empty storage → seeds via buildShowcaseBoardV4 (id matches SHOWCASE_BOARD_ID_V4) AND persists the seed (next load reads back the same snapshot byte-for-byte)", async () => {
+describe("LocalStorageBoardCollectionRepository (§17.107)", () => {
+  it("empty storage → seeds via buildShowcaseBoard (id matches SHOWCASE_BOARD_ID) AND persists the seed (next load reads back the same snapshot byte-for-byte)", async () => {
     const storage = new InMemoryStorage();
     const repo = newRepo(storage);
     const loaded = await repo.load();
     expect(loaded.boards).toHaveLength(1);
-    expect(loaded.currentBoardId).toBe(SHOWCASE_BOARD_ID_V4);
-    expect(loaded.boards[0]!.id).toBe(SHOWCASE_BOARD_ID_V4);
-    const persisted = storage.getItem(STORAGE_KEY_V4);
+    expect(loaded.currentBoardId).toBe(SHOWCASE_BOARD_ID);
+    expect(loaded.boards[0]!.id).toBe(SHOWCASE_BOARD_ID);
+    const persisted = storage.getItem(STORAGE_KEY);
     expect(persisted).not.toBeNull();
     const env = JSON.parse(persisted!) as { v: number; currentBoardId: string; boards: { tree: { schemaVersion: string } }[] };
     expect(env.v).toBe(2);
-    expect(env.currentBoardId).toBe(SHOWCASE_BOARD_ID_V4);
+    expect(env.currentBoardId).toBe(SHOWCASE_BOARD_ID);
     expect(env.boards[0]!.tree.schemaVersion).toBe("v4.0");
   });
 
@@ -73,18 +73,18 @@ describe("LocalStorageBoardCollectionRepositoryV4 (§17.107)", () => {
       boards: [{ id: "any", name: "Any", tree: { nodeType: "TextNode", id: "any", title: "Any", description: "", weight: 1, historizedValues: [], childrenNodes: [] } }],
     };
     const storage = new InMemoryStorage();
-    storage.setItem(STORAGE_KEY_V4, JSON.stringify(legacyEnvelope));
+    storage.setItem(STORAGE_KEY, JSON.stringify(legacyEnvelope));
     await expect(newRepo(storage).load()).rejects.toThrow(/unsupported envelope version "v: 1"/);
   });
 
-  it("save surfaces StorageFullErrorV4 on quota-exceeded (DOMException name + legacy code 22 + Firefox NS_ERROR_DOM_QUOTA_REACHED all detected) AND propagates other errors verbatim", async () => {
+  it("save surfaces StorageFullError on quota-exceeded (DOMException name + legacy code 22 + Firefox NS_ERROR_DOM_QUOTA_REACHED all detected) AND propagates other errors verbatim", async () => {
     const snapshot: BoardCollectionSnapshot = { boards: [sampleBoard("a", "Alpha")], currentBoardId: "a" };
     const quotaStorage = { ...new InMemoryStorage(), setItem: () => { const e = new Error("quota"); (e as unknown as { name: string }).name = "QuotaExceededError"; throw e; } } as unknown as Storage;
-    await expect(newRepo(quotaStorage).save(snapshot)).rejects.toBeInstanceOf(StorageFullErrorV4);
+    await expect(newRepo(quotaStorage).save(snapshot)).rejects.toBeInstanceOf(StorageFullError);
     const legacyCodeStorage = { ...new InMemoryStorage(), setItem: () => { const e = new Error("legacy") as unknown as { code: number; message: string; name: string }; e.code = 22; e.name = "Other"; throw e; } } as unknown as Storage;
-    await expect(newRepo(legacyCodeStorage).save(snapshot)).rejects.toBeInstanceOf(StorageFullErrorV4);
+    await expect(newRepo(legacyCodeStorage).save(snapshot)).rejects.toBeInstanceOf(StorageFullError);
     const ffStorage = { ...new InMemoryStorage(), setItem: () => { const e = new Error("ff"); (e as unknown as { name: string }).name = "NS_ERROR_DOM_QUOTA_REACHED"; throw e; } } as unknown as Storage;
-    await expect(newRepo(ffStorage).save(snapshot)).rejects.toBeInstanceOf(StorageFullErrorV4);
+    await expect(newRepo(ffStorage).save(snapshot)).rejects.toBeInstanceOf(StorageFullError);
     const otherStorage = { ...new InMemoryStorage(), setItem: () => { throw new Error("disk on fire"); } } as unknown as Storage;
     await expect(newRepo(otherStorage).save(snapshot)).rejects.toThrow(/disk on fire/);
   });
@@ -98,7 +98,7 @@ describe("LocalStorageBoardCollectionRepositoryV4 (§17.107)", () => {
     ];
     for (const [raw, pattern] of cases) {
       const storage = new InMemoryStorage();
-      storage.setItem(STORAGE_KEY_V4, raw);
+      storage.setItem(STORAGE_KEY, raw);
       await expect(newRepo(storage).load()).rejects.toThrow(pattern);
     }
   });
@@ -110,7 +110,7 @@ describe("LocalStorageBoardCollectionRepositoryV4 (§17.107)", () => {
       boards: [{ id: "any", name: "Any", tree: { schemaVersion: "v3.0", root: {}, cards: [] } }],
     };
     const storage = new InMemoryStorage();
-    storage.setItem(STORAGE_KEY_V4, JSON.stringify(corruptedEnvelope));
+    storage.setItem(STORAGE_KEY, JSON.stringify(corruptedEnvelope));
     await expect(newRepo(storage).load()).rejects.toThrow(/v4\.0/);
   });
 });

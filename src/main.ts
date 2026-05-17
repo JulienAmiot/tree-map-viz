@@ -6,8 +6,8 @@
  * single allowed bridge from `domain` + `application` to `adapters`.
  *
  * §17.110 Phase E cutover — every wiring slot constructs the v4
- * successor: `LocalStorageBoardCollectionRepositoryV4` over the
- * §17.106 `createJsonCodecV4`-built codec, `BoardCollectionService`,
+ * successor: `LocalStorageBoardCollectionRepository` over the
+ * §17.106 `createJsonCodec`-built codec, `BoardCollectionService`,
  * `TreeNavigationService` (v4 `Tree` over the board's root),
  * `AddChildService` + `EditNodeService` (`Clock`-injected per
  * §17.100a/§17.101a), `ImportExportService`.
@@ -42,8 +42,8 @@
  * resolved through `ComputationKind.fromName`.
  */
 
-import { LocalStorageBoardCollectionRepositoryV4 } from "./adapters/persistence/LocalStorageBoardCollectionRepositoryV4.js";
-import { createJsonCodecV4 } from "./adapters/persistence/jsonCodecV4.js";
+import { LocalStorageBoardCollectionRepository } from "./adapters/persistence/LocalStorageBoardCollectionRepository.js";
+import { createJsonCodec } from "./adapters/persistence/jsonCodec.js";
 import { HashRouter } from "./adapters/routing/HashRouter.js";
 import type {
   AddChildConfirmDetail,
@@ -78,7 +78,7 @@ import type { ComputationKindChangeDetail } from "./adapters/ui/views/ComputedNo
 import type { InlineEditWeightDetail } from "./adapters/ui/views/childWeight/weightEditEvents.js";
 import type { InlineEditTitleDetail } from "./adapters/ui/views/inlineEditEvents.js";
 import type { InlineEditValueDetail } from "./adapters/ui/views/inlineEditEvents.js";
-import { mapFocusedToViewModelV4 } from "./adapters/ui/views/viewModelMapperV4.js";
+import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
 import {
   AddChildService,
   type AddChildPayloadV4,
@@ -109,8 +109,8 @@ async function main(): Promise<void> {
   // IdGenerator's no-adapter-file pattern). `Timestamp.of` validates
   // `getTime()` so a `NaN`-Date would surface here at the boundary.
   const clock: Clock = { now: () => Timestamp.of(new Date()) };
-  const codec = createJsonCodecV4(clock);
-  const repo = new LocalStorageBoardCollectionRepositoryV4({
+  const codec = createJsonCodec(clock);
+  const repo = new LocalStorageBoardCollectionRepository({
     storage: window.localStorage,
     codec,
     clock,
@@ -146,7 +146,7 @@ async function main(): Promise<void> {
     const view = nav.getFocusedView();
     const current = boards.getCurrentBoard();
     if (view) {
-      screen.view = mapFocusedToViewModelV4(view.center, view.childrenNodes, {
+      screen.view = mapFocusedToViewModel(view.center, view.childrenNodes, {
         cards: current.tree.cards,
       });
     } else {

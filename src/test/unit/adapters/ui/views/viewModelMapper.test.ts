@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  mapFocusedToViewModelV4,
-  mapNodeToViewModelV4,
-  ViewModelMappingErrorV4,
-} from "../../../../../adapters/ui/views/viewModelMapperV4.js";
+  mapFocusedToViewModel,
+  mapNodeToViewModel,
+  ViewModelMappingError,
+} from "../../../../../adapters/ui/views/viewModelMapper.js";
 import type { Clock } from "../../../../../domain/capabilities/Clock.js";
 import { BusinessScoreCard } from "../../../../../domain/cards/BusinessScoreCard.js";
 import { ComputationKind } from "../../../../../domain/computation/ComputationKind.js";
@@ -72,7 +72,7 @@ const buildText = (
 };
 
 describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)", () => {
-  describe("mapNodeToViewModelV4 — TextNode branch", () => {
+  describe("mapNodeToViewModel — TextNode branch", () => {
     it("maps id/title and the latest history entry's value + ISO date", () => {
       const text = buildText("t1", {
         title: "Sales notes",
@@ -81,7 +81,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
           ["2026-04-01T00:00:00Z", "Q2"],
         ],
       });
-      const vm = mapNodeToViewModelV4(text);
+      const vm = mapNodeToViewModel(text);
       expect(vm).toMatchObject({
         kind: "TextNode",
         id: "t1",
@@ -91,7 +91,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
     });
 
     it("empty history → empty text + empty dateIso + empty dateColor", () => {
-      const vm = mapNodeToViewModelV4(buildText("empty"));
+      const vm = mapNodeToViewModel(buildText("empty"));
       expect(vm).toMatchObject({
         kind: "TextNode",
         value: { text: "", dateIso: "", dateColor: "" },
@@ -100,13 +100,13 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
 
     it("dateColor is non-empty when dateIso is non-empty (deterministic via options.now)", () => {
       const text = buildText("t", { history: [["2026-04-01T00:00:00Z", "x"]] });
-      const vm = mapNodeToViewModelV4(text, { now: NOW });
+      const vm = mapNodeToViewModel(text, { now: NOW });
       if (vm.kind !== "TextNode") throw new Error("expected TextNode");
       expect(vm.value.dateColor).toMatch(/^rgb\(/);
     });
   });
 
-  describe("mapNodeToViewModelV4 — BusinessScoreNode branch", () => {
+  describe("mapNodeToViewModel — BusinessScoreNode branch", () => {
     it("leaf BSC with history → recordedValue VM with unit + dateIso", () => {
       const bsc = buildBSC("b", {
         title: "Revenue",
@@ -114,7 +114,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
         history: [["2026-04-01T00:00:00Z", 75]],
         unit: "%",
       });
-      const vm = mapNodeToViewModelV4(bsc);
+      const vm = mapNodeToViewModel(bsc);
       expect(vm).toMatchObject({
         kind: "BusinessScoreCardNode",
         id: "b",
@@ -127,7 +127,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
 
     it("description on TextNode-style getDescription override is respected (mirrors v3 §17.15 indirectly)", () => {
       const bsc = buildBSC("b", { description: "from-field" });
-      const vm = mapNodeToViewModelV4(bsc);
+      const vm = mapNodeToViewModel(bsc);
       if (vm.kind !== "BusinessScoreCardNode") throw new Error("expected BSC");
       expect(vm.description).toBe("from-field");
     });
@@ -136,7 +136,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       const parent = buildBSC("p", { unit: "%" });
       parent.attach(buildBSC("c1", { weight: 1, history: [["2026-01-01T00:00:00Z", 20]] }));
       parent.attach(buildBSC("c2", { weight: 1, history: [["2026-06-01T00:00:00Z", 80]] }));
-      const vm = mapNodeToViewModelV4(parent);
+      const vm = mapNodeToViewModel(parent);
       if (vm.kind !== "BusinessScoreCardNode") throw new Error("expected BSC");
       expect(vm.value).toEqual({ kind: "computedMean", mean: 50, unit: "%" });
       expect(vm.dateIso).toBe("2026-06-01T00:00:00.000Z");
@@ -146,13 +146,13 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       const parent = buildBSC("p");
       parent.attach(buildText("a"));
       parent.attach(buildText("b"));
-      const vm = mapNodeToViewModelV4(parent);
+      const vm = mapNodeToViewModel(parent);
       if (vm.kind !== "BusinessScoreCardNode") throw new Error("expected BSC");
       expect(vm.value).toEqual({ kind: "childrenCount", n: 2 });
     });
 
     it("empty leaf BSC → childrenCount n=0 + empty dateIso/dateColor", () => {
-      const vm = mapNodeToViewModelV4(buildBSC("empty"));
+      const vm = mapNodeToViewModel(buildBSC("empty"));
       if (vm.kind !== "BusinessScoreCardNode") throw new Error("expected BSC");
       expect(vm.value).toEqual({ kind: "childrenCount", n: 0 });
       expect(vm.dateIso).toBe("");
@@ -164,7 +164,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
         objective: obj(80, "2026-12-31T00:00:00Z"),
         unit: "ms",
       });
-      const vm = mapNodeToViewModelV4(bsc);
+      const vm = mapNodeToViewModel(bsc);
       if (vm.kind !== "BusinessScoreCardNode") throw new Error("expected BSC");
       expect(vm.objective.targetValue).toBe(80);
       expect(vm.objective.targetDateIso).toBe("2026-12-31T00:00:00.000Z");
@@ -176,7 +176,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
         history: [["2026-04-01T00:00:00Z", 50]],
         objective: obj(100, "2026-12-31T00:00:00Z"),
       });
-      const vm = mapNodeToViewModelV4(bsc, { now: NOW });
+      const vm = mapNodeToViewModel(bsc, { now: NOW });
       if (vm.kind !== "BusinessScoreCardNode") throw new Error("expected BSC");
       expect(vm.objective.valueColor).toMatch(/^rgb\(/);
     });
@@ -185,7 +185,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       const parent = buildBSC("p");
       parent.attach(buildBSC("c1", { history: [["2026-01-01T00:00:00Z", 20]] }));
       parent.attach(buildBSC("c2", { history: [["2026-06-01T00:00:00Z", 80]] }));
-      const vm = mapNodeToViewModelV4(parent, { now: NOW });
+      const vm = mapNodeToViewModel(parent, { now: NOW });
       if (vm.kind !== "BusinessScoreCardNode") throw new Error("expected BSC");
       expect(vm.objective.warningColor).toBe("");
       expect(vm.objective.trendArrow).toBeNull();
@@ -200,17 +200,17 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
         ],
         objective: obj(100, "2026-12-31T00:00:00Z"),
       });
-      const vm = mapNodeToViewModelV4(bsc, { now: NOW });
+      const vm = mapNodeToViewModel(bsc, { now: NOW });
       if (vm.kind !== "BusinessScoreCardNode") throw new Error("expected BSC");
       expect(vm.objective.trendArrow).not.toBeNull();
     });
   });
 
-  describe("mapNodeToViewModelV4 — StrictRangeNode branch", () => {
+  describe("mapNodeToViewModel — StrictRangeNode branch", () => {
     it("StrictRangeNode renders as BSC kind with empty unit + degenerate empty objective", () => {
       const node = new StrictRangeNode<number>("s", "Latency", w(1), "", clock, strict(0, 100));
       node.addValue(T("2026-04-01T00:00:00Z"), 75);
-      const vm = mapNodeToViewModelV4(node);
+      const vm = mapNodeToViewModel(node);
       expect(vm.kind).toBe("BusinessScoreCardNode");
       if (vm.kind !== "BusinessScoreCardNode") return;
       expect(vm.value).toEqual({
@@ -226,23 +226,23 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
   });
 
   describe("error path", () => {
-    it("throws ViewModelMappingErrorV4 on a v4 Node that is neither TextNode nor RangedValueNode", () => {
+    it("throws ViewModelMappingError on a v4 Node that is neither TextNode nor RangedValueNode", () => {
       class StubNode extends Node {
         constructor() {
           super("stub", "Stub", w(1));
         }
       }
-      expect(() => mapNodeToViewModelV4(new StubNode())).toThrow(ViewModelMappingErrorV4);
-      expect(() => mapNodeToViewModelV4(new StubNode())).toThrow(/unsupported v4 Node subclass/);
+      expect(() => mapNodeToViewModel(new StubNode())).toThrow(ViewModelMappingError);
+      expect(() => mapNodeToViewModel(new StubNode())).toThrow(/unsupported v4 Node subclass/);
     });
   });
 
-  describe("mapFocusedToViewModelV4", () => {
+  describe("mapFocusedToViewModel", () => {
     it("returns center VM + children VMs in the same order as input + appends a plus slot when capacity allows", () => {
       const center = buildBSC("center", { unit: "%" });
       const c1 = buildBSC("c1", { history: [["2026-01-01T00:00:00Z", 10]] });
       const c2 = buildText("c2", { history: [["2026-02-01T00:00:00Z", "x"]] });
-      const focused = mapFocusedToViewModelV4(center, [c1, c2]);
+      const focused = mapFocusedToViewModel(center, [c1, c2]);
       expect(focused.center.id).toBe("center");
       expect(focused.children.length).toBe(3); // c1 + c2 + plus
       expect(focused.children[0].slot).toBe("node");
@@ -260,7 +260,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
         center.attach(c);
         children.push(c);
       }
-      const focused = mapFocusedToViewModelV4(center, children);
+      const focused = mapFocusedToViewModel(center, children);
       expect(focused.children.length).toBe(12);
       expect(focused.children.every((s) => s.slot === "node")).toBe(true);
     });
@@ -268,7 +268,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
     it("propagates options.now to every node's VM", () => {
       const center = buildBSC("p", { history: [["2026-04-01T00:00:00Z", 10]] });
       const child = buildText("t", { history: [["2026-04-01T00:00:00Z", "x"]] });
-      const focused = mapFocusedToViewModelV4(center, [child], { now: NOW });
+      const focused = mapFocusedToViewModel(center, [child], { now: NOW });
       if (focused.center.kind !== "BusinessScoreCardNode") throw new Error();
       expect(focused.center.dateColor).toMatch(/^rgb\(/);
       const childSlot = focused.children[0];
@@ -285,7 +285,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       const node = new ComputedNode<number>("cn", "Sum", w(), "", clock, ComputationKind.SUM);
       node.attach(buildBSC("c1", { history: [["2026-01-01T00:00:00Z", 10]] }));
       node.attach(buildBSC("c2", { history: [["2026-01-01T00:00:00Z", 7]] }));
-      const vm = mapNodeToViewModelV4(node);
+      const vm = mapNodeToViewModel(node);
       expect(vm).toMatchObject({
         kind: "ComputedNode",
         id: "cn",
@@ -299,14 +299,14 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
 
     it("ComputedNode with no eligible children → empty VM carrying the EmptyChildrenError reason; setComputationKind flips the dropdown", () => {
       const node = new ComputedNode<number>("cn", "Avg", w(), "", clock, ComputationKind.AVERAGE);
-      const vm = mapNodeToViewModelV4(node);
+      const vm = mapNodeToViewModel(node);
       if (vm.kind !== "ComputedNode") throw new Error("expected ComputedNode");
       expect(vm.value.kind).toBe("empty");
       if (vm.value.kind !== "empty") throw new Error();
       expect(vm.value.reason).toMatch(/AVERAGE/);
 
       node.setComputationKind(ComputationKind.MAX);
-      const flipped = mapNodeToViewModelV4(node);
+      const flipped = mapNodeToViewModel(node);
       if (flipped.kind !== "ComputedNode") throw new Error();
       expect(flipped.computationKind).toBe("MAX");
     });
@@ -318,7 +318,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       );
       cbsn.attach(buildBSC("c1", { weight: 1, history: [["2026-04-01T00:00:00Z", 40]] }));
       cbsn.attach(buildBSC("c2", { weight: 1, history: [["2026-06-01T00:00:00Z", 80]] }));
-      const vm = mapNodeToViewModelV4(cbsn, { now: NOW });
+      const vm = mapNodeToViewModel(cbsn, { now: NOW });
       expect(vm).toMatchObject({
         kind: "ComputedBusinessScoreNode",
         id: "cbsn",
@@ -346,7 +346,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       );
       cbsn.attach(buildBSC("c1", { history: [["2026-04-01T00:00:00Z", 5]] }));
       const cards = new Map([["cbsn", new BusinessScoreCard(cbsn as unknown as BusinessScoreNode<number>, Unit.of("kg"))]]);
-      const vm = mapNodeToViewModelV4(cbsn, { cards });
+      const vm = mapNodeToViewModel(cbsn, { cards });
       if (vm.kind !== "ComputedBusinessScoreNode" || vm.value.kind !== "numeric") throw new Error();
       expect(vm.value.unit).toBe("kg");
       expect(vm.objective.unit).toBe("kg");
@@ -360,7 +360,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
         history: [["2026-04-01T00:00:00Z", 42]],
       });
       const cards = new Map([["b", new BusinessScoreCard(node, Unit.of("$"))]]);
-      const vm = mapNodeToViewModelV4(node, { cards });
+      const vm = mapNodeToViewModel(node, { cards });
       if (vm.kind !== "BusinessScoreCardNode") throw new Error();
       if (vm.value.kind !== "recordedValue") throw new Error();
       expect(vm.value.unit).toBe("$");
@@ -369,8 +369,8 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
 
     it("absent card → falls back to BSN.unit (legacy §17.91 path); empty cards map equivalent to omitted", () => {
       const node = buildBSC("b", { unit: "ms", history: [["2026-04-01T00:00:00Z", 9]] });
-      const vmEmpty = mapNodeToViewModelV4(node, { cards: new Map() });
-      const vmOmitted = mapNodeToViewModelV4(node);
+      const vmEmpty = mapNodeToViewModel(node, { cards: new Map() });
+      const vmOmitted = mapNodeToViewModel(node);
       if (vmEmpty.kind !== "BusinessScoreCardNode" || vmOmitted.kind !== "BusinessScoreCardNode") throw new Error();
       if (vmEmpty.value.kind !== "recordedValue" || vmOmitted.value.kind !== "recordedValue") throw new Error();
       expect(vmEmpty.value.unit).toBe("ms");
@@ -378,14 +378,14 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       expect(vmEmpty.objective.unit).toBe("ms");
     });
 
-    it("mapFocusedToViewModelV4 threads cards through to every child's VM", () => {
+    it("mapFocusedToViewModel threads cards through to every child's VM", () => {
       const center = buildBSC("p", { unit: "old" });
       const child = buildBSC("c", { unit: "old-child", history: [["2026-04-01T00:00:00Z", 5]] });
       const cards = new Map([
         ["p", new BusinessScoreCard(center, Unit.of("kg"))],
         ["c", new BusinessScoreCard(child, Unit.of("g"))],
       ]);
-      const focused = mapFocusedToViewModelV4(center, [child], { cards });
+      const focused = mapFocusedToViewModel(center, [child], { cards });
       if (focused.center.kind !== "BusinessScoreCardNode") throw new Error();
       expect(focused.center.objective.unit).toBe("kg");
       const slot = focused.children[0];
