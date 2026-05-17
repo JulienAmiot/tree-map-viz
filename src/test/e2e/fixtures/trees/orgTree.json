@@ -1,104 +1,100 @@
 {
-  "nodeType": "BusinessScoreCard",
-  "id": "UUID1",
-  "title": "UUID1 Title",
-  "description": "UUID1 description",
-  "targetValue": 100,
-  "minimalValue": 0,
-  "unit": "%",
-  "historizedValues": [
-    { "value": 100, "date": "2026-04-22T18:25:43.511Z" },
-    { "value": 100, "date": "2026-04-23T18:25:43.511Z" }
-  ],
-  "computed": true,
-  "eligibleForParentComputation": false,
-  "weight": 1,
-  "childrenNodes": [
-    {
-      "nodeType": "BusinessScoreCard",
-      "id": "UUID2",
-      "title": "UUID2 Title",
-      "description": "UUID2 description",
-      "targetValue": 100,
-      "minimalValue": 0,
-      "unit": "%",
-      "historizedValues": [
-        { "value": 100, "date": "2026-04-22T18:25:43.511Z" },
-        { "value": 100, "date": "2026-04-23T18:25:43.511Z" }
-      ],
-      "computed": false,
-      "eligibleForParentComputation": true,
-      "weight": 1,
-      "childrenNodes": [
-        {
-          "nodeType": "BusinessScoreCard",
-          "id": "UUID5",
-          "title": "UUID5 Title",
-          "description": "UUID5 description",
-          "targetValue": 100,
-          "minimalValue": 0,
-          "unit": "%",
-          "historizedValues": [
-            { "value": 100, "date": "2026-04-22T18:25:43.511Z" },
-            { "value": 100, "date": "2026-04-23T18:25:43.511Z" }
-          ],
-          "computed": false,
-          "eligibleForParentComputation": true,
-          "weight": 1,
-          "childrenNodes": []
-        },
-        {
-          "nodeType": "BusinessScoreCard",
-          "id": "UUID6",
-          "title": "UUID6 Title",
-          "description": "UUID6 description",
-          "targetValue": 100,
-          "minimalValue": 0,
-          "unit": "%",
-          "historizedValues": [
-            { "value": 100, "date": "2026-04-22T18:25:43.511Z" },
-            { "value": 100, "date": "2026-04-23T18:25:43.511Z" }
-          ],
-          "computed": false,
-          "eligibleForParentComputation": true,
-          "weight": 1,
-          "childrenNodes": []
-        }
-      ]
-    },
-    {
-      "nodeType": "BusinessScoreCard",
-      "id": "UUID3",
-      "title": "UUID3 Title",
-      "description": "UUID3 description",
-      "targetValue": 100,
-      "minimalValue": 0,
-      "unit": "%",
-      "historizedValues": [
-        { "value": 0, "date": "2026-04-22T18:25:43.511Z" },
-        { "value": 0, "date": "2026-04-23T18:25:43.511Z" }
-      ],
-      "computed": false,
-      "eligibleForParentComputation": true,
-      "weight": 1,
-      "childrenNodes": []
-    },
-    {
-      "nodeType": "BusinessScoreCard",
-      "id": "UUID4",
-      "title": "UUID4 Title",
-      "description": "UUID4 description",
-      "targetValue": 100,
-      "minimalValue": 0,
-      "unit": "%",
-      "historizedValues": [
-        { "value": 50, "date": "2026-04-22T18:25:43.511Z" },
-        { "value": 50, "date": "2026-04-23T18:25:43.511Z" }
-      ],
-      "computed": false,
-      "eligibleForParentComputation": true,
-      "weight": 1,
-      "childrenNodes": []
-    }
+  "schemaVersion": "v4.0",
+  "root": {
+    "kind": "ComputedBusinessScoreNode",
+    "id": "UUID1",
+    "title": "UUID1 Title",
+    "weight": 1,
+    "description": "UUID1 description",
+    "range": { "kind": "lenient", "min": null, "max": null },
+    "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+    "computationKind": "WEIGHTED_AVERAGE",
+    "unit": "%",
+    "children": [
+      {
+        "kind": "BusinessScoreNode",
+        "id": "UUID2",
+        "title": "UUID2 Title",
+        "weight": 1,
+        "description": "UUID2 description",
+        "range": { "kind": "lenient", "min": null, "max": null },
+        "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+        "unit": "%",
+        "history": [
+          { "value": 100, "at": "2026-04-22T18:25:43.511Z" },
+          { "value": 100, "at": "2026-04-23T18:25:43.511Z" }
+        ],
+        "children": [
+          {
+            "kind": "BusinessScoreNode",
+            "id": "UUID5",
+            "title": "UUID5 Title",
+            "weight": 1,
+            "description": "UUID5 description",
+            "range": { "kind": "lenient", "min": null, "max": null },
+            "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+            "unit": "%",
+            "history": [
+              { "value": 100, "at": "2026-04-22T18:25:43.511Z" },
+              { "value": 100, "at": "2026-04-23T18:25:43.511Z" }
+            ],
+            "children": []
+          },
+          {
+            "kind": "BusinessScoreNode",
+            "id": "UUID6",
+            "title": "UUID6 Title",
+            "weight": 1,
+            "description": "UUID6 description",
+            "range": { "kind": "lenient", "min": null, "max": null },
+            "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+            "unit": "%",
+            "history": [
+              { "value": 100, "at": "2026-04-22T18:25:43.511Z" },
+              { "value": 100, "at": "2026-04-23T18:25:43.511Z" }
+            ],
+            "children": []
+          }
+        ]
+      },
+      {
+        "kind": "BusinessScoreNode",
+        "id": "UUID3",
+        "title": "UUID3 Title",
+        "weight": 1,
+        "description": "UUID3 description",
+        "range": { "kind": "lenient", "min": null, "max": null },
+        "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+        "unit": "%",
+        "history": [
+          { "value": 0, "at": "2026-04-22T18:25:43.511Z" },
+          { "value": 0, "at": "2026-04-23T18:25:43.511Z" }
+        ],
+        "children": []
+      },
+      {
+        "kind": "BusinessScoreNode",
+        "id": "UUID4",
+        "title": "UUID4 Title",
+        "weight": 1,
+        "description": "UUID4 description",
+        "range": { "kind": "lenient", "min": null, "max": null },
+        "objective": { "value": 100, "at": "9999-12-31T23:59:59.999Z" },
+        "unit": "%",
+        "history": [
+          { "value": 50, "at": "2026-04-22T18:25:43.511Z" },
+          { "value": 50, "at": "2026-04-23T18:25:43.511Z" }
+        ],
+        "children": []
+      }
+    ]
+  },
+  "cards": [
+    { "nodeId": "UUID1", "unit": "%" },
+    { "nodeId": "UUID2", "unit": "%" },
+    { "nodeId": "UUID5", "unit": "%" },
+    { "nodeId": "UUID6", "unit": "%" },
+    { "nodeId": "UUID3", "unit": "%" },
+    { "nodeId": "UUID4", "unit": "%" }
   ]
 }

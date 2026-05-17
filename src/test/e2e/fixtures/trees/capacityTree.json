@@ -1,75 +1,79 @@
 {
-  "nodeType": "TextNode",
-  "id": "capacity-root",
-  "title": "Capacity test root",
-  "description": "Branches with 0/1/11/12 children for the N+1 outline",
-  "weight": 1,
-  "childrenNodes": [
-    {
-      "nodeType": "TextNode",
-      "id": "n0",
-      "title": "Empty (0 children)",
-      "description": "",
-      "weight": 1,
-      "childrenNodes": []
-    },
-    {
-      "nodeType": "TextNode",
-      "id": "n1",
-      "title": "One child",
-      "description": "",
-      "weight": 1,
-      "childrenNodes": [
-        {
-          "nodeType": "TextNode",
-          "id": "n1c1",
-          "title": "1c1",
-          "description": "",
-          "weight": 1,
-          "childrenNodes": []
-        }
-      ]
-    },
-    {
-      "nodeType": "TextNode",
-      "id": "n11",
-      "title": "Eleven children",
-      "description": "",
-      "weight": 1,
-      "childrenNodes": [
-        { "nodeType": "TextNode", "id": "n11c1", "title": "1", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n11c2", "title": "2", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n11c3", "title": "3", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n11c4", "title": "4", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n11c5", "title": "5", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n11c6", "title": "6", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n11c7", "title": "7", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n11c8", "title": "8", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n11c9", "title": "9", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n11c10", "title": "10", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n11c11", "title": "11", "description": "", "weight": 1, "childrenNodes": [] }
-      ]
-    },
-    {
-      "nodeType": "TextNode",
-      "id": "n12",
-      "title": "Twelve children (at cap)",
-      "description": "",
-      "weight": 1,
-      "childrenNodes": [
-        { "nodeType": "TextNode", "id": "n12c1", "title": "1", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n12c2", "title": "2", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n12c3", "title": "3", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n12c4", "title": "4", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n12c5", "title": "5", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n12c6", "title": "6", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n12c7", "title": "7", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n12c8", "title": "8", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n12c9", "title": "9", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n12c10", "title": "10", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n12c11", "title": "11", "description": "", "weight": 1, "childrenNodes": [] },
-        { "nodeType": "TextNode", "id": "n12c12", "title": "12", "description": "", "weight": 1, "childrenNodes": [] }
-      ]
-    }
-  ]
+  "schemaVersion": "v4.0",
+  "root": {
+    "kind": "TextNodeV4",
+    "id": "capacity-root",
+    "title": "Capacity test root",
+    "weight": 1,
+    "history": [],
+    "children": [
+      {
+        "kind": "TextNodeV4",
+        "id": "n0",
+        "title": "Empty (0 children)",
+        "weight": 1,
+        "history": [],
+        "children": []
+      },
+      {
+        "kind": "TextNodeV4",
+        "id": "n1",
+        "title": "One child",
+        "weight": 1,
+        "history": [],
+        "children": [
+          {
+            "kind": "TextNodeV4",
+            "id": "n1c1",
+            "title": "1c1",
+            "weight": 1,
+            "history": [],
+            "children": []
+          }
+        ]
+      },
+      {
+        "kind": "TextNodeV4",
+        "id": "n11",
+        "title": "Eleven children",
+        "weight": 1,
+        "history": [],
+        "children": [
+          { "kind": "TextNodeV4", "id": "n11c1", "title": "1", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n11c2", "title": "2", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n11c3", "title": "3", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n11c4", "title": "4", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n11c5", "title": "5", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n11c6", "title": "6", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n11c7", "title": "7", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n11c8", "title": "8", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n11c9", "title": "9", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n11c10", "title": "10", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n11c11", "title": "11", "weight": 1, "history": [], "children": [] }
+        ]
+      },
+      {
+        "kind": "TextNodeV4",
+        "id": "n12",
+        "title": "Twelve children (at cap)",
+        "weight": 1,
+        "history": [],
+        "children": [
+          { "kind": "TextNodeV4", "id": "n12c1", "title": "1", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n12c2", "title": "2", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n12c3", "title": "3", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n12c4", "title": "4", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n12c5", "title": "5", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n12c6", "title": "6", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n12c7", "title": "7", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n12c8", "title": "8", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n12c9", "title": "9", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n12c10", "title": "10", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n12c11", "title": "11", "weight": 1, "history": [], "children": [] },
+          { "kind": "TextNodeV4", "id": "n12c12", "title": "12", "weight": 1, "history": [], "children": [] }
+        ]
+      }
+    ]
+  },
+  "cards": []
 }

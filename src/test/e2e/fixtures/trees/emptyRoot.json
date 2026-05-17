@@ -1,9 +1,12 @@
 {
-  "nodeType": "TextNode",
-  "id": "TXT-EMPTY-ROOT",
-  "title": "Empty root",
-  "description": "",
-  "weight": 1,
-  "historizedValues": [],
-  "childrenNodes": []
+  "schemaVersion": "v4.0",
+  "root": {
+    "kind": "TextNodeV4",
+    "id": "TXT-EMPTY-ROOT",
+    "title": "Empty root",
+    "weight": 1,
+    "history": [],
+    "children": []
+  },
+  "cards": []
 }

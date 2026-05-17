@@ -5,11 +5,7 @@ import type {
 } from "../../application/ports/BoardCollectionRepositoryV4.js";
 import type { TreeCodecV4 } from "../../application/ports/TreeCodecV4.js";
 import type { Clock } from "../../domain/capabilities/Clock.js";
-import { v4TreeFromV3Root } from "../../domain/v3Bridge/v4TreeFromV3Root.js";
 import { buildShowcaseBoardV4 } from "../showcaseSeedV4.js";
-
-import { decode as decodeV3 } from "./jsonCodec.js";
-import { JsonCodecV4DecodeError } from "./jsonCodecV4.js";
 
 /**
  * §17.107 — `BoardCollectionRepositoryV4` adapter backed by `Storage`
@@ -23,26 +19,18 @@ import { JsonCodecV4DecodeError } from "./jsonCodecV4.js";
  * directly so the whole envelope round-trips through a single
  * `JSON.parse`/`JSON.stringify` pair).
  *
- * **v3-fallback decode shim** — `load()` recognises `v: 1` envelopes
- * (the v3 adapter's wire shape; written by builds pre-§17.110 cutover)
- * and decodes each board's `tree` via the v3 `jsonCodec` then lifts it
- * to the v4 `Tree` container through the §17.81/§17.88 `v4TreeFromV3Root`
- * bridge. The §17.99c polymorphic substitution (`computed:true` → CBSN)
- * + §17.99b disabled migration + §17.100.5 cards-sidecar build all
- * surface through the bridge unchanged. On the next `save()` the
- * envelope re-emits as `v: 2` v4-native, completing the silent
- * one-way migration. **Belt-and-braces**: if a `v: 2` board's tree
- * fails to decode through the v4 codec with `JsonCodecV4DecodeError`
- * (corrupted post-cutover payload), the adapter falls back to the v3
- * path on that single tree too — the §17.106b codec is strict, but a
- * forgiving load path keeps the kiosk recoverable.
- *
- * Deliberately scoped: this strand ships the codec-migration adapter
- * only. The §17.86 runtime version-mismatch surface, the §17.86b
- * read-only mode toggle, the §17.63 legacy-key migration, and the
- * §17.42 `freshDateColor` discard are all v3-adapter features that
- * stay live on the v3 side until §17.110 Phase E cutover; if any are
- * still needed post-cutover they port over in a follow-on strand.
+ * §17.112 Phase F v3 sweep — the v3-fallback decode shim retired. The
+ * §17.107 shim composed v3 `jsonCodec` + `v4TreeFromV3Root` bridge to
+ * read `v: 1` envelopes (pre-§17.110 cutover) AND to recover corrupted
+ * `v: 2` trees as belt-and-braces; with the v3 source files all gone
+ * the chain has no implementation left to fall back to. Any operator
+ * install that booted a §17.110+ build has already silently re-emitted
+ * its envelope as `v: 2` (the LSR's `save()` writes `v: 2` regardless
+ * of the load path's version), so the migration window closed.
+ * `v: 1` envelopes (or anything else not matching `v: 2`) now surface
+ * a clean load error instead of silently bridging. Belt-and-braces
+ * recovery is gone too: a corrupted `v: 2` tree throws verbatim from
+ * the §17.106b codec.
  */
 export class StorageFullErrorV4 extends Error {
   constructor(cause?: unknown) {
@@ -131,26 +119,17 @@ export class LocalStorageBoardCollectionRepositoryV4 implements BoardCollectionR
   }
 
   private envelopeToSnapshot(env: WireEnvelope): BoardCollectionSnapshotV4 {
-    const isLegacyV3 = env.v === 1;
+    if (env.v !== ENVELOPE_VERSION_V4) {
+      throw new Error(
+        `LocalStorageBoardCollectionRepositoryV4: unsupported envelope version "v: ${String(env.v)}" — expected "v: ${String(ENVELOPE_VERSION_V4)}" (pre-§17.110 v: 1 envelopes are no longer migrated; reset storage to recover)`,
+      );
+    }
     const boards: BoardV4[] = env.boards.map((b) => ({
       id: b.id,
       name: b.name,
-      tree: this.decodeTree(b.tree, isLegacyV3),
+      tree: this.codec.decode(JSON.stringify(b.tree)),
     }));
     return { boards, currentBoardId: env.currentBoardId };
-  }
-
-  private decodeTree(treeBlob: unknown, isLegacyV3: boolean) {
-    const treeText = JSON.stringify(treeBlob);
-    if (isLegacyV3) return v4TreeFromV3Root(decodeV3(treeText), this.clock);
-    try {
-      return this.codec.decode(treeText);
-    } catch (err) {
-      if (err instanceof JsonCodecV4DecodeError) {
-        return v4TreeFromV3Root(decodeV3(treeText), this.clock);
-      }
-      throw err;
-    }
   }
 }
 

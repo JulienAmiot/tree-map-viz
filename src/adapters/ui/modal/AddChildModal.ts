@@ -115,7 +115,6 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
-import type { AddChildPayload } from "../../../application/AddChildService.js";
 import {
   modalFrameStyles,
   renderModalCloseX,
@@ -123,6 +122,45 @@ import {
 
 export const ADD_CHILD_CONFIRM_EVENT = "add-child-confirm";
 export const ADD_CHILD_CANCEL_EVENT = "add-child-cancel";
+
+/**
+ * Plain-data payload the modal dispatches on confirm. v3 used to host
+ * this type on `AddChildService`; §17.112 v3 sweep moved it here so the
+ * modal owns its own outbound contract and main.ts's translation shim
+ * `toV4AddChildPayload` consumes it from the adapter side without
+ * crossing back into a (now-deleted) v3 application service.
+ *
+ * The shape mirrors the v3 modal contract verbatim (v3-compat 2-kind
+ * union `TextNode` / `BusinessScoreCardNode`); main.ts rewrites it to
+ * the v4 payload before handing off to `AddChildServiceV4`. Optional
+ * fields default sensibly at the modal/service boundary (weight=1,
+ * description="", computed=false, eligibleForParentComputation=true,
+ * empty initial history). TextNode intentionally has no description
+ * (the latest history `TimestampedValue<string>` IS the description
+ * per §17.15).
+ */
+export type AddChildPayload =
+  | {
+      readonly kind: "TextNode";
+      readonly title: string;
+      readonly weight?: number;
+      readonly initialHistory?: readonly { readonly value: string; readonly asOf: Date }[];
+    }
+  | {
+      readonly kind: "BusinessScoreCardNode";
+      readonly title: string;
+      readonly description?: string;
+      readonly weight?: number;
+      readonly unit: string;
+      readonly objective: {
+        readonly initialValue: number;
+        readonly targetValue: number;
+        readonly targetDate: Date;
+      };
+      readonly computed?: boolean;
+      readonly eligibleForParentComputation?: boolean;
+      readonly initialHistory?: readonly { readonly value: number; readonly asOf: Date }[];
+    };
 
 export type AddChildKind = AddChildPayload["kind"];
 

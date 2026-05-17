@@ -1,32 +1,33 @@
 {
-  "nodeType": "TextNode",
-  "id": "TXT-ROOT",
-  "title": "Quarterly review",
-  "description": "Top-level scorecard",
-  "weight": 1,
-  "historizedValues": [
-    { "value": "On track for Q2", "date": "2026-04-23T18:25:43.511Z" }
-  ],
-  "childrenNodes": [
-    {
-      "nodeType": "TextNode",
-      "id": "TXT-A",
-      "title": "Region",
-      "description": "North-east",
-      "weight": 1,
-      "historizedValues": [
-        { "value": "North-east region", "date": "2026-04-23T18:25:43.511Z" }
-      ],
-      "childrenNodes": []
-    },
-    {
-      "nodeType": "TextNode",
-      "id": "TXT-B",
-      "title": "Bare",
-      "description": "",
-      "weight": 1,
-      "historizedValues": [],
-      "childrenNodes": []
-    }
-  ]
+  "schemaVersion": "v4.0",
+  "root": {
+    "kind": "TextNodeV4",
+    "id": "TXT-ROOT",
+    "title": "Quarterly review",
+    "weight": 1,
+    "history": [
+      { "value": "On track for Q2", "at": "2026-04-23T18:25:43.511Z" }
+    ],
+    "children": [
+      {
+        "kind": "TextNodeV4",
+        "id": "TXT-A",
+        "title": "Region",
+        "weight": 1,
+        "history": [
+          { "value": "North-east region", "at": "2026-04-23T18:25:43.511Z" }
+        ],
+        "children": []
+      },
+      {
+        "kind": "TextNodeV4",
+        "id": "TXT-B",
+        "title": "Bare",
+        "weight": 1,
+        "history": [],
+        "children": []
+      }
+    ]
+  },
+  "cards": []
 }

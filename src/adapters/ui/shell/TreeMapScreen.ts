@@ -91,8 +91,6 @@ import {
 import { OrientationController } from "../controllers/OrientationController.js";
 import "../modal/AboutModal.js";
 import type { AboutModal } from "../modal/AboutModal.js";
-import "./VersionMismatchBanner.js";
-import type { VersionMismatchInfo } from "../../persistence/LocalStorageBoardCollectionRepository.js";
 import "../modal/AddChildModal.js";
 import type { AddChildModal } from "../modal/AddChildModal.js";
 import "../modal/BoardSettingsModal.js";
@@ -212,10 +210,6 @@ export class TreeMapScreen extends LitElement {
   @state()
   private aboutModalOpen = false;
 
-  /** SPEC §17.86b -- non-null when persistence raised a mismatch; cleared on any banner action. */
-  @state()
-  private versionMismatch: VersionMismatchInfo | null = null;
-
   /**
    * SPEC §17.52 -- active child-tile weight-edit popover state.
    * When non-null the shell renders `<weight-edit-popover>` anchored
@@ -241,12 +235,11 @@ export class TreeMapScreen extends LitElement {
          no z-index gymnastics) and naturally pushes the parent
          strip + children grid down by exactly the bar's height. */
       display: grid;
-      /* SPEC §17.86b -- three rows: top bar (auto), optional version-
-         mismatch banner (auto; absent when no mismatch), focused-panel
-         layout (1fr). When no mismatch the banner element renders
-         empty (the host element stays in the DOM as a 0-height grid
-         participant) so row 3 keeps the 1fr layout track. */
-      grid-template-rows: auto auto 1fr;
+      /* §17.112 Phase F — the §17.86b version-mismatch banner row
+         retired alongside the v3 persistence chain (the §17.107 v4 LSR
+         doesn't surface a mismatch callback). Two rows now: top bar
+         (auto) + focused-panel layout (1fr). */
+      grid-template-rows: auto 1fr;
       box-sizing: border-box;
       width: 100%;
       height: 100%;
@@ -450,12 +443,9 @@ export class TreeMapScreen extends LitElement {
       ></weight-edit-popover>
     `;
 
-    // §17.86b -- always rendered so the host's 3-row grid keeps the 1fr layout track.
-    const banner = html`<version-mismatch-banner .info=${this.versionMismatch} @version-mismatch-continue-read-only=${this.handleMismatchDismiss} @version-mismatch-reset=${this.handleMismatchDismiss} @version-mismatch-dismiss=${this.handleMismatchDismiss}></version-mismatch-banner>`;
     if (!this.view) {
       return html`
         ${topBar}
-        ${banner}
         <p class="empty" data-testid="loading">Loading…</p>
         ${modal}
       `;
@@ -471,7 +461,6 @@ export class TreeMapScreen extends LitElement {
         : "";
     return html`
       ${topBar}
-      ${banner}
       <div
         class="layout"
         data-testid="layout"
@@ -741,13 +730,6 @@ export class TreeMapScreen extends LitElement {
   closeAboutModal(): void {
     this.aboutModalOpen = false;
   }
-
-  /** SPEC §17.86b composition-root surface; replaces §17.86's console.warn placeholder. */
-  surfaceMismatchBanner(info: VersionMismatchInfo): void { this.versionMismatch = info; }
-  dismissMismatchBanner(): void { this.versionMismatch = null; }
-  get currentMismatchBanner(): VersionMismatchInfo | null { return this.versionMismatch; }
-  // Continue/Reset/Dismiss all clear the banner here; root owns the action side-effects.
-  private readonly handleMismatchDismiss = (): void => { this.versionMismatch = null; };
 
   /** Read-only accessor used by tests — keeps the `@state` private. */
   get isAddChildModalOpen(): boolean {
