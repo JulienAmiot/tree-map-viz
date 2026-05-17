@@ -35,7 +35,7 @@ function cbsnVm(
 }
 
 describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
-  it("\u00a717.116 — \u03a3 prefixes the title; kind label is static; numeric value renders without inline unit; unit appears in a .unit-below block", async () => {
+  it("\u00a717.116 — \u03a3 prefixes the title; numeric value renders without inline unit; unit appears in a .unit-below block (\u00a717.116-followup-2 retires the kind-label)", async () => {
     const el = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" }, "WEIGHTED_AVERAGE");
     });
@@ -50,12 +50,10 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(sr.querySelector('[data-testid="value"]')?.textContent?.trim()).toBe("42");
     // Unit sits in its own block-level sibling under the value.
     expect(sr.querySelector('[data-testid="unit"]')?.textContent?.trim()).toBe("EUR");
-    // The kind label is static (no <select>); textContent surfaces the active kind.
-    const kindLabel = sr.querySelector('[data-testid="kind-label"]');
-    expect(kindLabel?.tagName.toLowerCase()).toBe("div");
-    expect(kindLabel?.getAttribute("data-kind")).toBe("WEIGHTED_AVERAGE");
-    expect(kindLabel?.textContent?.trim()).toBe("WEIGHTED_AVERAGE");
-    // The pre-§17.116 inline dropdown is retired.
+    // SPEC §17.116-followup-2 — the static kind-label sibling is retired (was a
+    // §17.116c addition replacing the §17.104 inline dropdown). Neither variant
+    // renders on the tile any more.
+    expect(sr.querySelector('[data-testid="kind-label"]')).toBeNull();
     expect(sr.querySelector('[data-testid="kind-dropdown"]')).toBeNull();
   });
 
@@ -72,9 +70,10 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(sr.querySelector('[data-testid="value"]')).toBeNull();
     expect(sr.querySelector('[data-testid="computed-badge"]')).toBeNull();
     expect(sr.querySelector('[data-testid="unit"]')).toBeNull();
-    // Title + kind label still render as the tile's identity.
+    // Title still renders as the tile's identity. SPEC §17.116-followup-2
+    // retired the kind-label entirely.
     expect(sr.querySelector('[data-testid="title"]')).not.toBeNull();
-    expect(sr.querySelector('[data-testid="kind-label"]')).not.toBeNull();
+    expect(sr.querySelector('[data-testid="kind-label"]')).toBeNull();
   });
 
   it("\u00a717.116 — childrenCount n>0 ALSO renders the .warning-fill (cannot compute = warning regardless of n)", async () => {
@@ -120,7 +119,7 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
 });
 
 describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
-  it("\u00a717.116 — full surface: \u03a3 title prefix, kind-label, value (no inline unit, no trailing zero), unit-below, target row, age timestamp, metric-pane wrapper", async () => {
+  it("\u00a717.116 — full surface: \u03a3 title prefix, value (no inline unit, no trailing zero), unit-below, target row, age timestamp, metric-pane wrapper (\u00a717.116-followup-2 retires the kind-label)", async () => {
     const el = await mountLitElement<ComputedBusinessScoreCard>(
       "computed-business-score-card", (e) => { e.vm = cbsnVm({ kind: "numeric", value: 75, unit: "%" }); },
     );
@@ -129,7 +128,6 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(title?.getAttribute("data-view-kind")).toBe("ComputedBusinessScoreNode");
     expect(title?.querySelector('[data-testid="computed-badge"]')?.textContent).toBe("\u03a3");
     expect(title?.textContent?.trim()).toBe("\u03a3Avg score");
-    expect(sr.querySelector('[data-testid="kind-label"]')?.textContent?.trim()).toBe("AVERAGE");
     expect(sr.querySelector('[data-testid="value"]')?.textContent?.trim()).toBe("75");
     expect(sr.querySelector('[data-testid="unit"]')?.textContent?.trim()).toBe("%");
     const time = sr.querySelector<HTMLTimeElement>('[data-testid="value-date"]');
@@ -142,7 +140,10 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     const pane = sr.querySelector('[data-testid="metric-pane"]');
     expect(pane).not.toBeNull();
     expect(pane?.contains(time!)).toBe(true);
-    // No inline dropdown.
+    // SPEC §17.116-followup-2 — neither the inline kind-dropdown
+    // (pre-§17.116c) nor the static kind-label (§17.116c → followup-2)
+    // surfaces on the CBSN tile any more.
+    expect(sr.querySelector('[data-testid="kind-label"]')).toBeNull();
     expect(sr.querySelector('[data-testid="kind-dropdown"]')).toBeNull();
   });
 
@@ -162,9 +163,10 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
       expect(sr.querySelector('[data-testid="value-date"]')).toBeNull();
       expect(sr.querySelector('[data-testid="target-row"]')).toBeNull();
       expect(sr.querySelector('[data-testid="computed-badge"]')).toBeNull();
-      // Title + kind-label survive across all non-numeric branches.
+      // Title survives across all non-numeric branches; the
+      // kind-label was retired entirely in §17.116-followup-2.
       expect(sr.querySelector('[data-testid="title"]')).not.toBeNull();
-      expect(sr.querySelector('[data-testid="kind-label"]')).not.toBeNull();
+      expect(sr.querySelector('[data-testid="kind-label"]')).toBeNull();
     }
   });
 

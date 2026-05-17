@@ -254,41 +254,25 @@ export const tileLayoutStyles = css`
     text-overflow: ellipsis;
     max-width: 100%;
   }
-  /* SPEC §17.116 — the computation-kind label sits **under the
-     title** on a Computed* tile in a thinner / smaller font and is
-     NOT editable (the pre-§17.116 inline dropdown retires in
-     §17.116c; kind switching belongs to the edit modal as a future
-     §17.116-followup). The fixed 1.4vh font-size (~70% of the 2vh
-     child-role title; ~58% of the 2.4vh parent-role title) gives
-     the kind label the visual weight of a sub-title without
-     competing with the operator-edited title text. font-weight:
-     400 vs the title's 700 reinforces the "supporting context"
-     reading; the small-caps variant + letter-spacing trim turn
-     the kind verb ("SUM" / "AVERAGE") into a typographic label
-     rather than a sentence fragment. Lands in §17.116b (dormant
-     until §17.116c wires the Computed* card to render it). */
-  .kind-label {
-    display: block;
-    margin: 0 0 0.2em;
-    height: 1.8vh;
-    line-height: 1.8vh;
-    font-size: 1.4vh;
-    font-weight: 400;
-    color: color-mix(in srgb, currentColor 65%, transparent);
-    font-variant: small-caps;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+  /* SPEC §17.116 — the computation-kind label rule retired in
+     §17.116-followup-2 on operator feedback ("remove the
+     computation text line in a child and a parent"). The pre-
+     followup-2 .kind-label rule (1.4vh small-caps block under
+     the title rendering the active ComputationKind verb) had
+     no remaining consumers across the per-view modules after
+     ComputedCards.ts dropped the <div class="kind-label">
+     emission. The Σ-prefix on the title already signals
+     "aggregated value", which is the only piece of the
+     computation-kind reading the operator needed at-a-glance;
+     the exact kind (SUM / AVERAGE / …) belongs to the edit
+     modal. */
   /* SPEC §17.116 — full-tile warning glyph for Computed* nodes that
      cannot produce a value (strategy threw EmptyChildrenError, OR
      produced a non-finite number, OR has no eligible child). The
      visual contract is a huge centred ⚠ glyph in a calm muted
      colour, rendered INSIDE the existing .value-area so the title
-     row + (optional) kind-label above still read as the tile's
-     identity; the warning is the value-area's content and fills
-     it edge-to-edge.
+     row still reads as the tile's identity; the warning is the
+     value-area's content and fills it edge-to-edge.
 
      SPEC §17.116-followup — the dashed border + 8 px corner-radius
      framing the §17.24 PlusTile uses are retired here on operator
