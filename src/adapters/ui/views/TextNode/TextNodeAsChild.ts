@@ -23,6 +23,7 @@ import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../markdown/markdownToHtml.js";
 import type { TextNodeViewModel } from "../NodeViewModel.js";
+import { formatAge } from "../ageFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import { fitMarkdownBodyToTile, textBodyStyles } from "./textBody.js";
 
@@ -71,7 +72,7 @@ export class TextNodeAsChild extends LitElement {
       return html``;
     }
     const { value } = this.vm;
-    const dateLabel = value.dateIso ? formatDate(value.dateIso) : "";
+    const dateLabel = value.dateIso ? formatAge(value.dateIso) : "";
     const empty = value.text.length === 0;
     return html`
       <h2
@@ -102,14 +103,6 @@ export class TextNodeAsChild extends LitElement {
       </div>
     `;
   }
-}
-
-function formatDate(iso: string): string {
-  const ms = Date.parse(iso);
-  if (Number.isNaN(ms)) {
-    return iso;
-  }
-  return new Date(ms).toLocaleDateString();
 }
 
 declare global {

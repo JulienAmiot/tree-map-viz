@@ -28,12 +28,12 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And every tile title's font-size is approximately 2vh
 
   @HE-???? @priority:high
-  Scenario: Numeric value renders the unit at 1/3 of the value's font-size
+  Scenario: Numeric value renders the unit (now block-level under the value, §17.116) at roughly 1/3 of the value's font-size
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge
     And I reload the kiosk
     And I focus on node "ChildB"
-    Then the focused value's unit font-size is one third of the value font-size
+    Then the focused value's unit font-size is roughly one third of the value font-size
 
   @HE-???? @priority:high
   Scenario: Current-value timestamp is rendered in the bottom-right corner of the tile (§17.18)

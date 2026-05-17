@@ -99,11 +99,13 @@ import {
   inlineEditKey,
 } from "../inlineEditHelpers.js";
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
+import { formatAge } from "../ageFormat.js";
+import { formatValue } from "../numberFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import {
-  formatDate,
   renderTargetRow,
   renderTrendArrow,
+  renderUnitBelow,
   renderValueTemplate,
   timestampForValue,
 } from "./valueTemplate.js";
@@ -190,6 +192,19 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
            a flat near-white, and the per-board colour picker added
            a personalisation surface that nobody used. */
         color: rgb(245, 245, 245);
+      }
+      /* SPEC §17.116 -- Σ prefix in the title row when the value
+         branch is "computedMean" (the pre-§17.116 inline ".sigma"
+         chip next to the value moved into the title row). Sized at
+         0.95em of the title's 2.4vh so it reads as a glyph attached
+         to the title text; muted opacity keeps the operator's eye
+         on the title text proper. Same rule shape as the §17.104
+         Computed* cards' shared-styles block. */
+      .computed-badge {
+        font-weight: 700;
+        opacity: 0.75;
+        margin-right: 0.25em;
+        font-size: 0.95em;
       }
       /* SPEC 17.45 -- horizontal flex row holding .metric-pane (left)
          and the optional .description (right). When there is no
@@ -580,12 +595,13 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
         -moz-appearance: textfield;
         appearance: textfield;
       }
-      .value-edit-wrapper .unit {
-        font-size: calc(1em / 3);
-        font-weight: 500;
-        color: color-mix(in srgb, currentColor 75%, transparent);
-        flex: 0 0 auto;
-      }
+      /* SPEC §17.116 -- the pre-§17.116 inline ".value-edit-wrapper
+         .unit" rule sized a unit chip flanking the number input
+         inside the editing wrapper. §17.116 retires inline units in
+         favour of a ".unit-below" block sibling under the entire
+         value-area, so the editing wrapper no longer carries a unit
+         child. The rule is intentionally removed (vs. left as dead
+         CSS) so Sonar's unused-selector check stays clean. */
       /* SPEC 17.51 -- inline value-edit \u2212 / + stepper buttons.
          Operator request: \"the buttons to increase/decrease value
          of a field should be bigger\". The native browser spinners
@@ -825,7 +841,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
                 data-testid="value-date"
                 datetime=${dateIso}
                 style=${dateColor ? `--age-color: ${dateColor}` : ""}
-                >${formatDate(dateIso)}</time
+                >${formatAge(dateIso)}</time
               >`
             : nothing}
           <div class="value-area" data-testid="value-row">
@@ -835,6 +851,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
                 ? renderTrendArrow(this.vm)
                 : nothing}
             </div>
+            ${this.editingField !== "value" ? renderUnitBelow(this.vm) : nothing}
             ${this.editingField !== "value"
               ? renderTargetRow(this.vm)
               : nothing}
@@ -849,9 +866,15 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
     `;
   }
 
-  /** SPEC 17.28 -- title row, click-to-edit affordance. */
+  /** SPEC 17.28 -- title row, click-to-edit affordance.
+      SPEC §17.116 -- Σ prefix in front of the title when the value
+      branch is `computedMean` (the pre-§17.116 `.sigma` chip next to
+      the value moved into the title row; aggregated tiles announce
+      their derived nature on the title rather than competing with
+      the value glyph for horizontal space). */
   private renderTitle() {
     if (!this.vm) return nothing;
+    const showBadge = this.vm.value.kind === "computedMean";
     if (this.editingField === "title") {
       return html`<h1
         class="title"
@@ -879,9 +902,9 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
       tabindex="0"
       title="Click to edit title"
       @click=${this.startTitleEdit}
-    >
-      ${this.vm.title}
-    </h1>`;
+    >${showBadge
+      ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value">Σ</span>`
+      : nothing}${this.vm.title}</h1>`;
   }
 
   /**
@@ -944,7 +967,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
           @keydown=${(e: KeyboardEvent) => this.handleValueKey(e)}
           @blur=${(e: FocusEvent) =>
             this.commitValue(e.target as HTMLInputElement)}
-        /><span class="unit">${v.unit}</span>
+        />
         <button
           class="value-stepper value-stepper--plus"
           data-testid="value-step-up"
@@ -969,7 +992,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
         title="Click to edit value"
         style=${colorStyle}
         @click=${this.startValueEdit}
-        >${v.value}<span class="unit">&nbsp;${v.unit}</span></span
+        >${formatValue(v.value)}</span
       >`;
     }
     return renderValueTemplate(this.vm);

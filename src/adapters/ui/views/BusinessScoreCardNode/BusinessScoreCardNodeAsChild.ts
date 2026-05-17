@@ -8,15 +8,16 @@
  * colour gradient (`dateAgeColor`).
  */
 
-import { LitElement, html } from "lit";
+import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
+import { formatAge } from "../ageFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import {
-  formatDate,
   renderTargetRow,
   renderTrendArrow,
+  renderUnitBelow,
   renderValueTemplate,
   timestampForValue,
 } from "./valueTemplate.js";
@@ -26,7 +27,21 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
   @property({ attribute: false })
   vm: BusinessScoreCardNodeViewModel | null = null;
 
-  static styles = [tileLayoutStyles];
+  static readonly styles = [
+    tileLayoutStyles,
+    css`
+      /* SPEC §17.116 -- Σ prefix in the title row when the value
+         branch is "computedMean". Same rule shape as the asParent
+         role (cf. BSC asParent .computed-badge) and the §17.104
+         Computed* cards. */
+      .computed-badge {
+        font-weight: 700;
+        opacity: 0.75;
+        margin-right: 0.25em;
+        font-size: 0.95em;
+      }
+    `,
+  ];
 
   render() {
     if (!this.vm) {
@@ -34,22 +49,23 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
     }
     const dateIso = timestampForValue(this.vm);
     const dateColor = this.vm.dateColor;
+    const showBadge = this.vm.value.kind === "computedMean";
     return html`
       <h2
         class="title"
         data-testid="title"
         data-view-kind="BusinessScoreCardNode"
         data-id=${this.vm.id}
-      >
-        ${this.vm.title}
-      </h2>
+      >${showBadge
+        ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value">Σ</span>`
+        : nothing}${this.vm.title}</h2>
       ${dateIso
         ? html`<time
             class="timestamp"
             data-testid="value-date"
             datetime=${dateIso}
             style=${dateColor ? `--age-color: ${dateColor}` : ""}
-            >${formatDate(dateIso)}</time
+            >${formatAge(dateIso)}</time
           >`
         : html``}
       <div class="value-area" data-testid="value-row">
@@ -57,6 +73,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
           ${renderValueTemplate(this.vm)}
           ${renderTrendArrow(this.vm)}
         </div>
+        ${renderUnitBelow(this.vm)}
         ${renderTargetRow(this.vm)}
       </div>
     `;

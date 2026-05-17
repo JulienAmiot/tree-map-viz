@@ -45,6 +45,7 @@ import {
   inlineEditKey,
 } from "../inlineEditHelpers.js";
 import type { TextNodeViewModel } from "../NodeViewModel.js";
+import { formatAge } from "../ageFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import { fitMarkdownBodyToTile, textBodyStyles } from "./textBody.js";
 
@@ -217,7 +218,7 @@ export class TextNodeAsParent extends LitElement {
       return html``;
     }
     const { value } = this.vm;
-    const dateLabel = value.dateIso ? formatDate(value.dateIso) : "";
+    const dateLabel = value.dateIso ? formatAge(value.dateIso) : "";
     const empty = value.text.length === 0;
     return html`
       ${this.renderTitle()}
@@ -369,14 +370,6 @@ export class TextNodeAsParent extends LitElement {
       }),
     );
   }
-}
-
-function formatDate(iso: string): string {
-  const ms = Date.parse(iso);
-  if (Number.isNaN(ms)) {
-    return iso;
-  }
-  return new Date(ms).toLocaleDateString();
 }
 
 declare global {

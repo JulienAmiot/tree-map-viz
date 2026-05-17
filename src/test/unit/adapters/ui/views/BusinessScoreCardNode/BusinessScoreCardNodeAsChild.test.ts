@@ -47,7 +47,7 @@ function makeVm(
 }
 
 describe("<business-score-card-as-child>", () => {
-  it("renders Σ for computed values, same as AsParent (\u00a75 — uniform fields across roles)", async () => {
+  it("\u00a717.116 — renders the \u03a3 prefix in the title row for the computedMean branch (same role-uniform rule as AsParent), the bare numeric value with no trailing zero, and the unit in a .unit-below sibling", async () => {
     const vm = makeVm({ kind: "computedMean", mean: 50, unit: "%" });
     const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
@@ -56,13 +56,11 @@ describe("<business-score-card-as-child>", () => {
       },
     );
 
-    expect(
-      el.shadowRoot
-        ?.querySelector('[data-testid="value"]')
-        ?.textContent?.replace(/\s+/g, " ")
-        .trim(),
-    ).toBe("50.0 %");
-    expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).not.toBeNull();
+    const title = el.shadowRoot?.querySelector('[data-testid="title"]');
+    expect(title?.querySelector('[data-testid="computed-badge"]')?.textContent).toBe("\u03a3");
+    expect(title?.textContent?.replace(/\u03a3/g, "").trim()).toBe("Sales");
+    expect(el.shadowRoot?.querySelector('[data-testid="value"]')?.textContent?.trim()).toBe("50");
+    expect(el.shadowRoot?.querySelector('[data-testid="unit"]')?.textContent?.trim()).toBe("%");
   });
 
   it("does not render Σ for recordedValue, but does render the corner timestamp with --age-color (\u00a717.18)", async () => {
