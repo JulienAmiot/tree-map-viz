@@ -810,6 +810,14 @@ describe("<business-score-card-as-parent>", () => {
           ?.querySelector('[data-testid="target-date"]')
           ?.getAttribute("datetime"),
       ).toBe("2026-12-31T00:00:00.000Z");
+      // SPEC §17.116-followup-2 — the visible label uses the
+      // `d MMM yyyy` shape (UTC accessors so the kiosk reads the
+      // calendar date the operator typed regardless of local TZ).
+      expect(
+        el.shadowRoot
+          ?.querySelector('[data-testid="target-date"]')
+          ?.textContent?.trim(),
+      ).toBe("31 Dec 2026");
     });
 
     it("\u00a717.44 — renders the deadline-risk warning glyph inside the target row, after the target date, tinted by warningColor", async () => {

@@ -175,6 +175,10 @@ describe("<business-score-card-as-child>", () => {
     );
     expect(date).not.toBeNull();
     expect(date?.getAttribute("datetime")).toBe("2026-12-31T00:00:00.000Z");
+    // SPEC §17.116-followup-2 — the visible label uses the
+    // `d MMM yyyy` shape (UTC accessors so the kiosk reads the
+    // calendar date the operator typed regardless of local TZ).
+    expect(date?.textContent?.trim()).toBe("31 Dec 2026");
   });
 
   it("\u00a717.40 — does not render the target row for empty childrenCount n=0", async () => {

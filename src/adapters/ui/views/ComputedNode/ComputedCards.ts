@@ -8,11 +8,15 @@
  *    value, the title row is prefixed with a small Σ glyph (was a
  *    chip next to the value pre-§17.116; the chip moved to the title
  *    so the value glyph reads as a bare number on a single line).
- *  - **Kind label under the title** — the active `ComputationKind` is
- *    rendered as a thin small-caps label under the title; the
- *    pre-§17.116 inline `<select class="kind-dropdown">` is retired
- *    (the kind is no longer editable inline — the edit modal will
- *    grow a select in a follow-up strand).
+ *  - **No computation-kind chrome on the tile** (§17.116-followup-2)
+ *    — the pre-§17.104 inline `<select class="kind-dropdown">` was
+ *    retired in §17.116c in favour of a static `<div class="kind-
+ *    label">` sibling under the title; the followup-2 strand drops
+ *    the label too on operator feedback ("remove the computation
+ *    text line in a child and a parent"). The Σ prefix already
+ *    signals "aggregated value", which is the only piece of the
+ *    computation-kind reading the operator needed at a glance; the
+ *    exact kind (SUM / AVERAGE / …) belongs to the edit modal.
  *  - **Unit under the value** — the unit moves out of the inline
  *    `<span class="value">` run into a `.unit-below` block sibling.
  *  - **Bottom-right shows age** — the corner timestamp renders the
@@ -27,12 +31,12 @@
  *    operator feedback — the glyph alone carries the "cannot
  *    compute" signal at-a-glance.
  *  - **CBSN host is a column flex container** (§17.116-followup) so
- *    `.metric-pane` fills the body below the title + kind-label and
- *    its bottom edge coincides with the tile's bottom edge. The
- *    `<time class="timestamp">` is parented inside `.metric-pane`
- *    (SPEC §17.30 / §17.45 parity), so the pane-fills-body rule
- *    is what makes "bottom-right of the tile" land at the actual
- *    tile bottom-right rather than the figure's bottom-right.
+ *    `.metric-pane` fills the body below the title and its bottom
+ *    edge coincides with the tile's bottom edge. The `<time class=
+ *    "timestamp">` is parented inside `.metric-pane` (SPEC §17.30 /
+ *    §17.45 parity), so the pane-fills-body rule is what makes
+ *    "bottom-right of the tile" land at the actual tile bottom-
+ *    right rather than the figure's bottom-right.
  *
  * The `COMPUTATION_KIND_CHANGE_EVENT` + `ComputationKindChangeDetail`
  * exports are preserved (the wiring lives in `main.ts` and routes to
@@ -83,17 +87,17 @@ const sharedStyles = css`
  * "bottom-right of the tile" contract holds visually on the CBSN
  * element. Pre-followup the host was the default `display: block`
  * from `tileLayoutStyles`, which made `.metric-pane` a content-sized
- * block sitting under the title + kind-label (its bottom hugged the
- * figure, not the tile bottom). Since the `<time class="timestamp">`
- * is parented inside `.metric-pane` (the SPEC §17.30 / §17.45 parity
- * contract relies on that placement so the parent CBSN's timestamp
- * shares its containing block with a child BSC's), the date pinned
- * to the figure's bottom-right rather than the tile's.
+ * block sitting under the title (its bottom hugged the figure, not
+ * the tile bottom). Since the `<time class="timestamp">` is parented
+ * inside `.metric-pane` (the SPEC §17.30 / §17.45 parity contract
+ * relies on that placement so the parent CBSN's timestamp shares
+ * its containing block with a child BSC's), the date pinned to the
+ * figure's bottom-right rather than the tile's.
  *
  * The fix turns the CBSN host into a column flex container and lets
- * `.metric-pane` grow (`flex: 1 1 auto`) to fill the body below
- * `.title` + `.kind-label`. With the pane now spanning to the tile's
- * bottom edge, the timestamp's `bottom: 0.2rem` offset (declared on
+ * `.metric-pane` grow (`flex: 1 1 auto`) to fill the body below the
+ * `.title` row. With the pane now spanning to the tile's bottom
+ * edge, the timestamp's `bottom: 0.2rem` offset (declared on
  * `tileLayoutStyles .timestamp`) resolves at the tile's bottom-right
  * — operator-correct without touching the shared timestamp rule or
  * the plain `<computed-card>` layout (which has no metric-pane and
@@ -112,10 +116,6 @@ const cbsnHostStyles = css`
 const TREND_GLYPHS: Record<TrendArrowDirection, string> = {
   up: "\u2191", "up-right": "\u2197", right: "\u2192", "down-right": "\u2198", down: "\u2193",
 };
-
-function renderKindLabel(kind: ComputationKindName): TemplateResult {
-  return html`<div class="kind-label" data-testid="kind-label" data-kind=${kind}>${kind}</div>`;
-}
 
 function renderUnitBelow(unit: string): TemplateResult | typeof nothing {
   return unit
@@ -236,7 +236,6 @@ export class ComputedCard extends LitElement {
     const canCompute = this.vm.value.kind === "numeric";
     return html`
       ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedNode", showBadge)}
-      ${renderKindLabel(this.vm.computationKind)}
       ${canCompute
         ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>)
         : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
@@ -258,7 +257,6 @@ export class ComputedBusinessScoreCard extends LitElement {
     const canCompute = this.vm.value.kind === "numeric";
     return html`
       ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedBusinessScoreNode", showBadge)}
-      ${renderKindLabel(this.vm.computationKind)}
       <div class="metric-pane" data-testid="metric-pane">
         ${canCompute ? renderTimestamp(dateIso, dateColor) : nothing}
         ${canCompute
