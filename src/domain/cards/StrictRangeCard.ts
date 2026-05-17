@@ -15,7 +15,7 @@ import { Card } from "./Card.js";
  * `BusinessScoreCardNode` / `BusinessScoreCard` pair). Ships under its
  * v4-final name directly.
  *
- * Pure "binding leaf" — same shape as TextCardV4 / BusinessScoreCardV4,
+ * Pure "binding leaf" — same shape as TextCard / BusinessScoreCard,
  * differs only in the bound generic argument.
  */
 export class StrictRangeCard<T> extends Card<StrictRangeNode<T>> {

@@ -1,12 +1,12 @@
 import type { BoardV4 } from "../application/ports/BoardCollectionRepositoryV4.js";
 import type { Clock } from "../domain/capabilities/Clock.js";
-import { BusinessScoreCardV4 } from "../domain/cards/BusinessScoreCardV4.js";
+import { BusinessScoreCard } from "../domain/cards/BusinessScoreCard.js";
 import { ComputationKind } from "../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../domain/nodes/ComputedNode.js";
 import { StrictRangeNode } from "../domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../domain/nodes/TextNode.js";
 import { Tree } from "../domain/Tree.js";
 import { NumericComparator } from "../domain/values/Comparator.js";
 import { Objective } from "../domain/values/Objective.js";
@@ -65,9 +65,9 @@ export function buildShowcaseTreeV4(clock: Clock, now: Date = new Date()): Tree 
   const targetDate = Timestamp.of(
     new Date(Date.UTC(todayDate.getUTCFullYear(), 11, 31, 23, 59, 59)),
   );
-  const cards = new Map<string, BusinessScoreCardV4<unknown>>();
+  const cards = new Map<string, BusinessScoreCard<unknown>>();
 
-  const root = new TextNodeV4("showcase-root", "Quarterly OKRs", Weight.of(1), clock);
+  const root = new TextNode("showcase-root", "Quarterly OKRs", Weight.of(1), clock);
   root.addValue(days(45), "Q1 closed strong: revenue *up* 18 %, NPS at `42`.");
   root.addValue(today, [
     "## Q2 status", "",
@@ -81,14 +81,14 @@ export function buildShowcaseTreeV4(clock: Clock, now: Date = new Date()): Tree 
     "engineering", "Engineering", Weight.of(2), "Delivery + quality KPIs", clock, lenient(),
     { objective: Objective.of(100, targetDate), initialKind: ComputationKind.WEIGHTED_AVERAGE, unit: "%" },
   );
-  cards.set("engineering", new BusinessScoreCardV4(eng, Unit.percent()));
+  cards.set("engineering", new BusinessScoreCard(eng, Unit.percent()));
   const engVelocity = new BusinessScoreNode<number>(
     "eng-velocity", "Velocity", Weight.of(2), "Story points shipped per sprint", clock, lenient(),
     { objective: Objective.of(90, targetDate), unit: "pts" },
   );
   engVelocity.addValue(days(30), 70);
   engVelocity.addValue(days(14), 82);
-  cards.set("eng-velocity", new BusinessScoreCardV4(engVelocity, Unit.of("pts")));
+  cards.set("eng-velocity", new BusinessScoreCard(engVelocity, Unit.of("pts")));
   eng.attach(engVelocity);
   const engReview = new BusinessScoreNode<number>(
     "eng-review-sla", "Code review SLA", Weight.of(1), "% of PRs reviewed within 24 h", clock, lenient(),
@@ -96,16 +96,16 @@ export function buildShowcaseTreeV4(clock: Clock, now: Date = new Date()): Tree 
   );
   engReview.addValue(days(14), 91);
   engReview.addValue(days(2), 96);
-  cards.set("eng-review-sla", new BusinessScoreCardV4(engReview, Unit.percent()));
+  cards.set("eng-review-sla", new BusinessScoreCard(engReview, Unit.percent()));
   eng.attach(engReview);
   const engCoverage = new BusinessScoreNode<number>(
     "eng-coverage", "Test coverage", Weight.of(1), "Branch coverage across all packages", clock, lenient(),
     { objective: Objective.of(85, targetDate), unit: "%" },
   );
   engCoverage.addValue(today, 78);
-  cards.set("eng-coverage", new BusinessScoreCardV4(engCoverage, Unit.percent()));
+  cards.set("eng-coverage", new BusinessScoreCard(engCoverage, Unit.percent()));
   eng.attach(engCoverage);
-  const engNotes = new TextNodeV4("eng-notes", "Eng notes", Weight.of(1), clock);
+  const engNotes = new TextNode("eng-notes", "Eng notes", Weight.of(1), clock);
   engNotes.addValue(today, "Backend rewrite in flight \u2014 **due end of quarter**. Cut over via `feature-flag-v2`.");
   eng.attach(engNotes);
   root.attach(eng);
@@ -117,28 +117,28 @@ export function buildShowcaseTreeV4(clock: Clock, now: Date = new Date()): Tree 
   product.addValue(days(120), 28);
   product.addValue(days(60), 35);
   product.addValue(today, 42);
-  cards.set("product", new BusinessScoreCardV4(product, Unit.of("NPS")));
+  cards.set("product", new BusinessScoreCard(product, Unit.of("NPS")));
   root.attach(product);
 
   const sales = new ComputedBusinessScoreNode<number>(
     "sales", "Sales", Weight.of(2), "Pipeline + win-rate roll-up", clock, lenient(),
     { objective: Objective.of(110, targetDate), initialKind: ComputationKind.WEIGHTED_AVERAGE, unit: "%" },
   );
-  cards.set("sales", new BusinessScoreCardV4(sales, Unit.percent()));
+  cards.set("sales", new BusinessScoreCard(sales, Unit.percent()));
   const salesPipeline = new BusinessScoreNode<number>(
     "sales-pipeline", "Pipeline", Weight.of(3), "Qualified opportunities ($M)", clock, lenient(),
     { objective: Objective.of(12, targetDate), unit: "$M" },
   );
   salesPipeline.addValue(days(90), 8.4);
   salesPipeline.addValue(days(45), 9.1);
-  cards.set("sales-pipeline", new BusinessScoreCardV4(salesPipeline, Unit.of("$M")));
+  cards.set("sales-pipeline", new BusinessScoreCard(salesPipeline, Unit.of("$M")));
   sales.attach(salesPipeline);
   const salesWinrate = new BusinessScoreNode<number>(
     "sales-winrate", "Win rate", Weight.of(2), "Closed-won / qualified", clock, lenient(),
     { objective: Objective.of(35, targetDate), unit: "%" },
   );
   salesWinrate.addValue(today, 31);
-  cards.set("sales-winrate", new BusinessScoreCardV4(salesWinrate, Unit.percent()));
+  cards.set("sales-winrate", new BusinessScoreCard(salesWinrate, Unit.percent()));
   sales.attach(salesWinrate);
   const salesLost = new BusinessScoreNode<number>(
     "sales-lost", "Lost deals", Weight.of(1), "Audit trail \u2014 not a roll-up KPI", clock, lenient(),
@@ -147,11 +147,11 @@ export function buildShowcaseTreeV4(clock: Clock, now: Date = new Date()): Tree 
   salesLost.addValue(days(30), 4);
   salesLost.addValue(today, 6);
   salesLost.setDisabled(true);
-  cards.set("sales-lost", new BusinessScoreCardV4(salesLost, Unit.of("count")));
+  cards.set("sales-lost", new BusinessScoreCard(salesLost, Unit.of("count")));
   sales.attach(salesLost);
   root.attach(sales);
 
-  const operations = new TextNodeV4("operations", "Operations", Weight.of(1), clock);
+  const operations = new TextNode("operations", "Operations", Weight.of(1), clock);
   operations.addValue(days(21), [
     "Cloud migration **paused**; vendor renegotiation in progress.", "",
     "Next steps:",
@@ -165,7 +165,7 @@ export function buildShowcaseTreeV4(clock: Clock, now: Date = new Date()): Tree 
     "bench", "Bench", Weight.of(1), "Reserved for next quarter", clock, lenient(),
     { objective: Objective.of(100, targetDate), initialKind: ComputationKind.WEIGHTED_AVERAGE, unit: "%" },
   );
-  cards.set("bench", new BusinessScoreCardV4(bench, Unit.percent()));
+  cards.set("bench", new BusinessScoreCard(bench, Unit.percent()));
   root.attach(bench);
 
   const activity = new ComputedNode<number>(
@@ -177,7 +177,7 @@ export function buildShowcaseTreeV4(clock: Clock, now: Date = new Date()): Tree 
   );
   cpu.addValue(today, 70);
   activity.attach(cpu);
-  const incidentNote = new TextNodeV4("activity-incident", "Latest incident", Weight.of(1), clock);
+  const incidentNote = new TextNode("activity-incident", "Latest incident", Weight.of(1), clock);
   incidentNote.addValue(days(3), "Disk-pressure alert on `db-primary` \u2014 mitigated.");
   activity.attach(incidentNote);
   root.attach(activity);

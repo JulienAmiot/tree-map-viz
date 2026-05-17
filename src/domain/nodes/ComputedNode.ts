@@ -15,7 +15,7 @@ import { HistorizableValueNode } from "./HistorizableValueNode.js";
  * v5 round 7; mirrors `class ComputedNode~T~` + `HistorizableValueNode~T~ <|--
  * ComputedNode~T~` + `ComputedNode~T~ ..|> Computed~T~` in the v5 class diagram).
  *
- * Sibling of `TextNodeV4` (§17.74) and `RangedValueNode<T>` (§17.75) under
+ * Sibling of `TextNode` (§17.74) and `RangedValueNode<T>` (§17.75) under
  * `HistorizableValueNode<T>`. First round-7 strand to exercise the §17.95
  * strategy chassis + §17.96 `Computed<T>` interface from a real value-node
  * subclass.

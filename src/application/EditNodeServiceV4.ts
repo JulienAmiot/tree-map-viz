@@ -1,5 +1,5 @@
 import type { Clock } from "../domain/capabilities/Clock.js";
-import type { BusinessScoreCardV4 } from "../domain/cards/BusinessScoreCardV4.js";
+import type { BusinessScoreCard } from "../domain/cards/BusinessScoreCard.js";
 import type { Computed } from "../domain/computation/Computed.js";
 import type { ComputationKind } from "../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../domain/nodes/BusinessScoreNode.js";
@@ -7,7 +7,7 @@ import { ComputedBusinessScoreNode } from "../domain/nodes/ComputedBusinessScore
 import { ComputedNode } from "../domain/nodes/ComputedNode.js";
 import type { Node } from "../domain/nodes/Node.js";
 import { StrictRangeNode } from "../domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../domain/nodes/TextNode.js";
 import type { CardRegistry } from "../domain/Tree.js";
 import { Objective } from "../domain/values/Objective.js";
 import { Timestamp } from "../domain/values/Timestamp.js";
@@ -50,7 +50,7 @@ type OutcomeV4 =
  * rolls back on failure (SPEC §17.101a). v4 successor to v3's
  * `EditNodeService`. Atomicity preserved field-level: a persister
  * failure restores every field this call touched. `setUnit` mutates
- * the §17.100.5 `BusinessScoreCardV4` via the optional `cards`
+ * the §17.100.5 `BusinessScoreCard` via the optional `cards`
  * registry (no-card → `{ ok: false }`); `setObjective` mutates the
  * §17.91 BSN field (made non-readonly at §17.101a); `setDisabled` on
  * `ValueNode<T>` (§17.99a) applies uniformly across kinds.
@@ -115,7 +115,7 @@ export class EditNodeServiceV4 {
       node.setWeight(Weight.of(payload.weight));
       undos.push(() => node.setWeight(prev));
     }
-    const valueNode = node as TextNodeV4 | BusinessScoreNode<number> | StrictRangeNode<number> | ComputedNode<number>;
+    const valueNode = node as TextNode | BusinessScoreNode<number> | StrictRangeNode<number> | ComputedNode<number>;
     if (payload.disabled !== undefined) {
       const prev = valueNode.disabled;
       valueNode.setDisabled(payload.disabled);
@@ -140,7 +140,7 @@ export class EditNodeServiceV4 {
       undos.push(() => bsn.setObjective(prev));
     }
     if (payload.unit !== undefined) {
-      const card = cards?.get(bsn.id) as BusinessScoreCardV4<number> | undefined;
+      const card = cards?.get(bsn.id) as BusinessScoreCard<number> | undefined;
       if (card === undefined) throw new Error(`Cannot set unit on BSN "${bsn.id}" — no card in registry`);
       const prev = card.getUnit();
       card.setUnit(Unit.of(payload.unit));
@@ -161,7 +161,7 @@ export class EditNodeServiceV4 {
   }
 
   private static applyAppendValue(node: Node, value: string | number, asOf: Timestamp): () => void {
-    if (node instanceof TextNodeV4 && typeof value === "string") {
+    if (node instanceof TextNode && typeof value === "string") {
       node.addValue(asOf, value);
       return () => node.removeValue(asOf);
     }
@@ -180,7 +180,7 @@ export class EditNodeServiceV4 {
 
   private static classFor(kind: EditNodePayloadV4["kind"]): new (...args: never[]) => Node {
     switch (kind) {
-      case "TextNode": return TextNodeV4;
+      case "TextNode": return TextNode;
       case "BusinessScore": return BusinessScoreNode;
       case "StrictRange": return StrictRangeNode;
       case "Computed": return ComputedNode;

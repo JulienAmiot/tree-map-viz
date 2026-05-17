@@ -7,7 +7,7 @@ import {
 } from "../../../../adapters/persistence/jsonCodecV4.js";
 import { buildSampleTreeV4 } from "../../../../adapters/sampleDataV4.js";
 import { buildShowcaseTreeV4 } from "../../../../adapters/showcaseSeedV4.js";
-import { BusinessScoreCardV4 } from "../../../../domain/cards/BusinessScoreCardV4.js";
+import { BusinessScoreCard } from "../../../../domain/cards/BusinessScoreCard.js";
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
 import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js";
@@ -15,7 +15,7 @@ import { ComputedBusinessScoreNode } from "../../../../domain/nodes/ComputedBusi
 import { ComputedNode } from "../../../../domain/nodes/ComputedNode.js";
 import type { Node } from "../../../../domain/nodes/Node.js";
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "../../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import { Tree } from "../../../../domain/Tree.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
 import { Objective } from "../../../../domain/values/Objective.js";
@@ -49,19 +49,19 @@ describe("jsonCodecV4 (§17.106a + §17.106b — v4-native encode + decode)", ()
   describe("encode — per-kind shapes + cards sidecar + schema envelope", () => {
     it("envelope = {schemaVersion:\"v4.0\", root, cards[]}; cards sidecar serialised as flat [{nodeId,unit}] list", () => {
       const bsn = makeBSN("root", { unit: "%" });
-      const cards = new Map<string, BusinessScoreCardV4<unknown>>();
-      cards.set("root", new BusinessScoreCardV4(bsn, Unit.percent()));
+      const cards = new Map<string, BusinessScoreCard<unknown>>();
+      cards.set("root", new BusinessScoreCard(bsn, Unit.percent()));
       const json = JSON.parse(codec.encode(new Tree(bsn, cards))) as Record<string, unknown>;
       expect(json.schemaVersion).toBe("v4.0");
       expect(json.cards).toEqual([{ nodeId: "root", unit: "%" }]);
       expect((json.root as { kind: string }).kind).toBe("BusinessScoreNode");
     });
 
-    it("TextNodeV4 + BusinessScoreNode emit per-kind shapes; disabled OMITTED when false / EMITTED when true; unit OMITTED when empty; range uses null sentinel for ±Infinity", () => {
-      const t = new TextNodeV4("t", "Notes", Weight.of(1), clock);
+    it("TextNode + BusinessScoreNode emit per-kind shapes; disabled OMITTED when false / EMITTED when true; unit OMITTED when empty; range uses null sentinel for ±Infinity", () => {
+      const t = new TextNode("t", "Notes", Weight.of(1), clock);
       t.addValue(T1, "hello");
       const tWire = JSON.parse(codec.encode(new Tree(t))).root as Record<string, unknown>;
-      expect(tWire.kind).toBe("TextNodeV4");
+      expect(tWire.kind).toBe("TextNode");
       expect(tWire.history).toEqual([{ value: "hello", at: T1.moment.toISOString() }]);
       expect("disabled" in tWire).toBe(false);
       t.setDisabled(true);
@@ -133,8 +133,8 @@ describe("jsonCodecV4 (§17.106a + §17.106b — v4-native encode + decode)", ()
       const cbsnOff = new ComputedBusinessScoreNode<number>(ids[1], "x", Weight.of(1), "", clock, lenient(), { objective: Objective.of(1, TARGET), initialKind: ComputationKind.SUM }); cbsnOff.setDisabled(true); root.attach(cbsnOff);
       const cnOff = new ComputedNode<number>(ids[2], "x", Weight.of(1), "", clock, ComputationKind.SUM); cnOff.setDisabled(true); root.attach(cnOff);
       const srnOff = new StrictRangeNode<number>(ids[3], "x", Weight.of(1), "", clock, StrictRange.of(0, 1, NumericComparator.INSTANCE)); srnOff.setDisabled(true); root.attach(srnOff);
-      const tOff = new TextNodeV4(ids[4], "x", Weight.of(1), clock); tOff.setDisabled(true); root.attach(tOff);
-      const cards = new Map<string, BusinessScoreCardV4<unknown>>(); cards.set("root", new BusinessScoreCardV4(root, Unit.of("ms")));
+      const tOff = new TextNode(ids[4], "x", Weight.of(1), clock); tOff.setDisabled(true); root.attach(tOff);
+      const cards = new Map<string, BusinessScoreCard<unknown>>(); cards.set("root", new BusinessScoreCard(root, Unit.of("ms")));
       const decoded = codec.decode(codec.encode(new Tree(root, cards)));
       for (const id of ids) expect((decoded.findById(id) as unknown as { disabled: boolean }).disabled, id).toBe(true);
       expect(decoded.cards.get("root")?.getUnit().value).toBe("ms");

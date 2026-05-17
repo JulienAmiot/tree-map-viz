@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EditNodeServiceV4 } from "../../../application/EditNodeServiceV4.js";
 import type { Clock } from "../../../domain/capabilities/Clock.js";
-import { BusinessScoreCardV4 } from "../../../domain/cards/BusinessScoreCardV4.js";
+import { BusinessScoreCard } from "../../../domain/cards/BusinessScoreCard.js";
 import { ComputationKind } from "../../../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
 import { StrictRangeNode } from "../../../domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { NumericComparator } from "../../../domain/values/Comparator.js";
 import { Objective } from "../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../domain/values/Range.js";
@@ -18,8 +18,8 @@ import { Weight } from "../../../domain/values/Weight.js";
 
 const NOW = new Date("2026-05-16T14:00:00Z");
 const clock: Clock = { now: () => Timestamp.of(NOW) };
-const makeText = (history: [string, string][] = []): TextNodeV4 => {
-  const n = new TextNodeV4("t1", "Notes", Weight.of(1), clock);
+const makeText = (history: [string, string][] = []): TextNode => {
+  const n = new TextNode("t1", "Notes", Weight.of(1), clock);
   for (const [iso, v] of history) n.addValue(Timestamp.of(new Date(iso)), v);
   return n;
 };
@@ -54,7 +54,7 @@ describe("EditNodeServiceV4 (§17.101a — Phase C skeleton + 2 v3-compat kinds 
 
   it("BusinessScore edit — title + description + weight + objective + unit (via card) + disabled all apply atomically", async () => {
     const node = makeBSN();
-    const card = new BusinessScoreCardV4(node, Unit.of("%"));
+    const card = new BusinessScoreCard(node, Unit.of("%"));
     const cards = new Map([["b1", card]]);
     const r = await svc.editFields(node, {
       kind: "BusinessScore",
@@ -93,7 +93,7 @@ describe("EditNodeServiceV4 (§17.101a — Phase C skeleton + 2 v3-compat kinds 
 
     const failing = vi.fn().mockRejectedValue(new Error("Storage down"));
     const bsn = makeBSN();
-    const card = new BusinessScoreCardV4(bsn, Unit.of("%"));
+    const card = new BusinessScoreCard(bsn, Unit.of("%"));
     const failSvc = new EditNodeServiceV4(clock, failing);
     const before = { title: bsn.title, obj: bsn.objective, unit: card.getUnit() };
     const r5 = await failSvc.editFields(bsn, {
@@ -153,7 +153,7 @@ describe("EditNodeServiceV4 (§17.101a — Phase C skeleton + 2 v3-compat kinds 
         initialKind: ComputationKind.AVERAGE,
       },
     );
-    const card = new BusinessScoreCardV4(node, Unit.of("pts"));
+    const card = new BusinessScoreCard(node, Unit.of("pts"));
     const cards = new Map([["cbsn1", card]]);
 
     const wrongKind = await svc.editFields(node, { kind: "BusinessScore", title: "X" }, { cards });

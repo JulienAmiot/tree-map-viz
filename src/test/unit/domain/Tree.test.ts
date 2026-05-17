@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { Clock } from "../../../domain/capabilities/Clock.js";
-import { BusinessScoreCardV4 } from "../../../domain/cards/BusinessScoreCardV4.js";
+import { BusinessScoreCard } from "../../../domain/cards/BusinessScoreCard.js";
 import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
-import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { Tree } from "../../../domain/Tree.js";
 import { NumericComparator } from "../../../domain/values/Comparator.js";
 import { Objective } from "../../../domain/values/Objective.js";
@@ -14,9 +14,9 @@ import { Weight } from "../../../domain/values/Weight.js";
 
 const clk: Clock = { now: () => Timestamp.of(new Date("2026-05-10T12:00:00Z")) };
 const w = Weight.of(1);
-const mkNode = (id: string, title = id): TextNodeV4 => new TextNodeV4(id, title, w, clk);
+const mkNode = (id: string, title = id): TextNode => new TextNode(id, title, w, clk);
 
-const buildLinearChain = (): { root: TextNodeV4; child: TextNodeV4; grand: TextNodeV4 } => {
+const buildLinearChain = (): { root: TextNode; child: TextNode; grand: TextNode } => {
   const root = mkNode("root");
   const child = mkNode("child");
   const grand = mkNode("grand");
@@ -26,12 +26,12 @@ const buildLinearChain = (): { root: TextNodeV4; child: TextNodeV4; grand: TextN
 };
 
 const buildBranching = (): {
-  root: TextNodeV4;
-  a: TextNodeV4;
-  b: TextNodeV4;
-  a1: TextNodeV4;
-  a2: TextNodeV4;
-  b1: TextNodeV4;
+  root: TextNode;
+  a: TextNode;
+  b: TextNode;
+  a1: TextNode;
+  a2: TextNode;
+  b1: TextNode;
 } => {
   const root = mkNode("root");
   const a = mkNode("a");
@@ -112,7 +112,7 @@ describe("Tree (§17.79 — v4 part 15: container closing the v4 class-diagram s
       const tree = new Tree(root);
       const snapshot = tree.nodes();
       expect(Object.isFrozen(snapshot)).toBe(true);
-      expect(() => (snapshot as unknown as TextNodeV4[]).push(mkNode("x"))).toThrow();
+      expect(() => (snapshot as unknown as TextNode[]).push(mkNode("x"))).toThrow();
       expect(tree.nodes()).toHaveLength(6);
     });
   });
@@ -128,7 +128,7 @@ describe("Tree (§17.79 — v4 part 15: container closing the v4 class-diagram s
         LenientRange.of(0, 100, NumericComparator.INSTANCE),
         { objective: Objective.of(80, Timestamp.of(new Date("2026-12-31T00:00:00Z"))) },
       );
-      const cards = new Map([["b", new BusinessScoreCardV4(bsn, Unit.of("%"))]]);
+      const cards = new Map([["b", new BusinessScoreCard(bsn, Unit.of("%"))]]);
       const t2 = new Tree(mkNode("solo"), cards);
       expect(t2.cards).toBe(cards);
       expect(t2.cards.get("b")?.getUnit().value).toBe("%");

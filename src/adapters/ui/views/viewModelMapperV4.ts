@@ -16,7 +16,7 @@ import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusines
 import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
 import type { Node } from "../../../domain/nodes/Node.js";
 import { RangedValueNode } from "../../../domain/nodes/RangedValueNode.js";
-import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../domain/nodes/TextNode.js";
 import type { CardRegistry } from "../../../domain/Tree.js";
 import { Tree } from "../../../domain/Tree.js";
 
@@ -47,7 +47,7 @@ import type {
  *
  * **Three structural deltas from v3**:
  *
- *   - Type-switches on v4 leaves (`TextNodeV4`, `RangedValueNode`)
+ *   - Type-switches on v4 leaves (`TextNode`, `RangedValueNode`)
  *     instead of v3 (`TextNode`, `BusinessScoreCardNode`). Both
  *     `BusinessScoreNode` and `StrictRangeNode` extend
  *     `RangedValueNode`, so the BSC branch fires for both. The
@@ -69,7 +69,7 @@ import type {
  * the v4 diagram — its tiles render with empty unit string.
  *
  * **Defensive fallbacks** mirror v3:
- *   - TextNodeV4 with empty history → empty value/date strings.
+ *   - TextNode with empty history → empty value/date strings.
  *   - RangedValueNode with no usable value → childrenCount or
  *     empty string fields.
  *   - Unsupported v4 Node subclass → throws ViewModelMappingErrorV4.
@@ -98,7 +98,7 @@ export function mapNodeToViewModelV4(
   node: Node,
   options: MapToViewModelOptionsV4 = {},
 ): NodeViewModel {
-  if (node instanceof TextNodeV4) {
+  if (node instanceof TextNode) {
     return mapTextNode(node, options);
   }
   // §17.104b — ComputedBusinessScoreNode MUST be checked before
@@ -121,7 +121,7 @@ export function mapNodeToViewModelV4(
 }
 
 function mapTextNode(
-  node: TextNodeV4,
+  node: TextNode,
   options: MapToViewModelOptionsV4,
 ): NodeViewModel {
   const latest = node.entries().at(-1);

@@ -6,7 +6,7 @@ import { ComputationKind } from "../../../../domain/computation/ComputationKind.
 import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "../../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
 import { Objective } from "../../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../../domain/values/Range.js";
@@ -47,8 +47,8 @@ const buildStrictBSC = (
   return node;
 };
 
-const buildText = (id: string, weight = 1, history: [string, string][] = []): TextNodeV4 => {
-  const node = new TextNodeV4(id, id, w(weight), clock);
+const buildText = (id: string, weight = 1, history: [string, string][] = []): TextNode => {
+  const node = new TextNode(id, id, w(weight), clock);
   for (const [iso, v] of history) node.addValue(T(iso), v);
   return node;
 };
@@ -107,7 +107,7 @@ describe("computedValue (§17.89 — Phase B.1: v4-aware aggregation, structural
       expect(r.value).toBe(37.5);
     });
 
-    it("ignores TextNodeV4 children (text doesn't aggregate)", () => {
+    it("ignores TextNode children (text doesn't aggregate)", () => {
       const parent = buildBSC("p");
       parent.attach(buildText("note", 1, [["2026-01-01T00:00:00Z", "hello"]]));
       parent.attach(buildBSC("num", 1, [["2026-01-01T00:00:00Z", 42]]));
@@ -117,7 +117,7 @@ describe("computedValue (§17.89 — Phase B.1: v4-aware aggregation, structural
       expect(r.value).toBe(42);
     });
 
-    it("returns childrenCount n=total when all children are non-RangedValueNode (TextNodeV4 only)", () => {
+    it("returns childrenCount n=total when all children are non-RangedValueNode (TextNode only)", () => {
       const parent = buildBSC("p");
       parent.attach(buildText("a"));
       parent.attach(buildText("b"));

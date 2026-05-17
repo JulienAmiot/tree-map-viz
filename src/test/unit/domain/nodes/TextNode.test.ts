@@ -4,17 +4,17 @@ import type { Clock } from "../../../../domain/capabilities/Clock.js";
 import { EmptyHistoryError } from "../../../../domain/nodes/EmptyHistoryError.js";
 import { HistorizableValueNode } from "../../../../domain/nodes/HistorizableValueNode.js";
 import { Node } from "../../../../domain/nodes/Node.js";
-import { TextNodeV4 } from "../../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import { ValueNode } from "../../../../domain/nodes/ValueNode.js";
 import { Timestamp } from "../../../../domain/values/Timestamp.js";
 import { Weight } from "../../../../domain/values/Weight.js";
 
 const T = (iso: string): Timestamp => Timestamp.of(new Date(iso));
 const fixedClock = (iso: string): Clock => ({ now: () => T(iso) });
-const make = (clockIso = "2026-05-10T12:00:00Z"): TextNodeV4 =>
-  new TextNodeV4("t", "Title", Weight.of(1), fixedClock(clockIso));
+const make = (clockIso = "2026-05-10T12:00:00Z"): TextNode =>
+  new TextNode("t", "Title", Weight.of(1), fixedClock(clockIso));
 
-describe("TextNodeV4 (§17.74 — v4 part 10: first concrete subclass of HistorizableValueNode<string>)", () => {
+describe("TextNode (§17.74 — v4 part 10: first concrete subclass of HistorizableValueNode<string>)", () => {
   describe("inheritance chain", () => {
     it("extends HistorizableValueNode → ValueNode → Node", () => {
       const n = make();
@@ -33,8 +33,8 @@ describe("TextNodeV4 (§17.74 — v4 part 10: first concrete subclass of Histori
     it("returns the most-recent text value once history is populated", () => {
       const n = make("2026-05-10T12:00:00Z");
       n.setValue("first");
-      const later = new TextNodeV4("u", "U", Weight.of(1), fixedClock("2026-05-10T13:00:00Z"));
-      // Cross-clock check: stamp a second TextNodeV4 with a later clock to confirm
+      const later = new TextNode("u", "U", Weight.of(1), fixedClock("2026-05-10T13:00:00Z"));
+      // Cross-clock check: stamp a second TextNode with a later clock to confirm
       // tail-read picks the latest entry across heterogeneous insertion times.
       n.addValue(T("2026-05-10T11:00:00Z"), "earlier");
       n.addValue(T("2026-05-10T13:00:00Z"), "latest");

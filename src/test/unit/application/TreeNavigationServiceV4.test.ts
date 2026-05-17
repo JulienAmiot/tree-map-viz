@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import { TreeNavigationServiceV4 } from "../../../application/TreeNavigationServiceV4.js";
 import type { Clock } from "../../../domain/capabilities/Clock.js";
-import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { Tree } from "../../../domain/Tree.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
 import { Weight } from "../../../domain/values/Weight.js";
 
 const clock: Clock = { now: () => Timestamp.of(new Date("2026-05-11T10:00:00Z")) };
 const w = Weight.of(1);
-const node = (id: string): TextNodeV4 => new TextNodeV4(id, id, w, clock);
+const node = (id: string): TextNode => new TextNode(id, id, w, clock);
 
 const buildTree = (): { tree: Tree; ids: { root: string; a: string; b: string; ba: string } } => {
   const root = node("root");
@@ -52,7 +52,7 @@ describe("TreeNavigationServiceV4 (§17.92 — Phase B.4: v4-aware navigation)",
       const { tree, ids } = buildTree();
       const svc = new TreeNavigationServiceV4(tree, ids.root);
       const view = svc.getFocusedView()!;
-      const arr = view.childrenNodes as TextNodeV4[];
+      const arr = view.childrenNodes as TextNode[];
       arr.pop();
       const view2 = svc.getFocusedView()!;
       expect(view2.childrenNodes.length).toBe(2);

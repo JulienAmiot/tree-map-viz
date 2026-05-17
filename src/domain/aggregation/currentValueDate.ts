@@ -20,14 +20,14 @@ import { RangedValueNode } from "../nodes/RangedValueNode.js";
  *     `currentValueDateIsoV4` results. Recurses naturally — a
  *     deep aggregator's date answers "the most recent observation
  *     anywhere underneath this aggregate" without an explicit
- *     traversal helper. TextNodeV4 children participate (their
+ *     traversal helper. TextNode children participate (their
  *     latest history entry contributes a candidate date) even
  *     though they don't contribute to the numeric aggregate.
  *   - **Empty leaf or all-empty subtree**: returns `null`.
  *
  * Distinguishing leaf-vs-parent by `node.children.length === 0`
  * (rather than a flag) matches the §17.89 `computedValueV4` rule
- * — a TextNodeV4 with no children always uses its history; a
+ * — a TextNode with no children always uses its history; a
  * BSC with children always recurses; a BSC with no children uses
  * its own history. Same structural rule, two helpers.
  *

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "v4.0",
   "root": {
-    "kind": "TextNodeV4",
+    "kind": "TextNode",
     "id": "TXT-EMPTY-ROOT",
     "title": "Empty root",
     "weight": 1,

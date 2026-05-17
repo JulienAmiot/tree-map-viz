@@ -7,7 +7,7 @@ import { ComputedNode } from "../domain/nodes/ComputedNode.js";
 import type { HistorizableValueNode } from "../domain/nodes/HistorizableValueNode.js";
 import type { Node } from "../domain/nodes/Node.js";
 import { StrictRangeNode } from "../domain/nodes/StrictRangeNode.js";
-import { TextNodeV4 } from "../domain/nodes/TextNodeV4.js";
+import { TextNode } from "../domain/nodes/TextNode.js";
 import type { ValueNode } from "../domain/nodes/ValueNode.js";
 import { NumericComparator } from "../domain/values/Comparator.js";
 import { Objective } from "../domain/values/Objective.js";
@@ -127,7 +127,7 @@ export class AddChildServiceV4 {
     const id = this.idGen();
     const weight = Weight.of(payload.weight ?? 1);
     if (payload.kind === "TextNode") {
-      const node = new TextNodeV4(id, title, weight, this.clock);
+      const node = new TextNode(id, title, weight, this.clock);
       this.replayHistory(node, payload.initialHistory);
       return node;
     }
