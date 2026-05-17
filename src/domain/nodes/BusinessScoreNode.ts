@@ -99,7 +99,7 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
     this.unit = options.unit ?? "";
   }
 
-  /** §17.101a — operator-facing mutator for `EditNodeServiceV4`. */
+  /** §17.101a — operator-facing mutator for `EditNodeService`. */
   setObjective(objective: Objective<T>): void {
     this.objective = objective;
   }

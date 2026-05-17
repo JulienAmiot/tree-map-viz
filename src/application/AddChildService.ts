@@ -74,7 +74,7 @@ export type AddChildPayloadV4 =
     };
 
 /** Async callback invoked after a successful append; failures are caught and rolled back. */
-export type PersisterV4 = () => Promise<void>;
+export type Persister = () => Promise<void>;
 
 type OutcomeV4 =
   | { readonly ok: true; readonly child: Node }
@@ -89,11 +89,11 @@ type OutcomeV4 =
  * validated here (v4 dropped the v3 `Title` VO). Atomicity preserved: cap →
  * build → attach → persist; rolls back on persist throw.
  */
-export class AddChildServiceV4 {
+export class AddChildService {
   constructor(
     private readonly idGen: IdGenerator,
     private readonly clock: Clock,
-    private readonly persist: PersisterV4,
+    private readonly persist: Persister,
   ) {}
 
   async addChild(parent: Node, payload: AddChildPayloadV4): Promise<OutcomeV4> {
@@ -108,7 +108,7 @@ export class AddChildServiceV4 {
     try {
       child = this.buildNode(payload);
     } catch (err) {
-      return { ok: false, reason: AddChildServiceV4.errorReason(err) };
+      return { ok: false, reason: AddChildService.errorReason(err) };
     }
 
     parent.attach(child);
@@ -116,7 +116,7 @@ export class AddChildServiceV4 {
       await this.persist();
     } catch (err) {
       parent.detach(child);
-      return { ok: false, reason: AddChildServiceV4.errorReason(err) };
+      return { ok: false, reason: AddChildService.errorReason(err) };
     }
     return { ok: true, child };
   }
@@ -141,7 +141,7 @@ export class AddChildServiceV4 {
       const node = new ComputedNode<number>(
         id, title, weight, payload.description ?? "", this.clock, payload.computationKind,
       );
-      AddChildServiceV4.applyDisabled(node, payload.disabled);
+      AddChildService.applyDisabled(node, payload.disabled);
       return node;
     }
     if (payload.kind === "ComputedBusinessScore") {
@@ -161,7 +161,7 @@ export class AddChildServiceV4 {
       id, title, weight, payload.description ?? "", this.clock, range,
     );
     this.replayHistory(node, payload.initialHistory);
-    AddChildServiceV4.applyDisabled(node, payload.disabled);
+    AddChildService.applyDisabled(node, payload.disabled);
     return node;
   }
 
@@ -179,7 +179,7 @@ export class AddChildServiceV4 {
       id, title, weight, payload.description ?? "", this.clock, range,
       { objective, initialKind: payload.computationKind, unit: payload.unit },
     );
-    AddChildServiceV4.applyDisabled(node, payload.disabled);
+    AddChildService.applyDisabled(node, payload.disabled);
     return node;
   }
 
@@ -200,7 +200,7 @@ export class AddChildServiceV4 {
       { objective, unit: payload.unit },
     );
     this.replayHistory(node, payload.initialHistory);
-    AddChildServiceV4.applyDisabled(node, payload.disabled);
+    AddChildService.applyDisabled(node, payload.disabled);
     return node;
   }
 

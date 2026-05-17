@@ -78,7 +78,7 @@ describe("ValueNode (§17.72 — v4 part 8: abstract ValueNode<T>)", () => {
       expect(new TextLikeValueNode("t", "T", Weight.of(1), "body").disabled).toBe(false);
     });
 
-    it("setDisabled(true) parks the node; setDisabled(false) reverses it (idempotent setter for §17.101 EditNodeServiceV4)", () => {
+    it("setDisabled(true) parks the node; setDisabled(false) reverses it (idempotent setter for §17.101 EditNodeService)", () => {
       const n = new TestValueNode("v", "V", Weight.of(1), "", 0);
       n.setDisabled(true);
       expect(n.disabled).toBe(true);

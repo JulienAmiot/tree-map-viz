@@ -35,7 +35,7 @@ import type { Node } from "./nodes/Node.js";
  * Sidecar visual-layer card collection keyed by hosted-node id
  * (SPEC §17.100.5). Populated by `v4TreeFromV3Root` for v3 BSCs that
  * carry a non-empty unit; empty by default for trees built outside
- * the v3 bridge (e.g. from `AddChildServiceV4` until the modal grows
+ * the v3 bridge (e.g. from `AddChildService` until the modal grows
  * a unit dropdown). Consumers like `viewModelMapperV4` read
  * `cards.get(node.id)?.getUnit()` first and fall back to the §17.91
  * legacy `BusinessScoreNode.unit` getter when the entry is absent.

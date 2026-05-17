@@ -14,7 +14,7 @@ import { Timestamp } from "../domain/values/Timestamp.js";
 import { Unit } from "../domain/values/Unit.js";
 import { Weight } from "../domain/values/Weight.js";
 
-import type { PersisterV4 } from "./AddChildServiceV4.js";
+import type { Persister } from "./AddChildService.js";
 
 /**
  * Plain-data payload from the Edit-node modal — v4 successor to v3's
@@ -55,29 +55,29 @@ type OutcomeV4 =
  * §17.91 BSN field (made non-readonly at §17.101a); `setDisabled` on
  * `ValueNode<T>` (§17.99a) applies uniformly across kinds.
  */
-export class EditNodeServiceV4 {
+export class EditNodeService {
   constructor(
     private readonly clock: Clock,
-    private readonly persist: PersisterV4,
+    private readonly persist: Persister,
   ) {}
 
   async editFields(node: Node, payload: EditNodePayloadV4, options: { cards?: CardRegistry } = {}): Promise<OutcomeV4> {
-    const kindCheck = EditNodeServiceV4.kindMatches(node, payload.kind);
+    const kindCheck = EditNodeService.kindMatches(node, payload.kind);
     if (!kindCheck.ok) return kindCheck;
     const { undo, error } = this.tryApplyFields(node, payload, options.cards);
-    if (error !== null) { undo(); return { ok: false, reason: EditNodeServiceV4.errorReason(error) }; }
+    if (error !== null) { undo(); return { ok: false, reason: EditNodeService.errorReason(error) }; }
     try { await this.persist(); }
-    catch (err) { undo(); return { ok: false, reason: EditNodeServiceV4.errorReason(err) }; }
+    catch (err) { undo(); return { ok: false, reason: EditNodeService.errorReason(err) }; }
     return { ok: true, node };
   }
 
   async appendValue(node: Node, value: string | number, asOf?: Date): Promise<OutcomeV4> {
     const stampedAt = asOf ? Timestamp.of(asOf) : this.clock.now();
     let undo: () => void;
-    try { undo = EditNodeServiceV4.applyAppendValue(node, value, stampedAt); }
-    catch (err) { return { ok: false, reason: EditNodeServiceV4.errorReason(err) }; }
+    try { undo = EditNodeService.applyAppendValue(node, value, stampedAt); }
+    catch (err) { return { ok: false, reason: EditNodeService.errorReason(err) }; }
     try { await this.persist(); }
-    catch (err) { undo(); return { ok: false, reason: EditNodeServiceV4.errorReason(err) }; }
+    catch (err) { undo(); return { ok: false, reason: EditNodeService.errorReason(err) }; }
     return { ok: true, node };
   }
 
@@ -89,12 +89,12 @@ export class EditNodeServiceV4 {
     const undos: Array<() => void> = [];
     const undo = (): void => { for (const a of [...undos].reverse()) a(); };
     try {
-      EditNodeServiceV4.applyCommonEdits(node, payload, undos);
+      EditNodeService.applyCommonEdits(node, payload, undos);
       if (payload.kind === "BusinessScore" || payload.kind === "ComputedBusinessScore") {
-        EditNodeServiceV4.applyBusinessScoreEdits(node as BusinessScoreNode<number>, payload, cards, undos);
+        EditNodeService.applyBusinessScoreEdits(node as BusinessScoreNode<number>, payload, cards, undos);
       }
       if (payload.kind === "Computed" || payload.kind === "ComputedBusinessScore") {
-        EditNodeServiceV4.applyComputedEdits(node as unknown as Computed<number>, payload, undos);
+        EditNodeService.applyComputedEdits(node as unknown as Computed<number>, payload, undos);
       }
     } catch (error) {
       return { undo, error };
@@ -174,7 +174,7 @@ export class EditNodeServiceV4 {
   }
 
   private static kindMatches(node: Node, kind: EditNodePayloadV4["kind"]): { ok: true } | { ok: false; reason: string } {
-    if (node.constructor === EditNodeServiceV4.classFor(kind)) return { ok: true };
+    if (node.constructor === EditNodeService.classFor(kind)) return { ok: true };
     return { ok: false, reason: `Edit kind "${kind}" does not match node "${node.id}" runtime class "${node.constructor.name}"` };
   }
 

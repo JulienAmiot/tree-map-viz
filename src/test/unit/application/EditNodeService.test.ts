@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { EditNodeServiceV4 } from "../../../application/EditNodeServiceV4.js";
+import { EditNodeService } from "../../../application/EditNodeService.js";
 import type { Clock } from "../../../domain/capabilities/Clock.js";
 import { BusinessScoreCard } from "../../../domain/cards/BusinessScoreCard.js";
 import { ComputationKind } from "../../../domain/computation/ComputationKind.js";
@@ -29,13 +29,13 @@ const makeBSN = (unit = "%"): BusinessScoreNode<number> => new BusinessScoreNode
   { objective: Objective.of(100, Timestamp.of(new Date("2026-12-31T00:00:00Z"))), unit },
 );
 
-describe("EditNodeServiceV4 (§17.101a — Phase C skeleton + 2 v3-compat kinds + appendValue)", () => {
+describe("EditNodeService (§17.101a — Phase C skeleton + 2 v3-compat kinds + appendValue)", () => {
   let persist: ReturnType<typeof vi.fn>;
-  let svc: EditNodeServiceV4;
+  let svc: EditNodeService;
 
   beforeEach(() => {
     persist = vi.fn().mockResolvedValue(undefined);
-    svc = new EditNodeServiceV4(clock, persist);
+    svc = new EditNodeService(clock, persist);
   });
 
   it("Text edit — title + weight + disabled propagate; trim applies; persist invoked once", async () => {
@@ -94,7 +94,7 @@ describe("EditNodeServiceV4 (§17.101a — Phase C skeleton + 2 v3-compat kinds 
     const failing = vi.fn().mockRejectedValue(new Error("Storage down"));
     const bsn = makeBSN();
     const card = new BusinessScoreCard(bsn, Unit.of("%"));
-    const failSvc = new EditNodeServiceV4(clock, failing);
+    const failSvc = new EditNodeService(clock, failing);
     const before = { title: bsn.title, obj: bsn.objective, unit: card.getUnit() };
     const r5 = await failSvc.editFields(bsn, {
       kind: "BusinessScore", title: "NewName",
@@ -193,7 +193,7 @@ describe("EditNodeServiceV4 (§17.101a — Phase C skeleton + 2 v3-compat kinds 
 
     const failing = vi.fn().mockRejectedValue(new Error("nope"));
     const before = bsn.entries().length;
-    const r3 = await new EditNodeServiceV4(clock, failing).appendValue(bsn, 99);
+    const r3 = await new EditNodeService(clock, failing).appendValue(bsn, 99);
     expect(r3.ok).toBe(false);
     expect(bsn.entries()).toHaveLength(before);
   });

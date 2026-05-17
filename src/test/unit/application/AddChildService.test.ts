@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AddChildServiceV4 } from "../../../application/AddChildServiceV4.js";
-import type { AddChildPayloadV4 } from "../../../application/AddChildServiceV4.js";
+import { AddChildService } from "../../../application/AddChildService.js";
+import type { AddChildPayloadV4 } from "../../../application/AddChildService.js";
 import type { IdGenerator } from "../../../application/ports/IdGenerator.js";
 import type { Clock } from "../../../domain/capabilities/Clock.js";
 import { MAX_CHILDREN } from "../../../domain/capacity/childrenCapacity.js";
@@ -41,13 +41,13 @@ const validBsc: AddChildPayloadV4 = {
   ],
 };
 
-describe("AddChildServiceV4 (§17.100a — Phase C skeleton + 2 v3-compat kinds)", () => {
+describe("AddChildService (§17.100a — Phase C skeleton + 2 v3-compat kinds)", () => {
   let persist: ReturnType<typeof vi.fn>;
-  let svc: AddChildServiceV4;
+  let svc: AddChildService;
 
   beforeEach(() => {
     persist = vi.fn().mockResolvedValue(undefined);
-    svc = new AddChildServiceV4(sequentialIdGen(), clock, persist);
+    svc = new AddChildService(sequentialIdGen(), clock, persist);
   });
 
   it("TextNode — constructs + replays history + applies weight default + attaches + persists", async () => {
@@ -234,7 +234,7 @@ describe("AddChildServiceV4 (§17.100a — Phase C skeleton + 2 v3-compat kinds)
     const parent = makeRoot();
     const failingPersist = vi.fn().mockRejectedValue(new Error("Storage full"));
     const taggingGen: IdGenerator = () => "explicit-id-xyz";
-    const taggingSvc = new AddChildServiceV4(taggingGen, clock, failingPersist);
+    const taggingSvc = new AddChildService(taggingGen, clock, failingPersist);
 
     const r = await taggingSvc.addChild(parent, { kind: "TextNode", title: "Doomed" });
     expect(r.ok).toBe(false);
@@ -242,7 +242,7 @@ describe("AddChildServiceV4 (§17.100a — Phase C skeleton + 2 v3-compat kinds)
     expect(parent.children).toHaveLength(0);
     expect(failingPersist).toHaveBeenCalledTimes(1);
 
-    const okSvc = new AddChildServiceV4(taggingGen, clock, persist);
+    const okSvc = new AddChildService(taggingGen, clock, persist);
     const r2 = await okSvc.addChild(makeRoot(), { kind: "TextNode", title: "T" });
     expect(r2.ok).toBe(true);
     if (r2.ok) expect(r2.child.id).toBe("explicit-id-xyz");

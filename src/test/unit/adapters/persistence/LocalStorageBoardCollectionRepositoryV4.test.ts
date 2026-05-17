@@ -8,7 +8,7 @@ import {
 } from "../../../../adapters/persistence/LocalStorageBoardCollectionRepositoryV4.js";
 import { buildSampleTreeV4 } from "../../../../adapters/sampleDataV4.js";
 import { SHOWCASE_BOARD_ID_V4 } from "../../../../adapters/showcaseSeedV4.js";
-import type { BoardCollectionSnapshotV4, BoardV4 } from "../../../../application/ports/BoardCollectionRepositoryV4.js";
+import type { BoardCollectionSnapshot, Board } from "../../../../application/ports/BoardCollectionRepository.js";
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
 import { Timestamp } from "../../../../domain/values/Timestamp.js";
 
@@ -26,11 +26,11 @@ class InMemoryStorage implements Storage {
   setItem(key: string, value: string): void { this.map.set(key, value); }
 }
 
-function newRepo(storage: Storage = new InMemoryStorage(), seed?: () => BoardCollectionSnapshotV4) {
+function newRepo(storage: Storage = new InMemoryStorage(), seed?: () => BoardCollectionSnapshot) {
   return new LocalStorageBoardCollectionRepositoryV4({ storage, codec, clock, seed });
 }
 
-function sampleBoard(id: string, name: string): BoardV4 {
+function sampleBoard(id: string, name: string): Board {
   return { id, name, tree: buildSampleTreeV4(clock) };
 }
 
@@ -52,7 +52,7 @@ describe("LocalStorageBoardCollectionRepositoryV4 (§17.107)", () => {
 
   it("save → load round-trips every kind in the sampleDataV4 tree + preserves currentBoardId + every board id/name across multiple boards", async () => {
     const repo = newRepo();
-    const snapshot: BoardCollectionSnapshotV4 = {
+    const snapshot: BoardCollectionSnapshot = {
       boards: [sampleBoard("a", "Alpha"), sampleBoard("b", "Beta")],
       currentBoardId: "b",
     };
@@ -78,7 +78,7 @@ describe("LocalStorageBoardCollectionRepositoryV4 (§17.107)", () => {
   });
 
   it("save surfaces StorageFullErrorV4 on quota-exceeded (DOMException name + legacy code 22 + Firefox NS_ERROR_DOM_QUOTA_REACHED all detected) AND propagates other errors verbatim", async () => {
-    const snapshot: BoardCollectionSnapshotV4 = { boards: [sampleBoard("a", "Alpha")], currentBoardId: "a" };
+    const snapshot: BoardCollectionSnapshot = { boards: [sampleBoard("a", "Alpha")], currentBoardId: "a" };
     const quotaStorage = { ...new InMemoryStorage(), setItem: () => { const e = new Error("quota"); (e as unknown as { name: string }).name = "QuotaExceededError"; throw e; } } as unknown as Storage;
     await expect(newRepo(quotaStorage).save(snapshot)).rejects.toBeInstanceOf(StorageFullErrorV4);
     const legacyCodeStorage = { ...new InMemoryStorage(), setItem: () => { const e = new Error("legacy") as unknown as { code: number; message: string; name: string }; e.code = 22; e.name = "Other"; throw e; } } as unknown as Storage;

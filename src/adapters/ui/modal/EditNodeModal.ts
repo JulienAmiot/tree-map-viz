@@ -89,7 +89,7 @@ export const EDIT_NODE_CANCEL_EVENT = "edit-node-cancel";
  * `toV4EditPayload` consumes it from the adapter side without crossing
  * back into a (now-deleted) v3 application service. Shape is the v3
  * 2-kind union verbatim (`TextNode` / `BusinessScoreCardNode`); main.ts
- * rewrites to v4 before handing off to `EditNodeServiceV4`. The v3
+ * rewrites to v4 before handing off to `EditNodeService`. The v3
  * §17.28 contract still applies on the modal side: kind is required
  * and must match the target's existing kind; history is appended via
  * the inline value-edit seam, not through this payload.

@@ -132,7 +132,7 @@ export const ADD_CHILD_CANCEL_EVENT = "add-child-cancel";
  *
  * The shape mirrors the v3 modal contract verbatim (v3-compat 2-kind
  * union `TextNode` / `BusinessScoreCardNode`); main.ts rewrites it to
- * the v4 payload before handing off to `AddChildServiceV4`. Optional
+ * the v4 payload before handing off to `AddChildService`. Optional
  * fields default sensibly at the modal/service boundary (weight=1,
  * description="", computed=false, eligibleForParentComputation=true,
  * empty initial history). TextNode intentionally has no description

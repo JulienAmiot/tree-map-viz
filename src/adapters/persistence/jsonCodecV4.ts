@@ -1,4 +1,4 @@
-import type { TreeCodecV4 } from "../../application/ports/TreeCodecV4.js";
+import type { TreeCodec } from "../../application/ports/TreeCodec.js";
 import type { Clock } from "../../domain/capabilities/Clock.js";
 import { BusinessScoreCard } from "../../domain/cards/BusinessScoreCard.js";
 import { ComputationKind } from "../../domain/computation/ComputationKind.js";
@@ -18,7 +18,7 @@ import { Unit } from "../../domain/values/Unit.js";
 import { Weight } from "../../domain/values/Weight.js";
 
 /**
- * §17.106a + §17.106b — `TreeCodecV4` v4-native codec. Encode/decode
+ * §17.106a + §17.106b — `TreeCodec` v4-native codec. Encode/decode
  * walk the "v4.0" wire (`{ schemaVersion, root, cards[] }`); per-kind
  * discriminant under `kind`; Computed* omit history (audit-only,
  * §17.94 D5); range uses `null` for `±Infinity`; comparator hardcoded
@@ -44,7 +44,7 @@ export class JsonCodecV4EncodeError extends Error {
 
 const SCHEMA_VERSION = "v4.0";
 
-export function createJsonCodecV4(clock: Clock): TreeCodecV4 {
+export function createJsonCodecV4(clock: Clock): TreeCodec {
   return {
     decode(text: string): Tree {
       return decodeTree(text, clock);

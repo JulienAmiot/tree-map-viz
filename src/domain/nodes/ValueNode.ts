@@ -25,7 +25,7 @@ import { Node } from "./Node.js";
  * `child.disabled` directly post-§17.99a (was a duck-typed predicate
  * pre-§17.99a, hardcoded to return `false` because no node had the
  * field yet). The `setDisabled(boolean)` mutator is plumbed for the
- * future §17.101 `EditNodeServiceV4` operator-facing toggle; today
+ * future §17.101 `EditNodeService` operator-facing toggle; today
  * the only call sites that flip it are the §17.99a Computation tests.
  * The §17.93-introduced `BusinessScoreNode.eligibleForParentComputation`
  * field is NOT retired by this strand (`computedValue` still reads

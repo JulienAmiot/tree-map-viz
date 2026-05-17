@@ -7,10 +7,10 @@
  *
  * §17.110 Phase E cutover — every wiring slot constructs the v4
  * successor: `LocalStorageBoardCollectionRepositoryV4` over the
- * §17.106 `createJsonCodecV4`-built codec, `BoardCollectionServiceV4`,
- * `TreeNavigationServiceV4` (v4 `Tree` over the board's root),
- * `AddChildServiceV4` + `EditNodeServiceV4` (`Clock`-injected per
- * §17.100a/§17.101a), `ImportExportServiceV4`.
+ * §17.106 `createJsonCodecV4`-built codec, `BoardCollectionService`,
+ * `TreeNavigationService` (v4 `Tree` over the board's root),
+ * `AddChildService` + `EditNodeService` (`Clock`-injected per
+ * §17.100a/§17.101a), `ImportExportService`.
  *
  * §17.112 Phase F v3 sweep — the v3 codec + bridge + nodes + cards +
  * VOs + capabilities + services + ports + adapters are all gone. The
@@ -38,7 +38,7 @@
  * **`computation-kind-change` wiring** — §17.104 `<computed-card>` /
  * `<computed-business-score-card>` dispatch this event on the
  * dropdown's `change`; the handler routes to
- * `EditNodeServiceV4.editFields` with `{ computationKind: ... }`
+ * `EditNodeService.editFields` with `{ computationKind: ... }`
  * resolved through `ComputationKind.fromName`.
  */
 
@@ -80,16 +80,16 @@ import type { InlineEditTitleDetail } from "./adapters/ui/views/inlineEditEvents
 import type { InlineEditValueDetail } from "./adapters/ui/views/inlineEditEvents.js";
 import { mapFocusedToViewModelV4 } from "./adapters/ui/views/viewModelMapperV4.js";
 import {
-  AddChildServiceV4,
+  AddChildService,
   type AddChildPayloadV4,
-} from "./application/AddChildServiceV4.js";
-import { BoardCollectionServiceV4 } from "./application/BoardCollectionServiceV4.js";
+} from "./application/AddChildService.js";
+import { BoardCollectionService } from "./application/BoardCollectionService.js";
 import {
-  EditNodeServiceV4,
+  EditNodeService,
   type EditNodePayloadV4,
-} from "./application/EditNodeServiceV4.js";
-import { ImportExportServiceV4 } from "./application/ImportExportServiceV4.js";
-import { TreeNavigationServiceV4 } from "./application/TreeNavigationServiceV4.js";
+} from "./application/EditNodeService.js";
+import { ImportExportService } from "./application/ImportExportService.js";
+import { TreeNavigationService } from "./application/TreeNavigationService.js";
 import type { Clock } from "./domain/capabilities/Clock.js";
 import { ComputationKind } from "./domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "./domain/nodes/BusinessScoreNode.js";
@@ -115,11 +115,11 @@ async function main(): Promise<void> {
     codec,
     clock,
   });
-  const boards = await BoardCollectionServiceV4.create(repo, idGen);
+  const boards = await BoardCollectionService.create(repo, idGen);
   const router = new HashRouter(window);
 
   const board = boards.getCurrentBoard();
-  const nav = new TreeNavigationServiceV4(board.tree);
+  const nav = new TreeNavigationService(board.tree);
 
   const screen = document.querySelector<TreeMapScreen>("tree-map-screen");
   if (!screen) {
@@ -132,9 +132,9 @@ async function main(): Promise<void> {
       currentBoardId: boards.getCurrentBoardId(),
     });
   };
-  const addChildSvc = new AddChildServiceV4(idGen, clock, persistCurrent);
-  const editNodeSvc = new EditNodeServiceV4(clock, persistCurrent);
-  const importExportSvc = new ImportExportServiceV4(
+  const addChildSvc = new AddChildService(idGen, clock, persistCurrent);
+  const editNodeSvc = new EditNodeService(clock, persistCurrent);
+  const importExportSvc = new ImportExportService(
     codec,
     () => boards.getCurrentBoard().tree,
     async (tree) => {
@@ -256,7 +256,7 @@ async function main(): Promise<void> {
   });
 
   // SPEC §17.110 — §17.104 dropdown switches the Computed* node's
-  // strategy via EditNodeServiceV4 (atomic + rolled-back on persist
+  // strategy via EditNodeService (atomic + rolled-back on persist
   // failure, same as the modal path). The dropdown only renders on
   // nodes that already are Computed* so the kind-match in the
   // service never rejects on the happy path; an unknown name (e.g.

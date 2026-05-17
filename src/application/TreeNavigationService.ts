@@ -1,9 +1,9 @@
 import { Tree } from "../domain/Tree.js";
 
 import type {
-  FocusedTreeViewV4,
-  TreeNavigationPortV4,
-} from "./ports/TreeNavigationPortV4.js";
+  FocusedTreeView,
+  TreeNavigationPort,
+} from "./ports/TreeNavigationPort.js";
 
 /**
  * V4 application service: orchestrates focus changes using v4
@@ -38,7 +38,7 @@ import type {
  * the prior `focusedId` almost certainly does not exist in the
  * new tree.
  */
-export class TreeNavigationServiceV4 implements TreeNavigationPortV4 {
+export class TreeNavigationService implements TreeNavigationPort {
   private tree: Tree;
   private focusedId: string;
 
@@ -55,7 +55,7 @@ export class TreeNavigationServiceV4 implements TreeNavigationPortV4 {
     return this.focusedId;
   }
 
-  getFocusedView(): FocusedTreeViewV4 | null {
+  getFocusedView(): FocusedTreeView | null {
     const center = this.tree.findById(this.focusedId);
     if (!center) {
       return null;

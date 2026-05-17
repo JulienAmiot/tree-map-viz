@@ -1,4 +1,4 @@
-import type { BoardV4 } from "../application/ports/BoardCollectionRepositoryV4.js";
+import type { Board } from "../application/ports/BoardCollectionRepository.js";
 import type { Clock } from "../domain/capabilities/Clock.js";
 import { BusinessScoreCard } from "../domain/cards/BusinessScoreCard.js";
 import { ComputationKind } from "../domain/computation/ComputationKind.js";
@@ -185,7 +185,7 @@ export function buildShowcaseTreeV4(clock: Clock, now: Date = new Date()): Tree 
   return new Tree(root, cards);
 }
 
-export function buildShowcaseBoardV4(clock: Clock, now: Date = new Date()): BoardV4 {
+export function buildShowcaseBoardV4(clock: Clock, now: Date = new Date()): Board {
   return {
     id: SHOWCASE_BOARD_ID_V4,
     name: SHOWCASE_BOARD_NAME_V4,

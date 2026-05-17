@@ -1,6 +1,6 @@
 import type { Tree } from "../domain/Tree.js";
 
-import type { TreeCodecV4 } from "./ports/TreeCodecV4.js";
+import type { TreeCodec } from "./ports/TreeCodec.js";
 
 type ImportOutcome = { readonly ok: true } | { readonly ok: false; readonly reason: string };
 
@@ -9,15 +9,15 @@ type ImportOutcome = { readonly ok: true } | { readonly ok: false; readonly reas
  * validate-before-replace contract, same callable-decoupling from the
  * board collection — just typed against the §17.79 `Tree` container
  * instead of v3's `TreeNode<unknown>` aggregate via the §17.103
- * `TreeCodecV4` port.
+ * `TreeCodec` port.
  *
  * Parallel-additive per §17.94 Phase C. v3 stays live in `main.ts`
  * until §17.110 Phase E cutover; the concrete codec adapter
  * (`jsonCodecV4`) lands at §17.105 + §17.106.
  */
-export class ImportExportServiceV4 {
+export class ImportExportService {
   constructor(
-    private readonly codec: TreeCodecV4,
+    private readonly codec: TreeCodec,
     private readonly getCurrentTree: () => Tree,
     private readonly replaceCurrentTree: (tree: Tree) => Promise<void>,
   ) {}
@@ -29,9 +29,9 @@ export class ImportExportServiceV4 {
   async importIntoCurrentBoard(text: string): Promise<ImportOutcome> {
     let decoded: Tree;
     try { decoded = this.codec.decode(text); }
-    catch (err) { return { ok: false, reason: ImportExportServiceV4.errorReason(err) }; }
+    catch (err) { return { ok: false, reason: ImportExportService.errorReason(err) }; }
     try { await this.replaceCurrentTree(decoded); }
-    catch (err) { return { ok: false, reason: ImportExportServiceV4.errorReason(err) }; }
+    catch (err) { return { ok: false, reason: ImportExportService.errorReason(err) }; }
     return { ok: true };
   }
 
