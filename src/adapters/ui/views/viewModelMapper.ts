@@ -330,7 +330,19 @@ function computedValueVM(
     return { kind: "numeric", value: raw, unit };
   } catch (err) {
     if (err instanceof EmptyChildrenError) {
-      return { kind: "empty", reason: err.message };
+      // SPEC §13.2 / §17.40 — parity with the v3 BSC `childrenCount`
+      // branch: a Computed* parent with at least one (ineligible)
+      // child surfaces a `<n> children` VM rather than a strategy-
+      // error reason, so the value area stays uniform across
+      // recordedValue / computedMean / childrenCount BSC variants
+      // and their CBSN counterparts. With literally zero children
+      // the strategy error is the only operator-readable signal —
+      // pass it through as `empty` (matches the v3 BSC
+      // `childrenCount n=0` rendering "empty value area").
+      if (node.children.length === 0) {
+        return { kind: "empty", reason: err.message };
+      }
+      return { kind: "childrenCount", n: node.children.length };
     }
     throw err;
   }

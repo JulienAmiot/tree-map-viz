@@ -45,7 +45,7 @@ import { Weight } from "../domain/values/Weight.js";
  */
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export const SHOWCASE_BOARD_ID = "showcase-board-v4";
-export const SHOWCASE_BOARD_NAME = "Showcase v4";
+export const SHOWCASE_BOARD_NAME = "Showcase";
 
 function lenient(): LenientRange<number> {
   return LenientRange.of(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, NumericComparator.INSTANCE);

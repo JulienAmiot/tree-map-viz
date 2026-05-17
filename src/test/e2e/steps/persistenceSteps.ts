@@ -79,11 +79,15 @@ When(
 Then(
   'the downloaded JSON has root id {string}',
   async ({ page }, expected: string) => {
+    // SPEC §17.114b / §17.114d — the v4 codec envelope wraps the tree
+    // as `{ schemaVersion: "v4.0", root, cards }`; the v3-shaped
+    // top-level `id` no longer exists, the node payload lives at
+    // `.root` (with a `kind` discriminator and per-node fields).
     const last = (
-      page as Page & { __lastDownloadJson__?: { id?: string } }
+      page as Page & { __lastDownloadJson__?: { root?: { id?: string } } }
     ).__lastDownloadJson__;
     expect(last).not.toBeUndefined();
-    expect(last?.id).toBe(expected);
+    expect(last?.root?.id).toBe(expected);
   },
 );
 
@@ -91,10 +95,10 @@ Then(
   'the downloaded JSON has root title {string}',
   async ({ page }, expected: string) => {
     const last = (
-      page as Page & { __lastDownloadJson__?: { title?: string } }
+      page as Page & { __lastDownloadJson__?: { root?: { title?: string } } }
     ).__lastDownloadJson__;
     expect(last).not.toBeUndefined();
-    expect(last?.title).toBe(expected);
+    expect(last?.root?.title).toBe(expected);
   },
 );
 

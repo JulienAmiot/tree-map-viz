@@ -67,23 +67,82 @@ describe("<computed-card> (\u00a717.104)", () => {
     expect(emptyValue?.getAttribute("data-value-kind")).toBe("empty");
     expect(emptyValue?.textContent?.trim()).toBe("no contributing children");
     expect(emptyEl.shadowRoot!.querySelector(".unit")).toBeNull();
+    expect(emptyEl.shadowRoot!.querySelector('[data-testid="computed-badge"]')).toBeNull();
+  });
+
+  it("childrenCount n>0 renders \"<n> children\" without \u03a3 (\u00a717.114e)", async () => {
+    const el = await mountLitElement<ComputedCard>("computed-card", (e) => {
+      e.vm = computedVm({ kind: "childrenCount", n: 4 });
+    });
+    const sr = el.shadowRoot!;
+    const value = sr.querySelector('[data-testid="value"]');
+    expect(value?.getAttribute("data-value-kind")).toBe("childrenCount");
+    expect(value?.textContent?.replace(/\s+/g, " ").trim()).toBe("4 children");
+    expect(sr.querySelector('[data-testid="computed-badge"]')).toBeNull();
+  });
+
+  it("childrenCount n=0 renders an empty value span without \u03a3 (\u00a717.114e)", async () => {
+    const el = await mountLitElement<ComputedCard>("computed-card", (e) => {
+      e.vm = computedVm({ kind: "childrenCount", n: 0 });
+    });
+    const value = el.shadowRoot!.querySelector('[data-testid="value"]');
+    expect(value?.getAttribute("data-value-kind")).toBe("childrenCount-empty");
+    expect(value?.textContent?.trim()).toBe("");
   });
 });
 
 describe("<computed-business-score-card> (\u00a717.104)", () => {
-  it("renders the full surface (title + \u03a3 + value + objective row + timestamp + dropdown) when a dateIso is present", async () => {
+  it("renders the full surface (title + \u03a3 + value + objective row + timestamp + dropdown) when a dateIso is present, with the timestamp inside a metric-pane wrapper (\u00a717.30 / \u00a717.45 parity)", async () => {
     const el = await mountLitElement<ComputedBusinessScoreCard>(
       "computed-business-score-card", (e) => { e.vm = cbsnVm({ kind: "numeric", value: 75, unit: "%" }); },
     );
     const sr = el.shadowRoot!;
     expect(sr.querySelector('[data-testid="title"]')?.getAttribute("data-view-kind")).toBe("ComputedBusinessScoreNode");
     expect(sr.querySelector('[data-testid="computed-badge"]')?.textContent).toBe("\u03a3");
-    expect(sr.querySelector('[data-testid="value"]')?.textContent?.replace(/\s+/g, " ").trim()).toBe("75 %");
+    expect(sr.querySelector('[data-testid="value"]')?.textContent?.replace(/\s+/g, " ").trim()).toBe("75.0 %");
     const time = sr.querySelector<HTMLTimeElement>('[data-testid="value-date"]');
     expect(time?.getAttribute("datetime")).toBe("2026-04-23T18:25:43.511Z");
     expect(time?.getAttribute("style")).toContain("--age-color: rgb(255, 145, 50)");
     expect(sr.querySelector('[data-testid="target-text"]')?.textContent?.replace(/\s+/g, " ").trim()).toBe("100 %");
     expect(sr.querySelector<HTMLSelectElement>('[data-testid="kind-dropdown"]')!.value).toBe("AVERAGE");
+    const pane = sr.querySelector('[data-testid="metric-pane"]');
+    expect(pane).not.toBeNull();
+    expect(pane?.contains(time!)).toBe(true);
+  });
+
+  it("childrenCount n>0 renders \"<n> children\" plain text without \u03a3 (parity with BSC childrenCount branch, \u00a717.114e)", async () => {
+    const el = await mountLitElement<ComputedBusinessScoreCard>(
+      "computed-business-score-card", (e) => { e.vm = cbsnVm({ kind: "childrenCount", n: 3 }); },
+    );
+    const sr = el.shadowRoot!;
+    const value = sr.querySelector('[data-testid="value"]');
+    expect(value?.getAttribute("data-value-kind")).toBe("childrenCount");
+    expect(value?.textContent?.replace(/\s+/g, " ").trim()).toBe("3 children");
+    expect(sr.querySelector('[data-testid="computed-badge"]')).toBeNull();
+  });
+
+  it("childrenCount n=0 renders an empty value span without \u03a3 (\u00a717.114e)", async () => {
+    const el = await mountLitElement<ComputedBusinessScoreCard>(
+      "computed-business-score-card", (e) => { e.vm = cbsnVm({ kind: "childrenCount", n: 0 }, "AVERAGE", ""); },
+    );
+    const sr = el.shadowRoot!;
+    const value = sr.querySelector('[data-testid="value"]');
+    expect(value?.getAttribute("data-value-kind")).toBe("childrenCount-empty");
+    expect(value?.textContent?.trim()).toBe("");
+    expect(sr.querySelector('[data-testid="computed-badge"]')).toBeNull();
+    expect(sr.querySelector('[data-testid="value-date"]')).toBeNull();
+  });
+
+  it("empty variant on CBSN renders as an empty span (no reason text, no \u03a3) — emptyAsEmptySpan: true (\u00a717.114e)", async () => {
+    const el = await mountLitElement<ComputedBusinessScoreCard>(
+      "computed-business-score-card",
+      (e) => { e.vm = cbsnVm({ kind: "empty", reason: "SUM produced a non-finite result" }, "SUM"); },
+    );
+    const sr = el.shadowRoot!;
+    const value = sr.querySelector('[data-testid="value"]');
+    expect(value?.getAttribute("data-value-kind")).toBe("empty");
+    expect(value?.textContent?.trim()).toBe("");
+    expect(sr.querySelector('[data-testid="computed-badge"]')).toBeNull();
   });
 
   it("omits the timestamp on empty dateIso, renders the trend arrow, and dispatches computation-kind-change from the BSC variant", async () => {

@@ -339,6 +339,37 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       expect(vm.dateColor).toMatch(/^rgb\(/);
     });
 
+    it("CBSN with N ineligible children → childrenCount n=N VM (parity with v3 BSC childrenCount branch, §17.114e)", () => {
+      // SPEC §13.2 / §17.40 — the strategy raises EmptyChildrenError
+      // when no child contributes a number. With at least one child
+      // (here: 3 children, two disabled BSCs + one TextNode — none
+      // eligible for WEIGHTED_AVERAGE) the mapper surfaces a
+      // childrenCount VM (renders as "<n> children" plain text)
+      // instead of the strategy-error reason; matches the v3 BSC
+      // valueTemplate.ts childrenCount n>0 branch. With zero children
+      // the empty branch still wins (covered by the ComputedNode
+      // case above) — the distinction lets the view layer keep the
+      // strategy-error reason for the empty-tree case while
+      // surfacing the operator-readable count for the
+      // ineligible-only case.
+      const cbsn = new ComputedBusinessScoreNode<number>(
+        "cbsn", "Avg", w(), "", clock, lenient(),
+        { objective: obj(), initialKind: ComputationKind.WEIGHTED_AVERAGE, unit: "%" },
+      );
+      const inelA = buildBSC("ineligibleA", { history: [["2026-04-22T00:00:00Z", 10]] });
+      const inelB = buildBSC("ineligibleB", { history: [["2026-04-22T00:00:00Z", 20]] });
+      inelA.setDisabled(true);
+      inelB.setDisabled(true);
+      cbsn.attach(inelA);
+      cbsn.attach(inelB);
+      cbsn.attach(buildText("txt", { history: [] }));
+      const vm = mapNodeToViewModel(cbsn);
+      if (vm.kind !== "ComputedBusinessScoreNode") throw new Error("expected CBSN VM");
+      expect(vm.value.kind).toBe("childrenCount");
+      if (vm.value.kind !== "childrenCount") throw new Error();
+      expect(vm.value.n).toBe(3);
+    });
+
     it("CBSN unit resolved through the §17.100.5 card sidecar when present (same precedence as BSC)", () => {
       const cbsn = new ComputedBusinessScoreNode<number>(
         "cbsn", "X", w(), "", clock, lenient(),
