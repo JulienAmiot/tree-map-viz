@@ -14,6 +14,7 @@ import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js
 import { ComputedBusinessScoreNode } from "../../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../../../../domain/nodes/ComputedNode.js";
 import type { Node } from "../../../../domain/nodes/Node.js";
+import { PictureNode } from "../../../../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import { Tree } from "../../../../domain/Tree.js";
@@ -169,6 +170,93 @@ describe("jsonCodecV4 (§17.106a + §17.106b — v4-native encode + decode)", ()
       expect([...decoded.cards.keys()].sort()).toEqual([...original.cards.keys()].sort());
       expect((decoded.findById("sales-lost") as BusinessScoreNode<number>).disabled).toBe(true);
       expect(codec.encode(decoded)).toBe(json);
+    });
+  });
+
+  /**
+   * SPEC §17.119 — PictureNode wire format. Snapshot leaf carrying a
+   * single `imageUrl` string; no history / objective / description /
+   * range. The shape mirrors TextNode minus the `history` array plus
+   * a mandatory `imageUrl` row.
+   */
+  describe("PictureNode (§17.119)", () => {
+    it("encodes the snapshot shape: kind + commonFields + imageUrl (no history / objective / description)", () => {
+      const root = new TextNode("root", "Root", Weight.of(1), clock);
+      root.addValue(T1, "anchor");
+      const pic = new PictureNode(
+        "pic",
+        "Cat",
+        Weight.of(2),
+        "https://example.com/cat.jpg",
+      );
+      root.attach(pic);
+      const wire = JSON.parse(codec.encode(new Tree(root))) as {
+        root: { children: { kind: string; imageUrl: string; id: string; title: string; weight: number; children: unknown[] }[] };
+      };
+      const child = wire.root.children[0]!;
+      expect(child.kind).toBe("PictureNode");
+      expect(child.id).toBe("pic");
+      expect(child.title).toBe("Cat");
+      expect(child.weight).toBe(2);
+      expect(child.imageUrl).toBe("https://example.com/cat.jpg");
+      expect(child.children).toEqual([]);
+      // No leak of history / objective / range / description on a
+      // PictureNode wire row.
+      expect("history" in child).toBe(false);
+      expect("objective" in child).toBe(false);
+      expect("range" in child).toBe(false);
+      expect("description" in child).toBe(false);
+    });
+
+    it("emits disabled:true when the node is parked and OMITS it otherwise", () => {
+      const pic = new PictureNode("p", "P", Weight.of(1), "https://x");
+      const wireA = JSON.parse(codec.encode(new Tree(pic))).root as Record<string, unknown>;
+      expect("disabled" in wireA).toBe(false);
+      pic.setDisabled(true);
+      const wireB = JSON.parse(codec.encode(new Tree(pic))).root as Record<string, unknown>;
+      expect(wireB.disabled).toBe(true);
+    });
+
+    it("round-trips a sibling tree mixing TextNode and PictureNode (subclass dispatch picks the right kind on each side)", () => {
+      const root = new TextNode("root", "Root", Weight.of(1), clock);
+      root.addValue(T1, "anchor");
+      const pic = new PictureNode("pic", "Cat", Weight.of(1), "https://example.com/cat.jpg");
+      const txt = new TextNode("txt", "Notes", Weight.of(1), clock);
+      txt.addValue(T1, "hello");
+      root.attach(pic);
+      root.attach(txt);
+      const json = codec.encode(new Tree(root));
+      const decoded = codec.decode(json);
+      const decodedPic = decoded.findById("pic");
+      const decodedTxt = decoded.findById("txt");
+      expect(decodedPic).toBeInstanceOf(PictureNode);
+      expect(decodedTxt).toBeInstanceOf(TextNode);
+      expect((decodedPic as PictureNode).imageUrl).toBe(
+        "https://example.com/cat.jpg",
+      );
+      expect((decodedTxt as TextNode).getValue()).toBe("hello");
+      // Byte-exact re-encode confirms the round-trip is loss-free.
+      expect(codec.encode(decoded)).toBe(json);
+    });
+
+    it("decode rejects a PictureNode with a missing or empty imageUrl (the node constructor's non-empty guard fires through the codec)", () => {
+      const noUrl = {
+        schemaVersion: "v4.0",
+        root: {
+          kind: "PictureNode",
+          id: "p",
+          title: "P",
+          weight: 1,
+          children: [],
+        },
+        cards: [],
+      };
+      expect(() => codec.decode(JSON.stringify(noUrl))).toThrow(/imageUrl/);
+      const emptyUrl = {
+        ...noUrl,
+        root: { ...noUrl.root, imageUrl: "" },
+      };
+      expect(() => codec.decode(JSON.stringify(emptyUrl))).toThrow(/cannot be empty/);
     });
   });
 });

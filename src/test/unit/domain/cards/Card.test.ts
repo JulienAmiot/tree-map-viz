@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
 import { BusinessScoreCard } from "../../../../domain/cards/BusinessScoreCard.js";
 import { Card } from "../../../../domain/cards/Card.js";
+import { PictureCard } from "../../../../domain/cards/PictureCard.js";
 import { StrictRangeCard } from "../../../../domain/cards/StrictRangeCard.js";
 import { TextCard } from "../../../../domain/cards/TextCard.js";
 import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js";
+import { PictureNode } from "../../../../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
@@ -89,6 +91,18 @@ describe("Card hierarchy (§17.78 — v4 part 14: visual cards hosting v4 nodes)
       expect(card.getNode()).toBeInstanceOf(StrictRangeNode);
       expect(card.getNode().range.minimalValue).toBe(0);
       expect(card.getNode().range.maximalValue).toBe(100);
+    });
+  });
+
+  describe("PictureCard extends Card<PictureNode> (§17.119)", () => {
+    it("hosts a PictureNode reference-equal to the constructor argument, with the URL reachable through getNode().imageUrl", () => {
+      const node = new PictureNode("p-1", "Cat", weight, "https://example.com/cat.jpg");
+      const card = new PictureCard(node);
+      expect(card).toBeInstanceOf(PictureCard);
+      expect(card).toBeInstanceOf(Card);
+      expect(card.getNode()).toBe(node);
+      expect(card.getNode()).toBeInstanceOf(PictureNode);
+      expect(card.getNode().imageUrl).toBe("https://example.com/cat.jpg");
     });
   });
 });

@@ -98,6 +98,7 @@ import { BusinessScoreNode } from "./domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "./domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "./domain/nodes/ComputedNode.js";
 import type { Node } from "./domain/nodes/Node.js";
+import { PictureNode } from "./domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "./domain/nodes/StrictRangeNode.js";
 import { TextNode } from "./domain/nodes/TextNode.js";
 import { Tree } from "./domain/Tree.js";
@@ -449,6 +450,21 @@ function computeBreadcrumb(tree: Tree, focusedId: string): readonly BreadcrumbSe
  * modal in a follow-on strand.
  */
 function buildEditTarget(node: Node): EditNodeTarget | null {
+  // SPEC §17.119 — Picture branch checked BEFORE the TextNode-via-
+  // inheritance branch below would have a chance to misclassify a
+  // subclass (PictureNode extends ValueNode<string>, not TextNode,
+  // so the order matters less than in the workflow strand, but
+  // surfacing the snapshot leaf early keeps the read pattern
+  // consistent with `viewModelMapper`'s subclass-first ordering).
+  if (node instanceof PictureNode) {
+    return {
+      nodeId: node.id,
+      kind: "PictureNode",
+      title: node.title,
+      weight: node.weight.value,
+      imageUrl: node.imageUrl,
+    };
+  }
   if (node instanceof TextNode) {
     return { nodeId: node.id, kind: "TextNode", title: node.title, weight: node.weight.value };
   }
@@ -486,6 +502,10 @@ function computedKindFor(node: Node): "Computed" | "ComputedBusinessScore" | nul
  * the three round-7 leaf kinds the inline UIs don't surface yet).
  */
 function inferV4Kind(node: Node): EditNodePayload["kind"] | null {
+  // SPEC §17.119 — PictureNode checked first; the rest of the
+  // ladder follows the existing subclass-first ordering
+  // (ComputedBusinessScore before BusinessScore, etc.).
+  if (node instanceof PictureNode) return "Picture";
   if (node instanceof TextNode) return "TextNode";
   if (node instanceof ComputedBusinessScoreNode) return "ComputedBusinessScore";
   if (node instanceof BusinessScoreNode) return "BusinessScore";
@@ -535,6 +555,19 @@ function toAppAddChildPayload(payload: AddChildModalPayload, clock: Clock): AddC
       initialHistory: payload.initialHistory,
     };
   }
+  if (payload.kind === "PictureNode") {
+    // SPEC §17.119 — modal-side "PictureNode" kind rewrites to the
+    // application's "Picture" kind tag (mirrors the
+    // BusinessScoreCardNode → BusinessScore translation a few
+    // lines below). No history seed: PictureNode is a snapshot
+    // leaf (`ValueNode<string>`, not `HistorizableValueNode<string>`).
+    return {
+      kind: "Picture",
+      title: payload.title,
+      weight: payload.weight,
+      imageUrl: payload.imageUrl,
+    };
+  }
   const objective = {
     value: payload.objective.targetValue,
     at: payload.objective.targetDate,
@@ -580,6 +613,21 @@ function toAppAddChildPayload(payload: AddChildModalPayload, clock: Clock): AddC
 function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
   if (payload.kind === "TextNode") {
     return { kind: "TextNode", title: payload.title, weight: payload.weight };
+  }
+  if (payload.kind === "PictureNode") {
+    // SPEC §17.119 — modal-side "PictureNode" → application
+    // "Picture" kind tag, identical pattern to the add-child path.
+    // Title is intentionally forwarded from the payload even
+    // though the modal never sets it (the inline title editor
+    // is the canonical entry point); leaving the field on the
+    // wire shape keeps a future "edit title in the modal"
+    // strand non-breaking.
+    return {
+      kind: "Picture",
+      title: payload.title,
+      weight: payload.weight,
+      imageUrl: payload.imageUrl,
+    };
   }
   return {
     kind: "BusinessScore",

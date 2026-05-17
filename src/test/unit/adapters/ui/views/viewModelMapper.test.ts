@@ -12,6 +12,7 @@ import { BusinessScoreNode } from "../../../../../domain/nodes/BusinessScoreNode
 import { ComputedBusinessScoreNode } from "../../../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../../../../../domain/nodes/ComputedNode.js";
 import { Node } from "../../../../../domain/nodes/Node.js";
+import { PictureNode } from "../../../../../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../../../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../../../domain/nodes/TextNode.js";
 import { NumericComparator } from "../../../../../domain/values/Comparator.js";
@@ -423,6 +424,55 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       if (slot.slot !== "node" || slot.vm.kind !== "BusinessScoreCardNode") throw new Error();
       if (slot.vm.value.kind !== "recordedValue") throw new Error();
       expect(slot.vm.value.unit).toBe("g");
+    });
+  });
+
+  /**
+   * SPEC §17.119 — PictureNode mapper. Trivial 1:1 projection (title +
+   * URL only); no timestamp / objective / colour math. Defensive case:
+   * the `now` and `cards` options never affect a picture VM.
+   */
+  describe("PictureNode (§17.119)", () => {
+    it("maps title + imageUrl through verbatim", () => {
+      const pic = new PictureNode(
+        "p1",
+        "Cat",
+        w(),
+        "https://example.com/cat.jpg",
+      );
+      const vm = mapNodeToViewModel(pic);
+      expect(vm.kind).toBe("PictureNode");
+      if (vm.kind !== "PictureNode") throw new Error();
+      expect(vm.id).toBe("p1");
+      expect(vm.title).toBe("Cat");
+      expect(vm.imageUrl).toBe("https://example.com/cat.jpg");
+    });
+
+    it("ignores `now` and `cards` (no timestamp / no objective / no unit baked into a picture VM)", () => {
+      const pic = new PictureNode(
+        "p2",
+        "Other",
+        w(),
+        "https://example.com/o.jpg",
+      );
+      const vm = mapNodeToViewModel(pic, {
+        now: new Date("2030-01-01T00:00:00Z"),
+        cards: new Map(),
+      });
+      expect(vm.kind).toBe("PictureNode");
+    });
+
+    it("mapFocusedToViewModel surfaces a PictureNode child slot beside other kinds", () => {
+      const root = buildText("root", { history: [["2026-04-01T00:00:00Z", "anchor"]] });
+      const pic = new PictureNode("p", "Cat", w(), "https://example.com/cat.jpg");
+      root.attach(pic);
+      const focused = mapFocusedToViewModel(root, [pic]);
+      expect(focused.center.kind).toBe("TextNode");
+      const slot = focused.children[0];
+      if (slot?.slot !== "node") throw new Error("expected node slot");
+      expect(slot.vm.kind).toBe("PictureNode");
+      if (slot.vm.kind !== "PictureNode") throw new Error();
+      expect(slot.vm.imageUrl).toBe("https://example.com/cat.jpg");
     });
   });
 });

@@ -15,6 +15,7 @@ import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
 import type { Node } from "../../../domain/nodes/Node.js";
+import { PictureNode } from "../../../domain/nodes/PictureNode.js";
 import { RangedValueNode } from "../../../domain/nodes/RangedValueNode.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
 import type { CardRegistry } from "../../../domain/Tree.js";
@@ -31,6 +32,7 @@ import type {
   ComputedValueViewModel,
   FocusedTreeViewModel,
   NodeViewModel,
+  PictureNodeViewModel,
 } from "./NodeViewModel.js";
 
 /**
@@ -114,6 +116,14 @@ export function mapNodeToViewModel(
   }
   if (node instanceof RangedValueNode) {
     return mapBSCNode(node as RangedValueNode<number>, options);
+  }
+  // §17.119 — PictureNode is a `ValueNode<string>` snapshot leaf (no
+  // history, no range), so it falls outside the RangedValueNode branch
+  // above. It's checked last because the branches above are the
+  // hot-path read shapes; a fresh-cut picture board sees Picture late
+  // but still in O(1) instanceof time.
+  if (node instanceof PictureNode) {
+    return mapPictureNode(node);
   }
   throw new ViewModelMappingError(
     `viewModelMapperV4: unsupported v4 Node subclass "${node.constructor.name}"`,
@@ -383,6 +393,23 @@ function mapComputedBusinessScoreNode(
     // `isRecordedValue = false`. The §17.40 valueColor gradient still
     // paints because it only needs a finite numeric value.
     objective: mapBusinessScoreObjective(node, currentNumber, false, unit, options),
+  };
+}
+
+/**
+ * SPEC §17.119 — `PictureNode` mapper. Trivial 1:1 projection: the
+ * domain already validated the URL at the node-construction seam, the
+ * view layer renders an `<img>` and falls back to the §17.44 warning
+ * glyph on `onerror`, and there's no timestamp / objective / colour
+ * computation to bake in. No `options` reads — `now` and `cards`
+ * don't affect a picture's projection.
+ */
+function mapPictureNode(node: PictureNode): PictureNodeViewModel {
+  return {
+    kind: "PictureNode",
+    id: node.id,
+    title: node.title,
+    imageUrl: node.imageUrl,
   };
 }
 
