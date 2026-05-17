@@ -42,6 +42,12 @@ When("I reload the kiosk", async ({ page }) => {
 });
 
 Then("the focused title is {string}", async ({ page }, expected: string) => {
+  // SPEC §17.116 — Σ now prefixes the title for Computed* (§17.116c)
+  // + BSC `computedMean` (§17.116d). Strip the Σ + surrounding
+  // whitespace so feature literals stay clean ("UUID1 Title", not
+  // "ΣUUID1 Title"). No-op on a title without a Σ prefix.
   const kiosk = new TreeMapPage(page);
-  await expect(kiosk.focusedTitle()).toHaveText(expected);
+  await expect
+    .poll(async () => (await kiosk.focusedTitle().textContent())?.replace(/\u03a3/g, "").trim())
+    .toBe(expected);
 });
