@@ -203,6 +203,18 @@ export const tileLayoutStyles = css`
        layouts. The .target-row + .trend-arrow coefficients rescale
        in lock-step below to keep the 0.2× / 0.4× ratios. */
     font-size: clamp(1.5rem, 42cqmin, 22rem);
+    /* SPEC §17.116 — the value glyph must never wrap on any tile.
+       The §17.116c refresh moves the unit out of the inline .value
+       run into a .unit-below block sibling, so the value's text run
+       becomes a bare number that can sit on a single line at every
+       cqmin level. white-space: nowrap is the belt that keeps a
+       multi-digit value on one line when the tile is narrow;
+       word-break: keep-all defeats any UA-default break opportunity
+       between digit clusters. Lands here in §17.116b (foundations)
+       so the rule is in place before §17.116c rewires Computed*
+       tiles to stop emitting the inline .unit chip. */
+    white-space: nowrap;
+    word-break: keep-all;
     /* SPEC 17.40 -- when the mapper bakes a gradient colour for the
        BSC's current value (red -> orange -> yellow -> green along the
        min -> target progress), the per-view sets --bsc-value-color on
@@ -216,15 +228,114 @@ export const tileLayoutStyles = css`
     content: "";
   }
   /* Unit nested inside the value: 1/3 of the value's surrounding
-     font-size, regardless of where the cqmin clamp landed. */
+     font-size, regardless of where the cqmin clamp landed.
+     SPEC §17.116 — superseded by .unit-below below for Computed*
+     tiles in §17.116c and BSC + TextNode tiles in §17.116d; kept
+     in place during the foundations strand so pre-§17.116c BSC
+     views still size their inline .unit chip correctly. The rule
+     retires entirely in §17.116d once every view has moved to
+     the .unit-below sibling. */
   .value .unit {
     font-size: calc(1em / 3);
     font-weight: 500;
     color: color-mix(in srgb, currentColor 75%, transparent);
   }
+  /* SPEC §17.116 — the unit moves out of the inline .value run into
+     its own block sibling under it (consumed by Computed* tiles in
+     §17.116c, BSC + TextNode tiles in §17.116d). Same ~1/3 ratio
+     against the value's cqmin-driven font-size — the unit-below's
+     clamp(0.6rem, 14cqmin, 5rem) vs the value's clamp(1.5rem,
+     42cqmin, 22rem) gives 14/42 = 1/3 in the unbounded middle of
+     the two envelopes — so the visual proportion the pre-§17.116
+     ".value .unit" rule produced is preserved. The block placement
+     lets the operator scan "title → value → unit → timestamp"
+     top-to-bottom on the tile instead of "title → value-with-
+     inline-unit → timestamp" which forced the row to choose
+     between wrapping (ugly) and truncating the unit (worse). */
+  .unit-below {
+    display: block;
+    margin-top: 0.15em;
+    font-weight: 500;
+    font-size: clamp(0.6rem, 14cqmin, 5rem);
+    line-height: 1.1;
+    color: color-mix(in srgb, currentColor 75%, transparent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  /* SPEC §17.116 — the computation-kind label sits **under the
+     title** on a Computed* tile in a thinner / smaller font and is
+     NOT editable (the pre-§17.116 inline dropdown retires in
+     §17.116c; kind switching belongs to the edit modal as a future
+     §17.116-followup). The fixed 1.4vh font-size (~70% of the 2vh
+     child-role title; ~58% of the 2.4vh parent-role title) gives
+     the kind label the visual weight of a sub-title without
+     competing with the operator-edited title text. font-weight:
+     400 vs the title's 700 reinforces the "supporting context"
+     reading; the small-caps variant + letter-spacing trim turn
+     the kind verb ("SUM" / "AVERAGE") into a typographic label
+     rather than a sentence fragment. Lands in §17.116b (dormant
+     until §17.116c wires the Computed* card to render it). */
+  .kind-label {
+    display: block;
+    margin: 0 0 0.2em;
+    height: 1.8vh;
+    line-height: 1.8vh;
+    font-size: 1.4vh;
+    font-weight: 400;
+    color: color-mix(in srgb, currentColor 65%, transparent);
+    font-variant: small-caps;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* SPEC §17.116 — full-tile warning glyph for Computed* nodes that
+     cannot produce a value (strategy threw EmptyChildrenError, OR
+     produced a non-finite number, OR has no eligible child). The
+     visual contract mirrors the §17.24 PlusTile: dashed border,
+     huge centred glyph, calm muted colour. Renders INSIDE the
+     existing .value-area so the title row + (optional) kind-label
+     above still read as the tile's identity; the warning is the
+     value-area's content and fills it edge-to-edge.
+
+     A separate .warning-fill class (rather than reusing the §17.40
+     ".value.empty" rule) keeps the §17.40 "empty value area"
+     contract intact for BSC "childrenCount n=0" tiles, which the
+     operator's §17.116 instruction did NOT cover (BSC empty stays
+     literally empty per the v3 design). Lands in §17.116b (dormant
+     until §17.116c wires the Computed* card to render it). */
+  .warning-fill {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    border: 2px dashed
+      color-mix(in srgb, var(--muted, currentColor) 45%, transparent);
+    border-radius: 8px;
+    color: var(--muted, currentColor);
+    user-select: none;
+  }
+  .warning-fill::before {
+    /* U+26A0 + U+FE0E forces text-style (monochrome) presentation so
+       systems that default the warning sign to colour emoji honour
+       the .warning-fill colour. Sized in cqmin so the glyph fills
+       the tile the same way the §17.24 PlusTile cross does. */
+    content: "\u26A0\uFE0E";
+    font-size: clamp(2rem, 50cqmin, 12rem);
+    line-height: 1;
+    font-weight: 700;
+  }
   .sigma {
     /* Σ badge for computed BSCs — small chip near the value, tile-relative
-       so it stays proportional. */
+       so it stays proportional. SPEC §17.116 — superseded by the title-
+       prefix Σ render in Computed* tiles (§17.116c) and BSC computedMean
+       tiles (§17.116d); the rule retires in §17.116d once every view has
+       moved to the title-prefix render. */
     margin-left: 0.45em;
     font-size: clamp(0.85rem, 4cqmin, 1.5rem);
     padding: 0.05em 0.4em;
