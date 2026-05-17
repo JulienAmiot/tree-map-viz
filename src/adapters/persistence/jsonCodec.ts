@@ -126,7 +126,7 @@ function encodeCN(node: ComputedNode<unknown>): Record<string, unknown> {
 
 function encodeStrictRangeNode(node: StrictRangeNode<number>): Record<string, unknown> {
   return {
-    kind: "StrictRangeNodeV4",
+    kind: "StrictRangeNode",
     ...commonFields(node),
     description: node.getDescription(),
     range: encodeRange(node.range, "strict"),
@@ -182,7 +182,7 @@ function decodeNode(raw: unknown, p: string, clock: Clock): Node {
     node = buildCBSN(id, title, w, obj, p, clock);
   } else if (kind === "ComputedNode") {
     node = new ComputedNode<unknown>(id, title, w, requireString(obj, "description", p), clock, decodeComputationKind(obj, p));
-  } else if (kind === "StrictRangeNodeV4") {
+  } else if (kind === "StrictRangeNode") {
     const srn = new StrictRangeNode<number>(id, title, w, requireString(obj, "description", p), clock, decodeRange(obj, p, "strict", StrictRange.of));
     for (const h of decodeHistory(obj, p, "number")) srn.addValue(h.at, h.value as number);
     node = srn;

@@ -86,7 +86,7 @@ describe("jsonCodecV4 (§17.106a + §17.106b — v4-native encode + decode)", ()
       const srn = new StrictRangeNode<number>("s", "S", Weight.of(1), "0-100", clock, StrictRange.of(0, 100, NumericComparator.INSTANCE));
       srn.addValue(T1, 70);
       const srnWire = JSON.parse(codec.encode(new Tree(srn))).root as Record<string, unknown>;
-      expect(srnWire.kind).toBe("StrictRangeNodeV4");
+      expect(srnWire.kind).toBe("StrictRangeNode");
       expect(srnWire.range).toEqual({ kind: "strict", min: 0, max: 100 });
       expect(srnWire.history).toEqual([{ value: 70, at: T1.moment.toISOString() }]);
     });
