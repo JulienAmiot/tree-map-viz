@@ -15,7 +15,7 @@ import { Card } from "./Card.js";
  * aggregate (`src/domain/nodes/BusinessScoreCard.ts`) bundling
  * `Unit` + `Objective` + history — same name, completely different
  * concern. In v4 history moved to `HistorizableValueNode<T>` (§17.73),
- * objective moved to `BusinessScoreNode<T>` (§17.76 via `ObjectiveV4`),
+ * objective moved to `BusinessScoreNode<T>` (§17.76 via `Objective`),
  * and **unit lifts onto this card at §17.100.5** (the final resolution
  * of §17.80 D1; §17.91 parked unit on BSN as a band-aid until cards
  * were wired into the read path). The v3-bridge adapter

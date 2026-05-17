@@ -9,7 +9,7 @@ import type { Node } from "../domain/nodes/Node.js";
 import { StrictRangeNode } from "../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../domain/nodes/TextNodeV4.js";
 import type { CardRegistry } from "../domain/Tree.js";
-import { ObjectiveV4 } from "../domain/values/ObjectiveV4.js";
+import { Objective } from "../domain/values/Objective.js";
 import { Timestamp } from "../domain/values/Timestamp.js";
 import { Unit } from "../domain/values/Unit.js";
 import { Weight } from "../domain/values/Weight.js";
@@ -136,7 +136,7 @@ export class EditNodeServiceV4 {
   ): void {
     if (payload.objective !== undefined) {
       const prev = bsn.objective;
-      bsn.setObjective(ObjectiveV4.of(payload.objective.value, Timestamp.of(payload.objective.at)));
+      bsn.setObjective(Objective.of(payload.objective.value, Timestamp.of(payload.objective.at)));
       undos.push(() => bsn.setObjective(prev));
     }
     if (payload.unit !== undefined) {

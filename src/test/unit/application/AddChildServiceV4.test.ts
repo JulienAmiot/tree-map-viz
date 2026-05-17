@@ -4,7 +4,7 @@ import { AddChildServiceV4 } from "../../../application/AddChildServiceV4.js";
 import type { AddChildPayloadV4 } from "../../../application/AddChildServiceV4.js";
 import type { IdGenerator } from "../../../application/ports/IdGenerator.js";
 import type { Clock } from "../../../domain/capabilities/Clock.js";
-import { MAX_CHILDREN_V4 } from "../../../domain/capacity/childrenCapacityV4.js";
+import { MAX_CHILDREN } from "../../../domain/capacity/childrenCapacity.js";
 import { ComputationKind } from "../../../domain/computation/ComputationKind.js";
 import { ComputationOverrideError } from "../../../domain/computation/ComputationOverrideError.js";
 import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
@@ -23,7 +23,7 @@ const sequentialIdGen = (prefix = "uuid"): IdGenerator => {
   return () => `${prefix}-${++n}`;
 };
 const fillToCap = (parent: TextNodeV4): void => {
-  for (let i = 0; i < MAX_CHILDREN_V4; i++) {
+  for (let i = 0; i < MAX_CHILDREN; i++) {
     parent.attach(new TextNodeV4(`existing-${i}`, `E-${i}`, Weight.of(1), clock));
   }
 };
@@ -113,13 +113,13 @@ describe("AddChildServiceV4 (§17.100a — Phase C skeleton + 2 v3-compat kinds)
     expect(persist).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects when parent at MAX_CHILDREN_V4 — no construction, no persist, no mutation", async () => {
+  it("rejects when parent at MAX_CHILDREN — no construction, no persist, no mutation", async () => {
     const parent = makeRoot();
     fillToCap(parent);
     const r = await svc.addChild(parent, { kind: "TextNode", title: "Overflow" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toMatch(/cap|MAX_CHILDREN|maximum/i);
-    expect(parent.children).toHaveLength(MAX_CHILDREN_V4);
+    expect(parent.children).toHaveLength(MAX_CHILDREN);
     expect(persist).not.toHaveBeenCalled();
   });
 

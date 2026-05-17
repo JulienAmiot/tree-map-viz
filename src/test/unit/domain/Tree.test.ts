@@ -6,7 +6,7 @@ import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
 import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
 import { Tree } from "../../../domain/Tree.js";
 import { NumericComparator } from "../../../domain/values/Comparator.js";
-import { ObjectiveV4 } from "../../../domain/values/ObjectiveV4.js";
+import { Objective } from "../../../domain/values/Objective.js";
 import { LenientRange } from "../../../domain/values/Range.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
 import { Unit } from "../../../domain/values/Unit.js";
@@ -126,7 +126,7 @@ describe("Tree (§17.79 — v4 part 15: container closing the v4 class-diagram s
       const bsn = new BusinessScoreNode<number>(
         "b", "B", w, "", clk,
         LenientRange.of(0, 100, NumericComparator.INSTANCE),
-        { objective: ObjectiveV4.of(80, Timestamp.of(new Date("2026-12-31T00:00:00Z"))) },
+        { objective: Objective.of(80, Timestamp.of(new Date("2026-12-31T00:00:00Z"))) },
       );
       const cards = new Map([["b", new BusinessScoreCardV4(bsn, Unit.of("%"))]]);
       const t2 = new Tree(mkNode("solo"), cards);

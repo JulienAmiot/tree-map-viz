@@ -1,5 +1,5 @@
 import type { Clock } from "../domain/capabilities/Clock.js";
-import { canAddChildV4 } from "../domain/capacity/childrenCapacityV4.js";
+import { canAddChild } from "../domain/capacity/childrenCapacity.js";
 import type { ComputationKind } from "../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../domain/nodes/ComputedBusinessScoreNode.js";
@@ -10,7 +10,7 @@ import { StrictRangeNode } from "../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../domain/nodes/TextNodeV4.js";
 import type { ValueNode } from "../domain/nodes/ValueNode.js";
 import { NumericComparator } from "../domain/values/Comparator.js";
-import { ObjectiveV4 } from "../domain/values/ObjectiveV4.js";
+import { Objective } from "../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../domain/values/Range.js";
 import { Timestamp } from "../domain/values/Timestamp.js";
 import { Weight } from "../domain/values/Weight.js";
@@ -82,7 +82,7 @@ type OutcomeV4 =
 
 /**
  * Builds a v4 node from a payload, appends it to the focused v4 parent,
- * persists, rejects at MAX_CHILDREN_V4 (SPEC §17.100a). v4 successor to v3's
+ * persists, rejects at MAX_CHILDREN (SPEC §17.100a). v4 successor to v3's
  * `AddChildService`; parallel additive — v3 stays live in `main.ts` until
  * §17.110 Phase E cutover. Deltas vs v3: `Clock` injected; `disabled`
  * propagates via `setDisabled(true)` per §17.99a (no ctor option); title
@@ -97,7 +97,7 @@ export class AddChildServiceV4 {
   ) {}
 
   async addChild(parent: Node, payload: AddChildPayloadV4): Promise<OutcomeV4> {
-    if (!canAddChildV4(parent)) {
+    if (!canAddChild(parent)) {
       return {
         ok: false,
         reason: `Children cap reached (MAX_CHILDREN). Cannot add another child to "${parent.id}".`,
@@ -174,7 +174,7 @@ export class AddChildServiceV4 {
     const range = LenientRange.of(
       Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, NumericComparator.INSTANCE,
     );
-    const objective = ObjectiveV4.of(payload.objective.value, Timestamp.of(payload.objective.at));
+    const objective = Objective.of(payload.objective.value, Timestamp.of(payload.objective.at));
     const node = new ComputedBusinessScoreNode<number>(
       id, title, weight, payload.description ?? "", this.clock, range,
       { objective, initialKind: payload.computationKind, unit: payload.unit },
@@ -194,7 +194,7 @@ export class AddChildServiceV4 {
       Number.POSITIVE_INFINITY,
       NumericComparator.INSTANCE,
     );
-    const objective = ObjectiveV4.of(payload.objective.value, Timestamp.of(payload.objective.at));
+    const objective = Objective.of(payload.objective.value, Timestamp.of(payload.objective.at));
     const node = new BusinessScoreNode<number>(
       id, title, weight, payload.description ?? "", this.clock, range,
       { objective, unit: payload.unit },

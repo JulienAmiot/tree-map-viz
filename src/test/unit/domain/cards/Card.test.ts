@@ -9,7 +9,7 @@ import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../../../../domain/nodes/TextNodeV4.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
-import { ObjectiveV4 } from "../../../../domain/values/ObjectiveV4.js";
+import { Objective } from "../../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../../domain/values/Range.js";
 import { Timestamp } from "../../../../domain/values/Timestamp.js";
 import { Unit } from "../../../../domain/values/Unit.js";
@@ -29,7 +29,7 @@ const buildBSN = (): BusinessScoreNode<number> =>
     "desc",
     fixedClock,
     LenientRange.of(0, 100, NumericComparator.INSTANCE),
-    { objective: ObjectiveV4.of(80, T("2026-12-31T00:00:00Z")) },
+    { objective: Objective.of(80, T("2026-12-31T00:00:00Z")) },
   );
 const buildSRN = (): StrictRangeNode<number> =>
   new StrictRangeNode<number>(

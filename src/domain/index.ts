@@ -28,7 +28,7 @@ export { Weight, InvalidWeightError } from "./values/Weight.js";
 export { Unit, InvalidUnitError } from "./values/Unit.js";
 export { Timestamp, InvalidTimestampError } from "./values/Timestamp.js";
 export { TimestampedValue } from "./values/TimestampedValue.js";
-export { ObjectiveV4 } from "./values/ObjectiveV4.js";
+export { Objective } from "./values/Objective.js";
 export { Range, StrictRange, LenientRange, OutOfRangeError } from "./values/Range.js";
 export type { Comparator } from "./values/Comparator.js";
 export { NumericComparator, LexicographicComparator } from "./values/Comparator.js";
@@ -65,9 +65,9 @@ export { EmptyHistoryError } from "./nodes/EmptyHistoryError.js";
 export { Tree } from "./Tree.js";
 export type { CardRegistry } from "./Tree.js";
 
-export { computedValueV4 } from "./aggregation/computedValueV4.js";
-export type { ComputedValueResultV4 } from "./aggregation/computedValueV4.js";
-export { currentValueDateIsoV4, mostRecentChildDateIsoV4 } from "./aggregation/currentValueDateV4.js";
+export { computedValue } from "./aggregation/computedValue.js";
+export type { ComputedValueResult } from "./aggregation/computedValue.js";
+export { currentValueDateIso, mostRecentChildDateIso } from "./aggregation/currentValueDate.js";
 export {
   gradientPositionFraction, linearRegressionPrediction, linearRegressionSlope,
   deadlineShortfall, progressRate, trendArrowFromRate, gradientColorAt,
@@ -75,6 +75,6 @@ export {
 } from "./aggregation/objectiveProgress.js";
 export type { HistoryPoint, TrendArrow } from "./aggregation/objectiveProgress.js";
 
-export { MAX_CHILDREN_V4, canAddChildV4, shouldRenderPlusTileV4 } from "./capacity/childrenCapacityV4.js";
+export { MAX_CHILDREN, canAddChild, shouldRenderPlusTile } from "./capacity/childrenCapacity.js";
 
 export { layoutSquarified } from "./treemapSquarify.js";

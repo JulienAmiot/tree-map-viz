@@ -14,7 +14,7 @@ import type { Timestamp } from "../values/Timestamp.js";
  * fields instead of one wrapped object. Mapper-side adjustment is
  * trivial (`.value` → direct, `.asOf.moment` → `asOf.moment`).
  */
-export type ComputedValueResultV4<T = unknown> =
+export type ComputedValueResult<T = unknown> =
   | { kind: "recordedValue"; value: T; asOf: Timestamp }
   | { kind: "computedValue"; value: number }
   | { kind: "childrenCount"; n: number };
@@ -43,7 +43,7 @@ export type ComputedValueResultV4<T = unknown> =
  *     children. A child is **eligible** iff (a) it is a
  *     `RangedValueNode` (TextNodeV4 children never contribute —
  *     text doesn't aggregate), AND (b) recursive
- *     `computedValueV4(child)` produces a finite number (either
+ *     `computedValue(child)` produces a finite number (either
  *     `recordedValue` with numeric `value`, or nested
  *     `computedValue`). Weight uses `child.weight.value`.
  *   - **Parent with no eligible children**: returns
@@ -54,7 +54,7 @@ export type ComputedValueResultV4<T = unknown> =
  * **Recursion depth**: v3's `computedValue` was one-level —
  * children's `contribution()` returned each child's OWN recorded
  * value, ignoring grandchildren. v4 recurses through
- * `computedValueV4(child)`, so a grandchild aggregator's computed
+ * `computedValue(child)`, so a grandchild aggregator's computed
  * mean propagates upward. This is a **slight v4 improvement** over
  * v3 (handles the empty-history-with-children edge case
  * gracefully) — for the typical kiosk data shape (aggregators only
@@ -67,9 +67,9 @@ export type ComputedValueResultV4<T = unknown> =
  * recursion coerces via `Number(...)` and skips non-finite
  * children to keep weighted-mean math safe.
  */
-export function computedValueV4<T>(
+export function computedValue<T>(
   node: RangedValueNode<T>,
-): ComputedValueResultV4<T> {
+): ComputedValueResult<T> {
   // §17.99c — polymorphic resolution of v3's `computed: true` BSC
   // pattern. The §17.93 band-aid read `node instanceof BusinessScoreNode
   // && node.computed` (a flag on the v4 BSN slot); §17.99c retires
@@ -111,7 +111,7 @@ export function computedValueV4<T>(
   return { kind: "computedValue", value: weightedSum / weightSum };
 }
 
-function leafResult<T>(node: RangedValueNode<T>): ComputedValueResultV4<T> {
+function leafResult<T>(node: RangedValueNode<T>): ComputedValueResult<T> {
   const entries = node.entries();
   if (entries.length === 0) {
     return { kind: "childrenCount", n: 0 };
@@ -163,7 +163,7 @@ function effectiveNumericValue(child: RangedValueNode<unknown>): number {
   if (entries.length > 0) {
     return Number(entries[entries.length - 1].value);
   }
-  const result = computedValueV4(child);
+  const result = computedValue(child);
   switch (result.kind) {
     case "recordedValue":
       return Number(result.value);

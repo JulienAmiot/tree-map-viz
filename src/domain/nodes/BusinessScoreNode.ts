@@ -1,5 +1,5 @@
 import type { Clock } from "../capabilities/Clock.js";
-import type { ObjectiveV4 } from "../values/ObjectiveV4.js";
+import type { Objective } from "../values/Objective.js";
 import type { LenientRange } from "../values/Range.js";
 import type { Weight } from "../values/Weight.js";
 
@@ -11,7 +11,7 @@ import { RangedValueNode } from "./RangedValueNode.js";
  * `class BusinessScoreNode~T~ { +LenientRange~T~ range;
  * +Objective~T~ objective }` in the v4 class diagram, with
  * `RangedValueNode~T~ <|-- BusinessScoreNode~T~` inheritance and
- * composition edges to LenientRange<T> + ObjectiveV4<T>).
+ * composition edges to LenientRange<T> + Objective<T>).
  *
  * v4 successor to v3's `BusinessScoreCardNode` — different name (note
  * `Card` infix in v3), so NO `V4` suffix; ships under its v4-final name.
@@ -27,7 +27,7 @@ import { RangedValueNode } from "./RangedValueNode.js";
  *     `requireValue` is a no-op per §17.71. `range.contains(v)` still
  *     answers truthfully — the gate is opt-in, not silent rejection.
  *
- *   - **`objective: ObjectiveV4<T>`** as public `readonly` per the
+ *   - **`objective: Objective<T>`** as public `readonly` per the
  *     `*-- "1" Objective<T>` composition edge. Mandatory (a score node
  *     without a goal is a category error). v3 stored it on a separate
  *     `BusinessScoreCard` companion (`BusinessScoreCardNode.card`); v4
@@ -55,7 +55,7 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
    */
   readonly unit: string;
 
-  objective: ObjectiveV4<T>;
+  objective: Objective<T>;
 
   /**
    * Constructor uses an options object for the `objective` + the remaining
@@ -75,7 +75,7 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
    *     `ComputedBusinessScoreNode<T>` (extends BSN, §17.98); the §17.81
    *     v3-bridge now type-substitutes v3 `computed: true` BSCs to the new
    *     subclass directly instead of producing a flagged BSN. The
-   *     `computedValueV4` aggregation switches its computed-detection
+   *     `computedValue` aggregation switches its computed-detection
    *     predicate from `node instanceof BusinessScoreNode && node.computed`
    *     to `node instanceof ComputedBusinessScoreNode` — same observable
    *     behaviour on every live data shape, polymorphic resolution.
@@ -90,7 +90,7 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
     clock: Clock,
     range: LenientRange<T>,
     options: {
-      objective: ObjectiveV4<T>;
+      objective: Objective<T>;
       unit?: string;
     },
   ) {
@@ -100,7 +100,7 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
   }
 
   /** §17.101a — operator-facing mutator for `EditNodeServiceV4`. */
-  setObjective(objective: ObjectiveV4<T>): void {
+  setObjective(objective: Objective<T>): void {
     this.objective = objective;
   }
 }

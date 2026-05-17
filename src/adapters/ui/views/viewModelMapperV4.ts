@@ -1,5 +1,5 @@
-import { computedValueV4 } from "../../../domain/aggregation/computedValueV4.js";
-import { currentValueDateIsoV4 } from "../../../domain/aggregation/currentValueDateV4.js";
+import { computedValue } from "../../../domain/aggregation/computedValue.js";
+import { currentValueDateIso } from "../../../domain/aggregation/currentValueDate.js";
 import {
   deadlineShortfall,
   gradientColorAt,
@@ -8,7 +8,7 @@ import {
   trendArrowFromRate,
   warningGradientColorAt,
 } from "../../../domain/aggregation/objectiveProgress.js";
-import { shouldRenderPlusTileV4 } from "../../../domain/capacity/childrenCapacityV4.js";
+import { shouldRenderPlusTile } from "../../../domain/capacity/childrenCapacity.js";
 import { ComputationKind } from "../../../domain/computation/ComputationKind.js";
 import { EmptyChildrenError } from "../../../domain/computation/EmptyChildrenError.js";
 import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
@@ -55,12 +55,12 @@ import type {
  *     `instanceof BusinessScoreNode` (StrictRangeNode has no
  *     objective per §17.77, so it falls back to a synthetic
  *     "no-objective" objective VM with empty colours / null arrow).
- *   - Reads aggregation via §17.89's `computedValueV4` + §17.89's
- *     `currentValueDateIsoV4` instead of v3's `computedValue` +
+ *   - Reads aggregation via §17.89's `computedValue` + §17.89's
+ *     `currentValueDateIso` instead of v3's same-name helpers (retired §17.112) +
  *     `currentValueDateIso`. Shape is 1:1 modulo the
  *     `recordedValue` payload (§17.89 splits v3's
  *     `TimestampedValue<T>` into `value: T` + `asOf: Timestamp`).
- *   - Reads capacity via §17.90's `shouldRenderPlusTileV4` instead
+ *   - Reads capacity via §17.90's `shouldRenderPlusTile` instead
  *     of v3's `shouldRenderPlusTile`. Same boolean answer.
  *
  * **Unit handling**: reads `node.unit` from v4 BusinessScoreNode
@@ -142,7 +142,7 @@ function mapBSCNode(
   node: RangedValueNode<number>,
   options: MapToViewModelOptionsV4,
 ): NodeViewModel {
-  const dateIso = currentValueDateIsoV4(node) ?? "";
+  const dateIso = currentValueDateIso(node) ?? "";
   const unit = resolveUnit(node, options);
   const value = mapBusinessScoreValueV4(node, unit);
   return {
@@ -153,7 +153,7 @@ function mapBSCNode(
     value,
     dateIso,
     dateColor: dateIso ? colorFor(dateIso, options) : "",
-    objective: mapBusinessScoreObjectiveV4(
+    objective: mapBusinessScoreObjective(
       node, numericValueOf(value), value.kind === "recordedValue", unit, options,
     ),
   };
@@ -181,7 +181,7 @@ function mapBusinessScoreValueV4(
   node: RangedValueNode<number>,
   unit: string,
 ): BusinessScoreCardValueViewModel {
-  const result = computedValueV4(node);
+  const result = computedValue(node);
   switch (result.kind) {
     case "recordedValue":
       return {
@@ -218,7 +218,7 @@ function mapBusinessScoreValueV4(
  * recorded — same data-source restriction the §17.41 trend arrow + §17.44
  * warning glyph carry).
  */
-function mapBusinessScoreObjectiveV4(
+function mapBusinessScoreObjective(
   node: RangedValueNode<number>,
   currentNumber: number | null,
   isRecordedValue: boolean,
@@ -233,7 +233,7 @@ function mapBusinessScoreObjectiveV4(
   const targetValue = Number(objective.value);
   const targetDateIso = objective.at.moment.toISOString();
 
-  // §17.91 — v4 ObjectiveV4 is 2-tuple (value, at) vs v3's 3-tuple
+  // §17.91 — v4 Objective is 2-tuple (value, at) vs v3's 3-tuple
   // (initialValue, targetValue, targetDate). v3's gradient ramp went
   // from `initialValue` (red) to `targetValue` (green); v4 has no
   // separate initialValue slot per §17.80 D5. Use the BSC's first
@@ -351,7 +351,7 @@ function mapComputedBusinessScoreNode(
   node: ComputedBusinessScoreNode<number>,
   options: MapToViewModelOptionsV4,
 ): ComputedBusinessScoreNodeViewModel {
-  const dateIso = currentValueDateIsoV4(node) ?? "";
+  const dateIso = currentValueDateIso(node) ?? "";
   const unit = resolveUnit(node, options);
   const value = computedValueVM(node, unit);
   const currentNumber = value.kind === "numeric" ? value.value : null;
@@ -370,7 +370,7 @@ function mapComputedBusinessScoreNode(
     // trend arrow + §17.44 warning glyph stay suppressed by passing
     // `isRecordedValue = false`. The §17.40 valueColor gradient still
     // paints because it only needs a finite numeric value.
-    objective: mapBusinessScoreObjectiveV4(node, currentNumber, false, unit, options),
+    objective: mapBusinessScoreObjective(node, currentNumber, false, unit, options),
   };
 }
 
@@ -378,7 +378,7 @@ function mapComputedBusinessScoreNode(
  * Map a focused-view snapshot (center node + its direct children)
  * to the shell's `FocusedTreeViewModel`. Appends a `plus` slot iff
  * the focused parent has capacity for a new child (§17.90's
- * `shouldRenderPlusTileV4`). Same shape and behaviour as v3's
+ * `shouldRenderPlusTile`). Same shape and behaviour as v3's
  * `mapFocusedToViewModel`.
  */
 export function mapFocusedToViewModelV4(
@@ -391,7 +391,7 @@ export function mapFocusedToViewModelV4(
     weight: c.weight.value,
     vm: mapNodeToViewModelV4(c, options),
   }));
-  if (shouldRenderPlusTileV4(center)) {
+  if (shouldRenderPlusTile(center)) {
     slots.push({ slot: "plus", weight: 1, parentId: center.id });
   }
   return {
