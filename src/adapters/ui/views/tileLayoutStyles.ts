@@ -284,11 +284,18 @@ export const tileLayoutStyles = css`
   /* SPEC §17.116 — full-tile warning glyph for Computed* nodes that
      cannot produce a value (strategy threw EmptyChildrenError, OR
      produced a non-finite number, OR has no eligible child). The
-     visual contract mirrors the §17.24 PlusTile: dashed border,
-     huge centred glyph, calm muted colour. Renders INSIDE the
-     existing .value-area so the title row + (optional) kind-label
-     above still read as the tile's identity; the warning is the
-     value-area's content and fills it edge-to-edge.
+     visual contract is a huge centred ⚠ glyph in a calm muted
+     colour, rendered INSIDE the existing .value-area so the title
+     row + (optional) kind-label above still read as the tile's
+     identity; the warning is the value-area's content and fills
+     it edge-to-edge.
+
+     SPEC §17.116-followup — the dashed border + 8 px corner-radius
+     framing the §17.24 PlusTile uses are retired here on operator
+     feedback ("remove the dashed line of the warning"): the glyph
+     alone carries the "cannot compute" signal at-a-glance, and
+     stripping the border lets the warning surface read as part of
+     the tile rather than an inset card-in-a-card.
 
      A separate .warning-fill class (rather than reusing the §17.40
      ".value.empty" rule) keeps the §17.40 "empty value area"
@@ -304,9 +311,6 @@ export const tileLayoutStyles = css`
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    border: 2px dashed
-      color-mix(in srgb, var(--muted, currentColor) 45%, transparent);
-    border-radius: 8px;
     color: var(--muted, currentColor);
     user-select: none;
   }
