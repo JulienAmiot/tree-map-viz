@@ -192,17 +192,46 @@ export const tileLayoutStyles = css`
     line-height: 1.05;
     /* SPEC §17.17 — "the figure should be the biggest possible". The
        cqmin coefficient was bumped from 18 → 36 in §17.17. SPEC
-       §17.46 amends to 42cqmin (a further ~17 % bump) on operator
-       feedback: with the §17.46 host-padding trim the figure has
-       more canvas to grow into, and the date moved to the smaller
-       1.15vh size, so the figure can take more of the visual weight
-       without crowding either edge. The 4-digit fit envelope holds
-       (≈ k = 0.42 → per-char budget ≈ 1/(0.6·N) of cqmin > 0.42 for
-       N ≤ 4). Floor 1.5rem keeps small-tile legibility; ceiling
-       22rem prevents typographic blow-out on giant single-child
-       layouts. The .target-row + .trend-arrow coefficients rescale
-       in lock-step below to keep the 0.2× / 0.4× ratios. */
-    font-size: clamp(1.5rem, 42cqmin, 22rem);
+       §17.46 amends to 42cqmin on operator feedback: with the
+       §17.46 host-padding trim the figure has more canvas to grow
+       into, and the date moved to the smaller 1.15vh size, so the
+       figure can take more of the visual weight without crowding
+       either edge.
+
+       SPEC §17.116-followup-3 — pre-followup-3 the rule was a flat
+       clamp(1.5rem, 42cqmin, 22rem) which honoured ONLY the tile
+       height envelope (cqmin = min(width, height)); long values
+       overflowed the tile horizontally because white-space: nowrap
+       prevented wrap and the cqmin coefficient was tuned for a
+       4-digit fit (≈ k = 0.42 → per-char budget ≈ 1/(0.6·N) of
+       cqmin > 0.42 for N ≤ 4) — operator-reported failures
+       happened on longer values (e.g. "12345.6789", "1 234 567 %",
+       SUM aggregates on many-child tiles). The followup-3 adds a
+       width-axis cap: 160cqi / N, where N is the rendered text
+       length passed in via --char-count and 160 ≈ 1 / (0.55 × 0.9)
+       — i.e. "fit ≈ 90 % of container width at 0.55em average
+       glyph width". min() picks the tighter of the height-axis
+       (42cqmin) and width-axis (160cqi / N) caps so whichever
+       dimension is more restrictive drives the font-size. The
+       clamp's 1.5rem floor + 22rem ceiling preserve the §17.46
+       readability + blow-out envelope on the smallest / largest
+       tiles. The --char-count fallback of 2 is chosen so a tile
+       whose per-view forgets to set the property still picks a
+       sane width cap (160 / 2 = 80cqi, which is wider than the
+       42cqmin height cap on every square / tall tile, so the
+       fallback is effectively the legacy "no width cap" behaviour
+       on the typical-tile path).
+
+       The .target-row + .trend-arrow coefficients keep their 0.2× /
+       0.4× ratios against the 42cqmin height-axis cap because the
+       target row is content-sized and never the limiting factor;
+       the operator's "fit" feedback applied to the value glyph
+       only. */
+    font-size: clamp(
+      1.5rem,
+      min(42cqmin, calc(160cqi / max(2, var(--char-count, 2)))),
+      22rem
+    );
     /* SPEC §17.116 — the value glyph must never wrap on any tile.
        The §17.116c refresh moves the unit out of the inline .value
        run into a .unit-below block sibling, so the value's text run
@@ -212,7 +241,11 @@ export const tileLayoutStyles = css`
        word-break: keep-all defeats any UA-default break opportunity
        between digit clusters. Lands here in §17.116b (foundations)
        so the rule is in place before §17.116c rewires Computed*
-       tiles to stop emitting the inline .unit chip. */
+       tiles to stop emitting the inline .unit chip. The §17.116-
+       followup-3 width-axis cap above means the long-value
+       overflow that nowrap on its own could not prevent is now
+       defused at the font-size axis instead — the text run still
+       sits on a single line, but the line is sized to fit. */
     white-space: nowrap;
     word-break: keep-all;
     /* SPEC 17.40 -- when the mapper bakes a gradient colour for the

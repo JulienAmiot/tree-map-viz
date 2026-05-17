@@ -116,6 +116,29 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(detail.nodeId).toBe("c-1");
     expect(detail.newKind).toBe("MAX");
   });
+
+  it("\u00a717.116-followup-3 — .value stamps --char-count equal to the rendered text length so the shared font-size cap can shrink long values to fit the tile width", async () => {
+    // Probe pairs: numeric value → expected rendered text → expected
+    // --char-count. The shared `.value` clamp reads var(--char-count, 2)
+    // and caps the font-size at 160cqi / max(2, --char-count); we
+    // assert the plumbing (the inline style stamps the right N for the
+    // rendered text). The CSS cap itself is exercised by the e2e
+    // suite (the unit tests run in jsdom, where layout = 0 px).
+    const probes: Array<[number, string]> = [
+      [42, "42"],            // 2 chars
+      [1234, "1234"],        // 4 chars
+      [12345.6789, "12345.68"], // 8 chars after formatValue's 2-decimal clamp
+      [-100.5, "-100.5"],    // 6 chars (sign + digits + decimal)
+    ];
+    for (const [n, expected] of probes) {
+      const el = await mountLitElement<ComputedCard>("computed-card", (e) => {
+        e.vm = computedVm({ kind: "numeric", value: n, unit: "" });
+      });
+      const value = el.shadowRoot!.querySelector('[data-testid="value"]');
+      expect(value?.textContent?.trim()).toBe(expected);
+      expect(value?.getAttribute("style") ?? "").toContain(`--char-count: ${expected.length}`);
+    }
+  });
 });
 
 describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
@@ -180,5 +203,36 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     const arrow = sr.querySelector('[data-testid="trend-arrow"]');
     expect(arrow?.getAttribute("data-direction")).toBe("up-right");
     expect(arrow?.textContent).toBe("\u2197");
+  });
+
+  it("\u00a717.116-followup-3 — CBSN .value stamps --char-count and the host injects a .value-area { height: 100% } override so the value-area matches the standard BSC vertical alignment", async () => {
+    const el = await mountLitElement<ComputedBusinessScoreCard>(
+      "computed-business-score-card",
+      (e) => { e.vm = cbsnVm({ kind: "numeric", value: 1234.56, unit: "kg" }); },
+    );
+    const sr = el.shadowRoot!;
+    const value = sr.querySelector('[data-testid="value"]');
+    // formatValue(1234.56) → "1234.56" (7 chars).
+    expect(value?.textContent?.trim()).toBe("1234.56");
+    expect(value?.getAttribute("style") ?? "").toContain("--char-count: 7");
+    // The cbsnHostStyles sheet declares `.value-area { height: 100%; }`
+    // (overriding the shared tileLayoutStyles `calc(100% - 3vh)`); the
+    // override is what makes the CBSN value-area span the metric-pane
+    // in full so the value+target column centres at the same vertical
+    // position as the standard BSC. We assert the rule is present on
+    // the element's host stylesheet — jsdom does not resolve the cqi /
+    // vh units, but the rule presence is the contract that lands the
+    // value-area on the right height envelope. Lit can inject styles
+    // either via constructible `adoptedStyleSheets` or via inline
+    // `<style>` elements depending on the runtime; we collect both.
+    const adopted = (el.shadowRoot as ShadowRoot & {
+      adoptedStyleSheets?: ReadonlyArray<CSSStyleSheet>;
+    }).adoptedStyleSheets ?? [];
+    const inlineSheets = Array.from(sr.querySelectorAll("style")).map((s) => s.textContent ?? "");
+    const cssText = [
+      ...adopted.map((sheet) => Array.from(sheet.cssRules).map((rule) => rule.cssText).join("\n")),
+      ...inlineSheets,
+    ].join("\n");
+    expect(cssText).toMatch(/\.value-area\s*\{\s*height:\s*100%\s*;?\s*\}/);
   });
 });

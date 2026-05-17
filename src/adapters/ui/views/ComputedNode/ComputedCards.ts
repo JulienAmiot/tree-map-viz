@@ -37,6 +37,31 @@
  *    §17.45 parity), so the pane-fills-body rule is what makes
  *    "bottom-right of the tile" land at the actual tile bottom-
  *    right rather than the figure's bottom-right.
+ *  - **CBSN value-area matches the standard BSC vertical alignment**
+ *    (§17.116-followup-3) — the shared `tileLayoutStyles`
+ *    `.value-area` rule sizes the area to `calc(100% - 3vh)` of its
+ *    parent (the standard BSC parents it under the host, so that
+ *    formula yields `host - 3vh`, i.e. "the body below the title").
+ *    On CBSN the `.value-area` is nested one level deeper (inside
+ *    `.metric-pane` which already fills `host - 3vh` via the
+ *    column-flex rule above), which made the shared `- 3vh` cut
+ *    fire twice and leave a 3vh gap at the metric-pane bottom; the
+ *    value figure sat visibly higher than the equivalent standard
+ *    BSC figure. The `cbsnHostStyles` override below pins the
+ *    CBSN value-area to `height: 100%` of its metric-pane parent
+ *    so the value+target column centres at the same vertical
+ *    position as the standard BSC. The 3vh bottom strip that used
+ *    to be "reserved" for the timestamp is no longer required —
+ *    the timestamp is absolutely positioned and floats over the
+ *    value-area's bottom-right corner (same as the standard BSC
+ *    layout it now mirrors).
+ *  - **Per-value `--char-count` inline style** (§17.116-followup-3)
+ *    — the shared `.value` font-size rule caps at
+ *    `160cqi / max(2, --char-count)` so the figure never overflows
+ *    the tile horizontally regardless of digit count. The two
+ *    Computed* render helpers below stamp the rendered text's
+ *    length onto the `.value` element via inline style so the
+ *    cap tightens as the number grows wider.
  *
  * The `COMPUTATION_KIND_CHANGE_EVENT` + `ComputationKindChangeDetail`
  * exports are preserved (the wiring lives in `main.ts` and routes to
@@ -111,6 +136,15 @@ const sharedStyles = css`
 const cbsnHostStyles = css`
   :host { display: flex; flex-direction: column; }
   .metric-pane { flex: 1 1 auto; min-height: 0; }
+  /* SPEC §17.116-followup-3 — see the docblock at the top of this
+     module for the full rationale. The shared tileLayoutStyles
+     .value-area rule sizes the area to calc(100% - 3vh) of its
+     parent, which on CBSN double-counts the title row because
+     .metric-pane already gives up 3vh to it. Pinning to 100% of
+     the metric-pane makes the CBSN value-area height match the
+     standard BSC's (= host - 3vh) so the value+target column
+     centres at the same vertical position on both tile types. */
+  .value-area { height: 100%; }
 `;
 
 const TREND_GLYPHS: Record<TrendArrowDirection, string> = {
@@ -165,13 +199,32 @@ function renderTitleWithBadge(
       : nothing}${vmTitle}</h2>`;
 }
 
+/**
+ * SPEC §17.116-followup-3 — `--char-count` inline style for a
+ * Computed* `.value` element. The shared `.value` font-size rule
+ * reads `var(--char-count, 2)` to cap the figure at
+ * `160cqi / max(2, --char-count)`, which makes the value glyph
+ * shrink as the digit count grows so it never overflows the tile
+ * horizontally. Computed* tiles have no per-VM gradient colour
+ * (the BSC `valueColor` pipeline does not apply), so the inline
+ * style carries `--char-count` only.
+ */
+function valueCharCountStyle(text: string): string {
+  return `--char-count: ${text.length}`;
+}
+
 function renderNumericValueArea(
   value: Extract<ComputedValueViewModel, { kind: "numeric" }>,
 ): TemplateResult {
+  const text = formatValue(value.value);
   return html`<div class="value-area" data-testid="value-row">
     <div class="value-row">
-      <span class="value" data-testid="value" data-value-kind="numeric"
-        >${formatValue(value.value)}</span
+      <span
+        class="value"
+        data-testid="value"
+        data-value-kind="numeric"
+        style=${valueCharCountStyle(text)}
+        >${text}</span
       >
     </div>
     ${renderUnitBelow(value.unit)}
@@ -182,10 +235,15 @@ function renderNumericValueAreaWithObjective(
   value: Extract<ComputedValueViewModel, { kind: "numeric" }>,
   objective: BusinessScoreCardObjectiveViewModel,
 ): TemplateResult {
+  const text = formatValue(value.value);
   return html`<div class="value-area" data-testid="value-row">
     <div class="value-row">
-      <span class="value" data-testid="value" data-value-kind="numeric"
-        >${formatValue(value.value)}</span
+      <span
+        class="value"
+        data-testid="value"
+        data-value-kind="numeric"
+        style=${valueCharCountStyle(text)}
+        >${text}</span
       >
       ${renderTrend(objective)}
     </div>

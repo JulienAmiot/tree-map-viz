@@ -140,6 +140,32 @@ describe("<business-score-card-as-child>", () => {
     expect(value?.getAttribute("style") ?? "").toContain(
       "--bsc-value-color: rgb(250, 204, 21)",
     );
+    // SPEC §17.116-followup-3 — the inline style now also carries
+    // --char-count alongside the gradient colour so the shared
+    // .value font-size cap can shrink long values to fit the tile.
+    // formatValue(50) → "50" (2 chars).
+    expect(value?.getAttribute("style") ?? "").toContain("--char-count: 2");
+  });
+
+  it("\u00a717.116-followup-3 — .value stamps --char-count equal to the rendered text length across all numeric branches", async () => {
+    const probes: ReadonlyArray<{
+      vm: BusinessScoreCardNodeViewModel["value"];
+      expected: string;
+    }> = [
+      { vm: { kind: "recordedValue", value: 12345.6789, unit: "EUR", dateIso: "2026-04-23T18:25:43.511Z" },
+        expected: "12345.68" },
+      { vm: { kind: "computedMean", mean: -100.5, unit: "%" }, expected: "-100.5" },
+      { vm: { kind: "childrenCount", n: 12 }, expected: "12 children" },
+    ];
+    for (const { vm, expected } of probes) {
+      const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
+        "business-score-card-as-child",
+        (e) => { e.vm = makeVm(vm); },
+      );
+      const value = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="value"]');
+      expect(value?.textContent?.trim()).toBe(expected);
+      expect(value?.getAttribute("style") ?? "").toContain(`--char-count: ${expected.length}`);
+    }
   });
 
   it("\u00a717.40 — renders the target row with target value, unit, date, and bullseye icon", async () => {

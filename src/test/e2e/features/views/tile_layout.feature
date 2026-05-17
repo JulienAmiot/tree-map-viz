@@ -185,3 +185,25 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And I reload the kiosk
     And I focus on node "ChildB"
     Then the focused BSC value is horizontally centered to its metric pane within 2 px
+
+  @HE-???? @priority:high
+  Scenario: Long values shrink to fit the tile width (§17.116-followup-3)
+    # SPEC §17.116-followup-3 — the `.value` font-size rule's per-
+    # character width cap (160cqi / max(2, --char-count)) must keep
+    # every rendered value glyph inside the tile body width
+    # regardless of digit count. The `longValues` fixture seeds two
+    # multi-digit-decimal recorded BSCs (12345.6789 → "12345.68",
+    # -987654.32 → "-987654.32") whose rendered glyphs would have
+    # overflowed the ~200 px child tiles pre-followup-3 (the
+    # legacy flat clamp(1.5rem, 42cqmin, 22rem) rule honoured only
+    # the height envelope; with white-space: nowrap defeating wrap,
+    # the text spilled the tile's right edge). The width cap +
+    # per-VM --char-count inline style now hold the figure inside
+    # the tile. Scenario lives at the END of the feature so a
+    # potential downstream regression in the new scenario does not
+    # mask the pre-existing §17.17 / §17.36 invariants that read
+    # from a `mixedComputed` kiosk.
+    When I open the kiosk in test mode with empty storage
+    And I seed the "longValues" fixture via the test bridge
+    And I reload the kiosk
+    Then no rendered value overflows its tile horizontally

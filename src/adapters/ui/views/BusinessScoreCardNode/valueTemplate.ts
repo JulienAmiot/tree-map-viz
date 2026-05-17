@@ -36,16 +36,31 @@ import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
 import { formatValue } from "../numberFormat.js";
 
 /**
- * Inline `style` attribute string that applies the gradient colour
- * baked into `vm.objective.valueColor` to the `.value` element via
- * the shared `--bsc-value-color` custom property. Returns `""` when
- * the colour is empty (degenerate / non-numeric branch) so the
- * element renders without a style attribute and falls back to
- * `currentColor` (default tile text).
+ * Inline `style` attribute string that applies both the SPEC §17.40
+ * gradient colour (via `--bsc-value-color`) and the SPEC §17.116-
+ * followup-3 dynamic-fit character count (via `--char-count`) to the
+ * `.value` element. Returns a semicolon-joined declaration list.
+ *
+ * - `--bsc-value-color` is omitted when `vm.objective.valueColor` is
+ *   empty (degenerate / non-numeric branch) so the element falls
+ *   back to `currentColor` (default tile text).
+ * - `--char-count` is the number of characters in the rendered value
+ *   text. The shared `.value` rule in `tileLayoutStyles` reads it
+ *   via `var(--char-count, 2)` and caps the font-size at
+ *   `160cqi / max(2, --char-count)` so the value glyph never
+ *   exceeds ≈ 90 % of the tile width regardless of N. The fallback
+ *   used by the CSS rule (2) is intentionally a "no-op" for short
+ *   values, so passing the actual length always tightens the cap
+ *   for longer values and never loosens it.
  */
-function valueColorStyle(vm: BusinessScoreCardNodeViewModel): string {
+function valueInlineStyle(
+  vm: BusinessScoreCardNodeViewModel,
+  text: string,
+): string {
+  const parts: string[] = [`--char-count: ${text.length}`];
   const c = vm.objective.valueColor;
-  return c ? `--bsc-value-color: ${c}` : "";
+  if (c) parts.push(`--bsc-value-color: ${c}`);
+  return parts.join("; ");
 }
 
 /**
@@ -67,24 +82,25 @@ export function renderValueTemplate(
   vm: BusinessScoreCardNodeViewModel,
 ): TemplateResult {
   const value = vm.value;
-  const colorStyle = valueColorStyle(vm);
   switch (value.kind) {
     case "computedMean": {
+      const text = formatValue(value.mean);
       return html`<span
           class="value"
           data-testid="value"
           data-value-kind="computedMean"
-          style=${colorStyle}
-          >${formatValue(value.mean)}</span
+          style=${valueInlineStyle(vm, text)}
+          >${text}</span
         >`;
     }
     case "recordedValue": {
+      const text = formatValue(value.value);
       return html`<span
           class="value"
           data-testid="value"
           data-value-kind="recordedValue"
-          style=${colorStyle}
-          >${formatValue(value.value)}</span
+          style=${valueInlineStyle(vm, text)}
+          >${text}</span
         >`;
     }
     case "childrenCount": {
@@ -95,12 +111,13 @@ export function renderValueTemplate(
           data-value-kind="childrenCount-empty"
         ></span>`;
       }
+      const text = `${value.n} children`;
       return html`<span
         class="value"
         data-testid="value"
         data-value-kind="childrenCount"
-        style=${colorStyle}
-      >${value.n} children</span>`;
+        style=${valueInlineStyle(vm, text)}
+      >${text}</span>`;
     }
   }
 }
