@@ -27,7 +27,7 @@ import type { IdGenerator } from "./ports/IdGenerator.js";
  * have NO `initialHistory` field — their history is audit-only per
  * §17.94 D5 (`addValue` throws `ComputationOverrideError`).
  */
-export type AddChildPayloadV4 =
+export type AddChildPayload =
   | {
       readonly kind: "TextNode";
       readonly title: string;
@@ -76,7 +76,7 @@ export type AddChildPayloadV4 =
 /** Async callback invoked after a successful append; failures are caught and rolled back. */
 export type Persister = () => Promise<void>;
 
-type OutcomeV4 =
+type Outcome =
   | { readonly ok: true; readonly child: Node }
   | { readonly ok: false; readonly reason: string };
 
@@ -96,7 +96,7 @@ export class AddChildService {
     private readonly persist: Persister,
   ) {}
 
-  async addChild(parent: Node, payload: AddChildPayloadV4): Promise<OutcomeV4> {
+  async addChild(parent: Node, payload: AddChildPayload): Promise<Outcome> {
     if (!canAddChild(parent)) {
       return {
         ok: false,
@@ -121,7 +121,7 @@ export class AddChildService {
     return { ok: true, child };
   }
 
-  protected buildNode(payload: AddChildPayloadV4): Node {
+  protected buildNode(payload: AddChildPayload): Node {
     const title = payload.title.trim();
     if (!title) throw new Error("Title cannot be empty");
     const id = this.idGen();
@@ -154,7 +154,7 @@ export class AddChildService {
     id: string,
     title: string,
     weight: Weight,
-    payload: Extract<AddChildPayloadV4, { kind: "StrictRange" }>,
+    payload: Extract<AddChildPayload, { kind: "StrictRange" }>,
   ): StrictRangeNode<number> {
     const range = StrictRange.of(payload.min, payload.max, NumericComparator.INSTANCE);
     const node = new StrictRangeNode<number>(
@@ -169,7 +169,7 @@ export class AddChildService {
     id: string,
     title: string,
     weight: Weight,
-    payload: Extract<AddChildPayloadV4, { kind: "ComputedBusinessScore" }>,
+    payload: Extract<AddChildPayload, { kind: "ComputedBusinessScore" }>,
   ): ComputedBusinessScoreNode<number> {
     const range = LenientRange.of(
       Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, NumericComparator.INSTANCE,
@@ -187,7 +187,7 @@ export class AddChildService {
     id: string,
     title: string,
     weight: Weight,
-    payload: Extract<AddChildPayloadV4, { kind: "BusinessScore" }>,
+    payload: Extract<AddChildPayload, { kind: "BusinessScore" }>,
   ): BusinessScoreNode<number> {
     const range = LenientRange.of(
       Number.NEGATIVE_INFINITY,
