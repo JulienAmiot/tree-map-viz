@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  createJsonCodecV4,
-  JsonCodecV4DecodeError,
-  JsonCodecV4EncodeError,
-} from "../../../../adapters/persistence/jsonCodecV4.js";
-import { buildSampleTreeV4 } from "../../../../adapters/sampleDataV4.js";
-import { buildShowcaseTreeV4 } from "../../../../adapters/showcaseSeedV4.js";
+  createJsonCodec,
+  JsonCodecDecodeError,
+  JsonCodecEncodeError,
+} from "../../../../adapters/persistence/jsonCodec.js";
+import { buildSampleTree } from "../../../../adapters/sampleData.js";
+import { buildShowcaseTree } from "../../../../adapters/showcaseSeed.js";
 import { BusinessScoreCard } from "../../../../domain/cards/BusinessScoreCard.js";
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
 import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
@@ -29,7 +29,7 @@ const TARGET = Timestamp.of(new Date("2026-12-31T00:00:00.000Z"));
 const T1 = Timestamp.of(new Date("2026-04-22T18:25:43.511Z"));
 const T2 = Timestamp.of(new Date("2026-05-01T00:00:00.000Z"));
 const clock: Clock = { now: () => Timestamp.of(NOW) };
-const codec = createJsonCodecV4(clock);
+const codec = createJsonCodec(clock);
 
 function lenient(): LenientRange<number> {
   return LenientRange.of(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, NumericComparator.INSTANCE);
@@ -92,22 +92,22 @@ describe("jsonCodecV4 (§17.106a + §17.106b — v4-native encode + decode)", ()
     });
 
     it("encodes nested children recursively + preserves child order across kinds (sampleDataV4 composite tree round-trips its node ID list verbatim through encode→JSON.parse)", () => {
-      const tree = buildSampleTreeV4(clock);
+      const tree = buildSampleTree(clock);
       const wire = JSON.parse(codec.encode(tree)) as { root: { id: string; children: unknown[] } };
       const collectIds = (n: { id: string; children: unknown[] }): string[] =>
         [n.id, ...(n.children as { id: string; children: unknown[] }[]).flatMap(collectIds)];
       expect(collectIds(wire.root)).toEqual(tree.nodes().map((n) => n.id));
     });
 
-    it("encode throws JsonCodecV4EncodeError on unsupported Node subclass (defensive guard)", () => {
+    it("encode throws JsonCodecEncodeError on unsupported Node subclass (defensive guard)", () => {
       const fake = { id: "z", title: "z", weight: Weight.of(1), children: [] as never[], disabled: false, constructor: { name: "MysteryV5Node" } } as unknown as Node;
-      expect(() => codec.encode(new Tree(fake))).toThrow(JsonCodecV4EncodeError);
+      expect(() => codec.encode(new Tree(fake))).toThrow(JsonCodecEncodeError);
     });
   });
 
   describe("decode — schema/kind validation + per-kind reconstruction + RFC-6901 pointers + cards sidecar resolution", () => {
     it("envelope + kind validation: malformed JSON → typed error at \"/\"; missing or mismatching schemaVersion → typed error; unknown `kind` discriminant + unknown ComputationKind name surface with RFC-6901 pointers", () => {
-      expect(() => codec.decode("{not json")).toThrow(JsonCodecV4DecodeError);
+      expect(() => codec.decode("{not json")).toThrow(JsonCodecDecodeError);
       expect(() => codec.decode(JSON.stringify({ schemaVersion: "v5.0", root: {}, cards: [] }))).toThrow(/schemaVersion/);
       expect(() => codec.decode(JSON.stringify({ root: {}, cards: [] }))).toThrow(/schemaVersion/);
       const unknownKind = { schemaVersion: "v4.0", root: { kind: "MysteryV5", id: "x", title: "x", weight: 1, children: [] }, cards: [] };
@@ -149,7 +149,7 @@ describe("jsonCodecV4 (§17.106a + §17.106b — v4-native encode + decode)", ()
       const decoded = codec.decode(codec.encode(new Tree(bsn))).root as BusinessScoreNode<number>;
       expect([decoded.id, decoded.unit, decoded.disabled, decoded.objective.value]).toEqual(["b", "%", true, 100]);
       expect(decoded.entries().map((e) => [e.asOf.moment.toISOString(), e.value])).toEqual([[T1.moment.toISOString(), 50], [T2.moment.toISOString(), 75]]);
-      const original = buildSampleTreeV4(clock);
+      const original = buildSampleTree(clock);
       const rt = codec.decode(codec.encode(original));
       expect(rt.nodes().map((n) => n.id)).toEqual(original.nodes().map((n) => n.id));
       for (const orig of original.nodes()) {
@@ -162,7 +162,7 @@ describe("jsonCodecV4 (§17.106a + §17.106b — v4-native encode + decode)", ()
     });
 
     it("Tree from showcaseSeedV4 (§17.109) round-trips byte-exact: encode(decode(json)) === json + sales-lost.disabled survives", () => {
-      const original = buildShowcaseTreeV4(clock, NOW);
+      const original = buildShowcaseTree(clock, NOW);
       const json = codec.encode(original);
       const decoded = codec.decode(json);
       expect(decoded.nodes().map((n) => n.id)).toEqual(original.nodes().map((n) => n.id));

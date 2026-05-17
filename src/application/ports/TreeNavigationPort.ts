@@ -8,7 +8,7 @@ import type { Tree } from "../../domain/Tree.js";
  *
  * Same shape as v3, only the node type changes: `TreeNode<unknown>`
  * → v4 `Node`. The `viewModelMapperV4` (§17.91) consumes this
- * shape via its `mapFocusedToViewModelV4(center, children)` entry
+ * shape via its `mapFocusedToViewModel(center, children)` entry
  * point — same call site, v4-typed nodes.
  */
 export type FocusedTreeView = {

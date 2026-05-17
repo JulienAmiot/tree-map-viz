@@ -72,17 +72,17 @@ import type {
  *   - TextNode with empty history → empty value/date strings.
  *   - RangedValueNode with no usable value → childrenCount or
  *     empty string fields.
- *   - Unsupported v4 Node subclass → throws ViewModelMappingErrorV4.
+ *   - Unsupported v4 Node subclass → throws ViewModelMappingError.
  */
-export class ViewModelMappingErrorV4 extends Error {
+export class ViewModelMappingError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = "ViewModelMappingErrorV4";
+    this.name = "ViewModelMappingError";
   }
 }
 
 /** Same shape as v3's `MapToViewModelOptions` plus the §17.100.5 cards sidecar. */
-export interface MapToViewModelOptionsV4 {
+export interface MapToViewModelOptions {
   /** Defaults to `new Date()`. Pass for deterministic tests. */
   readonly now?: Date;
   /**
@@ -94,9 +94,9 @@ export interface MapToViewModelOptionsV4 {
   readonly cards?: CardRegistry;
 }
 
-export function mapNodeToViewModelV4(
+export function mapNodeToViewModel(
   node: Node,
-  options: MapToViewModelOptionsV4 = {},
+  options: MapToViewModelOptions = {},
 ): NodeViewModel {
   if (node instanceof TextNode) {
     return mapTextNode(node, options);
@@ -115,14 +115,14 @@ export function mapNodeToViewModelV4(
   if (node instanceof RangedValueNode) {
     return mapBSCNode(node as RangedValueNode<number>, options);
   }
-  throw new ViewModelMappingErrorV4(
+  throw new ViewModelMappingError(
     `viewModelMapperV4: unsupported v4 Node subclass "${node.constructor.name}"`,
   );
 }
 
 function mapTextNode(
   node: TextNode,
-  options: MapToViewModelOptionsV4,
+  options: MapToViewModelOptions,
 ): NodeViewModel {
   const latest = node.entries().at(-1);
   const dateIso = latest?.asOf.moment.toISOString() ?? "";
@@ -140,7 +140,7 @@ function mapTextNode(
 
 function mapBSCNode(
   node: RangedValueNode<number>,
-  options: MapToViewModelOptionsV4,
+  options: MapToViewModelOptions,
 ): NodeViewModel {
   const dateIso = currentValueDateIso(node) ?? "";
   const unit = resolveUnit(node, options);
@@ -166,14 +166,14 @@ function mapBSCNode(
  */
 function resolveUnit(
   node: RangedValueNode<number>,
-  options: MapToViewModelOptionsV4,
+  options: MapToViewModelOptions,
 ): string {
   const card = (options.cards ?? Tree.EMPTY_CARDS).get(node.id);
   if (card !== undefined) return card.getUnit().value;
   return node instanceof BusinessScoreNode ? node.unit : "";
 }
 
-function colorFor(dateIso: string, options: MapToViewModelOptionsV4): string {
+function colorFor(dateIso: string, options: MapToViewModelOptions): string {
   return dateAgeColor(dateIso, options.now ? { now: options.now } : {});
 }
 
@@ -223,7 +223,7 @@ function mapBusinessScoreObjective(
   currentNumber: number | null,
   isRecordedValue: boolean,
   unit: string,
-  options: MapToViewModelOptionsV4,
+  options: MapToViewModelOptions,
 ): BusinessScoreCardObjectiveViewModel {
   if (!(node instanceof BusinessScoreNode)) {
     return emptyObjectiveVM(unit);
@@ -349,7 +349,7 @@ function mapComputedNode(node: ComputedNode<number>): ComputedNodeViewModel {
 
 function mapComputedBusinessScoreNode(
   node: ComputedBusinessScoreNode<number>,
-  options: MapToViewModelOptionsV4,
+  options: MapToViewModelOptions,
 ): ComputedBusinessScoreNodeViewModel {
   const dateIso = currentValueDateIso(node) ?? "";
   const unit = resolveUnit(node, options);
@@ -381,21 +381,21 @@ function mapComputedBusinessScoreNode(
  * `shouldRenderPlusTile`). Same shape and behaviour as v3's
  * `mapFocusedToViewModel`.
  */
-export function mapFocusedToViewModelV4(
+export function mapFocusedToViewModel(
   center: Node,
   children: readonly Node[],
-  options: MapToViewModelOptionsV4 = {},
+  options: MapToViewModelOptions = {},
 ): FocusedTreeViewModel {
   const slots: ChildSlotViewModel[] = children.map((c) => ({
     slot: "node",
     weight: c.weight.value,
-    vm: mapNodeToViewModelV4(c, options),
+    vm: mapNodeToViewModel(c, options),
   }));
   if (shouldRenderPlusTile(center)) {
     slots.push({ slot: "plus", weight: 1, parentId: center.id });
   }
   return {
-    center: mapNodeToViewModelV4(center, options),
+    center: mapNodeToViewModel(center, options),
     children: slots,
   };
 }
