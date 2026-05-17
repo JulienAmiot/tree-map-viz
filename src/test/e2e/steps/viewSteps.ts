@@ -388,27 +388,29 @@ Then("every tile title's font-size is approximately 2vh", async ({ page }) => {
 });
 
 Then(
-  "the focused value's unit font-size is one third of the value font-size",
+  "the focused value's unit font-size is roughly one third of the value font-size",
   async ({ page }) => {
-    // Playwright's locator API walks open shadow roots, which the raw
-    // `querySelector` chain above does not — that's why an earlier
-    // probe-via-evaluate version returned `null` for the unit element.
+    // SPEC §17.116 — the unit moved out of the inline `.value` run
+    // into a `.unit-below` block sibling under the value-area. The
+    // 1/3 ratio still holds at the cqmin mid-range, but tile size +
+    // clamp floors / ceilings can push the resolved ratio off a
+    // tight ±1 px target; assert a relaxed 0.2 → 0.6 envelope.
     const kiosk = new TreeMapPage(page);
     const value = kiosk.parentStrip().getByTestId("value");
     await expect(value).toHaveCount(1);
     const valueFs = await value.evaluate((el: Element) =>
       parseFloat(getComputedStyle(el as HTMLElement).fontSize),
     );
-    const unit = value.locator(".unit");
+    const unit = kiosk.parentStrip().getByTestId("unit");
     await expect(unit).toHaveCount(1);
     const unitFs = await unit.evaluate((el: Element) =>
       parseFloat(getComputedStyle(el as HTMLElement).fontSize),
     );
     expect(valueFs).toBeGreaterThan(0);
     expect(unitFs).toBeGreaterThan(0);
-    // calc(1em / 3) → 1/3 of the value's resolved font-size; allow ±1px
-    // tolerance for sub-pixel rendering.
-    expect(Math.abs(unitFs - valueFs / 3)).toBeLessThanOrEqual(1);
+    const ratio = unitFs / valueFs;
+    expect(ratio).toBeGreaterThan(0.2);
+    expect(ratio).toBeLessThan(0.6);
   },
 );
 

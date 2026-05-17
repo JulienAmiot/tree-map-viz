@@ -92,9 +92,16 @@ describe("<business-score-card-as-parent>", () => {
       },
     );
 
+    // SPEC §17.116 — the `computedMean` branch's title is prefixed by
+    // a Σ glyph (the pre-§17.116 inline chip moved to the title row).
+    // The bare title text is still "Revenue" — strip the Σ + the
+    // surrounding whitespace from the textContent before asserting.
     expect(
-      el.shadowRoot?.querySelector('[data-testid="title"]')?.textContent?.trim(),
+      el.shadowRoot?.querySelector('[data-testid="title"]')?.textContent?.replace(/\u03a3/g, "").trim(),
     ).toBe("Revenue");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="title"] [data-testid="computed-badge"]')?.textContent?.trim(),
+    ).toBe("\u03a3");
     const desc = el.shadowRoot?.querySelector('[data-testid="description"]');
     expect(desc).not.toBeNull();
     expect(desc?.textContent?.trim()).toBe("Revenue vs plan");
@@ -130,7 +137,7 @@ describe("<business-score-card-as-parent>", () => {
     expect(el.shadowRoot?.querySelector('[data-testid="description"]')).toBeNull();
   });
 
-  it("renders the computed mean (1-decimal) + Σ badge for kind=computedMean (no timestamp when no children-derived date)", async () => {
+  it("\u00a717.116 — renders the computed mean (max 2 decimals, trailing zeros stripped) with the \u03a3 badge in the title and the unit in a .unit-below sibling (no timestamp when no children-derived date)", async () => {
     const vm = makeVm({ kind: "computedMean", mean: 87.42, unit: "%" });
     const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
       "business-score-card-as-parent",
@@ -140,10 +147,15 @@ describe("<business-score-card-as-parent>", () => {
     );
 
     const value = el.shadowRoot?.querySelector('[data-testid="value"]');
-    const badge = el.shadowRoot?.querySelector('[data-testid="computed-badge"]');
-    expect(value?.textContent?.replace(/\s+/g, " ").trim()).toBe("87.4 %");
+    const title = el.shadowRoot?.querySelector('[data-testid="title"]');
+    const badge = title?.querySelector('[data-testid="computed-badge"]');
+    // §17.116: value text is the bare number, max 2 decimals, no inline unit.
+    expect(value?.textContent?.trim()).toBe("87.42");
     expect(value?.getAttribute("data-value-kind")).toBe("computedMean");
+    // §17.116: Σ moved to the title prefix (still present, different parent).
     expect(badge).not.toBeNull();
+    // §17.116: unit lives in a block sibling under the value-area.
+    expect(el.shadowRoot?.querySelector('[data-testid="unit"]')?.textContent?.trim()).toBe("%");
     // §17.18 — when no children date is available (`vm.dateIso === ""`),
     // the corner timestamp is omitted. With a derived date present the
     // mapper sets `vm.dateIso` and the timestamp would render — covered
@@ -171,7 +183,7 @@ describe("<business-score-card-as-parent>", () => {
     expect(date?.getAttribute("style") ?? "").toMatch(/--age-color:\s*rgb\(/);
   });
 
-  it("nests the unit inside the value as a `.unit` span (\u00a717.14 — 1/3-size styling, asserted in CSS)", async () => {
+  it("\u00a717.116 — the unit renders in a block-level .unit-below sibling under the value-area (not inline inside the .value span)", async () => {
     const vm = makeVm({ kind: "recordedValue", value: 100, unit: "%", dateIso: "2026-04-23T18:25:43.511Z" });
     const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
       "business-score-card-as-parent",
@@ -181,14 +193,14 @@ describe("<business-score-card-as-parent>", () => {
     );
 
     const value = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="value"]');
-    const unit = value?.querySelector<HTMLElement>(".unit");
     expect(value).not.toBeNull();
-    expect(unit).not.toBeNull();
-    expect(unit?.textContent?.trim()).toBe("%");
-    // The 1/3 sizing is enforced by `font-size: calc(1em / 3)` on the
-    // `.unit` rule in `tileLayoutStyles`. jsdom doesn't fully resolve
-    // shadow-scoped computed styles, so the visual ratio is covered in
-    // the CSS file itself + the e2e suite (real browser).
+    // §17.116: no inline .unit child inside the value span anymore.
+    expect(value?.querySelector(".unit")).toBeNull();
+    expect(value?.textContent?.trim()).toBe("100");
+    const unitBelow = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="unit"]');
+    expect(unitBelow).not.toBeNull();
+    expect(unitBelow?.classList.contains("unit-below")).toBe(true);
+    expect(unitBelow?.textContent?.trim()).toBe("%");
   });
 
   it("renders value + corner timestamp (no Σ) for kind=recordedValue with age-coloured date (\u00a717.18)", async () => {
@@ -209,9 +221,15 @@ describe("<business-score-card-as-parent>", () => {
     const date = el.shadowRoot?.querySelector<HTMLElement>(
       '[data-testid="value-date"]',
     );
-    expect(value?.textContent?.replace(/\s+/g, " ").trim()).toBe("100 %");
+    // §17.116: value is the bare number; unit lives in .unit-below.
+    expect(value?.textContent?.trim()).toBe("100");
+    expect(el.shadowRoot?.querySelector('[data-testid="unit"]')?.textContent?.trim()).toBe("%");
     expect(value?.getAttribute("data-value-kind")).toBe("recordedValue");
     expect(date?.getAttribute("datetime")).toBe("2026-04-23T18:25:43.511Z");
+    // §17.116: visible label is the age, not a locale calendar date.
+    expect(date?.textContent ?? "").not.toMatch(/\d{4}/);
+    // recordedValue branch shows NO Σ badge in the title.
+    expect(el.shadowRoot?.querySelector('[data-testid="title"] [data-testid="computed-badge"]')).toBeNull();
     expect(date?.classList.contains("timestamp")).toBe(true);
     // §17.18 — inline `--age-color` carries the lerped colour.
     expect(date?.getAttribute("style") ?? "").toMatch(/--age-color:\s*rgb\(/);

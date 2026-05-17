@@ -227,19 +227,9 @@ export const tileLayoutStyles = css`
   .value.empty::before {
     content: "";
   }
-  /* Unit nested inside the value: 1/3 of the value's surrounding
-     font-size, regardless of where the cqmin clamp landed.
-     SPEC §17.116 — superseded by .unit-below below for Computed*
-     tiles in §17.116c and BSC + TextNode tiles in §17.116d; kept
-     in place during the foundations strand so pre-§17.116c BSC
-     views still size their inline .unit chip correctly. The rule
-     retires entirely in §17.116d once every view has moved to
-     the .unit-below sibling. */
-  .value .unit {
-    font-size: calc(1em / 3);
-    font-weight: 500;
-    color: color-mix(in srgb, currentColor 75%, transparent);
-  }
+  /* SPEC §17.116 — the inline ".value .unit" rule retired in §17.116d
+     once every view (Computed* in §17.116c, BSC + TextNode in
+     §17.116d) moved to the .unit-below block sibling. */
   /* SPEC §17.116 — the unit moves out of the inline .value run into
      its own block sibling under it (consumed by Computed* tiles in
      §17.116c, BSC + TextNode tiles in §17.116d). Same ~1/3 ratio
@@ -330,20 +320,10 @@ export const tileLayoutStyles = css`
     line-height: 1;
     font-weight: 700;
   }
-  .sigma {
-    /* Σ badge for computed BSCs — small chip near the value, tile-relative
-       so it stays proportional. SPEC §17.116 — superseded by the title-
-       prefix Σ render in Computed* tiles (§17.116c) and BSC computedMean
-       tiles (§17.116d); the rule retires in §17.116d once every view has
-       moved to the title-prefix render. */
-    margin-left: 0.45em;
-    font-size: clamp(0.85rem, 4cqmin, 1.5rem);
-    padding: 0.05em 0.4em;
-    border-radius: 999px;
-    background: color-mix(in srgb, currentColor 12%, transparent);
-    color: color-mix(in srgb, currentColor 90%, transparent);
-    vertical-align: middle;
-  }
+  /* SPEC §17.116 — the inline ".sigma" chip retired in §17.116d once
+     Computed* (§17.116c) and BSC computedMean (§17.116d) both moved
+     the Σ glyph into the title-prefix [data-testid="computed-badge"]
+     render. */
 
   /* ------------------------------------------------------------------
      SPEC 17.40 + 17.44 -- BSC objective row + off-track warning.

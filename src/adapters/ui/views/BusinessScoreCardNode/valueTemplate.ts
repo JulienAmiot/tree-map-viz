@@ -33,8 +33,7 @@
 import { html, nothing, type TemplateResult } from "lit";
 
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
-
-const COMPUTED_DECIMALS = 1;
+import { formatValue } from "../numberFormat.js";
 
 /**
  * Inline `style` attribute string that applies the gradient colour
@@ -71,29 +70,22 @@ export function renderValueTemplate(
   const colorStyle = valueColorStyle(vm);
   switch (value.kind) {
     case "computedMean": {
-      return html`
-        <span
+      return html`<span
           class="value"
           data-testid="value"
           data-value-kind="computedMean"
           style=${colorStyle}
-          >${value.mean.toFixed(COMPUTED_DECIMALS)}<span class="unit"
-            >&nbsp;${value.unit}</span
-          ></span
-        >
-        <span class="sigma" data-testid="computed-badge" aria-label="Computed value">Σ</span>
-      `;
+          >${formatValue(value.mean)}</span
+        >`;
     }
     case "recordedValue": {
-      return html`
-        <span
+      return html`<span
           class="value"
           data-testid="value"
           data-value-kind="recordedValue"
           style=${colorStyle}
-          >${value.value}<span class="unit">&nbsp;${value.unit}</span></span
-        >
-      `;
+          >${formatValue(value.value)}</span
+        >`;
     }
     case "childrenCount": {
       if (value.n === 0) {
@@ -111,6 +103,21 @@ export function renderValueTemplate(
       >${value.n} children</span>`;
     }
   }
+}
+
+/**
+ * SPEC §17.116 — the unit moves out of the inline `.value` run into
+ * its own `.unit-below` block sibling under it. Renders `nothing`
+ * when the value branch has no unit to surface (childrenCount, or
+ * a value branch with empty unit string).
+ */
+export function renderUnitBelow(
+  vm: BusinessScoreCardNodeViewModel,
+): TemplateResult | typeof nothing {
+  const value = vm.value;
+  if (value.kind === "childrenCount") return nothing;
+  if (!value.unit) return nothing;
+  return html`<span class="unit-below" data-testid="unit">${value.unit}</span>`;
 }
 
 /**
@@ -166,7 +173,7 @@ export function renderTargetRow(
   return html`<div class="target-row" data-testid="target-row">
     <span class="target-icon" data-testid="target-icon" aria-hidden="true"></span>
     <span class="target-text" data-testid="target-text"
-      >${obj.targetValue}<span class="target-unit">&nbsp;${obj.unit}</span></span
+      >${formatValue(obj.targetValue)}<span class="target-unit">&nbsp;${obj.unit}</span></span
     >${dateLabel
       ? html`<span class="target-sep" aria-hidden="true">·</span>
           <time class="target-date" data-testid="target-date" datetime=${obj.targetDateIso}
@@ -279,8 +286,11 @@ export function timestampForValue(
 }
 
 /**
- * ISO-8601 → locale short date for the corner timestamp. Exported so
- * each per-role element renders the same `<time>` content.
+ * ISO-8601 → locale short date. Used by `renderTargetRow` for the
+ * target-row's deadline label (calendar dates are still appropriate
+ * for a *future* deadline; SPEC §17.116 only switches the
+ * bottom-right *age* timestamp away from calendar dates — see
+ * `formatAge` in `../ageFormat.ts` for that).
  */
 export function formatDate(iso: string): string {
   const ms = Date.parse(iso);
