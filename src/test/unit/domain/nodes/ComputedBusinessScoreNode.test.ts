@@ -7,7 +7,7 @@ import { AverageComputation, SumComputation } from "../../../../domain/computati
 import { ComputedBusinessScoreNode } from "../../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ValueNode } from "../../../../domain/nodes/ValueNode.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
-import { ObjectiveV4 } from "../../../../domain/values/ObjectiveV4.js";
+import { Objective } from "../../../../domain/values/Objective.js";
 import { LenientRange } from "../../../../domain/values/Range.js";
 import { Timestamp } from "../../../../domain/values/Timestamp.js";
 import { Weight } from "../../../../domain/values/Weight.js";
@@ -15,7 +15,7 @@ import { Weight } from "../../../../domain/values/Weight.js";
 const T = (iso: string) => Timestamp.of(new Date(iso));
 const clock: Clock = { now: () => T("2026-05-14T10:00:00Z") };
 const range = () => LenientRange.of(0, 100, NumericComparator.INSTANCE);
-const goal = () => ObjectiveV4.of(80, T("2026-12-31T00:00:00Z"));
+const goal = () => Objective.of(80, T("2026-12-31T00:00:00Z"));
 
 class StubChild extends ValueNode<number> {
   constructor(id: string, weight: number, private readonly v: number) {

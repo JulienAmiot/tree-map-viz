@@ -18,7 +18,7 @@ import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../../../../domain/nodes/TextNodeV4.js";
 import { Tree } from "../../../../domain/Tree.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
-import { ObjectiveV4 } from "../../../../domain/values/ObjectiveV4.js";
+import { Objective } from "../../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../../domain/values/Range.js";
 import { Timestamp } from "../../../../domain/values/Timestamp.js";
 import { Unit } from "../../../../domain/values/Unit.js";
@@ -38,7 +38,7 @@ function lenient(): LenientRange<number> {
 function makeBSN(id: string, opts: { unit?: string; disabled?: boolean; history?: [Timestamp, number][] } = {}): BusinessScoreNode<number> {
   const node = new BusinessScoreNode<number>(
     id, id, Weight.of(1), `desc-${id}`, clock, lenient(),
-    opts.unit === undefined ? { objective: ObjectiveV4.of(100, TARGET) } : { objective: ObjectiveV4.of(100, TARGET), unit: opts.unit },
+    opts.unit === undefined ? { objective: Objective.of(100, TARGET) } : { objective: Objective.of(100, TARGET), unit: opts.unit },
   );
   for (const [at, v] of opts.history ?? []) node.addValue(at, v);
   if (opts.disabled) node.setDisabled(true);
@@ -73,7 +73,7 @@ describe("jsonCodecV4 (§17.106a + §17.106b — v4-native encode + decode)", ()
     });
 
     it("ComputedBusinessScoreNode emits computationKind + NO history; ComputedNode emits computationKind only (no range/objective/history); StrictRangeNode emits strict range with finite bounds + history", () => {
-      const cbsn = new ComputedBusinessScoreNode<number>("agg", "Agg", Weight.of(1), "d", clock, lenient(), { objective: ObjectiveV4.of(50, TARGET), initialKind: ComputationKind.WEIGHTED_AVERAGE });
+      const cbsn = new ComputedBusinessScoreNode<number>("agg", "Agg", Weight.of(1), "d", clock, lenient(), { objective: Objective.of(50, TARGET), initialKind: ComputationKind.WEIGHTED_AVERAGE });
       const cbsnWire = JSON.parse(codec.encode(new Tree(cbsn))).root as Record<string, unknown>;
       expect(cbsnWire.kind).toBe("ComputedBusinessScoreNode");
       expect(cbsnWire.computationKind).toBe("WEIGHTED_AVERAGE");
@@ -122,7 +122,7 @@ describe("jsonCodecV4 (§17.106a + §17.106b — v4-native encode + decode)", ()
       const srn = new StrictRangeNode<number>("s", "S", Weight.of(1), "", clock, StrictRange.of(0, 100, NumericComparator.INSTANCE));
       const decodedSrn = codec.decode(codec.encode(new Tree(srn))).root as StrictRangeNode<number>;
       expect([decodedSrn.range.minimalValue, decodedSrn.range.maximalValue]).toEqual([0, 100]);
-      const cbsn = new ComputedBusinessScoreNode<number>("agg", "x", Weight.of(1), "", clock, lenient(), { objective: ObjectiveV4.of(1, TARGET), initialKind: ComputationKind.MIN });
+      const cbsn = new ComputedBusinessScoreNode<number>("agg", "x", Weight.of(1), "", clock, lenient(), { objective: Objective.of(1, TARGET), initialKind: ComputationKind.MIN });
       expect((codec.decode(codec.encode(new Tree(cbsn))).root as ComputedBusinessScoreNode<number>).computationKind).toBe(ComputationKind.MIN);
     });
 
@@ -130,7 +130,7 @@ describe("jsonCodecV4 (§17.106a + §17.106b — v4-native encode + decode)", ()
       const ids = ["off-bsn", "off-cbsn", "off-cn", "off-srn", "off-text"] as const;
       const root = makeBSN("root", { unit: "%" });
       root.attach(makeBSN(ids[0], { disabled: true }));
-      const cbsnOff = new ComputedBusinessScoreNode<number>(ids[1], "x", Weight.of(1), "", clock, lenient(), { objective: ObjectiveV4.of(1, TARGET), initialKind: ComputationKind.SUM }); cbsnOff.setDisabled(true); root.attach(cbsnOff);
+      const cbsnOff = new ComputedBusinessScoreNode<number>(ids[1], "x", Weight.of(1), "", clock, lenient(), { objective: Objective.of(1, TARGET), initialKind: ComputationKind.SUM }); cbsnOff.setDisabled(true); root.attach(cbsnOff);
       const cnOff = new ComputedNode<number>(ids[2], "x", Weight.of(1), "", clock, ComputationKind.SUM); cnOff.setDisabled(true); root.attach(cnOff);
       const srnOff = new StrictRangeNode<number>(ids[3], "x", Weight.of(1), "", clock, StrictRange.of(0, 1, NumericComparator.INSTANCE)); srnOff.setDisabled(true); root.attach(srnOff);
       const tOff = new TextNodeV4(ids[4], "x", Weight.of(1), clock); tOff.setDisabled(true); root.attach(tOff);

@@ -11,7 +11,7 @@ import { TextNodeV4 } from "../../domain/nodes/TextNodeV4.js";
 import type { ValueNode } from "../../domain/nodes/ValueNode.js";
 import { Tree } from "../../domain/Tree.js";
 import { NumericComparator } from "../../domain/values/Comparator.js";
-import { ObjectiveV4 } from "../../domain/values/ObjectiveV4.js";
+import { Objective } from "../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../domain/values/Range.js";
 import { Timestamp } from "../../domain/values/Timestamp.js";
 import { Unit } from "../../domain/values/Unit.js";
@@ -225,10 +225,10 @@ function decodeHistory(obj: Record<string, unknown>, p: string, vt: "string" | "
   });
 }
 
-function decodeObjective(obj: Record<string, unknown>, p: string): ObjectiveV4<number> {
+function decodeObjective(obj: Record<string, unknown>, p: string): Objective<number> {
   const op = joinPointer(p, "objective");
   const raw = requireObject(obj["objective"], op);
-  return ObjectiveV4.of(requireNumber(raw, "value", op), decodeIsoTimestamp(requireString(raw, "at", op), joinPointer(op, "at")));
+  return Objective.of(requireNumber(raw, "value", op), decodeIsoTimestamp(requireString(raw, "at", op), joinPointer(op, "at")));
 }
 
 function decodeRange<R>(obj: Record<string, unknown>, p: string, expected: "strict" | "lenient", ctor: (min: number, max: number, c: typeof NumericComparator.INSTANCE) => R): R {

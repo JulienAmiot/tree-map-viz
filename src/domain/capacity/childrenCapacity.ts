@@ -17,26 +17,26 @@ import type { Node } from "../nodes/Node.js";
  *
  * Two helpers, both single-expression:
  *
- *   - `canAddChildV4(node)` — used by application services
- *     (`AddChildServiceV4` at Phase C, §17.94+) to gate the
+ *   - `canAddChild(node)` — used by application services
+ *     (`AddChildService` at Phase C, §17.94+) to gate the
  *     "operator pressed +" path; throws would surface to the UI
  *     too late, so the boolean answer lets the modal disable its
  *     submit button proactively.
- *   - `shouldRenderPlusTileV4(node)` — used by viewModelMapperV4
+ *   - `shouldRenderPlusTile(node)` — used by viewModelMapperV4
  *     (§17.91) to decide whether to append the synthetic "plus"
  *     slot to a focused parent's children list. Today identical
- *     to `canAddChildV4` (the kiosk shows the plus tile iff the
+ *     to `canAddChild` (the kiosk shows the plus tile iff the
  *     operator can actually add a child); the two functions are
  *     kept distinct anticipating §17.6+ feature work where the
  *     plus-tile may surface in additional UX states (e.g. visible
  *     but disabled, with an explanatory tooltip).
  */
-export const MAX_CHILDREN_V4 = 12;
+export const MAX_CHILDREN = 12;
 
-export function canAddChildV4(node: Node): boolean {
-  return node.children.length < MAX_CHILDREN_V4;
+export function canAddChild(node: Node): boolean {
+  return node.children.length < MAX_CHILDREN;
 }
 
-export function shouldRenderPlusTileV4(node: Node): boolean {
-  return node.children.length < MAX_CHILDREN_V4;
+export function shouldRenderPlusTile(node: Node): boolean {
+  return node.children.length < MAX_CHILDREN;
 }

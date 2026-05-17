@@ -8,7 +8,7 @@ import { StrictRangeNode } from "../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../domain/nodes/TextNodeV4.js";
 import { Tree, type CardRegistry } from "../domain/Tree.js";
 import { NumericComparator } from "../domain/values/Comparator.js";
-import { ObjectiveV4 } from "../domain/values/ObjectiveV4.js";
+import { Objective } from "../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../domain/values/Range.js";
 import { Timestamp } from "../domain/values/Timestamp.js";
 import { Unit } from "../domain/values/Unit.js";
@@ -60,13 +60,13 @@ export function buildSampleTreeV4(clock: Clock): Tree {
 
   const health = new ComputedBusinessScoreNode<number>(
     "health", "Health", Weight.of(3), "Aggregate score", clock, lenient,
-    { objective: ObjectiveV4.of(110, targetDate), initialKind: ComputationKind.WEIGHTED_AVERAGE, unit: "%" },
+    { objective: Objective.of(110, targetDate), initialKind: ComputationKind.WEIGHTED_AVERAGE, unit: "%" },
   );
   root.attach(health);
 
   const sales = new BusinessScoreNode<number>(
     "sales", "Sales", Weight.of(3), "Revenue vs plan", clock, lenient,
-    { objective: ObjectiveV4.of(110, targetDate), unit: "BSN-fallback" },
+    { objective: Objective.of(110, targetDate), unit: "BSN-fallback" },
   );
   sales.addValue(t1, 95);
   sales.addValue(t2, 104);
@@ -74,7 +74,7 @@ export function buildSampleTreeV4(clock: Clock): Tree {
 
   const ops = new BusinessScoreNode<number>(
     "ops", "Operations", Weight.of(1), "Cost and throughput", clock, lenient,
-    { objective: ObjectiveV4.of(100, targetDate), unit: "%" },
+    { objective: Objective.of(100, targetDate), unit: "%" },
   );
   ops.addValue(t2, 98);
   health.attach(ops);

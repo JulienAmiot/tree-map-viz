@@ -28,7 +28,7 @@ import { Node } from "./Node.js";
  * future §17.101 `EditNodeServiceV4` operator-facing toggle; today
  * the only call sites that flip it are the §17.99a Computation tests.
  * The §17.93-introduced `BusinessScoreNode.eligibleForParentComputation`
- * field is NOT retired by this strand (`computedValueV4` still reads
+ * field is NOT retired by this strand (`computedValue` still reads
  * the v3-compat flag); §17.99b will migrate the band-aid field by
  * setting `disabled: true` at the §17.81 adapter for every v3 BSC
  * with `eligibleForParentComputation: false`.

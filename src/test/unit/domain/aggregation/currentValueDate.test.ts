@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
 import {
-  currentValueDateIsoV4,
-  mostRecentChildDateIsoV4,
-} from "../../../../domain/aggregation/currentValueDateV4.js";
+  currentValueDateIso,
+  mostRecentChildDateIso,
+} from "../../../../domain/aggregation/currentValueDate.js";
 import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js";
 import { TextNodeV4 } from "../../../../domain/nodes/TextNodeV4.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
-import { ObjectiveV4 } from "../../../../domain/values/ObjectiveV4.js";
+import { Objective } from "../../../../domain/values/Objective.js";
 import { LenientRange } from "../../../../domain/values/Range.js";
 import { Timestamp } from "../../../../domain/values/Timestamp.js";
 import { Weight } from "../../../../domain/values/Weight.js";
@@ -22,7 +22,7 @@ const lenient = (): LenientRange<number> =>
     Number.POSITIVE_INFINITY,
     NumericComparator.INSTANCE,
   );
-const obj = (): ObjectiveV4<number> => ObjectiveV4.of(100, T("2026-12-31T00:00:00Z"));
+const obj = (): Objective<number> => Objective.of(100, T("2026-12-31T00:00:00Z"));
 
 const buildBSC = (
   id: string,
@@ -39,13 +39,13 @@ const buildText = (id: string, history: [string, string][] = []): TextNodeV4 => 
   return node;
 };
 
-describe("currentValueDateIsoV4 (§17.89 — Phase B.1: v4-aware date helper, structural rule)", () => {
+describe("currentValueDateIso (§17.89 — Phase B.1: v4-aware date helper, structural rule)", () => {
   it("leaf TextNodeV4: returns most-recent entry's asOf as ISO", () => {
     const text = buildText("t", [
       ["2026-01-01T00:00:00Z", "Q1"],
       ["2026-04-01T00:00:00Z", "Q2"],
     ]);
-    expect(currentValueDateIsoV4(text)).toBe("2026-04-01T00:00:00.000Z");
+    expect(currentValueDateIso(text)).toBe("2026-04-01T00:00:00.000Z");
   });
 
   it("leaf BSC with history: returns its latest asOf as ISO", () => {
@@ -53,23 +53,23 @@ describe("currentValueDateIsoV4 (§17.89 — Phase B.1: v4-aware date helper, st
       ["2026-02-01T00:00:00Z", 20],
       ["2026-05-01T00:00:00Z", 50],
     ]);
-    expect(currentValueDateIsoV4(bsc)).toBe("2026-05-01T00:00:00.000Z");
+    expect(currentValueDateIso(bsc)).toBe("2026-05-01T00:00:00.000Z");
   });
 
   it("leaf BSC with empty history: returns null", () => {
-    expect(currentValueDateIsoV4(buildBSC("empty"))).toBeNull();
+    expect(currentValueDateIso(buildBSC("empty"))).toBeNull();
   });
 
   it("leaf TextNodeV4 with empty history: returns null", () => {
-    expect(currentValueDateIsoV4(buildText("empty"))).toBeNull();
+    expect(currentValueDateIso(buildText("empty"))).toBeNull();
   });
 
-  it("parent BSC: returns the most recent date amongst its children's currentValueDateIsoV4", () => {
+  it("parent BSC: returns the most recent date amongst its children's currentValueDateIso", () => {
     const parent = buildBSC("p");
     parent.attach(buildBSC("c1", [["2026-01-01T00:00:00Z", 10]]));
     parent.attach(buildBSC("c2", [["2026-06-15T00:00:00Z", 20]]));
     parent.attach(buildBSC("c3", [["2026-03-10T00:00:00Z", 30]]));
-    expect(currentValueDateIsoV4(parent)).toBe("2026-06-15T00:00:00.000Z");
+    expect(currentValueDateIso(parent)).toBe("2026-06-15T00:00:00.000Z");
   });
 
   it("parent BSC recurses through grandchildren — most-recent observation anywhere underneath wins", () => {
@@ -79,31 +79,31 @@ describe("currentValueDateIsoV4 (§17.89 — Phase B.1: v4-aware date helper, st
     middle.attach(buildBSC("g2", [["2026-02-01T00:00:00Z", 20]]));
     root.attach(middle);
     root.attach(buildBSC("sibling", [["2026-04-01T00:00:00Z", 99]]));
-    expect(currentValueDateIsoV4(root)).toBe("2026-08-01T00:00:00.000Z");
+    expect(currentValueDateIso(root)).toBe("2026-08-01T00:00:00.000Z");
   });
 
   it("parent BSC with TextNodeV4 children: text children's dates also count toward the most-recent", () => {
     const parent = buildBSC("p");
     parent.attach(buildBSC("num", [["2026-01-01T00:00:00Z", 10]]));
     parent.attach(buildText("note", [["2026-09-01T00:00:00Z", "later note"]]));
-    expect(currentValueDateIsoV4(parent)).toBe("2026-09-01T00:00:00.000Z");
+    expect(currentValueDateIso(parent)).toBe("2026-09-01T00:00:00.000Z");
   });
 
   it("parent BSC with all-empty children subtree: returns null", () => {
     const parent = buildBSC("p");
     parent.attach(buildBSC("a"));
     parent.attach(buildBSC("b"));
-    expect(currentValueDateIsoV4(parent)).toBeNull();
+    expect(currentValueDateIso(parent)).toBeNull();
   });
 
-  it("mostRecentChildDateIsoV4 exported separately for direct view-layer use", () => {
+  it("mostRecentChildDateIso exported separately for direct view-layer use", () => {
     const parent = buildBSC("p");
     parent.attach(buildBSC("c1", [["2026-01-01T00:00:00Z", 1]]));
     parent.attach(buildBSC("c2", [["2026-07-01T00:00:00Z", 2]]));
-    expect(mostRecentChildDateIsoV4(parent)).toBe("2026-07-01T00:00:00.000Z");
+    expect(mostRecentChildDateIso(parent)).toBe("2026-07-01T00:00:00.000Z");
   });
 
-  it("mostRecentChildDateIsoV4 on a node with no children returns null", () => {
-    expect(mostRecentChildDateIsoV4(buildBSC("leaf"))).toBeNull();
+  it("mostRecentChildDateIso on a node with no children returns null", () => {
+    expect(mostRecentChildDateIso(buildBSC("leaf"))).toBeNull();
   });
 });

@@ -45,12 +45,12 @@ import { RangedValueNode } from "../nodes/RangedValueNode.js";
  *
  * Returns `null` when no date can be derived.
  */
-export function currentValueDateIsoV4(node: Node): string | null {
+export function currentValueDateIso(node: Node): string | null {
   if (node.children.length === 0) {
     return ownLatestIso(node);
   }
   if (node instanceof RangedValueNode) {
-    return mostRecentChildDateIsoV4(node);
+    return mostRecentChildDateIso(node);
   }
   return ownLatestIso(node);
 }
@@ -71,10 +71,10 @@ function ownLatestIso(node: Node): string | null {
  * use it when rendering "this aggregate is current as of …" without
  * re-deriving the leaf-vs-parent dispatch.
  */
-export function mostRecentChildDateIsoV4(node: Node): string | null {
+export function mostRecentChildDateIso(node: Node): string | null {
   let maxMs = Number.NEGATIVE_INFINITY;
   for (const child of node.children) {
-    const childIso = currentValueDateIsoV4(child);
+    const childIso = currentValueDateIso(child);
     if (childIso === null) continue;
     const ms = Date.parse(childIso);
     if (Number.isNaN(ms)) continue;

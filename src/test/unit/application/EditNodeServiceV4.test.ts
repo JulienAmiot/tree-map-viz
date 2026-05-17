@@ -10,7 +10,7 @@ import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
 import { StrictRangeNode } from "../../../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../../../domain/nodes/TextNodeV4.js";
 import { NumericComparator } from "../../../domain/values/Comparator.js";
-import { ObjectiveV4 } from "../../../domain/values/ObjectiveV4.js";
+import { Objective } from "../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../domain/values/Range.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
 import { Unit } from "../../../domain/values/Unit.js";
@@ -26,7 +26,7 @@ const makeText = (history: [string, string][] = []): TextNodeV4 => {
 const makeBSN = (unit = "%"): BusinessScoreNode<number> => new BusinessScoreNode<number>(
   "b1", "Revenue", Weight.of(2), "old desc", clock,
   LenientRange.of(0, 1_000, NumericComparator.INSTANCE),
-  { objective: ObjectiveV4.of(100, Timestamp.of(new Date("2026-12-31T00:00:00Z"))), unit },
+  { objective: Objective.of(100, Timestamp.of(new Date("2026-12-31T00:00:00Z"))), unit },
 );
 
 describe("EditNodeServiceV4 (§17.101a — Phase C skeleton + 2 v3-compat kinds + appendValue)", () => {
@@ -148,7 +148,7 @@ describe("EditNodeServiceV4 (§17.101a — Phase C skeleton + 2 v3-compat kinds 
     const node = new ComputedBusinessScoreNode<number>(
       "cbsn1", "Auto-score", Weight.of(2), "", clock, range,
       {
-        objective: ObjectiveV4.of(50, Timestamp.of(new Date("2027-01-01T00:00:00Z"))),
+        objective: Objective.of(50, Timestamp.of(new Date("2027-01-01T00:00:00Z"))),
         unit: "pts",
         initialKind: ComputationKind.AVERAGE,
       },

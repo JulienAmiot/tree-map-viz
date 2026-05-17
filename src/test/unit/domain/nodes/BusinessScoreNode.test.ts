@@ -7,7 +7,7 @@ import { Node } from "../../../../domain/nodes/Node.js";
 import { RangedValueNode } from "../../../../domain/nodes/RangedValueNode.js";
 import { ValueNode } from "../../../../domain/nodes/ValueNode.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
-import { ObjectiveV4 } from "../../../../domain/values/ObjectiveV4.js";
+import { Objective } from "../../../../domain/values/Objective.js";
 import { LenientRange } from "../../../../domain/values/Range.js";
 import { Timestamp } from "../../../../domain/values/Timestamp.js";
 import { Weight } from "../../../../domain/values/Weight.js";
@@ -15,11 +15,11 @@ import { Weight } from "../../../../domain/values/Weight.js";
 const T = (iso: string): Timestamp => Timestamp.of(new Date(iso));
 const clk = (iso: string): Clock => ({ now: () => T(iso) });
 const lenient = (): LenientRange<number> => LenientRange.of(0, 100, NumericComparator.INSTANCE);
-const goal = (): ObjectiveV4<number> => ObjectiveV4.of(80, T("2026-12-31T00:00:00Z"));
+const goal = (): Objective<number> => Objective.of(80, T("2026-12-31T00:00:00Z"));
 
 const node = (
   range: LenientRange<number> = lenient(),
-  objective: ObjectiveV4<number> = goal(),
+  objective: Objective<number> = goal(),
   clockIso = "2026-05-10T12:00:00Z",
 ): BusinessScoreNode<number> =>
   new BusinessScoreNode<number>("bsn-1", "Sales", Weight.of(1), "desc", clk(clockIso), range, { objective });
@@ -52,7 +52,7 @@ describe("BusinessScoreNode (§17.76 — v4 part 12: concrete range-bounded node
   describe("objective slot — composition per the v4 diagram", () => {
     it("exposes the constructor argument reference-equal with both fields readable", () => {
       const at = T("2027-06-30T00:00:00Z");
-      const o = ObjectiveV4.of(95, at);
+      const o = Objective.of(95, at);
       const n = node(lenient(), o);
       expect(n.objective).toBe(o);
       expect(n.objective.value).toBe(95);

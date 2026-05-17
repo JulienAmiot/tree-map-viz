@@ -15,7 +15,7 @@ import { Node } from "../../../../../domain/nodes/Node.js";
 import { StrictRangeNode } from "../../../../../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../../../../../domain/nodes/TextNodeV4.js";
 import { NumericComparator } from "../../../../../domain/values/Comparator.js";
-import { ObjectiveV4 } from "../../../../../domain/values/ObjectiveV4.js";
+import { Objective } from "../../../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../../../domain/values/Range.js";
 import { Timestamp } from "../../../../../domain/values/Timestamp.js";
 import { Unit } from "../../../../../domain/values/Unit.js";
@@ -36,7 +36,7 @@ const strict = (min: number, max: number): StrictRange<number> =>
 const obj = (
   value: number = 100,
   at: string = "2026-12-31T00:00:00Z",
-): ObjectiveV4<number> => ObjectiveV4.of(value, T(at));
+): Objective<number> => Objective.of(value, T(at));
 
 const buildBSC = (
   id: string,
@@ -45,7 +45,7 @@ const buildBSC = (
     description?: string;
     weight?: number;
     history?: [string, number][];
-    objective?: ObjectiveV4<number>;
+    objective?: Objective<number>;
     unit?: string;
   } = {},
 ): BusinessScoreNode<number> => {
@@ -159,7 +159,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       expect(vm.dateColor).toBe("");
     });
 
-    it("objective.targetValue + targetDateIso + unit propagate from BSC's ObjectiveV4 + unit slot", () => {
+    it("objective.targetValue + targetDateIso + unit propagate from BSC's Objective + unit slot", () => {
       const bsc = buildBSC("b", {
         objective: obj(80, "2026-12-31T00:00:00Z"),
         unit: "ms",
@@ -252,7 +252,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       expect(focused.children[2].parentId).toBe("center");
     });
 
-    it("plus slot is omitted when capacity is exhausted (parent at MAX_CHILDREN_V4=12)", () => {
+    it("plus slot is omitted when capacity is exhausted (parent at MAX_CHILDREN=12)", () => {
       const center = buildBSC("p");
       const children: BusinessScoreNode<number>[] = [];
       for (let i = 0; i < 12; i++) {

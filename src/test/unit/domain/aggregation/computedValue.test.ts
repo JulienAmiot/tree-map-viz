@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
-import { computedValueV4 } from "../../../../domain/aggregation/computedValueV4.js";
+import { computedValue } from "../../../../domain/aggregation/computedValue.js";
 import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
 import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
 import { TextNodeV4 } from "../../../../domain/nodes/TextNodeV4.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
-import { ObjectiveV4 } from "../../../../domain/values/ObjectiveV4.js";
+import { Objective } from "../../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../../domain/values/Range.js";
 import { Timestamp } from "../../../../domain/values/Timestamp.js";
 import { Weight } from "../../../../domain/values/Weight.js";
@@ -24,7 +24,7 @@ const lenient = (): LenientRange<number> =>
   );
 const strict = (min: number, max: number): StrictRange<number> =>
   StrictRange.of(min, max, NumericComparator.INSTANCE);
-const obj = (): ObjectiveV4<number> => ObjectiveV4.of(100, T("2026-12-31T00:00:00Z"));
+const obj = (): Objective<number> => Objective.of(100, T("2026-12-31T00:00:00Z"));
 
 const buildBSC = (
   id: string,
@@ -53,7 +53,7 @@ const buildText = (id: string, weight = 1, history: [string, string][] = []): Te
   return node;
 };
 
-describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structural rule)", () => {
+describe("computedValue (§17.89 — Phase B.1: v4-aware aggregation, structural rule)", () => {
   describe("leaf BSC (no children)", () => {
     it("returns recordedValue with the most-recent entry's value + asOf when history is non-empty", () => {
       const bsc = buildBSC("a", 1, [
@@ -61,7 +61,7 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
         ["2026-03-01T00:00:00Z", 30],
         ["2026-02-01T00:00:00Z", 20],
       ]);
-      const r = computedValueV4(bsc);
+      const r = computedValue(bsc);
       expect(r.kind).toBe("recordedValue");
       if (r.kind !== "recordedValue") return;
       expect(r.value).toBe(30);
@@ -70,13 +70,13 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
 
     it("returns childrenCount n=0 when history is empty (no number to grade)", () => {
       const bsc = buildBSC("empty");
-      const r = computedValueV4(bsc);
+      const r = computedValue(bsc);
       expect(r).toEqual({ kind: "childrenCount", n: 0 });
     });
 
     it("works equally for StrictRangeNode leaves", () => {
       const node = buildStrictBSC("s", 1, [0, 100], [["2026-04-01T00:00:00Z", 75]]);
-      const r = computedValueV4(node);
+      const r = computedValue(node);
       expect(r.kind).toBe("recordedValue");
       if (r.kind !== "recordedValue") return;
       expect(r.value).toBe(75);
@@ -88,7 +88,7 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       const parent = buildBSC("p");
       parent.attach(buildBSC("a", 1, [["2026-01-01T00:00:00Z", 10]]));
       parent.attach(buildBSC("b", 3, [["2026-01-01T00:00:00Z", 30]]));
-      const r = computedValueV4(parent);
+      const r = computedValue(parent);
       expect(r.kind).toBe("computedValue");
       if (r.kind !== "computedValue") return;
       expect(r.value).toBe(25);
@@ -101,7 +101,7 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       aggChild.attach(buildBSC("g2", 1, [["2026-01-01T00:00:00Z", 100]]));
       root.attach(aggChild);
       root.attach(buildBSC("leaf", 1, [["2026-01-01T00:00:00Z", 0]]));
-      const r = computedValueV4(root);
+      const r = computedValue(root);
       expect(r.kind).toBe("computedValue");
       if (r.kind !== "computedValue") return;
       expect(r.value).toBe(37.5);
@@ -111,7 +111,7 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       const parent = buildBSC("p");
       parent.attach(buildText("note", 1, [["2026-01-01T00:00:00Z", "hello"]]));
       parent.attach(buildBSC("num", 1, [["2026-01-01T00:00:00Z", 42]]));
-      const r = computedValueV4(parent);
+      const r = computedValue(parent);
       expect(r.kind).toBe("computedValue");
       if (r.kind !== "computedValue") return;
       expect(r.value).toBe(42);
@@ -121,7 +121,7 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       const parent = buildBSC("p");
       parent.attach(buildText("a"));
       parent.attach(buildText("b"));
-      const r = computedValueV4(parent);
+      const r = computedValue(parent);
       expect(r).toEqual({ kind: "childrenCount", n: 2 });
     });
 
@@ -129,7 +129,7 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       const parent = buildBSC("p");
       parent.attach(buildBSC("e1"));
       parent.attach(buildBSC("e2"));
-      const r = computedValueV4(parent);
+      const r = computedValue(parent);
       expect(r).toEqual({ kind: "childrenCount", n: 2 });
     });
 
@@ -137,7 +137,7 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       const parent = buildBSC("p");
       parent.attach(buildBSC("a", 5, [["2026-01-01T00:00:00Z", 100]]));
       parent.attach(buildBSC("b-empty", 9));
-      const r = computedValueV4(parent);
+      const r = computedValue(parent);
       expect(r.kind).toBe("computedValue");
       if (r.kind !== "computedValue") return;
       expect(r.value).toBe(100);
@@ -159,7 +159,7 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       ineligibleB.addValue(T("2026-01-01T00:00:00Z"), 20);
       parent.attach(ineligibleA);
       parent.attach(ineligibleB);
-      const r = computedValueV4(parent);
+      const r = computedValue(parent);
       expect(r).toEqual({ kind: "childrenCount", n: 2 });
     });
 
@@ -170,7 +170,7 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       disabledStrict.setDisabled(true);
       parent.attach(eligible);
       parent.attach(disabledStrict);
-      const r = computedValueV4(parent);
+      const r = computedValue(parent);
       expect(r.kind).toBe("computedValue");
       if (r.kind !== "computedValue") return;
       expect(r.value).toBe(80);
@@ -181,18 +181,18 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
         "f", "f", w(1), "", clock, lenient(),
         { objective: obj(), unit: "%", initialKind: ComputationKind.WEIGHTED_AVERAGE },
       );
-      const r = computedValueV4(cbsn);
+      const r = computedValue(cbsn);
       expect(r).toEqual({ kind: "childrenCount", n: 0 });
     });
 
-    it("§17.99c — ComputedBusinessScoreNode parent aggregates from eligible children via the v3-equivalent weighted-mean traversal (computedValueV4 owns the loop; CBSN's strategy.dispatch via getValue() is not on this read path)", () => {
+    it("§17.99c — ComputedBusinessScoreNode parent aggregates from eligible children via the v3-equivalent weighted-mean traversal (computedValue owns the loop; CBSN's strategy.dispatch via getValue() is not on this read path)", () => {
       const cbsn = new ComputedBusinessScoreNode<number>(
         "f", "f", w(1), "", clock, lenient(),
         { objective: obj(), unit: "%", initialKind: ComputationKind.WEIGHTED_AVERAGE },
       );
       cbsn.attach(buildBSC("c1", 1, [["2026-02-01T00:00:00Z", 100]]));
       cbsn.attach(buildBSC("c2", 1, [["2026-02-01T00:00:00Z", 60]]));
-      const r = computedValueV4(cbsn);
+      const r = computedValue(cbsn);
       expect(r.kind).toBe("computedValue");
       if (r.kind !== "computedValue") return;
       expect(r.value).toBe(80);
@@ -202,7 +202,7 @@ describe("computedValueV4 (§17.89 — Phase B.1: v4-aware aggregation, structur
       const parent = buildBSC("p");
       parent.attach(buildBSC("a", 1, [["2026-01-01T00:00:00Z", 20]]));
       parent.attach(buildStrictBSC("b", 1, [0, 100], [["2026-01-01T00:00:00Z", 80]]));
-      const r = computedValueV4(parent);
+      const r = computedValue(parent);
       expect(r.kind).toBe("computedValue");
       if (r.kind !== "computedValue") return;
       expect(r.value).toBe(50);

@@ -4,7 +4,7 @@ import type { Computation } from "../computation/Computation.js";
 import type { ComputationKind } from "../computation/ComputationKind.js";
 import { ComputationOverrideError } from "../computation/ComputationOverrideError.js";
 import type { Computed } from "../computation/Computed.js";
-import type { ObjectiveV4 } from "../values/ObjectiveV4.js";
+import type { Objective } from "../values/Objective.js";
 import type { LenientRange } from "../values/Range.js";
 import type { Timestamp } from "../values/Timestamp.js";
 import type { Weight } from "../values/Weight.js";
@@ -15,7 +15,7 @@ import { BusinessScoreNode } from "./BusinessScoreNode.js";
  * `ComputedBusinessScoreNode<T>` — v4 concrete value-bearing node whose value
  * is auto-derived from its children via a polymorphic `Computation<T>` strategy
  * AND whose value-domain is bounded by a `LenientRange<T>` AND which carries a
- * single goal-point `ObjectiveV4<T>` (SPEC §17.98 / v5 round 7; mirrors
+ * single goal-point `Objective<T>` (SPEC §17.98 / v5 round 7; mirrors
  * `class ComputedBusinessScoreNode~T~` + `BusinessScoreNode~T~ <|--
  * ComputedBusinessScoreNode~T~` + `ComputedBusinessScoreNode~T~ ..|>
  * Computed~T~` in the v5 class diagram).
@@ -44,7 +44,7 @@ import { BusinessScoreNode } from "./BusinessScoreNode.js";
  *    auto-derived BSCs correctly without requiring any mapper-side change
  *    at §17.98. The §17.99c retirement strand drops the band-aid field
  *    entirely; computed BSC detection is now a polymorphic `node instanceof
- *    ComputedBusinessScoreNode` check at the `computedValueV4` aggregation
+ *    ComputedBusinessScoreNode` check at the `computedValue` aggregation
  *    site (the only v4 consumer of the band-aid prior to retirement; the
  *    view-model mapper never read it). The §17.93 sister band-aid
  *    `eligibleForParentComputation` is retired at §17.99b — operators
@@ -63,7 +63,7 @@ export class ComputedBusinessScoreNode<T> extends BusinessScoreNode<T> implement
     clock: Clock,
     range: LenientRange<T>,
     options: {
-      objective: ObjectiveV4<T>;
+      objective: Objective<T>;
       initialKind: ComputationKind;
       unit?: string;
     },
