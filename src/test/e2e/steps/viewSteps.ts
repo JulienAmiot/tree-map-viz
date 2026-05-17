@@ -14,7 +14,7 @@
  * each lookup is cached so repeated scenarios don't re-read from disk.
  */
 
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -97,9 +97,21 @@ Then(
 );
 
 Then("the focused value is {string}", async ({ page }, expected: string) => {
+  // SPEC §17.116 — value+unit composition (the unit moved out of
+  // `.value` into a `.unit-below` sibling for Computed* in §17.116c
+  // and BSC + Text in §17.116d). See `composeValueText` below.
   const kiosk = new TreeMapPage(page);
-  await expect(kiosk.focusedValue()).toHaveText(expected);
+  await expect.poll(async () => composeValueText(kiosk.parentStrip())).toBe(expected);
 });
+
+async function composeValueText(scope: Locator): Promise<string> {
+  const valueText = (await scope.getByTestId("value").textContent())?.trim() ?? "";
+  const unitLocator = scope.getByTestId("unit");
+  const unitCount = await unitLocator.count();
+  if (unitCount === 0) return valueText;
+  const unitText = (await unitLocator.first().textContent())?.trim() ?? "";
+  return unitText ? `${valueText} ${unitText}` : valueText;
+}
 
 // SPEC §17.27 — TextNode value is rendered through a small markdown
 // pipeline (escape-first, then bold/italic/code/links/headings/lists).
@@ -156,6 +168,16 @@ Then("the focused value area is empty", async ({ page }) => {
   await expect(kiosk.focusedValue()).toHaveText("");
 });
 
+Then("the focused node shows the §17.116 warning-fill", async ({ page }) => {
+  // SPEC §17.116 — Computed* tiles whose strategy cannot produce a
+  // value (empty / childrenCount any-n) render a full-tile ⚠ glyph
+  // styled like the §17.24 PlusTile; title + kind-label survive,
+  // every other value-area slot is suppressed.
+  const kiosk = new TreeMapPage(page);
+  await expect(kiosk.parentStrip().getByTestId("warning-fill")).toHaveCount(1);
+  await expect(kiosk.parentStrip().getByTestId("value")).toHaveCount(0);
+});
+
 Then("the focused value has a date", async ({ page }) => {
   const kiosk = new TreeMapPage(page);
   await expect(kiosk.focusedValueDate()).toHaveCount(1);
@@ -189,8 +211,12 @@ Then("the focused id is {string}", async ({ page }, expected: string) => {
 Then(
   "the child {string} has title {string}",
   async ({ page }, id: string, expected: string) => {
+    // SPEC §17.116 — mirrors the bootSteps Σ-strip rule.
     const kiosk = new TreeMapPage(page);
-    await expect(kiosk.childById(id).getByTestId("title")).toHaveText(expected);
+    const titleLocator = kiosk.childById(id).getByTestId("title");
+    await expect
+      .poll(async () => (await titleLocator.textContent())?.replace(/\u03a3/g, "").trim())
+      .toBe(expected);
   },
 );
 
@@ -219,8 +245,9 @@ Then(
 Then(
   "the child {string} has value {string}",
   async ({ page }, id: string, expected: string) => {
+    // SPEC §17.116 — same value+unit composition as the parent-strip step.
     const kiosk = new TreeMapPage(page);
-    await expect(kiosk.childById(id).getByTestId("value")).toHaveText(expected);
+    await expect.poll(async () => composeValueText(kiosk.childById(id))).toBe(expected);
   },
 );
 
@@ -406,11 +433,12 @@ Then(
         els.map((el) => parseFloat(getComputedStyle(el as HTMLElement).fontSize)),
     );
     expect(titleSizes.length).toBeGreaterThan(0);
-    expect(valueSizes.length).toBe(titleSizes.length);
-    for (let i = 0; i < titleSizes.length; i += 1) {
-      const t = titleSizes[i]!;
-      const v = valueSizes[i]!;
-      expect(v).toBeGreaterThanOrEqual(t * factor);
+    expect(valueSizes.length).toBeGreaterThan(0);
+    // SPEC §17.116 — warning-fill tiles have no [data-testid=
+    // "value"]; assert each rendered value ≥ N × smallest title.
+    const minTitle = Math.min(...titleSizes);
+    for (const v of valueSizes) {
+      expect(v).toBeGreaterThanOrEqual(minTitle * factor);
     }
   },
 );

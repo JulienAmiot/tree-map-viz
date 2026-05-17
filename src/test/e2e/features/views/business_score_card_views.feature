@@ -27,14 +27,19 @@ Feature: BusinessScoreCard views render the (role × computed) matrix
     # The pre-§17.99c value 80.0 was the §17.93 band-aid one-level rule
     # (ChildA.history=100 contributing directly); §17.99c retires that
     # quirk along with the BSN.computed field that gated it.
-    And the focused value is "70.0 %"
+    # SPEC §17.116 — value text is the bare number (max 2 decimals,
+    # trailing zeros stripped); unit lives in a `.unit-below` block
+    # under the value. The step composes "<value> <unit>" before
+    # comparing, so the literal stays the operator-visible phrase
+    # "70 %" rather than the pre-§17.116 one-decimal "70.0 %".
+    And the focused value is "70 %"
     And the focused node has a computed badge
     And the focused value has a date
 
   @HE-???? @priority:high
   Scenario: asChild + computed=true renders the weighted mean with a Σ badge
     Then the child "ChildA" has title "ChildA"
-    And the child "ChildA" has value "80.0 %"
+    And the child "ChildA" has value "80 %"
     And the child "ChildA" has a computed badge
 
   @HE-???? @priority:high
