@@ -17,6 +17,7 @@ import type { Node } from "../../../../domain/nodes/Node.js";
 import { PictureNode } from "../../../../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../../domain/nodes/TextNode.js";
+import { URLNode } from "../../../../domain/nodes/URLNode.js";
 import { Tree } from "../../../../domain/Tree.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
 import { Objective } from "../../../../domain/values/Objective.js";
@@ -257,6 +258,154 @@ describe("jsonCodecV4 (§17.106a + §17.106b — v4-native encode + decode)", ()
         root: { ...noUrl.root, imageUrl: "" },
       };
       expect(() => codec.decode(JSON.stringify(emptyUrl))).toThrow(/cannot be empty/);
+    });
+  });
+
+  /**
+   * SPEC §17.120 — URLNode wire format. Snapshot leaf carrying the URL
+   * in the standard `description` slot (per the operator's "URL is in
+   * the description" contract). No history / objective / range; no
+   * dedicated `url` field on the wire. The shape mirrors PictureNode's
+   * snapshot envelope but swaps `imageUrl` for the reused `description`
+   * field — letting future description-aware codec tooling treat URL
+   * nodes uniformly with TextNode / StrictRangeNode / ComputedNode
+   * description rows.
+   */
+  describe("URLNode (§17.120)", () => {
+    it("encodes the snapshot shape: kind + commonFields + description (the URL lives in the description slot; no separate url field; no history / objective / range)", () => {
+      const root = new TextNode("root", "Root", Weight.of(1), clock);
+      root.addValue(T1, "anchor");
+      const url = new URLNode("url", "Docs", Weight.of(3), "https://example.com/docs");
+      root.attach(url);
+      const wire = JSON.parse(codec.encode(new Tree(root))) as {
+        root: { children: { kind: string; description: string; id: string; title: string; weight: number; children: unknown[] }[] };
+      };
+      const child = wire.root.children[0]!;
+      expect(child.kind).toBe("URLNode");
+      expect(child.id).toBe("url");
+      expect(child.title).toBe("Docs");
+      expect(child.weight).toBe(3);
+      // SPEC §17.120 — the URL ships under `description`, not `url`.
+      expect(child.description).toBe("https://example.com/docs");
+      expect(child.children).toEqual([]);
+      // No leak of history / objective / range / imageUrl / url on a
+      // URLNode wire row.
+      expect("history" in child).toBe(false);
+      expect("objective" in child).toBe(false);
+      expect("range" in child).toBe(false);
+      expect("imageUrl" in child).toBe(false);
+      expect("url" in child).toBe(false);
+    });
+
+    it("emits disabled:true when the node is parked and OMITS it otherwise", () => {
+      const u = new URLNode("u", "U", Weight.of(1), "https://x");
+      const wireA = JSON.parse(codec.encode(new Tree(u))).root as Record<string, unknown>;
+      expect("disabled" in wireA).toBe(false);
+      u.setDisabled(true);
+      const wireB = JSON.parse(codec.encode(new Tree(u))).root as Record<string, unknown>;
+      expect(wireB.disabled).toBe(true);
+    });
+
+    it("round-trips a sibling tree mixing TextNode, PictureNode, and URLNode (subclass dispatch picks the right kind on each side; PictureNode and URLNode do NOT confuse each other despite both being ValueNode<string> snapshot leaves)", () => {
+      const root = new TextNode("root", "Root", Weight.of(1), clock);
+      root.addValue(T1, "anchor");
+      const url = new URLNode("url", "Docs", Weight.of(1), "https://example.com/docs");
+      const pic = new PictureNode("pic", "Cat", Weight.of(1), "https://example.com/cat.jpg");
+      const txt = new TextNode("txt", "Notes", Weight.of(1), clock);
+      txt.addValue(T1, "hello");
+      root.attach(url);
+      root.attach(pic);
+      root.attach(txt);
+      const json = codec.encode(new Tree(root));
+      const decoded = codec.decode(json);
+      const decodedUrl = decoded.findById("url");
+      const decodedPic = decoded.findById("pic");
+      const decodedTxt = decoded.findById("txt");
+      // SPEC §17.120 — instanceof discrimination is exact on decode:
+      // a URLNode never round-trips as a PictureNode and vice versa,
+      // even though both encode with the same commonFields slice.
+      expect(decodedUrl).toBeInstanceOf(URLNode);
+      expect(decodedUrl).not.toBeInstanceOf(PictureNode);
+      expect(decodedPic).toBeInstanceOf(PictureNode);
+      expect(decodedPic).not.toBeInstanceOf(URLNode);
+      expect(decodedTxt).toBeInstanceOf(TextNode);
+      expect((decodedUrl as URLNode).url).toBe("https://example.com/docs");
+      expect((decodedUrl as URLNode).getDescription()).toBe(
+        "https://example.com/docs",
+      );
+      expect((decodedPic as PictureNode).imageUrl).toBe(
+        "https://example.com/cat.jpg",
+      );
+      expect((decodedTxt as TextNode).getValue()).toBe("hello");
+      // Byte-exact re-encode confirms the round-trip is loss-free.
+      expect(codec.encode(decoded)).toBe(json);
+    });
+
+    it("decode rejects a URLNode with a missing or empty description (the node constructor's non-empty guard fires through the codec)", () => {
+      const noUrl = {
+        schemaVersion: "v4.0",
+        root: {
+          kind: "URLNode",
+          id: "u",
+          title: "U",
+          weight: 1,
+          children: [],
+        },
+        cards: [],
+      };
+      expect(() => codec.decode(JSON.stringify(noUrl))).toThrow(/description/);
+      const emptyUrl = {
+        ...noUrl,
+        root: { ...noUrl.root, description: "" },
+      };
+      expect(() => codec.decode(JSON.stringify(emptyUrl))).toThrow(/cannot be empty/);
+    });
+
+    it("decode preserves disabled:true on a URLNode", () => {
+      const env = {
+        schemaVersion: "v4.0",
+        root: {
+          kind: "URLNode",
+          id: "u",
+          title: "U",
+          weight: 1,
+          description: "https://x.example",
+          disabled: true,
+          children: [],
+        },
+        cards: [],
+      };
+      const decoded = codec.decode(JSON.stringify(env));
+      const u = decoded.findById("u");
+      expect(u).toBeInstanceOf(URLNode);
+      expect((u as URLNode).disabled).toBe(true);
+    });
+
+    it("decode accepts custom URL schemes (mailto:, tel:, custom-scheme://, plain text) — the codec stays loose about URL shape, mirroring the domain layer", () => {
+      // SPEC §17.120 — the QR code library accepts arbitrary text; the
+      // codec must not reject inputs the domain accepts.
+      const candidates = [
+        "mailto:ops@example.com",
+        "tel:+33-1-23-45-67-89",
+        "custom-scheme://payload",
+        "just some text",
+      ];
+      for (const desc of candidates) {
+        const env = {
+          schemaVersion: "v4.0",
+          root: {
+            kind: "URLNode",
+            id: "u",
+            title: "U",
+            weight: 1,
+            description: desc,
+            children: [],
+          },
+          cards: [],
+        };
+        const decoded = codec.decode(JSON.stringify(env));
+        expect((decoded.findById("u") as URLNode).url).toBe(desc);
+      }
     });
   });
 });

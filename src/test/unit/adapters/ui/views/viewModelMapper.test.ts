@@ -15,6 +15,7 @@ import { Node } from "../../../../../domain/nodes/Node.js";
 import { PictureNode } from "../../../../../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../../../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../../../domain/nodes/TextNode.js";
+import { URLNode } from "../../../../../domain/nodes/URLNode.js";
 import { NumericComparator } from "../../../../../domain/values/Comparator.js";
 import { Objective } from "../../../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../../../domain/values/Range.js";
@@ -473,6 +474,82 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       expect(slot.vm.kind).toBe("PictureNode");
       if (slot.vm.kind !== "PictureNode") throw new Error();
       expect(slot.vm.imageUrl).toBe("https://example.com/cat.jpg");
+    });
+  });
+
+  /**
+   * SPEC §17.120 — URLNode mapper. Trivial 1:1 projection (title +
+   * url only); no timestamp / objective / colour math. Defensive
+   * case: the `now` and `cards` options never affect a URL VM.
+   */
+  describe("URLNode (§17.120)", () => {
+    it("maps title + url through verbatim (via the URLNode.url getter, which surfaces the inherited description slot per §17.120)", () => {
+      const u = new URLNode("u1", "Docs", w(), "https://example.com/docs");
+      const vm = mapNodeToViewModel(u);
+      expect(vm.kind).toBe("URLNode");
+      if (vm.kind !== "URLNode") throw new Error();
+      expect(vm.id).toBe("u1");
+      expect(vm.title).toBe("Docs");
+      expect(vm.url).toBe("https://example.com/docs");
+    });
+
+    it("does NOT surface a separate `description` field on the VM (SPEC §17.120 — the URL IS the description; never leak both onto the VM)", () => {
+      const u = new URLNode("u", "T", w(), "https://example.com/x");
+      const vm = mapNodeToViewModel(u);
+      expect(vm.kind).toBe("URLNode");
+      if (vm.kind !== "URLNode") throw new Error();
+      expect("description" in vm).toBe(false);
+      expect("imageUrl" in vm).toBe(false);
+      // The VM exposes exactly the four URL-leaf fields and nothing else.
+      expect(Object.keys(vm).sort()).toEqual(["id", "kind", "title", "url"]);
+    });
+
+    it("ignores `now` and `cards` (no timestamp / no objective / no unit baked into a URL VM)", () => {
+      const u = new URLNode("u2", "Other", w(), "https://example.com/o");
+      const vm = mapNodeToViewModel(u, {
+        now: new Date("2030-01-01T00:00:00Z"),
+        cards: new Map(),
+      });
+      expect(vm.kind).toBe("URLNode");
+    });
+
+    it("preserves the URL even when it's not a typical https URL (mailto:, tel:, custom schemes — domain stays loose, VM does too)", () => {
+      // SPEC §17.120 — the mapper does NOT pre-validate URL shape;
+      // any non-empty string the domain accepts passes through verbatim.
+      const cases = [
+        "mailto:ops@example.com",
+        "tel:+33-1-23-45-67-89",
+        "custom-scheme://payload",
+        "just some text",
+      ];
+      for (const raw of cases) {
+        const u = new URLNode("u", "T", w(), raw);
+        const vm = mapNodeToViewModel(u);
+        if (vm.kind !== "URLNode") throw new Error();
+        expect(vm.url).toBe(raw);
+      }
+    });
+
+    it("mapFocusedToViewModel surfaces a URLNode child slot beside other kinds (URL + Picture + Text mix; instanceof discrimination keeps them distinct)", () => {
+      const root = buildText("root", { history: [["2026-04-01T00:00:00Z", "anchor"]] });
+      const url = new URLNode("u", "Docs", w(), "https://example.com/docs");
+      const pic = new PictureNode("p", "Cat", w(), "https://example.com/cat.jpg");
+      root.attach(url);
+      root.attach(pic);
+      const focused = mapFocusedToViewModel(root, [url, pic]);
+      expect(focused.center.kind).toBe("TextNode");
+      const urlSlot = focused.children[0];
+      const picSlot = focused.children[1];
+      if (urlSlot?.slot !== "node") throw new Error("expected url node slot");
+      if (picSlot?.slot !== "node") throw new Error("expected pic node slot");
+      expect(urlSlot.vm.kind).toBe("URLNode");
+      expect(picSlot.vm.kind).toBe("PictureNode");
+      if (urlSlot.vm.kind !== "URLNode") throw new Error();
+      if (picSlot.vm.kind !== "PictureNode") throw new Error();
+      // SPEC §17.120 — URL and Picture VMs do not bleed into each
+      // other despite their structural similarity.
+      expect(urlSlot.vm.url).toBe("https://example.com/docs");
+      expect(picSlot.vm.imageUrl).toBe("https://example.com/cat.jpg");
     });
   });
 });

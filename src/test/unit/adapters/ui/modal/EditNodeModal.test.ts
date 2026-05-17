@@ -552,4 +552,185 @@ describe("<edit-node-modal>", () => {
       ).toBe("M\u20ac");
     });
   });
+
+  /**
+   * SPEC §17.120 — `<edit-node-modal>` URLNode branch. Mirrors the
+   * §17.119 Picture branch structurally: weight slider + a single
+   * URL input (no description / unit / objective / toggles). Title
+   * lives on the inline editor per §17.50. The branch must:
+   *   - seed `url` from `target.url` on open (the target carries the
+   *     URL on `url`, surfaced by the URLNode.url getter — the
+   *     domain-internal description slot is intentionally invisible
+   *     to the modal seam);
+   *   - render `field-url` and only the URL-relevant fields;
+   *   - hide every BSC-only / Picture-only field;
+   *   - keep Confirm enabled while `url` is non-empty (the domain
+   *     requires a non-empty URL — the modal mirrors that gate);
+   *   - disable Confirm if the operator blanks the URL;
+   *   - dispatch a payload of shape
+   *     `{ kind: "URLNode", url, weight? }` on confirm.
+   */
+  describe("URLNode target (§17.120)", () => {
+    const urlTarget: EditNodeTarget = {
+      nodeId: "uuid-url",
+      kind: "URLNode",
+      title: "Docs",
+      weight: 1.5,
+      url: "https://example.com/docs",
+    };
+
+    it("seeds weight + url from the target on open; no title field (§17.50 parity)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = urlTarget;
+        e.open = true;
+      });
+      expect(panelOf(el)?.dataset["kind"]).toBe("URLNode");
+      expect((fieldOf(el, "field-weight") as HTMLInputElement).value).toBe("1.5");
+      expect(
+        (fieldOf(el, "field-url") as HTMLInputElement).value,
+      ).toBe("https://example.com/docs");
+      // §17.50 — title is edited inline, not via the modal.
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-title"]'),
+      ).toBeNull();
+    });
+
+    it("hides every BSC-only / Picture-only field (description / unit / objective / toggles / field-image-url)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = urlTarget;
+        e.open = true;
+      });
+      const hidden = [
+        "field-description",
+        "field-unit",
+        "field-initial",
+        "field-target",
+        "field-target-date",
+        "field-computed",
+        "field-eligible",
+        "field-image-url",
+      ];
+      for (const id of hidden) {
+        expect(el.shadowRoot?.querySelector(`[data-testid="${id}"]`)).toBeNull();
+      }
+    });
+
+    it("placeholder on field-url matches the §6 '<Field name> — e.g. <mock>' pattern + uses type=url for the platform URL keyboard", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = urlTarget;
+        e.open = true;
+      });
+      const input = fieldOf(el, "field-url") as HTMLInputElement;
+      expect(input.placeholder).toMatch(/^URL — e\.g\./);
+      expect(input.type).toBe("url");
+    });
+
+    it("Confirm stays enabled while url is non-empty (the seed URL is valid by construction)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = urlTarget;
+        e.open = true;
+      });
+      expect(confirmBtn(el).disabled).toBe(false);
+    });
+
+    it("Confirm disables when the operator blanks the URL (gates on URLNode.normaliseUrl)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = urlTarget;
+        e.open = true;
+      });
+      await setInput(el, "field-url", "   ");
+      expect(confirmBtn(el).disabled).toBe(true);
+    });
+
+    it("Confirm dispatches edit-node-confirm with kind=URLNode + trimmed url + chosen weight", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = urlTarget;
+        e.open = true;
+      });
+      // Replace both fields with new values; whitespace around the
+      // URL must be trimmed in the dispatched payload (matches
+      // URLNode.normaliseUrl).
+      await setInput(el, "field-url", "  https://example.com/new  ");
+      await setInput(el, "field-weight", "2.5");
+
+      const handler = vi.fn();
+      el.addEventListener(EDIT_NODE_CONFIRM_EVENT, handler);
+      confirmBtn(el).click();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      const ev = handler.mock.calls[0]![0] as CustomEvent<EditNodeConfirmDetail>;
+      expect(ev.bubbles).toBe(true);
+      expect(ev.composed).toBe(true);
+      expect(ev.detail.nodeId).toBe("uuid-url");
+      expect(ev.detail.payload).toEqual({
+        kind: "URLNode",
+        weight: 2.5,
+        url: "https://example.com/new",
+      });
+    });
+
+    it("re-seeds the url when the target swaps mid-open (Text → URL)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = textTarget;
+        e.open = true;
+      });
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-url"]'),
+      ).toBeNull();
+      el.editTarget = urlTarget;
+      await el.updateComplete;
+      expect((fieldOf(el, "field-url") as HTMLInputElement).value).toBe(
+        "https://example.com/docs",
+      );
+      // BSC-only fields stay hidden after the swap.
+      expect(el.shadowRoot?.querySelector('[data-testid="field-unit"]')).toBeNull();
+    });
+
+    it("swapping URL → Picture clears the url and brings the field-image-url back (kind-specific seeds stay isolated)", async () => {
+      // SPEC §17.120 — `seedFromTarget` clears every kind-specific
+      // slot on transition, so an operator who edited a URL node
+      // and then swapped to a Picture node sees a fresh imageUrl
+      // input (no stale URL leak into the picture form).
+      const pictureTarget: EditNodeTarget = {
+        nodeId: "uuid-pic",
+        kind: "PictureNode",
+        title: "Floor plan",
+        weight: 1,
+        imageUrl: "https://example.com/floor.jpg",
+      };
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = urlTarget;
+        e.open = true;
+      });
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-url"]'),
+      ).not.toBeNull();
+      el.editTarget = pictureTarget;
+      await el.updateComplete;
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-url"]'),
+      ).toBeNull();
+      expect(
+        (fieldOf(el, "field-image-url") as HTMLInputElement).value,
+      ).toBe("https://example.com/floor.jpg");
+    });
+
+    it("swapping URL → BSC clears the url and brings the BSC-only fields back", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = urlTarget;
+        e.open = true;
+      });
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-url"]'),
+      ).not.toBeNull();
+      el.editTarget = bscTarget;
+      await el.updateComplete;
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-url"]'),
+      ).toBeNull();
+      expect(
+        (fieldOf(el, "field-unit") as HTMLInputElement).value,
+      ).toBe("M\u20ac");
+    });
+  });
 });

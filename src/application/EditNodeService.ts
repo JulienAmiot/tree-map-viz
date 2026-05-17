@@ -9,6 +9,7 @@ import type { Node } from "../domain/nodes/Node.js";
 import { PictureNode } from "../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../domain/nodes/TextNode.js";
+import { URLNode } from "../domain/nodes/URLNode.js";
 import type { CardRegistry } from "../domain/Tree.js";
 import { Objective } from "../domain/values/Objective.js";
 import { Timestamp } from "../domain/values/Timestamp.js";
@@ -42,13 +43,25 @@ type ComputedEdit = { readonly computationKind?: ComputationKind };
  * so undo restores the prior image alongside everything else.
  */
 type PictureEdit = { readonly imageUrl?: string };
+/**
+ * SPEC §17.120 — `URLEdit` adds an optional `url` swap; the service
+ * treats `undefined` as "no change" and an explicit non-empty string
+ * replaces the URL atomically alongside the title/weight edits so
+ * undo restores the prior URL alongside everything else. Mirrors
+ * `PictureEdit` semantically; the underlying mutator differs
+ * (`setUrl` vs `setImageUrl`) and the URL lives in the description
+ * slot rather than a dedicated field, but the all-or-nothing contract
+ * is identical.
+ */
+type URLEdit = { readonly url?: string };
 export type EditNodePayload =
   | (CommonEdit & { readonly kind: "TextNode" })
   | (CommonEdit & BSEdit & { readonly kind: "BusinessScore" })
   | (CommonEdit & { readonly kind: "StrictRange" })
   | (CommonEdit & ComputedEdit & { readonly kind: "Computed" })
   | (CommonEdit & BSEdit & ComputedEdit & { readonly kind: "ComputedBusinessScore" })
-  | (CommonEdit & PictureEdit & { readonly kind: "Picture" });
+  | (CommonEdit & PictureEdit & { readonly kind: "Picture" })
+  | (CommonEdit & URLEdit & { readonly kind: "URL" });
 
 type Outcome =
   | { readonly ok: true; readonly node: Node }
@@ -107,6 +120,9 @@ export class EditNodeService {
       }
       if (payload.kind === "Picture") {
         EditNodeService.applyPictureEdits(node as PictureNode, payload, undos);
+      }
+      if (payload.kind === "URL") {
+        EditNodeService.applyURLEdits(node as URLNode, payload, undos);
       }
     } catch (error) {
       return { undo, error };
@@ -191,6 +207,30 @@ export class EditNodeService {
     }
   }
 
+  /**
+   * SPEC §17.120 — URL-specific edit branch. `setUrl` is the atomic-
+   * replacement mutator on `URLNode` (which delegates to
+   * `setDescription` after running the non-empty-trim validator); the
+   * prior URL is captured before the swap so the all-or-nothing edit
+   * contract holds (a persister failure restores the previous URL
+   * alongside the rolled-back title / weight / disabled changes).
+   * Because URLNode stores the URL in the description slot, capturing
+   * via `pic.url` and re-applying via `pic.setUrl` is equivalent to
+   * (but stricter than — the validator re-fires) capturing the
+   * description directly.
+   */
+  private static applyURLEdits(
+    u: URLNode,
+    payload: URLEdit,
+    undos: Array<() => void>,
+  ): void {
+    if (payload.url !== undefined) {
+      const prev = u.url;
+      u.setUrl(payload.url);
+      undos.push(() => u.setUrl(prev));
+    }
+  }
+
   private static applyAppendValue(node: Node, value: string | number, asOf: Timestamp): () => void {
     if (node instanceof TextNode && typeof value === "string") {
       node.addValue(asOf, value);
@@ -217,6 +257,7 @@ export class EditNodeService {
       case "Computed": return ComputedNode;
       case "ComputedBusinessScore": return ComputedBusinessScoreNode;
       case "Picture": return PictureNode;
+      case "URL": return URLNode;
     }
   }
 

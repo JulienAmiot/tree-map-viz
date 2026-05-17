@@ -135,6 +135,25 @@ export type EditNodeModalPayload =
       readonly title?: string;
       readonly weight?: number;
       readonly imageUrl?: string;
+    }
+  /**
+   * SPEC §17.120 — `URLNode` variant. Only weight + URL are editable
+   * through this modal; title rides the inline-edit seam (the
+   * focused-panel `<url-node-as-parent>`'s click-to-edit title) per
+   * the §17.50 contract that applies to every kind. The `url` field
+   * is the URL-strand-specific edit — swapping the URL is a
+   * structural change that re-runs QR generation on the next render
+   * and doesn't belong on an inline editor (the URL is typically
+   * pasted, not typed in place). main.ts's `toAppEditPayload`
+   * rewrites the modal-side `"URLNode"` kind tag to the
+   * application-layer `"URL"`. Mirrors the §17.119 PictureNode kind-
+   * tag rewrite contract.
+   */
+  | {
+      readonly kind: "URLNode";
+      readonly title?: string;
+      readonly weight?: number;
+      readonly url?: string;
     };
 
 /** Pre-edit snapshot supplied by the composition root when opening the modal. */
@@ -167,6 +186,13 @@ export type EditNodeTarget =
       readonly title: string;
       readonly weight: number;
       readonly imageUrl: string;
+    }
+  | {
+      readonly nodeId: string;
+      readonly kind: "URLNode";
+      readonly title: string;
+      readonly weight: number;
+      readonly url: string;
     };
 
 export type EditNodeConfirmDetail = {
@@ -178,6 +204,7 @@ const KIND_LABELS: Record<EditNodeTarget["kind"], string> = {
   TextNode: "Text",
   BusinessScoreCardNode: "Business Score Card",
   PictureNode: "Picture",
+  URLNode: "URL",
 };
 
 @customElement("edit-node-modal")
@@ -228,6 +255,16 @@ export class EditNodeModal extends LitElement {
   /** SPEC §17.119 — image URL for the Picture kind. Seeded from `target.imageUrl`. */
   @state()
   private imageUrl = "";
+
+  /**
+   * SPEC §17.120 — URL for the URL kind. Seeded from `target.url`
+   * (the URLNode getter that surfaces the inherited description
+   * slot per the §17.120 "URL is in the description" contract).
+   * Gating predicate is identical to the Picture kind's `imageUrl`:
+   * "non-empty after trim".
+   */
+  @state()
+  private url = "";
 
   /**
    * Layout-specific styles layered on top of the shared `modalFrameStyles`
@@ -453,6 +490,7 @@ export class EditNodeModal extends LitElement {
     const target = this.editTarget!;
     const isBsc = target.kind === "BusinessScoreCardNode";
     const isPicture = target.kind === "PictureNode";
+    const isUrl = target.kind === "URLNode";
     return html`
       <form
         data-testid="edit-modal-form"
@@ -491,6 +529,7 @@ export class EditNodeModal extends LitElement {
         ${isBsc ? this.renderObjectiveFields() : nothing}
         ${isBsc ? this.renderBscToggles() : nothing}
         ${isPicture ? this.renderImageUrlField() : nothing}
+        ${isUrl ? this.renderURLField() : nothing}
         ${this.errorMessage
           ? html`<p class="error" data-testid="edit-modal-error">
               ${this.errorMessage}
@@ -612,6 +651,31 @@ export class EditNodeModal extends LitElement {
     `;
   }
 
+  /**
+   * SPEC §17.120 — single edit field for the URL kind: the URL. The
+   * seed comes from `target.url`; the gate is "non-empty after trim"
+   * (matching `URLNode.normaliseUrl` + the add-child contract).
+   * `type="url"` triggers the platform URL keyboard on touch kiosks;
+   * the actual validation is the domain's trim-non-empty check,
+   * mirrored by `buildPayload`'s `url.length === 0` guard. Direct
+   * parity with the §17.119 `renderImageUrlField` — same shape,
+   * different field name + different placeholder copy.
+   */
+  private renderURLField() {
+    return html`
+      <div class="field" data-testid="url-row">
+        <input
+          data-testid="field-url"
+          type="url"
+          placeholder='URL — e.g. "https://example.com/docs"'
+          .value=${this.url}
+          required
+          @input=${(e: Event) => this.bindString(e, "url")}
+        />
+      </div>
+    `;
+  }
+
   private renderBscToggles() {
     return html`
       <div class="checkbox-row">
@@ -696,6 +760,20 @@ export class EditNodeModal extends LitElement {
         imageUrl,
       };
     }
+    if (this.editTarget.kind === "URLNode") {
+      // SPEC §17.120 — URL edit: weight + url. Mirrors the Picture
+      // branch structurally; gate is the same "url is non-empty
+      // after trim" predicate (the URLNode domain layer applies the
+      // same validator, so leaving the field blank would throw at
+      // the service boundary and roll back uselessly).
+      const url = this.url.trim();
+      if (url.length === 0) return null;
+      return {
+        kind: "URLNode",
+        ...(weight === undefined || Number.isNaN(weight) ? {} : { weight }),
+        url,
+      };
+    }
     // BusinessScoreCardNode branch — unit + objective fields are
     // mandatory (mirroring the add-child contract); description stays
     // optional. computed / eligibleForParentComputation are checkboxes,
@@ -740,7 +818,8 @@ export class EditNodeModal extends LitElement {
       | "initialValue"
       | "targetValue"
       | "targetDate"
-      | "imageUrl",
+      | "imageUrl"
+      | "url",
   ): void {
     const target = e.target as HTMLInputElement | HTMLTextAreaElement;
     this[field] = target.value;
@@ -774,6 +853,7 @@ export class EditNodeModal extends LitElement {
       this.computed = false;
       this.eligibleForParentComputation = true;
       this.imageUrl = "";
+      this.url = "";
       return;
     }
     if (target.kind === "PictureNode") {
@@ -788,6 +868,23 @@ export class EditNodeModal extends LitElement {
       this.computed = false;
       this.eligibleForParentComputation = true;
       this.imageUrl = target.imageUrl;
+      this.url = "";
+      return;
+    }
+    if (target.kind === "URLNode") {
+      // SPEC §17.120 -- URL edit only surfaces weight + url; every
+      // other kind-specific seed stays cleared so a future kind
+      // switch on the modal cannot leak stale BSC / Picture seeds
+      // into the URL form.
+      this.description = "";
+      this.unit = "";
+      this.initialValue = "";
+      this.targetValue = "";
+      this.targetDate = "";
+      this.computed = false;
+      this.eligibleForParentComputation = true;
+      this.imageUrl = "";
+      this.url = target.url;
       return;
     }
     this.description = target.description;
@@ -798,6 +895,7 @@ export class EditNodeModal extends LitElement {
     this.computed = target.computed;
     this.eligibleForParentComputation = target.eligibleForParentComputation;
     this.imageUrl = "";
+    this.url = "";
   }
 
   private handleBackdropClick = (e: Event): void => {

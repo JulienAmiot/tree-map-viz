@@ -101,6 +101,7 @@ import type { Node } from "./domain/nodes/Node.js";
 import { PictureNode } from "./domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "./domain/nodes/StrictRangeNode.js";
 import { TextNode } from "./domain/nodes/TextNode.js";
+import { URLNode } from "./domain/nodes/URLNode.js";
 import { Tree } from "./domain/Tree.js";
 import { Timestamp } from "./domain/values/Timestamp.js";
 import { Weight } from "./domain/values/Weight.js";
@@ -465,6 +466,23 @@ function buildEditTarget(node: Node): EditNodeTarget | null {
       imageUrl: node.imageUrl,
     };
   }
+  // SPEC §17.120 — URLNode branch checked BEFORE TextNode (same
+  // reasoning as the §17.119 PictureNode branch above: URLNode is a
+  // ValueNode<string> subclass that is structurally distinct from
+  // TextNode, so surfacing it early keeps the read pattern
+  // consistent with `viewModelMapper`'s subclass-first ordering).
+  // The `url` field is read via the URLNode.url getter (which
+  // delegates to the inherited description slot per the §17.120
+  // contract).
+  if (node instanceof URLNode) {
+    return {
+      nodeId: node.id,
+      kind: "URLNode",
+      title: node.title,
+      weight: node.weight.value,
+      url: node.url,
+    };
+  }
   if (node instanceof TextNode) {
     return { nodeId: node.id, kind: "TextNode", title: node.title, weight: node.weight.value };
   }
@@ -506,6 +524,10 @@ function inferV4Kind(node: Node): EditNodePayload["kind"] | null {
   // ladder follows the existing subclass-first ordering
   // (ComputedBusinessScore before BusinessScore, etc.).
   if (node instanceof PictureNode) return "Picture";
+  // SPEC §17.120 — URLNode → "URL" kind tag, parity with PictureNode
+  // → "Picture". Checked before TextNode for the same subclass-first
+  // ordering reason as the §17.119 PictureNode branch above.
+  if (node instanceof URLNode) return "URL";
   if (node instanceof TextNode) return "TextNode";
   if (node instanceof ComputedBusinessScoreNode) return "ComputedBusinessScore";
   if (node instanceof BusinessScoreNode) return "BusinessScore";
@@ -568,6 +590,19 @@ function toAppAddChildPayload(payload: AddChildModalPayload, clock: Clock): AddC
       imageUrl: payload.imageUrl,
     };
   }
+  if (payload.kind === "URLNode") {
+    // SPEC §17.120 — modal-side "URLNode" kind rewrites to the
+    // application's "URL" kind tag. Parity with the §17.119
+    // PictureNode rewrite: same shape, same snapshot-leaf semantics
+    // (no history seed — URLNode is a ValueNode<string>, not a
+    // HistorizableValueNode<string>).
+    return {
+      kind: "URL",
+      title: payload.title,
+      weight: payload.weight,
+      url: payload.url,
+    };
+  }
   const objective = {
     value: payload.objective.targetValue,
     at: payload.objective.targetDate,
@@ -627,6 +662,19 @@ function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
       title: payload.title,
       weight: payload.weight,
       imageUrl: payload.imageUrl,
+    };
+  }
+  if (payload.kind === "URLNode") {
+    // SPEC §17.120 — modal-side "URLNode" → application "URL"
+    // kind tag. Parity with the §17.119 PictureNode rewrite —
+    // same title-forwarding rationale (the inline editor is
+    // canonical; leaving the field on the wire shape keeps a
+    // future "edit title in the modal" strand non-breaking).
+    return {
+      kind: "URL",
+      title: payload.title,
+      weight: payload.weight,
+      url: payload.url,
     };
   }
   return {

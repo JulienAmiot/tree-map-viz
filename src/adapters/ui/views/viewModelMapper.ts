@@ -18,6 +18,7 @@ import type { Node } from "../../../domain/nodes/Node.js";
 import { PictureNode } from "../../../domain/nodes/PictureNode.js";
 import { RangedValueNode } from "../../../domain/nodes/RangedValueNode.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
+import { URLNode } from "../../../domain/nodes/URLNode.js";
 import type { CardRegistry } from "../../../domain/Tree.js";
 import { Tree } from "../../../domain/Tree.js";
 
@@ -33,6 +34,7 @@ import type {
   FocusedTreeViewModel,
   NodeViewModel,
   PictureNodeViewModel,
+  URLNodeViewModel,
 } from "./NodeViewModel.js";
 
 /**
@@ -124,6 +126,14 @@ export function mapNodeToViewModel(
   // but still in O(1) instanceof time.
   if (node instanceof PictureNode) {
     return mapPictureNode(node);
+  }
+  // §17.120 — URLNode is also a `ValueNode<string>` snapshot leaf,
+  // structurally identical to PictureNode but rendered as a QR code
+  // instead of an `<img>`. Same precedence reasoning as PictureNode:
+  // late in the ladder, O(1) instanceof, no interference with the
+  // hot-path TextNode / RangedValueNode branches.
+  if (node instanceof URLNode) {
+    return mapURLNode(node);
   }
   throw new ViewModelMappingError(
     `viewModelMapperV4: unsupported v4 Node subclass "${node.constructor.name}"`,
@@ -410,6 +420,31 @@ function mapPictureNode(node: PictureNode): PictureNodeViewModel {
     id: node.id,
     title: node.title,
     imageUrl: node.imageUrl,
+  };
+}
+
+/**
+ * SPEC §17.120 — `URLNode` mapper. Trivial 1:1 projection mirroring
+ * the §17.119 PictureNode mapper: the domain already validated the
+ * URL at the node-construction seam, the view layer encodes the URL
+ * as a QR code (via the `qrcode` npm package) and falls back to the
+ * §17.44 warning glyph on QR-generation failure, and there's no
+ * timestamp / objective / colour computation to bake in. No `options`
+ * reads — `now` and `cards` don't affect a URL's projection.
+ *
+ * Note — the URL is read via `node.url` (the URLNode getter that
+ * surfaces the inherited description slot per §17.120), not
+ * `node.getDescription()`, even though the two return the same string
+ * today. Going through the typed getter keeps the mapper resilient
+ * to a future field-promotion refactor (if URLNode ever grows a
+ * dedicated `_url` slot, the mapper picks up the change automatically).
+ */
+function mapURLNode(node: URLNode): URLNodeViewModel {
+  return {
+    kind: "URLNode",
+    id: node.id,
+    title: node.title,
+    url: node.url,
   };
 }
 

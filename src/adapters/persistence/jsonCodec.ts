@@ -9,6 +9,7 @@ import type { Node } from "../../domain/nodes/Node.js";
 import { PictureNode } from "../../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../domain/nodes/TextNode.js";
+import { URLNode } from "../../domain/nodes/URLNode.js";
 import type { ValueNode } from "../../domain/nodes/ValueNode.js";
 import { Tree } from "../../domain/Tree.js";
 import { NumericComparator } from "../../domain/values/Comparator.js";
@@ -68,11 +69,18 @@ function encodeNode(node: Node): Record<string, unknown> {
   if (node instanceof BusinessScoreNode) return encodeBSN(node);
   if (node instanceof ComputedNode) return encodeCN(node);
   if (node instanceof StrictRangeNode) return encodeStrictRangeNode(node);
+  // §17.120 — URLNode is a subclass of ValueNode<string> structurally
+  // identical to PictureNode, so the instanceof ladder must check it
+  // BEFORE PictureNode (defensive, in case a future refactor makes the
+  // two share a common base). Order today is "first-match wins";
+  // URLNode and PictureNode share no inheritance so the precedence is
+  // a stylistic guard, not a correctness one.
+  if (node instanceof URLNode) return encodeURLNode(node);
   if (node instanceof PictureNode) return encodePictureNode(node);
   throw new JsonCodecEncodeError(`unsupported v4 Node subclass "${node.constructor.name}" (id="${node.id}")`);
 }
 
-function commonFields(node: TextNode | BusinessScoreNode<number> | ComputedNode<unknown> | StrictRangeNode<number> | PictureNode): Record<string, unknown> {
+function commonFields(node: TextNode | BusinessScoreNode<number> | ComputedNode<unknown> | StrictRangeNode<number> | PictureNode | URLNode): Record<string, unknown> {
   const out: Record<string, unknown> = {
     id: node.id,
     title: node.title,
@@ -151,6 +159,27 @@ function encodePictureNode(node: PictureNode): Record<string, unknown> {
   };
 }
 
+/**
+ * §17.120 — `URLNode` is a snapshot leaf (no history, no objective).
+ * The URL itself lives in the description slot per the operator's
+ * "the URL is in the description" contract, so the wire shape is
+ * the standard `commonFields` slice plus a `description: string` row
+ * (NO separate `url` field — the description IS the URL). This keeps
+ * the wire format orthogonal to the existing description-bearing
+ * kinds (StrictRangeNode / ComputedNode) and lets a future operator-
+ * triggered codec migration tooling reuse the same JSON-pointer for
+ * "show me every node's description" without a per-kind switch.
+ * Forward-compatible: a future `caption: string` field could land
+ * alongside the description without disturbing the existing rows.
+ */
+function encodeURLNode(node: URLNode): Record<string, unknown> {
+  return {
+    kind: "URLNode",
+    ...commonFields(node),
+    description: node.url,
+  };
+}
+
 function encodeRange(
   range: LenientRange<number> | StrictRange<number>,
   kind: "lenient" | "strict",
@@ -209,6 +238,13 @@ function decodeNode(raw: unknown, p: string, clock: Clock): Node {
     // standard non-empty-string guard and feed it to the constructor
     // (which re-validates synchronously — defence in depth at the seam).
     node = new PictureNode(id, title, w, requireString(obj, "imageUrl", p));
+  } else if (kind === "URLNode") {
+    // §17.120 — URLNode wire shape: `kind` + commonFields + `description`
+    // (the URL ships in the description slot per the operator's "URL is
+    // in the description" contract). `requireString` raises on missing /
+    // non-string / empty payloads at the seam; the URLNode constructor
+    // re-validates "non-empty after trim" defensively.
+    node = new URLNode(id, title, w, requireString(obj, "description", p));
   } else {
     throw new JsonCodecDecodeError(joinPointer(p, "kind"), `unknown kind "${kind}"`);
   }

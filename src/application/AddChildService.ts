@@ -9,6 +9,7 @@ import type { Node } from "../domain/nodes/Node.js";
 import { PictureNode } from "../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../domain/nodes/TextNode.js";
+import { URLNode } from "../domain/nodes/URLNode.js";
 import type { ValueNode } from "../domain/nodes/ValueNode.js";
 import { NumericComparator } from "../domain/values/Comparator.js";
 import { Objective } from "../domain/values/Objective.js";
@@ -83,6 +84,21 @@ export type AddChildPayload =
       readonly title: string;
       readonly weight?: number;
       readonly imageUrl: string;
+      readonly disabled?: boolean;
+    }
+  | {
+      /**
+       * SPEC §17.120 — snapshot leaf carrying a single URL the view
+       * layer renders as a QR code. The URL lives in the inherited
+       * description slot (per the operator's "URL is in the description"
+       * contract); the modal collects title + weight + url and that
+       * is the full surface (no separate description field — entering
+       * the URL IS entering the description).
+       */
+      readonly kind: "URL";
+      readonly title: string;
+      readonly weight?: number;
+      readonly url: string;
       readonly disabled?: boolean;
     };
 
@@ -162,6 +178,11 @@ export class AddChildService {
     }
     if (payload.kind === "Picture") {
       const node = new PictureNode(id, title, weight, payload.imageUrl);
+      AddChildService.applyDisabled(node, payload.disabled);
+      return node;
+    }
+    if (payload.kind === "URL") {
+      const node = new URLNode(id, title, weight, payload.url);
       AddChildService.applyDisabled(node, payload.disabled);
       return node;
     }

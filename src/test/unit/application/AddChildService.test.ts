@@ -13,6 +13,7 @@ import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
 import { PictureNode } from "../../../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
+import { URLNode } from "../../../domain/nodes/URLNode.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
 import { Weight } from "../../../domain/values/Weight.js";
 
@@ -265,6 +266,71 @@ describe("AddChildService (§17.100a — Phase C skeleton + 2 v3-compat kinds)",
     // No attach happened; persist was never called.
     expect(parent.children).toHaveLength(0);
     expect(persist).not.toHaveBeenCalled();
+  });
+
+  it("URL (§17.120) — constructs a URLNode with the url in the description slot + applies disabled + persists", async () => {
+    const parent = makeRoot();
+    const r = await svc.addChild(parent, {
+      kind: "URL",
+      title: "Docs",
+      weight: 3,
+      url: "https://example.com/docs",
+      disabled: true,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const u = r.child as URLNode;
+      expect(u).toBeInstanceOf(URLNode);
+      expect(u.title).toBe("Docs");
+      expect(u.weight.value).toBe(3);
+      expect(u.url).toBe("https://example.com/docs");
+      // SPEC §17.120 — the URL ends up in the description slot too,
+      // because the URLNode constructor seeds `_description` with the
+      // (trimmed) URL.
+      expect(u.getDescription()).toBe("https://example.com/docs");
+      expect(u.disabled).toBe(true);
+      expect(u.parent).toBe(parent);
+    }
+    expect(persist).toHaveBeenCalledTimes(1);
+  });
+
+  it("URL (§17.120) — rejects an empty url synchronously (domain guard fires before attach)", async () => {
+    const parent = makeRoot();
+    const r = await svc.addChild(parent, {
+      kind: "URL",
+      title: "Docs",
+      url: "   ",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/url|cannot be empty/i);
+    expect(parent.children).toHaveLength(0);
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it("URL (§17.120) — defaults weight to 1 and disabled to false when omitted", async () => {
+    const parent = makeRoot();
+    const r = await svc.addChild(parent, {
+      kind: "URL",
+      title: "Docs",
+      url: "https://example.com",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const u = r.child as URLNode;
+      expect(u.weight.value).toBe(1);
+      expect(u.disabled).toBe(false);
+    }
+  });
+
+  it("URL (§17.120) — trims the title before validating, matching every other kind", async () => {
+    const parent = makeRoot();
+    const r = await svc.addChild(parent, {
+      kind: "URL",
+      title: "   ",
+      url: "https://example.com",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/title/i);
   });
 
   it("persistence boundary — rolls back attach if persist throws (atomicity); uses injected idGen verbatim", async () => {

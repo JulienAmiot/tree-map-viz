@@ -27,6 +27,8 @@ import "./PictureNode/PictureNodeAsChild.js";
 import "./PictureNode/PictureNodeAsParent.js";
 import "./TextNode/TextNodeAsChild.js";
 import "./TextNode/TextNodeAsParent.js";
+import "./URLNode/URLNodeAsChild.js";
+import "./URLNode/URLNodeAsParent.js";
 import "./plus/PlusTile.js";
 
 import { nodeViewRegistry } from "./nodeViewRegistry.js";
@@ -53,6 +55,14 @@ if (!nodeViewRegistry.isFrozen()) {
     asParent: "picture-node-as-parent",
     asChild: "picture-node-as-child",
   });
+  // §17.120 — URLNode strand. Same role split as PictureNode: parent
+  // exposes the inline title-edit affordance, child stays read-only.
+  // Both roles render the same QR-code `<img>` (object-fit: contain)
+  // with a `warning-fill` fallback on generation failure.
+  nodeViewRegistry.register("URLNode", {
+    asParent: "url-node-as-parent",
+    asChild: "url-node-as-child",
+  });
   nodeViewRegistry.freeze();
 }
 
@@ -70,6 +80,7 @@ export type {
   NodeViewModel,
   PictureNodeViewModel,
   TextNodeViewModel,
+  URLNodeViewModel,
 } from "./NodeViewModel.js";
 export { nodeViewRegistry, NodeViewRegistryError } from "./nodeViewRegistry.js";
 export { COMPUTATION_KIND_CHANGE_EVENT, type ComputationKindChangeDetail } from "./ComputedNode/ComputedCards.js";
