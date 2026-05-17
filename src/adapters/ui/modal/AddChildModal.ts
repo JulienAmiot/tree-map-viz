@@ -77,7 +77,7 @@
  *     it has zero pointer-event surface in the at-rest state and the
  *     focused parent strip + children grid stay fully interactive.
  *
- * Defaults (mirroring `AddChildPayload` optional fields):
+ * Defaults (mirroring `AddChildModalPayload` optional fields):
  *   - Text: title + a **mandatory current value** (the seed
  *     `TimestampedValue<string>` of the otherwise-empty `TextCard`
  *     history, SPEC §17.14) are required. Weight is **pre-filled with
@@ -127,19 +127,24 @@ export const ADD_CHILD_CANCEL_EVENT = "add-child-cancel";
  * Plain-data payload the modal dispatches on confirm. v3 used to host
  * this type on `AddChildService`; §17.112 v3 sweep moved it here so the
  * modal owns its own outbound contract and main.ts's translation shim
- * `toV4AddChildPayload` consumes it from the adapter side without
+ * `toAppAddChildPayload` consumes it from the adapter side without
  * crossing back into a (now-deleted) v3 application service.
  *
  * The shape mirrors the v3 modal contract verbatim (v3-compat 2-kind
  * union `TextNode` / `BusinessScoreCardNode`); main.ts rewrites it to
- * the v4 payload before handing off to `AddChildService`. Optional
- * fields default sensibly at the modal/service boundary (weight=1,
- * description="", computed=false, eligibleForParentComputation=true,
- * empty initial history). TextNode intentionally has no description
- * (the latest history `TimestampedValue<string>` IS the description
- * per §17.15).
+ * the application's 5-kind `AddChildPayload` before handing off to
+ * `AddChildService`. Renamed `AddChildPayload` → `AddChildModalPayload`
+ * at §17.114-followup-payloads to free the unsuffixed canonical name
+ * for the application-layer payload (the modal layer's shape is the
+ * v3-compat 2-kind union it has always been; the round-7 leaf kinds
+ * land on the application side first and reach the modal in a future
+ * UI strand). Optional fields default sensibly at the modal/service
+ * boundary (weight=1, description="", computed=false,
+ * eligibleForParentComputation=true, empty initial history). TextNode
+ * intentionally has no description (the latest history
+ * `TimestampedValue<string>` IS the description per §17.15).
  */
-export type AddChildPayload =
+export type AddChildModalPayload =
   | {
       readonly kind: "TextNode";
       readonly title: string;
@@ -162,11 +167,11 @@ export type AddChildPayload =
       readonly initialHistory?: readonly { readonly value: number; readonly asOf: Date }[];
     };
 
-export type AddChildKind = AddChildPayload["kind"];
+export type AddChildKind = AddChildModalPayload["kind"];
 
 export type AddChildConfirmDetail = {
   readonly parentId: string;
-  readonly payload: AddChildPayload;
+  readonly payload: AddChildModalPayload;
 };
 
 /**
@@ -200,6 +205,18 @@ const KIND_OPTIONS: readonly KindOption[] = [
 export const ALL_ADD_CHILD_KINDS: readonly AddChildKind[] = KIND_OPTIONS.map(
   (o) => o.kind,
 );
+
+/**
+ * Parse a `YYYY-MM-DD` value from a native `<input type="date">` into
+ * a UTC midnight `Date`. Returns `null` when the input is empty / the
+ * parsed timestamp is NaN — the modal's gating predicates treat both
+ * as "field not yet filled" so Confirm stays disabled.
+ */
+function parseIsoDateInput(value: string): Date | null {
+  if (!value) return null;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
 
 @customElement("add-child-modal")
 export class AddChildModal extends LitElement {
@@ -917,78 +934,78 @@ export class AddChildModal extends LitElement {
     );
   };
 
-  private buildPayload(): AddChildPayload | null {
+  private buildPayload(): AddChildModalPayload | null {
     const title = this.formTitle.trim();
-    if (!title) {
-      return null;
-    }
-    const description = this.description.trim() || undefined;
+    if (!title) return null;
     const weight = this.weight.trim() === "" ? undefined : Number(this.weight);
     if (this.chosenKind === "TextNode") {
-      // SPEC §17.14 — Text nodes require a seed `TimestampedValue<string>`
-      // so the rendered tile has a value/timestamp instead of throwing.
-      // The seed is mandatory; gating mirrors BSC's §17.13 contract.
-      // SPEC §17.15 — the current value IS the TextNode's description, so
-      // the form deliberately omits a separate description field. The
-      // payload reflects that: no `description` key here.
-      const currentText = this.currentValue;
-      const currentAsOf = this.currentValueDate
-        ? new Date(`${this.currentValueDate}T00:00:00.000Z`)
-        : null;
-      if (
-        currentText.length === 0 ||
-        currentAsOf === null ||
-        Number.isNaN(currentAsOf.getTime())
-      ) {
-        return null;
-      }
-      return {
-        kind: "TextNode",
-        title,
-        ...(weight === undefined ? {} : { weight }),
-        initialHistory: [{ value: currentText, asOf: currentAsOf }],
-      };
+      return this.buildTextNodePayload(title, weight);
     }
     if (this.chosenKind === "BusinessScoreCardNode") {
-      const unit = this.unit.trim();
-      const initialValue = Number(this.initialValue);
-      const targetValue = Number(this.targetValue);
-      const targetDate = this.targetDate
-        ? new Date(`${this.targetDate}T00:00:00.000Z`)
-        : null;
-      // Mandatory seed for the otherwise-empty TimestampedValue history
-      // (SPEC §17.13). Confirm stays disabled until both halves are filled.
-      const currentValueRaw = this.currentValue.trim();
-      const currentValue = Number(this.currentValue);
-      const currentAsOf = this.currentValueDate
-        ? new Date(`${this.currentValueDate}T00:00:00.000Z`)
-        : null;
-      if (
-        !unit ||
-        Number.isNaN(initialValue) ||
-        Number.isNaN(targetValue) ||
-        targetDate === null ||
-        Number.isNaN(targetDate.getTime()) ||
-        currentValueRaw === "" ||
-        Number.isNaN(currentValue) ||
-        currentAsOf === null ||
-        Number.isNaN(currentAsOf.getTime())
-      ) {
-        return null;
-      }
-      return {
-        kind: "BusinessScoreCardNode",
-        title,
-        ...(description === undefined ? {} : { description }),
-        ...(weight === undefined ? {} : { weight }),
-        unit,
-        objective: { initialValue, targetValue, targetDate },
-        computed: this.computed,
-        eligibleForParentComputation: this.eligibleForParentComputation,
-        initialHistory: [{ value: currentValue, asOf: currentAsOf }],
-      };
+      const description = this.description.trim() || undefined;
+      return this.buildBscPayload(title, description, weight);
     }
     return null;
+  }
+
+  /**
+   * SPEC §17.14 + §17.15 — TextNode requires a seed
+   * `TimestampedValue<string>` so the rendered tile has a value /
+   * timestamp instead of throwing; the current value IS the
+   * description (§17.15), so the form deliberately omits a separate
+   * description field (the payload reflects that — no `description`
+   * key). Returns `null` when either half of the seed is missing /
+   * invalid so `canConfirm()` keeps the Confirm button disabled.
+   */
+  private buildTextNodePayload(title: string, weight: number | undefined): AddChildModalPayload | null {
+    const currentText = this.currentValue;
+    const currentAsOf = parseIsoDateInput(this.currentValueDate);
+    if (currentText.length === 0 || currentAsOf === null) return null;
+    return {
+      kind: "TextNode",
+      title,
+      ...(weight === undefined ? {} : { weight }),
+      initialHistory: [{ value: currentText, asOf: currentAsOf }],
+    };
+  }
+
+  /**
+   * SPEC §17.13 — a fresh BSC needs both the objective triplet
+   * (initialValue / targetValue / targetDate) AND the current-value
+   * seed (currentValue / currentValueDate) before the modal can
+   * dispatch. Returns `null` when any half is missing / invalid so
+   * `canConfirm()` keeps the Confirm button disabled.
+   */
+  private buildBscPayload(
+    title: string,
+    description: string | undefined,
+    weight: number | undefined,
+  ): AddChildModalPayload | null {
+    const unit = this.unit.trim();
+    const initialValue = Number(this.initialValue);
+    const targetValue = Number(this.targetValue);
+    const targetDate = parseIsoDateInput(this.targetDate);
+    const currentValueRaw = this.currentValue.trim();
+    const currentValue = Number(this.currentValue);
+    const currentAsOf = parseIsoDateInput(this.currentValueDate);
+    if (
+      !unit ||
+      Number.isNaN(initialValue) || Number.isNaN(targetValue) || targetDate === null ||
+      currentValueRaw === "" || Number.isNaN(currentValue) || currentAsOf === null
+    ) {
+      return null;
+    }
+    return {
+      kind: "BusinessScoreCardNode",
+      title,
+      ...(description === undefined ? {} : { description }),
+      ...(weight === undefined ? {} : { weight }),
+      unit,
+      objective: { initialValue, targetValue, targetDate },
+      computed: this.computed,
+      eligibleForParentComputation: this.eligibleForParentComputation,
+      initialHistory: [{ value: currentValue, asOf: currentAsOf }],
+    };
   }
 
   private canConfirm(): boolean {

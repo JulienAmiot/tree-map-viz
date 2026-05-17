@@ -24,16 +24,18 @@
  *
  * **Modal payload translation shims** — `EditNodeModal` / `AddChildModal`
  * still emit v3-shaped payloads (the v4-native modal migration is a
- * follow-on strand). `toV4AddChildPayload` + `toV4EditPayload` rewrite
- * the kind tag (`BusinessScoreCardNode` → `BusinessScore` or
+ * follow-on strand). `toAppAddChildPayload` + `toAppEditPayload`
+ * rewrite the kind tag (`BusinessScoreCardNode` → `BusinessScore` or
  * `ComputedBusinessScore` when `computed:true`, defaulting to
  * `ComputationKind.AVERAGE` per the §17.99c migration choice) and the
  * objective shape (`{initialValue, targetValue, targetDate}` →
  * `{value: targetValue, at: targetDate}`; `initialValue` becomes the
- * `initialHistory` seed on Add when absent). The two payload types
- * (`AddChildPayload`, `EditNodePayload`) moved from the (deleted)
- * v3 application services into the modal files themselves in this
- * strand — adapter-owned outbound contracts, no application reach.
+ * `initialHistory` seed on Add when absent). The two modal payload
+ * types (`AddChildModalPayload`, `EditNodeModalPayload`) live in the
+ * modal files themselves (adapter-owned outbound contracts, no
+ * application reach); the canonical `AddChildPayload` / `EditNodePayload`
+ * names belong to the application-layer 5-kind unions
+ * (§17.114-followup-payloads).
  *
  * **`computation-kind-change` wiring** — §17.104 `<computed-card>` /
  * `<computed-business-score-card>` dispatch this event on the
@@ -47,7 +49,7 @@ import { createJsonCodec } from "./adapters/persistence/jsonCodec.js";
 import { HashRouter } from "./adapters/routing/HashRouter.js";
 import type {
   AddChildConfirmDetail,
-  AddChildPayload,
+  AddChildModalPayload,
 } from "./adapters/ui/modal/AddChildModal.js";
 import type {
   BoardSettingsConfirmDetail,
@@ -59,7 +61,7 @@ import type {
 } from "./adapters/ui/modal/BoardsPanelModal.js";
 import type {
   EditNodeConfirmDetail,
-  EditNodePayload,
+  EditNodeModalPayload,
   EditNodeTarget,
 } from "./adapters/ui/modal/EditNodeModal.js";
 import type {
@@ -81,12 +83,12 @@ import type { InlineEditValueDetail } from "./adapters/ui/views/inlineEditEvents
 import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
 import {
   AddChildService,
-  type AddChildPayloadV4,
+  type AddChildPayload,
 } from "./application/AddChildService.js";
 import { BoardCollectionService } from "./application/BoardCollectionService.js";
 import {
   EditNodeService,
-  type EditNodePayloadV4,
+  type EditNodePayload,
 } from "./application/EditNodeService.js";
 import { ImportExportService } from "./application/ImportExportService.js";
 import { TreeNavigationService } from "./application/TreeNavigationService.js";
@@ -164,7 +166,7 @@ async function main(): Promise<void> {
         screen.setAddChildError(`Parent node "${detail.parentId}" not found.`);
         return;
       }
-      const result = await addChildSvc.addChild(parent, toV4AddChildPayload(detail.payload, clock));
+      const result = await addChildSvc.addChild(parent, toAppAddChildPayload(detail.payload, clock));
       if (!result.ok) {
         screen.setAddChildError(result.reason);
         return;
@@ -209,7 +211,7 @@ async function main(): Promise<void> {
         screen.setEditNodeError(`Node "${detail.nodeId}" not found.`);
         return;
       }
-      const result = await editNodeSvc.editFields(node, toV4EditPayload(detail.payload), {
+      const result = await editNodeSvc.editFields(node, toAppEditPayload(detail.payload), {
         cards: boards.getCurrentBoard().tree.cards,
       });
       if (!result.ok) {
@@ -228,7 +230,7 @@ async function main(): Promise<void> {
       if (!node) return;
       const kind = inferV4Kind(node);
       if (!kind) return;
-      await editNodeSvc.editFields(node, { kind, title: detail.title } as EditNodePayloadV4);
+      await editNodeSvc.editFields(node, { kind, title: detail.title } as EditNodePayload);
       refresh();
     })();
   });
@@ -250,7 +252,7 @@ async function main(): Promise<void> {
       if (!node) return;
       const kind = inferV4Kind(node);
       if (!kind) return;
-      await editNodeSvc.editFields(node, { kind, weight: detail.weight } as EditNodePayloadV4);
+      await editNodeSvc.editFields(node, { kind, weight: detail.weight } as EditNodePayload);
       refresh();
     })();
   });
@@ -271,7 +273,7 @@ async function main(): Promise<void> {
       if (!computationKind) return;
       const kind = computedKindFor(node);
       if (!kind) return;
-      await editNodeSvc.editFields(node, { kind, computationKind } as EditNodePayloadV4);
+      await editNodeSvc.editFields(node, { kind, computationKind } as EditNodePayload);
       refresh();
     })();
   });
@@ -480,10 +482,10 @@ function computedKindFor(node: Node): "Computed" | "ComputedBusinessScore" | nul
 
 /**
  * SPEC §17.110 — per-kind discriminator used by the inline edit
- * paths. Returns the v4 service's kind tag (or `null` for the
- * three round-7 leaf kinds the inline UIs don't surface yet).
+ * paths. Returns the application service's kind tag (or `null` for
+ * the three round-7 leaf kinds the inline UIs don't surface yet).
  */
-function inferV4Kind(node: Node): EditNodePayloadV4["kind"] | null {
+function inferV4Kind(node: Node): EditNodePayload["kind"] | null {
   if (node instanceof TextNode) return "TextNode";
   if (node instanceof ComputedBusinessScoreNode) return "ComputedBusinessScore";
   if (node instanceof BusinessScoreNode) return "BusinessScore";
@@ -516,15 +518,15 @@ function makeNewBoardSeedTree(boardName: string, idGen: () => string, clock: Clo
 }
 
 /**
- * SPEC §17.110 — `AddChildModal` still emits v3-shaped
- * `AddChildPayload`. Map to v4: `BusinessScoreCardNode` →
- * `BusinessScore` (or `ComputedBusinessScore` when `computed:true`,
- * defaulting to `ComputationKind.AVERAGE` per the §17.99c bridge
- * choice); v3 `objective.initialValue` becomes an `initialHistory`
- * seed entry stamped at `clock.now()` when no explicit history
- * was provided.
+ * SPEC §17.110 — `AddChildModal` still emits the v3-shaped
+ * `AddChildModalPayload`. Map to the application's
+ * `AddChildPayload`: `BusinessScoreCardNode` → `BusinessScore`
+ * (or `ComputedBusinessScore` when `computed:true`, defaulting to
+ * `ComputationKind.AVERAGE` per the §17.99c bridge choice); v3
+ * `objective.initialValue` becomes an `initialHistory` seed entry
+ * stamped at `clock.now()` when no explicit history was provided.
  */
-function toV4AddChildPayload(payload: AddChildPayload, clock: Clock): AddChildPayloadV4 {
+function toAppAddChildPayload(payload: AddChildModalPayload, clock: Clock): AddChildPayload {
   if (payload.kind === "TextNode") {
     return {
       kind: "TextNode",
@@ -565,16 +567,17 @@ function toV4AddChildPayload(payload: AddChildPayload, clock: Clock): AddChildPa
 }
 
 /**
- * SPEC §17.110 — `EditNodeModal` still emits v3-shaped
- * `EditNodePayload`. Map to v4: rename `BusinessScoreCardNode` kind
- * to `BusinessScore`; drop the v3 `initialValue` field (v4 makes
+ * SPEC §17.110 — `EditNodeModal` still emits the v3-shaped
+ * `EditNodeModalPayload`. Map to the application's
+ * `EditNodePayload`: rename `BusinessScoreCardNode` kind to
+ * `BusinessScore`; drop the v3 `initialValue` field (v4 makes
  * history canonical and edits never re-seed initial history);
  * rewrite the objective shape; ignore v3-only `computed` /
  * `eligibleForParentComputation` flags on the edit path (kind
- * morphing isn't allowed by the v4 service — the §17.99c migration
- * already pinned the kind at load).
+ * morphing isn't allowed by the application service — the §17.99c
+ * migration already pinned the kind at load).
  */
-function toV4EditPayload(payload: EditNodePayload): EditNodePayloadV4 {
+function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
   if (payload.kind === "TextNode") {
     return { kind: "TextNode", title: payload.title, weight: payload.weight };
   }

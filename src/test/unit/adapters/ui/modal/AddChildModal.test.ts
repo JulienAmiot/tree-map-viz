@@ -813,7 +813,7 @@ describe("<add-child-modal> weight slider + numeric pair (SPEC §17.26)", () => 
     ).toBe("7");
   });
 
-  it("the slider value flows through to the AddChildPayload.weight", async () => {
+  it("the slider value flows through to the AddChildModalPayload.weight", async () => {
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {

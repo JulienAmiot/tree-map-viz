@@ -8,8 +8,9 @@
  *
  * Why a dedicated modal instead of a `mode: "add" | "edit"` flag on
  * `<add-child-modal>`:
- *   - The two flows have **different** payload shapes (`AddChildPayload`
- *     vs `EditNodePayload`), different mandatory fields (a fresh BSC
+ *   - The two flows have **different** payload shapes
+ *     (`AddChildModalPayload` vs `EditNodeModalPayload`), different
+ *     mandatory fields (a fresh BSC
  *     needs a current-value seed, an edited BSC keeps its history
  *     untouched), and different "what's locked" rules (the kind is
  *     mutable on add, locked on edit). Conditionalising one component
@@ -60,7 +61,7 @@
  *     Required when `open=true`; the modal initialises its form state
  *     from this on every open.
  *   - dispatches `edit-node-confirm`
- *     `CustomEvent<{ nodeId, payload: EditNodePayload }>` on confirm.
+ *     `CustomEvent<{ nodeId, payload: EditNodeModalPayload }>` on confirm.
  *   - dispatches `edit-node-cancel` `CustomEvent<void>` on Cancel /
  *     Escape / backdrop tap / close-X (SPEC §17.29 — every modal in
  *     the app carries a top-right close-X via `modalFrameStyles`).
@@ -86,15 +87,19 @@ export const EDIT_NODE_CANCEL_EVENT = "edit-node-cancel";
  * Partial-edit payload the modal dispatches on confirm. v3 used to host
  * this type on `EditNodeService`; §17.112 v3 sweep moved it here so the
  * modal owns its own outbound contract and main.ts's translation shim
- * `toV4EditPayload` consumes it from the adapter side without crossing
+ * `toAppEditPayload` consumes it from the adapter side without crossing
  * back into a (now-deleted) v3 application service. Shape is the v3
  * 2-kind union verbatim (`TextNode` / `BusinessScoreCardNode`); main.ts
- * rewrites to v4 before handing off to `EditNodeService`. The v3
- * §17.28 contract still applies on the modal side: kind is required
+ * rewrites to the application's 5-kind `EditNodePayload` before handing
+ * off to `EditNodeService`. Renamed `EditNodePayload` →
+ * `EditNodeModalPayload` at §17.114-followup-payloads to free the
+ * unsuffixed canonical name for the application-layer payload (mirrors
+ * the parallel `AddChildModalPayload` rename in `AddChildModal.ts`).
+ * The §17.28 contract still applies on the modal side: kind is required
  * and must match the target's existing kind; history is appended via
  * the inline value-edit seam, not through this payload.
  */
-export type EditNodePayload =
+export type EditNodeModalPayload =
   | {
       readonly kind: "TextNode";
       readonly title?: string;
@@ -142,7 +147,7 @@ export type EditNodeTarget =
 
 export type EditNodeConfirmDetail = {
   readonly nodeId: string;
-  readonly payload: EditNodePayload;
+  readonly payload: EditNodeModalPayload;
 };
 
 const KIND_LABELS: Record<EditNodeTarget["kind"], string> = {
@@ -605,7 +610,7 @@ export class EditNodeModal extends LitElement {
     );
   };
 
-  private buildPayload(): EditNodePayload | null {
+  private buildPayload(): EditNodeModalPayload | null {
     if (!this.editTarget) {
       return null;
     }

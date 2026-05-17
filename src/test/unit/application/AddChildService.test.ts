@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AddChildService } from "../../../application/AddChildService.js";
-import type { AddChildPayloadV4 } from "../../../application/AddChildService.js";
+import type { AddChildPayload } from "../../../application/AddChildService.js";
 import type { IdGenerator } from "../../../application/ports/IdGenerator.js";
 import type { Clock } from "../../../domain/capabilities/Clock.js";
 import { MAX_CHILDREN } from "../../../domain/capacity/childrenCapacity.js";
@@ -28,7 +28,7 @@ const fillToCap = (parent: TextNode): void => {
   }
 };
 
-const validBsc: AddChildPayloadV4 = {
+const validBsc: AddChildPayload = {
   kind: "BusinessScore",
   title: "Revenue",
   description: "Monthly revenue",
@@ -125,7 +125,7 @@ describe("AddChildService (§17.100a — Phase C skeleton + 2 v3-compat kinds)",
 
   it("payload validation — empty/whitespace title, non-positive weight, unknown kind all → { ok: false } with no mutation", async () => {
     const parent = makeRoot();
-    const cases: AddChildPayloadV4[] = [
+    const cases: AddChildPayload[] = [
       { kind: "TextNode", title: "" },
       { kind: "TextNode", title: "   " },
       { kind: "TextNode", title: "Bad weight", weight: 0 },

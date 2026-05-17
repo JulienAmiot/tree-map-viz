@@ -34,14 +34,14 @@ type CommonEdit = {
 };
 type BSEdit = { readonly unit?: string; readonly objective?: { readonly value: number; readonly at: Date } };
 type ComputedEdit = { readonly computationKind?: ComputationKind };
-export type EditNodePayloadV4 =
+export type EditNodePayload =
   | (CommonEdit & { readonly kind: "TextNode" })
   | (CommonEdit & BSEdit & { readonly kind: "BusinessScore" })
   | (CommonEdit & { readonly kind: "StrictRange" })
   | (CommonEdit & ComputedEdit & { readonly kind: "Computed" })
   | (CommonEdit & BSEdit & ComputedEdit & { readonly kind: "ComputedBusinessScore" });
 
-type OutcomeV4 =
+type Outcome =
   | { readonly ok: true; readonly node: Node }
   | { readonly ok: false; readonly reason: string };
 
@@ -61,7 +61,7 @@ export class EditNodeService {
     private readonly persist: Persister,
   ) {}
 
-  async editFields(node: Node, payload: EditNodePayloadV4, options: { cards?: CardRegistry } = {}): Promise<OutcomeV4> {
+  async editFields(node: Node, payload: EditNodePayload, options: { cards?: CardRegistry } = {}): Promise<Outcome> {
     const kindCheck = EditNodeService.kindMatches(node, payload.kind);
     if (!kindCheck.ok) return kindCheck;
     const { undo, error } = this.tryApplyFields(node, payload, options.cards);
@@ -71,7 +71,7 @@ export class EditNodeService {
     return { ok: true, node };
   }
 
-  async appendValue(node: Node, value: string | number, asOf?: Date): Promise<OutcomeV4> {
+  async appendValue(node: Node, value: string | number, asOf?: Date): Promise<Outcome> {
     const stampedAt = asOf ? Timestamp.of(asOf) : this.clock.now();
     let undo: () => void;
     try { undo = EditNodeService.applyAppendValue(node, value, stampedAt); }
@@ -83,7 +83,7 @@ export class EditNodeService {
 
   private tryApplyFields(
     node: Node,
-    payload: EditNodePayloadV4,
+    payload: EditNodePayload,
     cards: CardRegistry | undefined,
   ): { undo: () => void; error: unknown } {
     const undos: Array<() => void> = [];
@@ -102,7 +102,7 @@ export class EditNodeService {
     return { undo, error: null };
   }
 
-  private static applyCommonEdits(node: Node, payload: EditNodePayloadV4, undos: Array<() => void>): void {
+  private static applyCommonEdits(node: Node, payload: EditNodePayload, undos: Array<() => void>): void {
     if (payload.title !== undefined) {
       const t = payload.title.trim();
       if (t === "") throw new Error("Title cannot be empty");
@@ -173,12 +173,12 @@ export class EditNodeService {
     throw new Error(`appendValue: unsupported (node="${node.constructor.name}", value type="${typeof value}")`);
   }
 
-  private static kindMatches(node: Node, kind: EditNodePayloadV4["kind"]): { ok: true } | { ok: false; reason: string } {
+  private static kindMatches(node: Node, kind: EditNodePayload["kind"]): { ok: true } | { ok: false; reason: string } {
     if (node.constructor === EditNodeService.classFor(kind)) return { ok: true };
     return { ok: false, reason: `Edit kind "${kind}" does not match node "${node.id}" runtime class "${node.constructor.name}"` };
   }
 
-  private static classFor(kind: EditNodePayloadV4["kind"]): new (...args: never[]) => Node {
+  private static classFor(kind: EditNodePayload["kind"]): new (...args: never[]) => Node {
     switch (kind) {
       case "TextNode": return TextNode;
       case "BusinessScore": return BusinessScoreNode;
