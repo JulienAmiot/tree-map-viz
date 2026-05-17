@@ -1,15 +1,15 @@
 import type { Tree } from "../domain/Tree.js";
 
 import type {
-  BoardV4,
-  BoardCollectionRepositoryV4,
-  BoardCollectionSnapshotV4,
-} from "./ports/BoardCollectionRepositoryV4.js";
+  Board,
+  BoardCollectionRepository,
+  BoardCollectionSnapshot,
+} from "./ports/BoardCollectionRepository.js";
 import type { IdGenerator } from "./ports/IdGenerator.js";
 
 type Outcome<T = void> = T extends void
   ? { readonly ok: true } | { readonly ok: false; readonly reason: string }
-  : { readonly ok: true; readonly board: BoardV4 } | { readonly ok: false; readonly reason: string };
+  : { readonly ok: true; readonly board: Board } | { readonly ok: false; readonly reason: string };
 
 /**
  * v4 successor to `BoardCollectionService` (SPEC §17.102). Same
@@ -21,14 +21,14 @@ type Outcome<T = void> = T extends void
  * Parallel-additive to v3 `BoardCollectionService` per §17.94 Phase C
  * — v3 stays live in `main.ts` until §17.110 Phase E cutover.
  */
-export class BoardCollectionServiceV4 {
-  private boards: BoardV4[];
+export class BoardCollectionService {
+  private boards: Board[];
   private currentBoardId: string;
 
   private constructor(
-    private readonly repo: BoardCollectionRepositoryV4,
+    private readonly repo: BoardCollectionRepository,
     private readonly idGen: IdGenerator,
-    boards: readonly BoardV4[],
+    boards: readonly Board[],
     currentBoardId: string,
   ) {
     this.boards = [...boards];
@@ -36,19 +36,19 @@ export class BoardCollectionServiceV4 {
   }
 
   static async create(
-    repo: BoardCollectionRepositoryV4,
+    repo: BoardCollectionRepository,
     idGen: IdGenerator,
-  ): Promise<BoardCollectionServiceV4> {
+  ): Promise<BoardCollectionService> {
     const snapshot = await repo.load();
-    return new BoardCollectionServiceV4(repo, idGen, snapshot.boards, snapshot.currentBoardId);
+    return new BoardCollectionService(repo, idGen, snapshot.boards, snapshot.currentBoardId);
   }
 
-  list(): readonly BoardV4[] { return [...this.boards]; }
+  list(): readonly Board[] { return [...this.boards]; }
   getCurrentBoardId(): string { return this.currentBoardId; }
 
-  getCurrentBoard(): BoardV4 {
+  getCurrentBoard(): Board {
     const found = this.boards.find((b) => b.id === this.currentBoardId);
-    if (!found) throw new Error(`BoardCollectionServiceV4 invariant violated: currentBoardId='${this.currentBoardId}' has no matching board.`);
+    if (!found) throw new Error(`BoardCollectionService invariant violated: currentBoardId='${this.currentBoardId}' has no matching board.`);
     return found;
   }
 
@@ -71,10 +71,10 @@ export class BoardCollectionServiceV4 {
     return { ok: true };
   }
 
-  async createBoard(name: string, tree: Tree): Promise<Outcome<BoardV4>> {
+  async createBoard(name: string, tree: Tree): Promise<Outcome<Board>> {
     const trimmed = name.trim();
     if (trimmed.length === 0) return { ok: false, reason: "Board name cannot be empty." };
-    const board: BoardV4 = { id: this.idGen(), name: trimmed, tree };
+    const board: Board = { id: this.idGen(), name: trimmed, tree };
     this.boards.push(board);
     this.currentBoardId = board.id;
     await this.persist();
@@ -100,7 +100,7 @@ export class BoardCollectionServiceV4 {
   /** SPEC §17.33 (v4) — atomically swap the current board's tree (used by Import). */
   async replaceCurrentTree(tree: Tree): Promise<void> {
     const idx = this.boards.findIndex((b) => b.id === this.currentBoardId);
-    if (idx === -1) throw new Error(`BoardCollectionServiceV4 invariant violated: currentBoardId='${this.currentBoardId}' has no matching board.`);
+    if (idx === -1) throw new Error(`BoardCollectionService invariant violated: currentBoardId='${this.currentBoardId}' has no matching board.`);
     const existing = this.boards[idx];
     this.boards[idx] = { id: existing.id, name: existing.name, tree };
     await this.persist();
@@ -119,7 +119,7 @@ export class BoardCollectionServiceV4 {
   }
 
   private async persist(): Promise<void> {
-    const snapshot: BoardCollectionSnapshotV4 = {
+    const snapshot: BoardCollectionSnapshot = {
       boards: [...this.boards],
       currentBoardId: this.currentBoardId,
     };

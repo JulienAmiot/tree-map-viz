@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { BoardCollectionServiceV4 } from "../../../application/BoardCollectionServiceV4.js";
+import { BoardCollectionService } from "../../../application/BoardCollectionService.js";
 import type {
-  BoardV4,
-  BoardCollectionRepositoryV4,
-  BoardCollectionSnapshotV4,
-} from "../../../application/ports/BoardCollectionRepositoryV4.js";
+  Board,
+  BoardCollectionRepository,
+  BoardCollectionSnapshot,
+} from "../../../application/ports/BoardCollectionRepository.js";
 import type { IdGenerator } from "../../../application/ports/IdGenerator.js";
 import type { Clock } from "../../../domain/capabilities/Clock.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
@@ -15,23 +15,23 @@ import { Weight } from "../../../domain/values/Weight.js";
 
 const clock: Clock = { now: () => Timestamp.of(new Date("2026-05-16T15:00:00Z")) };
 const freshTree = (id: string): Tree => new Tree(new TextNode(`root-of-${id}`, "Root", Weight.of(1), clock));
-const makeBoard = (id: string, name: string): BoardV4 => ({ id, name, tree: freshTree(id) });
+const makeBoard = (id: string, name: string): Board => ({ id, name, tree: freshTree(id) });
 const sequentialIdGen = (prefix = "new"): IdGenerator => { let n = 0; return () => `${prefix}-${++n}`; };
 
-class FakeRepoV4 implements BoardCollectionRepositoryV4 {
-  private snapshot: BoardCollectionSnapshotV4;
+class FakeRepoV4 implements BoardCollectionRepository {
+  private snapshot: BoardCollectionSnapshot;
   public saveCallCount = 0;
-  public lastSaved: BoardCollectionSnapshotV4 | null = null;
-  constructor(initial: BoardCollectionSnapshotV4) { this.snapshot = initial; }
-  async load(): Promise<BoardCollectionSnapshotV4> { return { ...this.snapshot, boards: [...this.snapshot.boards] }; }
-  async save(snapshot: BoardCollectionSnapshotV4): Promise<void> {
+  public lastSaved: BoardCollectionSnapshot | null = null;
+  constructor(initial: BoardCollectionSnapshot) { this.snapshot = initial; }
+  async load(): Promise<BoardCollectionSnapshot> { return { ...this.snapshot, boards: [...this.snapshot.boards] }; }
+  async save(snapshot: BoardCollectionSnapshot): Promise<void> {
     this.saveCallCount += 1;
     this.lastSaved = { ...snapshot, boards: [...snapshot.boards] };
     this.snapshot = this.lastSaved;
   }
 }
 
-describe("BoardCollectionServiceV4 (§17.102 — type-only successor; Tree opaque)", () => {
+describe("BoardCollectionService (§17.102 — type-only successor; Tree opaque)", () => {
   let repo: FakeRepoV4;
 
   beforeEach(() => {
@@ -39,7 +39,7 @@ describe("BoardCollectionServiceV4 (§17.102 — type-only successor; Tree opaqu
   });
 
   it("create() + list() + getCurrentBoard() + getCurrentBoardId() — loads snapshot, no save on construction, exposes opaque trees", async () => {
-    const svc = await BoardCollectionServiceV4.create(repo, sequentialIdGen());
+    const svc = await BoardCollectionService.create(repo, sequentialIdGen());
     expect(svc.list().map((b) => b.id)).toEqual(["b1", "b2"]);
     expect(svc.getCurrentBoardId()).toBe("b1");
     expect(svc.getCurrentBoard().name).toBe("Alpha");
@@ -48,7 +48,7 @@ describe("BoardCollectionServiceV4 (§17.102 — type-only successor; Tree opaqu
   });
 
   it("switchTo() — switches valid id, rejects unknown id, no-ops on same id (no save)", async () => {
-    const svc = await BoardCollectionServiceV4.create(repo, sequentialIdGen());
+    const svc = await BoardCollectionService.create(repo, sequentialIdGen());
     const ok = await svc.switchTo("b2");
     expect(ok.ok).toBe(true);
     expect(svc.getCurrentBoardId()).toBe("b2");
@@ -64,7 +64,7 @@ describe("BoardCollectionServiceV4 (§17.102 — type-only successor; Tree opaqu
   });
 
   it("rename() + updateSettings() — happy + trim + empty-name + unknown-id all surface { ok, reason } correctly", async () => {
-    const svc = await BoardCollectionServiceV4.create(repo, sequentialIdGen());
+    const svc = await BoardCollectionService.create(repo, sequentialIdGen());
 
     const r1 = await svc.rename("b1", "  Renamed  ");
     expect(r1.ok).toBe(true);
@@ -86,7 +86,7 @@ describe("BoardCollectionServiceV4 (§17.102 — type-only successor; Tree opaqu
   });
 
   it("createBoard() — happy + trim + empty-name + auto-current + persists; injected idGen produces the new id", async () => {
-    const svc = await BoardCollectionServiceV4.create(repo, sequentialIdGen("fresh"));
+    const svc = await BoardCollectionService.create(repo, sequentialIdGen("fresh"));
 
     const ok = await svc.createBoard("  Gamma  ", freshTree("g"));
     expect(ok.ok).toBe(true);
@@ -103,7 +103,7 @@ describe("BoardCollectionServiceV4 (§17.102 — type-only successor; Tree opaqu
   });
 
   it("replaceCurrentTree() + deleteBoard() — replaces tree opaquely; refuses to delete the last remaining board; falls back to first board on current-id deletion", async () => {
-    const svc = await BoardCollectionServiceV4.create(repo, sequentialIdGen());
+    const svc = await BoardCollectionService.create(repo, sequentialIdGen());
 
     const newTree = freshTree("replaced");
     await svc.replaceCurrentTree(newTree);

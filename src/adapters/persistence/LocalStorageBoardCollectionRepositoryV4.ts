@@ -1,14 +1,14 @@
 import type {
-  BoardCollectionRepositoryV4,
-  BoardCollectionSnapshotV4,
-  BoardV4,
-} from "../../application/ports/BoardCollectionRepositoryV4.js";
-import type { TreeCodecV4 } from "../../application/ports/TreeCodecV4.js";
+  BoardCollectionRepository,
+  BoardCollectionSnapshot,
+  Board,
+} from "../../application/ports/BoardCollectionRepository.js";
+import type { TreeCodec } from "../../application/ports/TreeCodec.js";
 import type { Clock } from "../../domain/capabilities/Clock.js";
 import { buildShowcaseBoardV4 } from "../showcaseSeedV4.js";
 
 /**
- * §17.107 — `BoardCollectionRepositoryV4` adapter backed by `Storage`
+ * §17.107 — `BoardCollectionRepository` adapter backed by `Storage`
  * (typically `localStorage`). v4 successor to v3's §17.31
  * `LocalStorageBoardCollectionRepository`, consuming the §17.106b
  * v4-native codec on the read AND write side.
@@ -49,18 +49,18 @@ type WireEnvelope = { v: number; currentBoardId: string; boards: WireBoard[] };
 
 export type LocalStorageBoardCollectionRepositoryV4Options = {
   storage: Storage;
-  codec: TreeCodecV4;
+  codec: TreeCodec;
   clock: Clock;
   key?: string;
-  seed?: () => BoardCollectionSnapshotV4;
+  seed?: () => BoardCollectionSnapshot;
 };
 
-export class LocalStorageBoardCollectionRepositoryV4 implements BoardCollectionRepositoryV4 {
+export class LocalStorageBoardCollectionRepositoryV4 implements BoardCollectionRepository {
   private readonly storage: Storage;
-  private readonly codec: TreeCodecV4;
+  private readonly codec: TreeCodec;
   private readonly clock: Clock;
   private readonly key: string;
-  private readonly buildSeed: () => BoardCollectionSnapshotV4;
+  private readonly buildSeed: () => BoardCollectionSnapshot;
 
   constructor(opts: LocalStorageBoardCollectionRepositoryV4Options) {
     this.storage = opts.storage;
@@ -70,7 +70,7 @@ export class LocalStorageBoardCollectionRepositoryV4 implements BoardCollectionR
     this.buildSeed = opts.seed ?? (() => defaultSeed(this.clock));
   }
 
-  async load(): Promise<BoardCollectionSnapshotV4> {
+  async load(): Promise<BoardCollectionSnapshot> {
     const raw = this.storage.getItem(this.key);
     if (raw === null) {
       const seeded = this.buildSeed();
@@ -80,7 +80,7 @@ export class LocalStorageBoardCollectionRepositoryV4 implements BoardCollectionR
     return this.envelopeToSnapshot(this.parseEnvelope(raw));
   }
 
-  async save(snapshot: BoardCollectionSnapshotV4): Promise<void> {
+  async save(snapshot: BoardCollectionSnapshot): Promise<void> {
     try {
       this.storage.setItem(this.key, this.serialize(snapshot));
     } catch (err) {
@@ -89,7 +89,7 @@ export class LocalStorageBoardCollectionRepositoryV4 implements BoardCollectionR
     }
   }
 
-  private serialize(snapshot: BoardCollectionSnapshotV4): string {
+  private serialize(snapshot: BoardCollectionSnapshot): string {
     const envelope: WireEnvelope = {
       v: ENVELOPE_VERSION_V4,
       currentBoardId: snapshot.currentBoardId,
@@ -118,13 +118,13 @@ export class LocalStorageBoardCollectionRepositoryV4 implements BoardCollectionR
     return env as WireEnvelope;
   }
 
-  private envelopeToSnapshot(env: WireEnvelope): BoardCollectionSnapshotV4 {
+  private envelopeToSnapshot(env: WireEnvelope): BoardCollectionSnapshot {
     if (env.v !== ENVELOPE_VERSION_V4) {
       throw new Error(
         `LocalStorageBoardCollectionRepositoryV4: unsupported envelope version "v: ${String(env.v)}" — expected "v: ${String(ENVELOPE_VERSION_V4)}" (pre-§17.110 v: 1 envelopes are no longer migrated; reset storage to recover)`,
       );
     }
-    const boards: BoardV4[] = env.boards.map((b) => ({
+    const boards: Board[] = env.boards.map((b) => ({
       id: b.id,
       name: b.name,
       tree: this.codec.decode(JSON.stringify(b.tree)),
@@ -133,7 +133,7 @@ export class LocalStorageBoardCollectionRepositoryV4 implements BoardCollectionR
   }
 }
 
-function defaultSeed(clock: Clock): BoardCollectionSnapshotV4 {
+function defaultSeed(clock: Clock): BoardCollectionSnapshot {
   const board = buildShowcaseBoardV4(clock);
   return { boards: [board], currentBoardId: board.id };
 }

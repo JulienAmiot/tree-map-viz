@@ -2,7 +2,7 @@
  * `<computed-card>` + `<computed-business-score-card>` (SPEC §17.104) —
  * Σ-badged auto-derived tiles with a kind-switching dropdown that
  * dispatches `computation-kind-change` for §17.110 to wire to
- * `EditNodeServiceV4`. CBSC adds BSC-style objective row + corner
+ * `EditNodeService`. CBSC adds BSC-style objective row + corner
  * timestamp. Renderers inlined (vs §17.40's `valueTemplate`) because
  * those helpers are typed against the v3 BSC VM's different value
  * shape; polymorphic re-typing falls outside §17.104 scope.

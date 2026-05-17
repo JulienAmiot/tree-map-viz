@@ -11,7 +11,7 @@ import type { Tree } from "../../domain/Tree.js";
  * shape via its `mapFocusedToViewModelV4(center, children)` entry
  * point — same call site, v4-typed nodes.
  */
-export type FocusedTreeViewV4 = {
+export type FocusedTreeView = {
   center: Node;
   childrenNodes: readonly Node[];
 };
@@ -29,10 +29,10 @@ export type FocusedTreeViewV4 = {
  * `findById` / `nodes()` traversal helpers; consumers that want
  * those don't have to re-derive them.
  */
-export interface TreeNavigationPortV4 {
+export interface TreeNavigationPort {
   getRoot(): Tree;
   getFocusedId(): string;
-  getFocusedView(): FocusedTreeViewV4 | null;
+  getFocusedView(): FocusedTreeView | null;
   /** Move focus to a direct child of the current focus. */
   focusChild(childId: string): { ok: true } | { ok: false; reason: string };
   /** Move focus to parent of current focus, if any. */

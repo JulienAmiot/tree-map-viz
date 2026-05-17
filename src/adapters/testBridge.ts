@@ -13,9 +13,9 @@
  *    we're using the bridge as a feature backdoor instead of a test seam.
  */
 
-import type { BoardCollectionRepositoryV4 } from "../application/ports/BoardCollectionRepositoryV4.js";
+import type { BoardCollectionRepository } from "../application/ports/BoardCollectionRepository.js";
 import type { Router } from "../application/ports/Router.js";
-import type { TreeCodecV4 } from "../application/ports/TreeCodecV4.js";
+import type { TreeCodec } from "../application/ports/TreeCodec.js";
 
 /** Public JSON-only API exposed on `window.__appTestApi__`. See SPEC §14.4. */
 export interface TestApi {
@@ -32,8 +32,8 @@ export interface TestApi {
 }
 
 export type TestBridgeDeps = {
-  readonly repo: BoardCollectionRepositoryV4;
-  readonly codec: TreeCodecV4;
+  readonly repo: BoardCollectionRepository;
+  readonly codec: TreeCodec;
   readonly router: Router;
 };
 

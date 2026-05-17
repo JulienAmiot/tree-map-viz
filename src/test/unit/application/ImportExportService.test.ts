@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ImportExportServiceV4 } from "../../../application/ImportExportServiceV4.js";
-import type { TreeCodecV4 } from "../../../application/ports/TreeCodecV4.js";
+import { ImportExportService } from "../../../application/ImportExportService.js";
+import type { TreeCodec } from "../../../application/ports/TreeCodec.js";
 import type { Clock } from "../../../domain/capabilities/Clock.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { Tree } from "../../../domain/Tree.js";
@@ -11,7 +11,7 @@ import { Weight } from "../../../domain/values/Weight.js";
 const clock: Clock = { now: () => Timestamp.of(new Date("2026-05-16T16:00:00Z")) };
 const freshTree = (rootId: string): Tree => new Tree(new TextNode(rootId, "Root", Weight.of(1), clock));
 
-const inMemoryCodec = (decodeMap: Record<string, Tree>): TreeCodecV4 => ({
+const inMemoryCodec = (decodeMap: Record<string, Tree>): TreeCodec => ({
   encode: vi.fn((tree: Tree) => JSON.stringify({ id: tree.root.id })),
   decode: vi.fn((text: string) => {
     let payload: { id: string };
@@ -23,7 +23,7 @@ const inMemoryCodec = (decodeMap: Record<string, Tree>): TreeCodecV4 => ({
   }),
 });
 
-describe("ImportExportServiceV4 (§17.103 — type-only successor; validate-before-replace preserved)", () => {
+describe("ImportExportService (§17.103 — type-only successor; validate-before-replace preserved)", () => {
   let currentTree: Tree;
   let getCurrentTree: () => Tree;
   let replaceCurrentTree: ReturnType<typeof vi.fn>;
@@ -36,7 +36,7 @@ describe("ImportExportServiceV4 (§17.103 — type-only successor; validate-befo
 
   it("exportCurrentTree — returns codec encoding; re-reads tree on every call (no caching)", () => {
     const codec = inMemoryCodec({});
-    const svc = new ImportExportServiceV4(codec, getCurrentTree, replaceCurrentTree);
+    const svc = new ImportExportService(codec, getCurrentTree, replaceCurrentTree);
 
     const out1 = svc.exportCurrentTree();
     expect(out1).toBe(JSON.stringify({ id: "current-root" }));
@@ -57,7 +57,7 @@ describe("ImportExportServiceV4 (§17.103 — type-only successor; validate-befo
       return inMemoryCodec({ "imported-root": incoming }).decode(text);
     });
     replaceCurrentTree = vi.fn(async (tree: Tree) => { order.push("replace"); currentTree = tree; });
-    const svc = new ImportExportServiceV4(codec, getCurrentTree, replaceCurrentTree);
+    const svc = new ImportExportService(codec, getCurrentTree, replaceCurrentTree);
 
     const r = await svc.importIntoCurrentBoard(JSON.stringify({ id: "imported-root" }));
     expect(r.ok).toBe(true);
@@ -68,7 +68,7 @@ describe("ImportExportServiceV4 (§17.103 — type-only successor; validate-befo
 
   it("importIntoCurrentBoard — malformed JSON + unknown id + replace-throw all → { ok: false } without losing the current tree", async () => {
     const codec = inMemoryCodec({});
-    const svc = new ImportExportServiceV4(codec, getCurrentTree, replaceCurrentTree);
+    const svc = new ImportExportService(codec, getCurrentTree, replaceCurrentTree);
 
     const malformed = await svc.importIntoCurrentBoard("not-actually-json{");
     expect(malformed.ok).toBe(false);
@@ -84,7 +84,7 @@ describe("ImportExportServiceV4 (§17.103 — type-only successor; validate-befo
     const incoming = freshTree("imported-root");
     const codec2 = inMemoryCodec({ "imported-root": incoming });
     const failing = vi.fn().mockRejectedValue(new Error("Storage full"));
-    const svc2 = new ImportExportServiceV4(codec2, getCurrentTree, failing);
+    const svc2 = new ImportExportService(codec2, getCurrentTree, failing);
     const replaceErr = await svc2.importIntoCurrentBoard(JSON.stringify({ id: "imported-root" }));
     expect(replaceErr.ok).toBe(false);
     if (!replaceErr.ok) expect(replaceErr.reason).toMatch(/storage full/i);
@@ -95,7 +95,7 @@ describe("ImportExportServiceV4 (§17.103 — type-only successor; validate-befo
     const sourceTree = freshTree("rt-tree");
     currentTree = sourceTree;
     const codec = inMemoryCodec({ "rt-tree": sourceTree });
-    const svc = new ImportExportServiceV4(codec, getCurrentTree, replaceCurrentTree);
+    const svc = new ImportExportService(codec, getCurrentTree, replaceCurrentTree);
 
     const exported = svc.exportCurrentTree();
     currentTree = freshTree("scratch");

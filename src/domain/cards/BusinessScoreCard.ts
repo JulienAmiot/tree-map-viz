@@ -22,7 +22,7 @@ import { Card } from "./Card.js";
  * `v4TreeFromV3Root` produced a `BusinessScoreCardV4` for every v3
  * BSC with a non-empty unit; the §17.91 BSN `unit` getter survived
  * as the legacy fallback for any BSN constructed without a card (e.g.
- * via §17.100a/b `AddChildServiceV4`) until §17.112 Phase F deleted it.
+ * via §17.100a/b `AddChildService`) until §17.112 Phase F deleted it.
  *
  * Generic propagates `T` from the hosted node so consumers reading
  * `card.getNode().objective.value` get the right type at every step.
@@ -39,7 +39,7 @@ export class BusinessScoreCard<T> extends Card<BusinessScoreNode<T>> {
     return this.unit;
   }
 
-  /** §17.101a — operator-facing mutator for `EditNodeServiceV4`. */
+  /** §17.101a — operator-facing mutator for `EditNodeService`. */
   setUnit(unit: Unit): void {
     this.unit = unit;
   }
