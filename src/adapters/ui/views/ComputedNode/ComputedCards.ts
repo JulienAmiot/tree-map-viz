@@ -29,7 +29,14 @@ const sharedStyles = css`
     border: 1px solid currentColor; border-radius: 0.2em; padding: 0.1em 0.3em;
   }
   .target-row { font-size: 1.2vh; opacity: 0.85; margin-top: 0.3em; }
+  /* SPEC §17.30 / §17.45 — pane carries position:relative so the
+     absolute .timestamp (declared on tileLayoutStyles) anchors to
+     the pane's edges, mirroring the v3 BSC asParent layout. */
+  .metric-pane { position: relative; }
 `;
+
+/** SPEC §17.40 — fixed-precision formatting for the CBSN numeric branch (BSC parity). */
+const COMPUTED_DECIMALS = 1;
 
 const TREND_GLYPHS: Record<TrendArrowDirection, string> = {
   up: "\u2191", "up-right": "\u2197", right: "\u2192", "down-right": "\u2198", down: "\u2193",
@@ -57,12 +64,42 @@ function unitSuffix(unit: string): TemplateResult | typeof nothing {
   return unit ? html`&nbsp;${unit}` : nothing;
 }
 
-function renderComputedValue(value: ComputedValueViewModel): TemplateResult {
+/**
+ * SPEC §13.2 / §17.40 — discriminated render of the three
+ * `ComputedValueViewModel` branches.
+ *
+ *   - `decimals` — fixed-precision numeric formatting
+ *     (`null`: raw number, used by `<computed-card>`; `1`: BSC
+ *     parity for `<computed-business-score-card>`).
+ *   - `emptyAsEmptySpan` — when `true`, the `empty` variant renders
+ *     an empty `<span>` (v3 BSC `childrenCount n=0` parity — used
+ *     by `<computed-business-score-card>` where the value area
+ *     stays visually empty if the strategy could not produce a
+ *     number); when `false`, the strategy-error reason is rendered
+ *     verbatim (used by `<computed-card>` where the operator has
+ *     no description / objective row to convey the same signal).
+ */
+function renderComputedValue(
+  value: ComputedValueViewModel,
+  decimals: number | null = null,
+  emptyAsEmptySpan = false,
+): TemplateResult {
   if (value.kind === "empty") {
+    if (emptyAsEmptySpan) {
+      return html`<span class="value empty" data-testid="value" data-value-kind="empty"></span>`;
+    }
     return html`<span class="value" data-testid="value" data-value-kind="empty">${value.reason}</span>`;
   }
+  if (value.kind === "childrenCount") {
+    if (value.n === 0) {
+      return html`<span class="value empty" data-testid="value" data-value-kind="childrenCount-empty"></span>`;
+    }
+    return html`<span class="value" data-testid="value" data-value-kind="childrenCount"
+      >${value.n} children</span>`;
+  }
+  const display = decimals === null ? value.value : value.value.toFixed(decimals);
   return html`<span class="value" data-testid="value" data-value-kind="numeric"
-    >${value.value}${unitSpan(value.unit)}</span>`;
+    >${display}${unitSpan(value.unit)}</span>`;
 }
 
 function renderObjectiveRow(obj: BusinessScoreCardObjectiveViewModel): TemplateResult {
@@ -95,11 +132,14 @@ export class ComputedCard extends LitElement {
 
   render(): TemplateResult {
     if (!this.vm) return html``;
+    const showBadge = this.vm.value.kind === "numeric";
     return html`
       <h2 class="title" data-testid="title" data-view-kind="ComputedNode" data-id=${this.vm.id}>${this.vm.title}</h2>
       <div class="value-area" data-testid="value-row">
         <div class="value-row">
-          <span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>
+          ${showBadge
+            ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>`
+            : nothing}
           ${renderComputedValue(this.vm.value)}
         </div>
         ${renderKindDropdown(this, this.vm.id, this.vm.computationKind, this.vm.availableKinds)}
@@ -118,17 +158,22 @@ export class ComputedBusinessScoreCard extends LitElement {
   render(): TemplateResult {
     if (!this.vm) return html``;
     const { dateIso, dateColor, objective } = this.vm;
+    const showBadge = this.vm.value.kind === "numeric";
     return html`
       <h2 class="title" data-testid="title" data-view-kind="ComputedBusinessScoreNode" data-id=${this.vm.id}>${this.vm.title}</h2>
-      ${renderTimestamp(dateIso, dateColor)}
-      <div class="value-area" data-testid="value-row">
-        <div class="value-row">
-          <span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>
-          ${renderComputedValue(this.vm.value)}
-          ${renderTrend(objective)}
+      <div class="metric-pane" data-testid="metric-pane">
+        ${renderTimestamp(dateIso, dateColor)}
+        <div class="value-area" data-testid="value-row">
+          <div class="value-row">
+            ${showBadge
+              ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>`
+              : nothing}
+            ${renderComputedValue(this.vm.value, COMPUTED_DECIMALS, true)}
+            ${renderTrend(objective)}
+          </div>
+          ${renderObjectiveRow(objective)}
+          ${renderKindDropdown(this, this.vm.id, this.vm.computationKind, this.vm.availableKinds)}
         </div>
-        ${renderObjectiveRow(objective)}
-        ${renderKindDropdown(this, this.vm.id, this.vm.computationKind, this.vm.availableKinds)}
       </div>
     `;
   }

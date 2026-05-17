@@ -16,9 +16,31 @@ export type NodeKind = "TextNode" | "BusinessScoreCardNode" | "ComputedNode" | "
 /** SPEC §17.104 — Lit-friendly mirror of `ComputationKind` names (§17.95 / §17.94 D2). */
 export type ComputationKindName = "SUM" | "AVERAGE" | "MIN" | "MAX" | "WEIGHTED_AVERAGE" | "COUNT";
 
-/** SPEC §17.104 — auto-derived value for Computed* tiles (numeric / empty-children). */
+/**
+ * SPEC §17.104 — auto-derived value for Computed* tiles. Mirrors the
+ * v3 BSC `BusinessScoreCardValueViewModel` 3-branch shape so the
+ * §17.104 Computed* path renders the same operator-visible variants
+ * the BSC view layer commits to (SPEC §13.2 / §17.40):
+ *
+ *   - `numeric` — strategy produced a finite number (the typical
+ *     aggregator outcome — renders as `<value> <unit>` with the
+ *     §17.104b `decimals` formatting on `<computed-business-score-card>`).
+ *   - `childrenCount` — strategy could not produce a number because
+ *     none of the children contributed (all disabled / all text /
+ *     `EmptyChildrenError` at the strategy layer). `n` is the total
+ *     children count: `n > 0` renders as `<n> children` plain text
+ *     (parity with the v3 BSC `childrenCount` branch); `n = 0`
+ *     renders as an empty value area (parent has literally nothing
+ *     to aggregate — the `+` tile is the only operator affordance).
+ *   - `empty` — non-finite numeric result (e.g. NaN / ±Infinity from
+ *     a `SumComputation` overflow). Kept distinct from `childrenCount`
+ *     because the operator-facing message is computation-specific
+ *     ("WEIGHTED_AVERAGE produced a non-finite result"), not a
+ *     children-count statement.
+ */
 export type ComputedValueViewModel =
   | { readonly kind: "numeric"; readonly value: number; readonly unit: string }
+  | { readonly kind: "childrenCount"; readonly n: number }
   | { readonly kind: "empty"; readonly reason: string };
 
 /**
