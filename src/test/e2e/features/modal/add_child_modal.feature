@@ -32,8 +32,10 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
   Scenario: Clicking the "+" tile opens the modal with a left-rail kind list (§17.25)
     When I click the plus tile
     Then the add-child modal is open
-    And the modal kind list shows "2" options labelled with name and description
+    # §17.118 — the catalogue now lists 3 kinds: TextNode, Workflow, BSC.
+    And the modal kind list shows "3" options labelled with name and description
     And the modal offers a "Text" kind
+    And the modal offers a "Workflow" kind
     And the modal offers a "Business Score Card" kind
 
   @HE-???? @priority:high

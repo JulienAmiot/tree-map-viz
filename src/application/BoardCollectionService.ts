@@ -1,4 +1,8 @@
 import type { Tree } from "../domain/Tree.js";
+import {
+  DEFAULT_WORKFLOW_STATUSES,
+  type WorkflowStatus,
+} from "../domain/values/WorkflowStatus.js";
 
 import type {
   Board,
@@ -65,34 +69,60 @@ export class BoardCollectionService {
     if (trimmed.length === 0) return { ok: false, reason: "Board name cannot be empty." };
     const idx = this.boards.findIndex((b) => b.id === boardId);
     if (idx === -1) return { ok: false, reason: "Board not found." };
-    const existing = this.boards[idx];
-    this.boards[idx] = { id: existing.id, name: trimmed, tree: existing.tree };
+    this.boards[idx] = withBoard(this.boards[idx], { name: trimmed });
     await this.persist();
     return { ok: true };
   }
 
-  async createBoard(name: string, tree: Tree): Promise<Outcome<Board>> {
+  async createBoard(
+    name: string,
+    tree: Tree,
+    options: { readonly workflowStatuses?: readonly WorkflowStatus[] } = {},
+  ): Promise<Outcome<Board>> {
     const trimmed = name.trim();
     if (trimmed.length === 0) return { ok: false, reason: "Board name cannot be empty." };
-    const board: Board = { id: this.idGen(), name: trimmed, tree };
+    const board: Board = {
+      id: this.idGen(),
+      name: trimmed,
+      tree,
+      // §17.117 — every new board seeds the PDCA defaults unless the
+      // caller passes a bespoke status table (no current call site
+      // does; the future board-settings strand will).
+      workflowStatuses: options.workflowStatuses ?? DEFAULT_WORKFLOW_STATUSES,
+    };
     this.boards.push(board);
     this.currentBoardId = board.id;
     await this.persist();
     return { ok: true, board };
   }
 
-  /** SPEC §17.31 (v4) — patch a board's mutable settings (name only post-§17.42). */
-  async updateSettings(boardId: string, settings: { readonly name?: string }): Promise<Outcome> {
+  /**
+   * SPEC §17.31 (v4) — patch a board's mutable settings.
+   * §17.117 — `workflowStatuses` joins the patch surface so a future
+   * board-settings strand can swap the lookup table for an existing
+   * board without rebuilding the board object on the call-site side.
+   * Today no UI exposes the field; the typed surface is in place so
+   * the settings strand only has to wire the modal.
+   */
+  async updateSettings(
+    boardId: string,
+    settings: {
+      readonly name?: string;
+      readonly workflowStatuses?: readonly WorkflowStatus[];
+    },
+  ): Promise<Outcome> {
     const idx = this.boards.findIndex((b) => b.id === boardId);
     if (idx === -1) return { ok: false, reason: "Board not found." };
-    const existing = this.boards[idx];
-    let nextName = existing.name;
+    let nextName = this.boards[idx].name;
     if (settings.name !== undefined) {
       const trimmed = settings.name.trim();
       if (trimmed.length === 0) return { ok: false, reason: "Board name cannot be empty." };
       nextName = trimmed;
     }
-    this.boards[idx] = { id: existing.id, name: nextName, tree: existing.tree };
+    this.boards[idx] = withBoard(this.boards[idx], {
+      name: nextName,
+      workflowStatuses: settings.workflowStatuses,
+    });
     await this.persist();
     return { ok: true };
   }
@@ -101,8 +131,7 @@ export class BoardCollectionService {
   async replaceCurrentTree(tree: Tree): Promise<void> {
     const idx = this.boards.findIndex((b) => b.id === this.currentBoardId);
     if (idx === -1) throw new Error(`BoardCollectionService invariant violated: currentBoardId='${this.currentBoardId}' has no matching board.`);
-    const existing = this.boards[idx];
-    this.boards[idx] = { id: existing.id, name: existing.name, tree };
+    this.boards[idx] = withBoard(this.boards[idx], { tree });
     await this.persist();
   }
 
@@ -125,4 +154,28 @@ export class BoardCollectionService {
     };
     await this.repo.save(snapshot);
   }
+}
+
+/**
+ * Helper that rebuilds a `Board` immutably while preserving every
+ * field the caller did NOT explicitly patch. Lives at the bottom of
+ * the service module rather than getting inlined four times so the
+ * §17.117 addition of `workflowStatuses` does not require touching
+ * every Board literal whenever the Board shape grows another field;
+ * each call site only mentions the field(s) it actually changes.
+ */
+function withBoard(
+  existing: Board,
+  patch: {
+    readonly name?: string;
+    readonly tree?: Tree;
+    readonly workflowStatuses?: readonly WorkflowStatus[];
+  },
+): Board {
+  return {
+    id: existing.id,
+    name: patch.name ?? existing.name,
+    tree: patch.tree ?? existing.tree,
+    workflowStatuses: patch.workflowStatuses ?? existing.workflowStatuses,
+  };
 }

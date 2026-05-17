@@ -400,4 +400,100 @@ describe("<edit-node-modal>", () => {
     const err = el.shadowRoot?.querySelector('[data-testid="edit-modal-error"]');
     expect(err?.textContent?.trim()).toBe("Title too long");
   });
+
+  /**
+   * SPEC §17.118 — the Workflow branch of `EditNodeTarget` exposes the
+   * node's current `statusId`. The modal seeds the dropdown from that
+   * id, the operator can swap it, and the confirm payload carries an
+   * explicit `statusId` only when the operator typed (or selected) one.
+   * Title is still edited inline (§17.50); the modal payload never
+   * carries it.
+   */
+  describe("Workflow target (SPEC §17.118)", () => {
+    const workflowTarget: EditNodeTarget = {
+      nodeId: "uuid-workflow",
+      kind: "Workflow",
+      title: "Sprint planning",
+      weight: 2,
+      statusId: "do",
+    };
+
+    it("renders the status dropdown seeded with the target's statusId, and weight only (no BSC fields, no title)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = workflowTarget;
+        e.open = true;
+      });
+      expect(panelOf(el)?.dataset["kind"]).toBe("Workflow");
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="edit-modal-kind"]')
+          ?.textContent?.trim(),
+      ).toBe("Workflow");
+      // The dropdown is seeded with the node's current statusId.
+      const select = el.shadowRoot?.querySelector<HTMLSelectElement>(
+        '[data-testid="field-status"]',
+      );
+      expect(select?.value).toBe("do");
+      // The weight input mirrors the target.
+      expect((fieldOf(el, "field-weight") as HTMLInputElement).value).toBe("2");
+      // BSC-only fields and the title field are absent.
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-unit"]'),
+      ).toBeNull();
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-initial"]'),
+      ).toBeNull();
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-title"]'),
+      ).toBeNull();
+    });
+
+    it("dispatches edit-node-confirm with a Workflow payload carrying the new statusId on confirm", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = workflowTarget;
+        e.open = true;
+      });
+      const handler = vi.fn();
+      el.addEventListener(EDIT_NODE_CONFIRM_EVENT, handler);
+      // Swap the status via the dropdown.
+      const select = el.shadowRoot?.querySelector<HTMLSelectElement>(
+        '[data-testid="field-status"]',
+      );
+      if (!select) throw new Error("expected status dropdown");
+      select.value = "check";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      await el.updateComplete;
+      confirmBtn(el).click();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      const evt = handler.mock.calls[0]![0] as CustomEvent<EditNodeConfirmDetail>;
+      expect(evt.detail.nodeId).toBe("uuid-workflow");
+      expect(evt.detail.payload).toEqual({
+        kind: "Workflow",
+        weight: 2,
+        statusId: "check",
+      });
+    });
+
+    it("surfaces an orphan statusId (board's catalogue trimmed) as a selected '— missing' option so the operator can swap it", async () => {
+      const orphanTarget: EditNodeTarget = {
+        ...workflowTarget,
+        statusId: "ghost",
+      };
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        // Default `workflowStatuses` is PDCA; `ghost` is NOT in it.
+        e.editTarget = orphanTarget;
+        e.open = true;
+      });
+      const select = el.shadowRoot?.querySelector<HTMLSelectElement>(
+        '[data-testid="field-status"]',
+      );
+      expect(select?.value).toBe("ghost");
+      // The first <option> is the orphan placeholder; the operator can
+      // pick a known status and overwrite the orphan reference.
+      const options = Array.from(select?.querySelectorAll("option") ?? []);
+      expect(options[0]?.value).toBe("ghost");
+      expect(options[0]?.textContent).toMatch(/missing/);
+      expect(options.map((o) => o.value)).toContain("plan");
+    });
+  });
 });

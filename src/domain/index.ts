@@ -33,6 +33,12 @@ export { Range, StrictRange, LenientRange, OutOfRangeError } from "./values/Rang
 export type { Comparator } from "./values/Comparator.js";
 export { NumericComparator, LexicographicComparator } from "./values/Comparator.js";
 export { Direction } from "./values/Direction.js";
+export {
+  WorkflowStatus,
+  InvalidWorkflowStatusError,
+  DEFAULT_WORKFLOW_STATUSES,
+  DEFAULT_WORKFLOW_STATUS_ID,
+} from "./values/WorkflowStatus.js";
 
 export { ComputationKind } from "./computation/ComputationKind.js";
 export { Computation } from "./computation/Computation.js";
@@ -50,12 +56,14 @@ export { Card } from "./cards/Card.js";
 export { BusinessScoreCard } from "./cards/BusinessScoreCard.js";
 export { TextCard } from "./cards/TextCard.js";
 export { StrictRangeCard } from "./cards/StrictRangeCard.js";
+export { WorkflowCard } from "./cards/WorkflowCard.js";
 
 export { Node } from "./nodes/Node.js";
 export { ValueNode } from "./nodes/ValueNode.js";
 export { HistorizableValueNode, TimestampNotFoundError } from "./nodes/HistorizableValueNode.js";
 export { RangedValueNode } from "./nodes/RangedValueNode.js";
 export { TextNode } from "./nodes/TextNode.js";
+export { WorkflowNode } from "./nodes/WorkflowNode.js";
 export { BusinessScoreNode } from "./nodes/BusinessScoreNode.js";
 export { StrictRangeNode } from "./nodes/StrictRangeNode.js";
 export { ComputedNode } from "./nodes/ComputedNode.js";

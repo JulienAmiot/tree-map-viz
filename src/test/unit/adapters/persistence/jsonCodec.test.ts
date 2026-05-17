@@ -16,6 +16,7 @@ import { ComputedNode } from "../../../../domain/nodes/ComputedNode.js";
 import type { Node } from "../../../../domain/nodes/Node.js";
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../../domain/nodes/TextNode.js";
+import { WorkflowNode } from "../../../../domain/nodes/WorkflowNode.js";
 import { Tree } from "../../../../domain/Tree.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
 import { Objective } from "../../../../domain/values/Objective.js";
@@ -169,6 +170,87 @@ describe("jsonCodecV4 (§17.106a + §17.106b — v4-native encode + decode)", ()
       expect([...decoded.cards.keys()].sort()).toEqual([...original.cards.keys()].sort());
       expect((decoded.findById("sales-lost") as BusinessScoreNode<number>).disabled).toBe(true);
       expect(codec.encode(decoded)).toBe(json);
+    });
+  });
+
+  describe("WorkflowNode (§17.117 — TextNode + statusId)", () => {
+    it("encode emits kind=\"WorkflowNode\" with the statusId field AND a string-typed history (the more-specific kind wins over the generic TextNode branch because WorkflowNode IS-A TextNode)", () => {
+      const wf = new WorkflowNode("w-1", "Sprint task", Weight.of(2), clock, "do");
+      wf.addValue(T1, "design draft");
+      wf.addValue(T2, "review pending");
+      const wire = JSON.parse(codec.encode(new Tree(wf))).root as Record<string, unknown>;
+      expect(wire).toMatchObject({
+        kind: "WorkflowNode",
+        id: "w-1",
+        title: "Sprint task",
+        weight: 2,
+        statusId: "do",
+        children: [],
+      });
+      expect(wire.history).toEqual([
+        { value: "design draft", at: T1.moment.toISOString() },
+        { value: "review pending", at: T2.moment.toISOString() },
+      ]);
+      // `disabled` stays omitted when the node is enabled (parity with
+      // every other ValueNode kind).
+      expect("disabled" in wire).toBe(false);
+    });
+
+    it("decode rebuilds a WorkflowNode (not a TextNode) with the statusId + history restored exactly", () => {
+      const original = new WorkflowNode("w-1", "Sprint task", Weight.of(1), clock, "check");
+      original.addValue(T1, "hello");
+      original.addValue(T2, "world");
+      original.setDisabled(true);
+      const decoded = codec.decode(codec.encode(new Tree(original))).root;
+      expect(decoded).toBeInstanceOf(WorkflowNode);
+      expect((decoded as WorkflowNode).statusId).toBe("check");
+      expect((decoded as WorkflowNode).disabled).toBe(true);
+      expect(
+        (decoded as WorkflowNode).entries().map((e) => [
+          e.asOf.moment.toISOString(),
+          e.value,
+        ]),
+      ).toEqual([
+        [T1.moment.toISOString(), "hello"],
+        [T2.moment.toISOString(), "world"],
+      ]);
+    });
+
+    it("decode of a v4.0 envelope missing the statusId field surfaces a typed JsonCodecDecodeError pointing at the offending pointer", () => {
+      const wire = {
+        schemaVersion: "v4.0",
+        root: {
+          kind: "WorkflowNode",
+          id: "w",
+          title: "T",
+          weight: 1,
+          history: [],
+          children: [],
+        },
+        cards: [],
+      };
+      expect(() => codec.decode(JSON.stringify(wire))).toThrow(JsonCodecDecodeError);
+      expect(() => codec.decode(JSON.stringify(wire))).toThrow(/statusId/);
+    });
+
+    it("Workflow + Text siblings in the same tree round-trip without one shadowing the other (the §17.117 instanceof ordering invariant)", () => {
+      const root = new TextNode("root", "Root", Weight.of(1), clock);
+      root.addValue(T1, "root body");
+      const wfChild = new WorkflowNode("wf-1", "Workflow leaf", Weight.of(1), clock, "act");
+      wfChild.addValue(T2, "in progress");
+      const textChild = new TextNode("text-1", "Plain leaf", Weight.of(1), clock);
+      textChild.addValue(T2, "plain body");
+      root.attach(wfChild);
+      root.attach(textChild);
+      const decoded = codec.decode(codec.encode(new Tree(root)));
+      const wfRound = decoded.findById("wf-1")!;
+      const textRound = decoded.findById("text-1")!;
+      expect(wfRound).toBeInstanceOf(WorkflowNode);
+      expect((wfRound as WorkflowNode).statusId).toBe("act");
+      expect(textRound).toBeInstanceOf(TextNode);
+      // Defensive: the plain TextNode must NOT have been promoted to
+      // WorkflowNode by accident.
+      expect(textRound).not.toBeInstanceOf(WorkflowNode);
     });
   });
 });

@@ -20,13 +20,19 @@ const NOW = new Date("2026-05-16T12:00:00Z");
 const clock: Clock = { now: () => Timestamp.of(NOW) };
 
 describe("showcaseSeedV4 (§17.109 — v4 showcase board)", () => {
-  it("returns a Board with the stable id + name + a Tree root anchored at \"showcase-root\"", () => {
+  it("returns a Board with the stable id + name + a Tree root anchored at \"showcase-root\" + the §17.117 PDCA workflow-status table", () => {
     const board = buildShowcaseBoard(clock, NOW);
     expect(board.id).toBe(SHOWCASE_BOARD_ID);
     expect(board.name).toBe(SHOWCASE_BOARD_NAME);
     expect(board.tree).toBeInstanceOf(Tree);
     expect(board.tree.root.id).toBe("showcase-root");
     expect(board.tree.root).toBeInstanceOf(TextNode);
+    expect(board.workflowStatuses.map((s) => s.id)).toEqual([
+      "plan",
+      "do",
+      "check",
+      "act",
+    ]);
   });
 
   it("preserves every v3-showcase stable ID (e2e fixture continuity) AND adds the round-7 demo subtree (activity / cpu-saturation / activity-incident)", () => {

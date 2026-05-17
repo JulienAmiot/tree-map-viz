@@ -9,6 +9,7 @@ import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusines
 import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
 import { StrictRangeNode } from "../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
+import { WorkflowNode } from "../../../domain/nodes/WorkflowNode.js";
 import { NumericComparator } from "../../../domain/values/Comparator.js";
 import { Objective } from "../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../domain/values/Range.js";
@@ -175,6 +176,68 @@ describe("EditNodeService (§17.101a — Phase C skeleton + 2 v3-compat kinds + 
     expect(card.getUnit().value).toBe("%");
     expect(node.computationKind).toBe(ComputationKind.WEIGHTED_AVERAGE);
     expect(node.disabled).toBe(true);
+  });
+
+  describe("Workflow (§17.117) — statusId editable + inherits the full TextNode appendValue + title/weight edit surface", () => {
+    const makeWorkflow = (statusId = "plan"): WorkflowNode =>
+      new WorkflowNode("wf1", "Sprint task", Weight.of(1), clock, statusId);
+
+    it("Workflow edit — title + weight + statusId apply atomically; persist invoked once", async () => {
+      const node = makeWorkflow();
+      const r = await svc.editFields(node, {
+        kind: "Workflow",
+        title: "  Renamed task  ",
+        weight: 4,
+        statusId: "do",
+      });
+      expect(r.ok).toBe(true);
+      expect(node.title).toBe("Renamed task");
+      expect(node.weight.value).toBe(4);
+      expect(node.statusId).toBe("do");
+      expect(persist).toHaveBeenCalledTimes(1);
+    });
+
+    it("Workflow edit — statusId-only patch leaves title / weight / value untouched", async () => {
+      const node = makeWorkflow("plan");
+      node.setValue("body before");
+      const r = await svc.editFields(node, { kind: "Workflow", statusId: "check" });
+      expect(r.ok).toBe(true);
+      expect(node.statusId).toBe("check");
+      expect(node.title).toBe("Sprint task");
+      expect(node.getValue()).toBe("body before");
+    });
+
+    it("Workflow edit — invalid statusId rolls back (no partial mutation; persist not invoked)", async () => {
+      const node = makeWorkflow("plan");
+      const r = await svc.editFields(node, {
+        kind: "Workflow",
+        title: "Should not apply",
+        statusId: "   ",
+      });
+      expect(r.ok).toBe(false);
+      expect(node.title).toBe("Sprint task");
+      expect(node.statusId).toBe("plan");
+      expect(persist).not.toHaveBeenCalled();
+    });
+
+    it("kind mismatch — passing kind=\"Workflow\" against a plain TextNode rejects via the exact-class guard (and the reverse)", async () => {
+      const text = makeText();
+      const wf = makeWorkflow();
+      const r1 = await svc.editFields(text, { kind: "Workflow", statusId: "do" });
+      expect(r1.ok).toBe(false);
+      const r2 = await svc.editFields(wf, { kind: "TextNode", title: "X" });
+      expect(r2.ok).toBe(false);
+      expect(wf.title).toBe("Sprint task");
+      expect(text.title).toBe("Notes");
+    });
+
+    it("appendValue on a WorkflowNode uses the inherited TextNode/string branch — value history is shared with the inline-edit path", async () => {
+      const wf = makeWorkflow();
+      const r = await svc.appendValue(wf, "design draft");
+      expect(r.ok).toBe(true);
+      expect(wf.getValue()).toBe("design draft");
+      expect(wf.entries().at(-1)!.asOf.moment.toISOString()).toBe(NOW.toISOString());
+    });
   });
 
   it("appendValue — Text + BSC; default asOf uses clock; type mismatch + persist-throw → { ok: false } with rollback", async () => {

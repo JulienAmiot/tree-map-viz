@@ -9,6 +9,7 @@ import type { Node } from "../domain/nodes/Node.js";
 import { StrictRangeNode } from "../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../domain/nodes/TextNode.js";
 import type { ValueNode } from "../domain/nodes/ValueNode.js";
+import { WorkflowNode } from "../domain/nodes/WorkflowNode.js";
 import { NumericComparator } from "../domain/values/Comparator.js";
 import { Objective } from "../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../domain/values/Range.js";
@@ -19,19 +20,28 @@ import type { IdGenerator } from "./ports/IdGenerator.js";
 
 /**
  * Plain-data payload from the Add-child modal — v4 successor to v3's
- * `AddChildPayload` (SPEC §17.100a + §17.100b). Five kinds: 2 v3-compat
- * (`TextNode`, `BusinessScore`) + 3 round-7 (`StrictRange`, `Computed`,
- * `ComputedBusinessScore`). Defaults: `weight=1`, `description=""`,
- * `disabled=false`, history empty. Computed* kinds carry an
- * operator-selected `computationKind` (per §17.94 plan dropdown) and
- * have NO `initialHistory` field — their history is audit-only per
- * §17.94 D5 (`addValue` throws `ComputationOverrideError`).
+ * `AddChildPayload` (SPEC §17.100a + §17.100b + §17.117). Six kinds:
+ * 2 v3-compat (`TextNode`, `BusinessScore`) + 3 round-7 (`StrictRange`,
+ * `Computed`, `ComputedBusinessScore`) + 1 §17.117 (`Workflow`).
+ * Defaults: `weight=1`, `description=""`, `disabled=false`, history
+ * empty. Computed* kinds carry an operator-selected `computationKind`
+ * (per §17.94 plan dropdown) and have NO `initialHistory` field —
+ * their history is audit-only per §17.94 D5 (`addValue` throws
+ * `ComputationOverrideError`). `Workflow` mirrors `TextNode` plus a
+ * required `statusId` referencing the focused board's status table.
  */
 export type AddChildPayload =
   | {
       readonly kind: "TextNode";
       readonly title: string;
       readonly weight?: number;
+      readonly initialHistory?: readonly { readonly value: string; readonly asOf: Date }[];
+    }
+  | {
+      readonly kind: "Workflow";
+      readonly title: string;
+      readonly weight?: number;
+      readonly statusId: string;
       readonly initialHistory?: readonly { readonly value: string; readonly asOf: Date }[];
     }
   | {
@@ -128,6 +138,11 @@ export class AddChildService {
     const weight = Weight.of(payload.weight ?? 1);
     if (payload.kind === "TextNode") {
       const node = new TextNode(id, title, weight, this.clock);
+      this.replayHistory(node, payload.initialHistory);
+      return node;
+    }
+    if (payload.kind === "Workflow") {
+      const node = new WorkflowNode(id, title, weight, this.clock, payload.statusId);
       this.replayHistory(node, payload.initialHistory);
       return node;
     }

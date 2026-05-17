@@ -9,6 +9,7 @@ import type { Node } from "../../domain/nodes/Node.js";
 import { StrictRangeNode } from "../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../domain/nodes/TextNode.js";
 import type { ValueNode } from "../../domain/nodes/ValueNode.js";
+import { WorkflowNode } from "../../domain/nodes/WorkflowNode.js";
 import { Tree } from "../../domain/Tree.js";
 import { NumericComparator } from "../../domain/values/Comparator.js";
 import { Objective } from "../../domain/values/Objective.js";
@@ -62,6 +63,11 @@ export function createJsonCodec(clock: Clock): TreeCodec {
 // — Encode walker (§17.106a) — //
 
 function encodeNode(node: Node): Record<string, unknown> {
+  // §17.117 — WorkflowNode IS-A TextNode (sibling-by-extension), so
+  // the more-specific kind MUST be probed BEFORE the TextNode branch
+  // catches it; otherwise a WorkflowNode would round-trip through the
+  // wire as a plain TextNode and silently lose its statusId on reload.
+  if (node instanceof WorkflowNode) return encodeWorkflowNode(node);
   if (node instanceof TextNode) return encodeTextNode(node);
   if (node instanceof ComputedBusinessScoreNode) return encodeCBSN(node);
   if (node instanceof BusinessScoreNode) return encodeBSN(node);
@@ -85,6 +91,15 @@ function encodeTextNode(node: TextNode): Record<string, unknown> {
   return {
     kind: "TextNode",
     ...commonFields(node),
+    history: node.entries().map((tv) => ({ value: tv.value, at: tv.asOf.moment.toISOString() })),
+  };
+}
+
+function encodeWorkflowNode(node: WorkflowNode): Record<string, unknown> {
+  return {
+    kind: "WorkflowNode",
+    ...commonFields(node),
+    statusId: node.statusId,
     history: node.entries().map((tv) => ({ value: tv.value, at: tv.asOf.moment.toISOString() })),
   };
 }
@@ -174,6 +189,11 @@ function decodeNode(raw: unknown, p: string, clock: Clock): Node {
     const t = new TextNode(id, title, w, clock);
     for (const h of decodeHistory(obj, p, "string")) t.addValue(h.at, h.value as string);
     node = t;
+  } else if (kind === "WorkflowNode") {
+    const statusId = requireString(obj, "statusId", p);
+    const wf = new WorkflowNode(id, title, w, clock, statusId);
+    for (const h of decodeHistory(obj, p, "string")) wf.addValue(h.at, h.value as string);
+    node = wf;
   } else if (kind === "BusinessScoreNode") {
     const bsn = buildBSN(id, title, w, obj, p, clock);
     for (const h of decodeHistory(obj, p, "number")) bsn.addValue(h.at, h.value as number);

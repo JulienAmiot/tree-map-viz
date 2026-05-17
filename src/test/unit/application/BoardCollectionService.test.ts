@@ -12,10 +12,19 @@ import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { Tree } from "../../../domain/Tree.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
 import { Weight } from "../../../domain/values/Weight.js";
+import {
+  DEFAULT_WORKFLOW_STATUSES,
+  WorkflowStatus,
+} from "../../../domain/values/WorkflowStatus.js";
 
 const clock: Clock = { now: () => Timestamp.of(new Date("2026-05-16T15:00:00Z")) };
 const freshTree = (id: string): Tree => new Tree(new TextNode(`root-of-${id}`, "Root", Weight.of(1), clock));
-const makeBoard = (id: string, name: string): Board => ({ id, name, tree: freshTree(id) });
+const makeBoard = (id: string, name: string): Board => ({
+  id,
+  name,
+  tree: freshTree(id),
+  workflowStatuses: DEFAULT_WORKFLOW_STATUSES,
+});
 const sequentialIdGen = (prefix = "new"): IdGenerator => { let n = 0; return () => `${prefix}-${++n}`; };
 
 class FakeRepoV4 implements BoardCollectionRepository {
@@ -85,7 +94,7 @@ describe("BoardCollectionService (§17.102 — type-only successor; Tree opaque)
     expect(r6.ok).toBe(false);
   });
 
-  it("createBoard() — happy + trim + empty-name + auto-current + persists; injected idGen produces the new id", async () => {
+  it("createBoard() — happy + trim + empty-name + auto-current + persists; injected idGen produces the new id; §17.117 PDCA workflow-statuses seeded by default", async () => {
     const svc = await BoardCollectionService.create(repo, sequentialIdGen("fresh"));
 
     const ok = await svc.createBoard("  Gamma  ", freshTree("g"));
@@ -93,6 +102,12 @@ describe("BoardCollectionService (§17.102 — type-only successor; Tree opaque)
     if (ok.ok) {
       expect(ok.board.id).toBe("fresh-1");
       expect(ok.board.name).toBe("Gamma");
+      expect(ok.board.workflowStatuses.map((s) => s.id)).toEqual([
+        "plan",
+        "do",
+        "check",
+        "act",
+      ]);
     }
     expect(svc.getCurrentBoardId()).toBe("fresh-1");
     expect(svc.list()).toHaveLength(3);
@@ -100,6 +115,38 @@ describe("BoardCollectionService (§17.102 — type-only successor; Tree opaque)
     const empty = await svc.createBoard("   ", freshTree("e"));
     expect(empty.ok).toBe(false);
     expect(svc.list()).toHaveLength(3);
+
+    // §17.117 — caller can override the default workflow table on
+    // creation (settings UI surfaces this in a later strand).
+    const custom = await svc.createBoard("Delta", freshTree("d"), {
+      workflowStatuses: [
+        WorkflowStatus.of("todo", "TO DO", "#ccc"),
+        WorkflowStatus.of("done", "DONE", "#0f0"),
+      ],
+    });
+    expect(custom.ok).toBe(true);
+    if (custom.ok) {
+      expect(custom.board.workflowStatuses.map((s) => s.id)).toEqual([
+        "todo",
+        "done",
+      ]);
+    }
+  });
+
+  it("§17.117 — updateSettings can patch workflowStatuses for an existing board (data shape ready for the future settings UI)", async () => {
+    const svc = await BoardCollectionService.create(repo, sequentialIdGen());
+    const next = [
+      WorkflowStatus.of("backlog", "BACKLOG", "#888"),
+      WorkflowStatus.of("doing", "DOING", "#33f"),
+    ];
+    const ok = await svc.updateSettings("b1", { workflowStatuses: next });
+    expect(ok.ok).toBe(true);
+    expect(svc.list().find((b) => b.id === "b1")!.workflowStatuses.map((s) => s.id)).toEqual([
+      "backlog",
+      "doing",
+    ]);
+    // Name / tree untouched.
+    expect(svc.list().find((b) => b.id === "b1")!.name).toBe("Alpha");
   });
 
   it("replaceCurrentTree() + deleteBoard() — replaces tree opaquely; refuses to delete the last remaining board; falls back to first board on current-id deletion", async () => {

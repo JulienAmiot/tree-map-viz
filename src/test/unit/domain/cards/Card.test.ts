@@ -5,9 +5,11 @@ import { BusinessScoreCard } from "../../../../domain/cards/BusinessScoreCard.js
 import { Card } from "../../../../domain/cards/Card.js";
 import { StrictRangeCard } from "../../../../domain/cards/StrictRangeCard.js";
 import { TextCard } from "../../../../domain/cards/TextCard.js";
+import { WorkflowCard } from "../../../../domain/cards/WorkflowCard.js";
 import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js";
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../../domain/nodes/TextNode.js";
+import { WorkflowNode } from "../../../../domain/nodes/WorkflowNode.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
 import { Objective } from "../../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../../domain/values/Range.js";
@@ -40,6 +42,8 @@ const buildSRN = (): StrictRangeNode<number> =>
     fixedClock,
     StrictRange.of(0, 100, NumericComparator.INSTANCE),
   );
+const buildWorkflow = (): WorkflowNode =>
+  new WorkflowNode("w-1", "Sprint task", weight, fixedClock, "do");
 
 describe("Card hierarchy (§17.78 — v4 part 14: visual cards hosting v4 nodes)", () => {
   describe("abstract Card<N extends Node>", () => {
@@ -89,6 +93,22 @@ describe("Card hierarchy (§17.78 — v4 part 14: visual cards hosting v4 nodes)
       expect(card.getNode()).toBeInstanceOf(StrictRangeNode);
       expect(card.getNode().range.minimalValue).toBe(0);
       expect(card.getNode().range.maximalValue).toBe(100);
+    });
+  });
+
+  describe("WorkflowCard extends Card<WorkflowNode> (§17.117)", () => {
+    it("hosts a WorkflowNode reference-equal to the constructor argument with the statusId preserved", () => {
+      const node = buildWorkflow();
+      const card = new WorkflowCard(node);
+      expect(card).toBeInstanceOf(WorkflowCard);
+      expect(card).toBeInstanceOf(Card);
+      expect(card.getNode()).toBe(node);
+      expect(card.getNode()).toBeInstanceOf(WorkflowNode);
+      // WorkflowNode IS-A TextNode (the §17.117 sibling-by-extension
+      // shape); the hosted node honours both relations so any TextNode
+      // consumer can still talk to a WorkflowNode through its Card.
+      expect(card.getNode()).toBeInstanceOf(TextNode);
+      expect(card.getNode().statusId).toBe("do");
     });
   });
 });

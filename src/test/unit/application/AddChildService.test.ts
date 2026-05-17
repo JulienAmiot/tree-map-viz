@@ -12,6 +12,7 @@ import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusines
 import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
 import { StrictRangeNode } from "../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
+import { WorkflowNode } from "../../../domain/nodes/WorkflowNode.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
 import { Weight } from "../../../domain/values/Weight.js";
 
@@ -228,6 +229,43 @@ describe("AddChildService (§17.100a — Phase C skeleton + 2 v3-compat kinds)",
         ComputationOverrideError,
       );
     }
+  });
+
+  it("Workflow (§17.117) — constructs a WorkflowNode (NOT a plain TextNode) with the statusId + initialHistory restored exactly", async () => {
+    const r = await svc.addChild(makeRoot(), {
+      kind: "Workflow",
+      title: "Sprint task",
+      weight: 2,
+      statusId: "do",
+      initialHistory: [
+        { value: "design", asOf: new Date("2026-04-01T00:00:00Z") },
+        { value: "ready for review", asOf: new Date("2026-04-15T00:00:00Z") },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.child).toBeInstanceOf(WorkflowNode);
+      // Defensive: the more-specific kind wins; a future change that
+      // reorders the buildNode branches would surface here.
+      expect(r.child).toBeInstanceOf(TextNode);
+      const wf = r.child as WorkflowNode;
+      expect(wf.id).toBe("uuid-1");
+      expect(wf.statusId).toBe("do");
+      expect(wf.weight.value).toBe(2);
+      expect(wf.getValue()).toBe("ready for review");
+      expect(wf.entries()).toHaveLength(2);
+    }
+  });
+
+  it("Workflow — rejects an empty statusId via the WorkflowNode constructor guard (atomic: no child attached)", async () => {
+    const parent = makeRoot();
+    const r = await svc.addChild(parent, {
+      kind: "Workflow",
+      title: "Bad",
+      statusId: "   ",
+    });
+    expect(r.ok).toBe(false);
+    expect(parent.children).toHaveLength(0);
   });
 
   it("persistence boundary — rolls back attach if persist throws (atomicity); uses injected idGen verbatim", async () => {

@@ -115,6 +115,9 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
+import type { WorkflowStatus } from "../../../domain/values/WorkflowStatus.js";
+import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
+
 import {
   modalFrameStyles,
   renderModalCloseX,
@@ -149,6 +152,13 @@ export type AddChildModalPayload =
       readonly kind: "TextNode";
       readonly title: string;
       readonly weight?: number;
+      readonly initialHistory?: readonly { readonly value: string; readonly asOf: Date }[];
+    }
+  | {
+      readonly kind: "Workflow";
+      readonly title: string;
+      readonly weight?: number;
+      readonly statusId: string;
       readonly initialHistory?: readonly { readonly value: string; readonly asOf: Date }[];
     }
   | {
@@ -193,6 +203,12 @@ const KIND_OPTIONS: readonly KindOption[] = [
     name: "Text",
     description:
       "A note: a free-form text value (latest in its timestamped history); no \u03a3.",
+  },
+  {
+    kind: "Workflow",
+    name: "Workflow",
+    description:
+      "A note plus a board-level status badge (PLAN / DO / CHECK / ACT by default).",
   },
   {
     kind: "BusinessScoreCardNode",
@@ -247,6 +263,20 @@ export class AddChildModal extends LitElement {
   @property({ attribute: false })
   availableKinds: readonly AddChildKind[] = ALL_ADD_CHILD_KINDS;
 
+  /**
+   * Catalogue of workflow statuses offered by the `Workflow` form, sourced
+   * from `Board.workflowStatuses` (SPEC §17.118). The composition root sets
+   * this whenever the active board changes so the dropdown always reflects
+   * the current board's status table (PDCA defaults out of the box; arbitrary
+   * once per-board configuration ships).
+   *
+   * Defaulted to {@link DEFAULT_WORKFLOW_STATUSES} so unit tests that mount
+   * the modal in isolation still render a usable Workflow form without the
+   * caller having to mirror the seed.
+   */
+  @property({ attribute: false })
+  workflowStatuses: readonly WorkflowStatus[] = DEFAULT_WORKFLOW_STATUSES;
+
   @state()
   private chosenKind: AddChildKind | null = null;
 
@@ -293,6 +323,15 @@ export class AddChildModal extends LitElement {
 
   @state()
   private eligibleForParentComputation = true;
+
+  /**
+   * Currently selected `WorkflowStatus.id` for the `Workflow` form
+   * (SPEC §17.118). Empty string ⇒ no status picked ⇒ Confirm stays
+   * disabled. `resetForm` seeds it with the first available status's id
+   * so the most common path ("accept the default") is zero-tap.
+   */
+  @state()
+  private statusId = "";
 
   static styles = [
     modalFrameStyles,
@@ -426,7 +465,8 @@ export class AddChildModal extends LitElement {
        difference between empty (italic, muted) and filled (upright, vivid)
        legible at a glance. */
     input,
-    textarea {
+    textarea,
+    select {
       box-sizing: border-box;
       width: 100%;
       padding: 0.55rem 0.7rem;
@@ -437,7 +477,8 @@ export class AddChildModal extends LitElement {
       font: inherit;
     }
     input:focus,
-    textarea:focus {
+    textarea:focus,
+    select:focus {
       outline: none;
       border-color: color-mix(in srgb, currentColor 55%, transparent);
       background: color-mix(in srgb, currentColor 8%, transparent);
@@ -446,6 +487,18 @@ export class AddChildModal extends LitElement {
     textarea::placeholder {
       color: color-mix(in srgb, currentColor 50%, transparent);
       font-style: italic;
+    }
+    /* §17.118 -- option inherits the OS-level dropdown styling, but
+       Chrome on dark backgrounds drops light-on-light text in the open
+       popup. Forcing color-scheme: light dark (and a sane base color
+       on the options themselves) keeps the picker readable in both
+       light and dark theme without re-implementing the dropdown. */
+    select {
+      color-scheme: light dark;
+      appearance: auto;
+    }
+    select option {
+      color: black;
     }
     /* §17.26 — weight is a slider + numeric input pair so the kiosk
        operator can either drag (touch-friendly) or type (precise). The
@@ -552,6 +605,20 @@ export class AddChildModal extends LitElement {
     ) {
       this.chosenKind = null;
       this.errorMessage = null;
+    }
+    // SPEC §17.118 — mirror the `availableKinds` narrowing policy for
+    // the workflow-status catalogue: if the active board's status table
+    // shrinks mid-edit and the operator's pick falls outside the new
+    // list, snap back to the first available status (or empty if none
+    // remain — Confirm will stay disabled in that edge case). This
+    // matters when the composition root swaps boards while the modal is
+    // open; without this guard, an orphan `statusId` would be encoded
+    // into the new node and rejected by the service.
+    if (changed.has("workflowStatuses")) {
+      const known = this.workflowStatuses.some((s) => s.id === this.statusId);
+      if (!known) {
+        this.statusId = this.workflowStatuses[0]?.id ?? "";
+      }
     }
   }
 
@@ -664,7 +731,9 @@ export class AddChildModal extends LitElement {
 
   private renderForm() {
     const isText = this.chosenKind === "TextNode";
+    const isWorkflow = this.chosenKind === "Workflow";
     const isBsc = this.chosenKind === "BusinessScoreCardNode";
+    const isTextOrWorkflow = isText || isWorkflow;
     return html`
       <form
         data-testid="modal-form"
@@ -710,7 +779,8 @@ export class AddChildModal extends LitElement {
             </div>
           </div>
         </div>
-        ${isText ? this.renderTextCurrentValueFields() : nothing}
+        ${isWorkflow ? this.renderWorkflowStatusField() : nothing}
+        ${isTextOrWorkflow ? this.renderTextCurrentValueFields() : nothing}
         ${isBsc ? this.renderBscCurrentValueFields() : nothing}
         ${isBsc ? this.renderObjectiveFields() : nothing}
         ${isBsc ? this.renderBscToggles() : nothing}
@@ -823,6 +893,39 @@ export class AddChildModal extends LitElement {
             @input=${(e: Event) => this.bindString(e, "currentValueDate")}
           />
         </div>
+      </div>
+    `;
+  }
+
+  /**
+   * SPEC §17.118 — the Workflow form gates Confirm on a chosen status:
+   * the badge IS the card's reason for existing (Plan/Do/Check/Act
+   * etc.), so the dropdown is `required` and the operator must pick
+   * one. The list is sourced from {@link workflowStatuses} (the active
+   * Board's status table); `resetForm` pre-selects the first entry so
+   * the most common path is zero-tap.
+   *
+   * A native `<select>` (rather than a custom radio rail) keeps the
+   * kiosk modal lightweight and gives the operator the OS-level
+   * picker that's already familiar.
+   */
+  private renderWorkflowStatusField() {
+    return html`
+      <div class="field">
+        <select
+          data-testid="field-status"
+          required
+          .value=${this.statusId}
+          @change=${(e: Event) => this.bindString(e, "statusId")}
+        >
+          ${this.workflowStatuses.map(
+            (s) => html`
+              <option value=${s.id} ?selected=${s.id === this.statusId}>
+                ${s.label}
+              </option>
+            `,
+          )}
+        </select>
       </div>
     `;
   }
@@ -941,6 +1044,9 @@ export class AddChildModal extends LitElement {
     if (this.chosenKind === "TextNode") {
       return this.buildTextNodePayload(title, weight);
     }
+    if (this.chosenKind === "Workflow") {
+      return this.buildWorkflowPayload(title, weight);
+    }
     if (this.chosenKind === "BusinessScoreCardNode") {
       const description = this.description.trim() || undefined;
       return this.buildBscPayload(title, description, weight);
@@ -965,6 +1071,39 @@ export class AddChildModal extends LitElement {
       kind: "TextNode",
       title,
       ...(weight === undefined ? {} : { weight }),
+      initialHistory: [{ value: currentText, asOf: currentAsOf }],
+    };
+  }
+
+  /**
+   * SPEC §17.118 — Workflow shares the TextNode seed contract (a
+   * `TimestampedValue<string>` so `currentValue()` returns the
+   * displayed text instead of throwing) and adds a mandatory
+   * `statusId` referencing the active Board's `workflowStatuses`
+   * table. Returns `null` if any of (title / current value /
+   * as-of date / statusId / known status) is missing so Confirm
+   * stays disabled until the operator has supplied every required
+   * piece.
+   *
+   * The known-status check (`workflowStatuses.find(...)`) defends
+   * against a stale `statusId` lingering after a board switch
+   * narrowed the catalogue — the service would reject it too, but
+   * gating Confirm here means the operator gets immediate UI
+   * feedback ("Confirm disabled") rather than a post-submit error.
+   */
+  private buildWorkflowPayload(title: string, weight: number | undefined): AddChildModalPayload | null {
+    const currentText = this.currentValue;
+    const currentAsOf = parseIsoDateInput(this.currentValueDate);
+    if (currentText.length === 0 || currentAsOf === null) return null;
+    const statusId = this.statusId.trim();
+    if (statusId === "") return null;
+    const known = this.workflowStatuses.some((s) => s.id === statusId);
+    if (!known) return null;
+    return {
+      kind: "Workflow",
+      title,
+      ...(weight === undefined ? {} : { weight }),
+      statusId,
       initialHistory: [{ value: currentText, asOf: currentAsOf }],
     };
   }
@@ -1023,9 +1162,10 @@ export class AddChildModal extends LitElement {
       | "targetValue"
       | "targetDate"
       | "currentValue"
-      | "currentValueDate",
+      | "currentValueDate"
+      | "statusId",
   ): void {
-    const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+    const target = e.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
     this[field] = target.value;
   }
 
@@ -1060,6 +1200,12 @@ export class AddChildModal extends LitElement {
     this.currentValueDate = AddChildModal.todayIsoDate();
     this.computed = false;
     this.eligibleForParentComputation = true;
+    // SPEC §17.118 — pre-select the first available workflow status so
+    // the most common Workflow path ("accept the default — usually PLAN")
+    // requires zero taps on the dropdown. Falls back to the empty string
+    // when the catalogue is empty (Confirm stays disabled in that case;
+    // the operator can't pick a status that doesn't exist).
+    this.statusId = this.workflowStatuses[0]?.id ?? "";
     this.errorMessage = null;
   }
 
