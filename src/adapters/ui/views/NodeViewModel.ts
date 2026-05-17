@@ -11,7 +11,12 @@
  * or `TimestampedValue`.
  */
 
-export type NodeKind = "TextNode" | "BusinessScoreCardNode" | "ComputedNode" | "ComputedBusinessScoreNode";
+export type NodeKind =
+  | "TextNode"
+  | "BusinessScoreCardNode"
+  | "ComputedNode"
+  | "ComputedBusinessScoreNode"
+  | "PictureNode";
 
 /** SPEC §17.104 — Lit-friendly mirror of `ComputationKind` names (§17.95 / §17.94 D2). */
 export type ComputationKindName = "SUM" | "AVERAGE" | "MIN" | "MAX" | "WEIGHTED_AVERAGE" | "COUNT";
@@ -250,11 +255,33 @@ export type ComputedBusinessScoreNodeViewModel = {
   readonly objective: BusinessScoreCardObjectiveViewModel;
 };
 
+/**
+ * SPEC §17.119 — `PictureNode` view-model. Carries the operator-visible
+ * title plus the image URL the view layer feeds to its `<img>` element.
+ * No timestamp / no objective row — pictures are snapshot leaves; the
+ * tile body IS the image.
+ *
+ * `imageUrl` is the baked URL the mapper already normalised against
+ * the domain (non-empty, trimmed). The view layer is responsible for
+ * loading it via an `<img>` tag and rendering the §17.44 warning-fill
+ * glyph when the load fails (the operator's "display the same warning
+ * sign as the computed card" requirement). No further validation
+ * happens in the view; the browser is the authoritative source of
+ * "can I display this?".
+ */
+export type PictureNodeViewModel = {
+  readonly kind: "PictureNode";
+  readonly id: string;
+  readonly title: string;
+  readonly imageUrl: string;
+};
+
 export type NodeViewModel =
   | TextNodeViewModel
   | BusinessScoreCardNodeViewModel
   | ComputedNodeViewModel
-  | ComputedBusinessScoreNodeViewModel;
+  | ComputedBusinessScoreNodeViewModel
+  | PictureNodeViewModel;
 
 /**
  * One slot in the focused view's children grid. Either a regular node tile

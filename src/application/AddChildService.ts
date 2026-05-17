@@ -6,6 +6,7 @@ import { ComputedBusinessScoreNode } from "../domain/nodes/ComputedBusinessScore
 import { ComputedNode } from "../domain/nodes/ComputedNode.js";
 import type { HistorizableValueNode } from "../domain/nodes/HistorizableValueNode.js";
 import type { Node } from "../domain/nodes/Node.js";
+import { PictureNode } from "../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../domain/nodes/TextNode.js";
 import type { ValueNode } from "../domain/nodes/ValueNode.js";
@@ -70,6 +71,18 @@ export type AddChildPayload =
       readonly unit: string;
       readonly objective: { readonly value: number; readonly at: Date };
       readonly computationKind: ComputationKind;
+      readonly disabled?: boolean;
+    }
+  | {
+      /**
+       * SPEC §17.119 — snapshot leaf carrying a single image URL. No
+       * description / history / objective / range; the modal collects
+       * title + weight + imageUrl and that is the full surface.
+       */
+      readonly kind: "Picture";
+      readonly title: string;
+      readonly weight?: number;
+      readonly imageUrl: string;
       readonly disabled?: boolean;
     };
 
@@ -146,6 +159,11 @@ export class AddChildService {
     }
     if (payload.kind === "ComputedBusinessScore") {
       return this.buildComputedBusinessScoreNode(id, title, weight, payload);
+    }
+    if (payload.kind === "Picture") {
+      const node = new PictureNode(id, title, weight, payload.imageUrl);
+      AddChildService.applyDisabled(node, payload.disabled);
+      return node;
     }
     throw new Error(`Unknown node kind: ${(payload as { kind: string }).kind}`);
   }

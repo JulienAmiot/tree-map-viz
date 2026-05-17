@@ -6,6 +6,7 @@ import { BusinessScoreNode } from "../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../../domain/nodes/ComputedNode.js";
 import type { Node } from "../../domain/nodes/Node.js";
+import { PictureNode } from "../../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../domain/nodes/TextNode.js";
 import type { ValueNode } from "../../domain/nodes/ValueNode.js";
@@ -67,10 +68,11 @@ function encodeNode(node: Node): Record<string, unknown> {
   if (node instanceof BusinessScoreNode) return encodeBSN(node);
   if (node instanceof ComputedNode) return encodeCN(node);
   if (node instanceof StrictRangeNode) return encodeStrictRangeNode(node);
+  if (node instanceof PictureNode) return encodePictureNode(node);
   throw new JsonCodecEncodeError(`unsupported v4 Node subclass "${node.constructor.name}" (id="${node.id}")`);
 }
 
-function commonFields(node: TextNode | BusinessScoreNode<number> | ComputedNode<unknown> | StrictRangeNode<number>): Record<string, unknown> {
+function commonFields(node: TextNode | BusinessScoreNode<number> | ComputedNode<unknown> | StrictRangeNode<number> | PictureNode): Record<string, unknown> {
   const out: Record<string, unknown> = {
     id: node.id,
     title: node.title,
@@ -134,6 +136,21 @@ function encodeStrictRangeNode(node: StrictRangeNode<number>): Record<string, un
   };
 }
 
+/**
+ * §17.119 — `PictureNode` is a snapshot leaf (no history, no objective,
+ * no description). The wire shape is the standard `commonFields` slice
+ * plus a single `imageUrl: string`. Forward-compatible: a future `alt`
+ * field would land alongside `imageUrl` without disturbing the
+ * existing rows.
+ */
+function encodePictureNode(node: PictureNode): Record<string, unknown> {
+  return {
+    kind: "PictureNode",
+    ...commonFields(node),
+    imageUrl: node.imageUrl,
+  };
+}
+
 function encodeRange(
   range: LenientRange<number> | StrictRange<number>,
   kind: "lenient" | "strict",
@@ -186,6 +203,12 @@ function decodeNode(raw: unknown, p: string, clock: Clock): Node {
     const srn = new StrictRangeNode<number>(id, title, w, requireString(obj, "description", p), clock, decodeRange(obj, p, "strict", StrictRange.of));
     for (const h of decodeHistory(obj, p, "number")) srn.addValue(h.at, h.value as number);
     node = srn;
+  } else if (kind === "PictureNode") {
+    // §17.119 — PictureNode wire shape: `kind` + commonFields + `imageUrl`.
+    // No history / objective / description path; we read the URL with the
+    // standard non-empty-string guard and feed it to the constructor
+    // (which re-validates synchronously — defence in depth at the seam).
+    node = new PictureNode(id, title, w, requireString(obj, "imageUrl", p));
   } else {
     throw new JsonCodecDecodeError(joinPointer(p, "kind"), `unknown kind "${kind}"`);
   }

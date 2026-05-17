@@ -400,4 +400,156 @@ describe("<edit-node-modal>", () => {
     const err = el.shadowRoot?.querySelector('[data-testid="edit-modal-error"]');
     expect(err?.textContent?.trim()).toBe("Title too long");
   });
+
+  /**
+   * SPEC §17.119 — `<edit-node-modal>` PictureNode branch.
+   *
+   * Picture is the simplest edit form: weight slider + image URL
+   * input (no description / unit / objective / toggles). Title
+   * lives on the inline editor per §17.50. The branch must:
+   *   - seed `imageUrl` from `target.imageUrl` on open;
+   *   - render `field-image-url` and only the picture-relevant
+   *     fields;
+   *   - hide every BSC-only field (unit / initial / target /
+   *     target-date / computed / eligible / description);
+   *   - keep Confirm enabled while `imageUrl` is non-empty (the
+   *     domain requires a non-empty URL — the modal mirrors that
+   *     gate);
+   *   - disable Confirm if the operator blanks the URL;
+   *   - dispatch a payload of shape
+   *     `{ kind: "PictureNode", imageUrl, weight? }` on confirm.
+   */
+  describe("PictureNode target (§17.119)", () => {
+    const pictureTarget: EditNodeTarget = {
+      nodeId: "uuid-pic",
+      kind: "PictureNode",
+      title: "Office floor plan",
+      weight: 1.5,
+      imageUrl: "https://example.com/floor.jpg",
+    };
+
+    it("seeds weight + imageUrl from the target on open; no title field (§17.50 parity)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = pictureTarget;
+        e.open = true;
+      });
+      expect(panelOf(el)?.dataset["kind"]).toBe("PictureNode");
+      expect((fieldOf(el, "field-weight") as HTMLInputElement).value).toBe("1.5");
+      expect(
+        (fieldOf(el, "field-image-url") as HTMLInputElement).value,
+      ).toBe("https://example.com/floor.jpg");
+      // §17.50 — title is edited inline, not via the modal.
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-title"]'),
+      ).toBeNull();
+    });
+
+    it("hides every BSC-only field (description / unit / objective / toggles)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = pictureTarget;
+        e.open = true;
+      });
+      const hidden = [
+        "field-description",
+        "field-unit",
+        "field-initial",
+        "field-target",
+        "field-target-date",
+        "field-computed",
+        "field-eligible",
+      ];
+      for (const id of hidden) {
+        expect(el.shadowRoot?.querySelector(`[data-testid="${id}"]`)).toBeNull();
+      }
+    });
+
+    it("placeholder on field-image-url matches the §6 '<Field name> — e.g. <mock>' pattern + uses type=url", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = pictureTarget;
+        e.open = true;
+      });
+      const img = fieldOf(el, "field-image-url") as HTMLInputElement;
+      expect(img.placeholder).toMatch(/^Image URL — e\.g\./);
+      expect(img.type).toBe("url");
+    });
+
+    it("Confirm stays enabled while imageUrl is non-empty (the seed URL is valid by construction)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = pictureTarget;
+        e.open = true;
+      });
+      expect(confirmBtn(el).disabled).toBe(false);
+    });
+
+    it("Confirm disables when the operator blanks the URL (gates on PictureNode.normaliseImageUrl)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = pictureTarget;
+        e.open = true;
+      });
+      await setInput(el, "field-image-url", "   ");
+      expect(confirmBtn(el).disabled).toBe(true);
+    });
+
+    it("Confirm dispatches edit-node-confirm with kind=PictureNode + trimmed imageUrl + chosen weight", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = pictureTarget;
+        e.open = true;
+      });
+      // Replace both fields with new values; whitespace around the
+      // URL must be trimmed in the dispatched payload (matches
+      // PictureNode.normaliseImageUrl).
+      await setInput(el, "field-image-url", "  https://example.com/new.png  ");
+      await setInput(el, "field-weight", "2.5");
+
+      const handler = vi.fn();
+      el.addEventListener(EDIT_NODE_CONFIRM_EVENT, handler);
+      confirmBtn(el).click();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      const ev = handler.mock.calls[0]![0] as CustomEvent<EditNodeConfirmDetail>;
+      expect(ev.bubbles).toBe(true);
+      expect(ev.composed).toBe(true);
+      expect(ev.detail.nodeId).toBe("uuid-pic");
+      expect(ev.detail.payload).toEqual({
+        kind: "PictureNode",
+        weight: 2.5,
+        imageUrl: "https://example.com/new.png",
+      });
+    });
+
+    it("re-seeds the image URL when the target swaps mid-open (Text → Picture)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = textTarget;
+        e.open = true;
+      });
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-image-url"]'),
+      ).toBeNull();
+      el.editTarget = pictureTarget;
+      await el.updateComplete;
+      expect((fieldOf(el, "field-image-url") as HTMLInputElement).value).toBe(
+        "https://example.com/floor.jpg",
+      );
+      // BSC-only fields stay hidden after the swap.
+      expect(el.shadowRoot?.querySelector('[data-testid="field-unit"]')).toBeNull();
+    });
+
+    it("swapping Picture → BSC clears the imageUrl and brings the BSC-only fields back", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = pictureTarget;
+        e.open = true;
+      });
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-image-url"]'),
+      ).not.toBeNull();
+      el.editTarget = bscTarget;
+      await el.updateComplete;
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-image-url"]'),
+      ).toBeNull();
+      expect(
+        (fieldOf(el, "field-unit") as HTMLInputElement).value,
+      ).toBe("M\u20ac");
+    });
+  });
 });

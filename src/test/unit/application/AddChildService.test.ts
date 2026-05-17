@@ -10,6 +10,7 @@ import { ComputationOverrideError } from "../../../domain/computation/Computatio
 import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
+import { PictureNode } from "../../../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { Timestamp } from "../../../domain/values/Timestamp.js";
@@ -228,6 +229,42 @@ describe("AddChildService (§17.100a — Phase C skeleton + 2 v3-compat kinds)",
         ComputationOverrideError,
       );
     }
+  });
+
+  it("Picture (§17.119) — constructs a PictureNode with imageUrl + applies disabled + persists", async () => {
+    const parent = makeRoot();
+    const r = await svc.addChild(parent, {
+      kind: "Picture",
+      title: "Cat",
+      weight: 2,
+      imageUrl: "https://example.com/cat.jpg",
+      disabled: true,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const pic = r.child as PictureNode;
+      expect(pic).toBeInstanceOf(PictureNode);
+      expect(pic.title).toBe("Cat");
+      expect(pic.weight.value).toBe(2);
+      expect(pic.imageUrl).toBe("https://example.com/cat.jpg");
+      expect(pic.disabled).toBe(true);
+      expect(pic.parent).toBe(parent);
+    }
+    expect(persist).toHaveBeenCalledTimes(1);
+  });
+
+  it("Picture (§17.119) — rejects an empty imageUrl synchronously (domain guard fires before attach)", async () => {
+    const parent = makeRoot();
+    const r = await svc.addChild(parent, {
+      kind: "Picture",
+      title: "Cat",
+      imageUrl: "   ",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/imageUrl|cannot be empty/i);
+    // No attach happened; persist was never called.
+    expect(parent.children).toHaveLength(0);
+    expect(persist).not.toHaveBeenCalled();
   });
 
   it("persistence boundary — rolls back attach if persist throws (atomicity); uses injected idGen verbatim", async () => {

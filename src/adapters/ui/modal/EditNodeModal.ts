@@ -118,6 +118,23 @@ export type EditNodeModalPayload =
       };
       readonly computed?: boolean;
       readonly eligibleForParentComputation?: boolean;
+    }
+  /**
+   * SPEC §17.119 — `PictureNode` variant. Only weight + image URL are
+   * editable through this modal; title rides the inline-edit seam
+   * (the focused-panel `<picture-node-as-parent>`'s click-to-edit
+   * title) per the §17.50 contract that applies to every kind. The
+   * `imageUrl` field is the picture-strand-specific edit — swapping
+   * the image source is a structural change that doesn't belong on
+   * an inline editor (the URL is typically pasted, not typed in
+   * place). main.ts's `toAppEditPayload` rewrites the modal-side
+   * `"PictureNode"` kind tag to the application-layer `"Picture"`.
+   */
+  | {
+      readonly kind: "PictureNode";
+      readonly title?: string;
+      readonly weight?: number;
+      readonly imageUrl?: string;
     };
 
 /** Pre-edit snapshot supplied by the composition root when opening the modal. */
@@ -143,6 +160,13 @@ export type EditNodeTarget =
       };
       readonly computed: boolean;
       readonly eligibleForParentComputation: boolean;
+    }
+  | {
+      readonly nodeId: string;
+      readonly kind: "PictureNode";
+      readonly title: string;
+      readonly weight: number;
+      readonly imageUrl: string;
     };
 
 export type EditNodeConfirmDetail = {
@@ -153,6 +177,7 @@ export type EditNodeConfirmDetail = {
 const KIND_LABELS: Record<EditNodeTarget["kind"], string> = {
   TextNode: "Text",
   BusinessScoreCardNode: "Business Score Card",
+  PictureNode: "Picture",
 };
 
 @customElement("edit-node-modal")
@@ -199,6 +224,10 @@ export class EditNodeModal extends LitElement {
 
   @state()
   private eligibleForParentComputation = true;
+
+  /** SPEC §17.119 — image URL for the Picture kind. Seeded from `target.imageUrl`. */
+  @state()
+  private imageUrl = "";
 
   /**
    * Layout-specific styles layered on top of the shared `modalFrameStyles`
@@ -423,6 +452,7 @@ export class EditNodeModal extends LitElement {
   private renderForm() {
     const target = this.editTarget!;
     const isBsc = target.kind === "BusinessScoreCardNode";
+    const isPicture = target.kind === "PictureNode";
     return html`
       <form
         data-testid="edit-modal-form"
@@ -460,6 +490,7 @@ export class EditNodeModal extends LitElement {
         ${isBsc ? this.renderUnitField() : nothing}
         ${isBsc ? this.renderObjectiveFields() : nothing}
         ${isBsc ? this.renderBscToggles() : nothing}
+        ${isPicture ? this.renderImageUrlField() : nothing}
         ${this.errorMessage
           ? html`<p class="error" data-testid="edit-modal-error">
               ${this.errorMessage}
@@ -557,6 +588,30 @@ export class EditNodeModal extends LitElement {
     `;
   }
 
+  /**
+   * SPEC §17.119 — single edit field for the Picture kind: the
+   * image URL. The seed comes from `target.imageUrl`; the gate is
+   * "non-empty after trim" (matching `PictureNode.normaliseImageUrl`
+   * + the add-child contract). `type="url"` triggers the platform
+   * URL keyboard on touch kiosks; the actual validation is the
+   * domain's trim-non-empty check, mirrored by `buildPayload`'s
+   * `imageUrl.length === 0` guard.
+   */
+  private renderImageUrlField() {
+    return html`
+      <div class="field" data-testid="image-url-row">
+        <input
+          data-testid="field-image-url"
+          type="url"
+          placeholder='Image URL — e.g. "https://example.com/photo.jpg"'
+          .value=${this.imageUrl}
+          required
+          @input=${(e: Event) => this.bindString(e, "imageUrl")}
+        />
+      </div>
+    `;
+  }
+
   private renderBscToggles() {
     return html`
       <div class="checkbox-row">
@@ -626,6 +681,21 @@ export class EditNodeModal extends LitElement {
         ...(weight === undefined || Number.isNaN(weight) ? {} : { weight }),
       };
     }
+    if (this.editTarget.kind === "PictureNode") {
+      // SPEC §17.119 — Picture edit: weight + imageUrl. Both fields
+      // stay optional in the payload shape (the application service
+      // treats `undefined` as "do not touch"); the modal still gates
+      // Confirm on "imageUrl is non-empty after trim" because the
+      // domain rejects an empty URL — leaving the field blank would
+      // throw at the service boundary and roll back uselessly.
+      const imageUrl = this.imageUrl.trim();
+      if (imageUrl.length === 0) return null;
+      return {
+        kind: "PictureNode",
+        ...(weight === undefined || Number.isNaN(weight) ? {} : { weight }),
+        imageUrl,
+      };
+    }
     // BusinessScoreCardNode branch — unit + objective fields are
     // mandatory (mirroring the add-child contract); description stays
     // optional. computed / eligibleForParentComputation are checkboxes,
@@ -669,7 +739,8 @@ export class EditNodeModal extends LitElement {
       | "unit"
       | "initialValue"
       | "targetValue"
-      | "targetDate",
+      | "targetDate"
+      | "imageUrl",
   ): void {
     const target = e.target as HTMLInputElement | HTMLTextAreaElement;
     this[field] = target.value;
@@ -702,6 +773,21 @@ export class EditNodeModal extends LitElement {
       this.targetDate = "";
       this.computed = false;
       this.eligibleForParentComputation = true;
+      this.imageUrl = "";
+      return;
+    }
+    if (target.kind === "PictureNode") {
+      // SPEC §17.119 -- Picture edit only surfaces weight + imageUrl;
+      // the BSC-only fields stay cleared so a future kind switch on
+      // the modal would not bleed seed values across kinds.
+      this.description = "";
+      this.unit = "";
+      this.initialValue = "";
+      this.targetValue = "";
+      this.targetDate = "";
+      this.computed = false;
+      this.eligibleForParentComputation = true;
+      this.imageUrl = target.imageUrl;
       return;
     }
     this.description = target.description;
@@ -711,6 +797,7 @@ export class EditNodeModal extends LitElement {
     this.targetDate = target.objective.targetDateIso;
     this.computed = target.computed;
     this.eligibleForParentComputation = target.eligibleForParentComputation;
+    this.imageUrl = "";
   }
 
   private handleBackdropClick = (e: Event): void => {

@@ -165,6 +165,23 @@ export type AddChildModalPayload =
       readonly computed?: boolean;
       readonly eligibleForParentComputation?: boolean;
       readonly initialHistory?: readonly { readonly value: number; readonly asOf: Date }[];
+    }
+  /**
+   * SPEC §17.119 — `PictureNode` variant. A snapshot leaf carrying a
+   * single image URL: no description (the title labels the picture,
+   * the picture IS the content), no objective row, no
+   * `initialHistory` (the domain inherits from `ValueNode<string>`,
+   * not `HistorizableValueNode<string>`). The modal collects title +
+   * weight + imageUrl and that is the full surface. main.ts's
+   * `toAppAddChildPayload` rewrites the modal-side `"PictureNode"`
+   * kind tag to the application-layer `"Picture"` kind tag before
+   * handing off to `AddChildService`.
+   */
+  | {
+      readonly kind: "PictureNode";
+      readonly title: string;
+      readonly weight?: number;
+      readonly imageUrl: string;
     };
 
 export type AddChildKind = AddChildModalPayload["kind"];
@@ -198,6 +215,12 @@ const KIND_OPTIONS: readonly KindOption[] = [
     kind: "BusinessScoreCardNode",
     name: "Business Score Card",
     description: "A measurable: title, unit, target, history, optional \u03a3.",
+  },
+  {
+    kind: "PictureNode",
+    name: "Picture",
+    description:
+      "An image: a title + an image URL (object-fit: cover); shows a warning glyph on load failure.",
   },
 ];
 
@@ -293,6 +316,17 @@ export class AddChildModal extends LitElement {
 
   @state()
   private eligibleForParentComputation = true;
+
+  /**
+   * SPEC §17.119 — image URL for the Picture kind. A plain string;
+   * the domain (`PictureNode`) validates "non-empty after trim" and
+   * the browser is the authoritative URL validator (the `<img>`
+   * tag's `error` event drives the warning fallback). The modal
+   * gates Confirm on "non-empty after trim" to match the domain's
+   * minimum contract.
+   */
+  @state()
+  private imageUrl = "";
 
   static styles = [
     modalFrameStyles,
@@ -665,6 +699,7 @@ export class AddChildModal extends LitElement {
   private renderForm() {
     const isText = this.chosenKind === "TextNode";
     const isBsc = this.chosenKind === "BusinessScoreCardNode";
+    const isPicture = this.chosenKind === "PictureNode";
     return html`
       <form
         data-testid="modal-form"
@@ -714,12 +749,38 @@ export class AddChildModal extends LitElement {
         ${isBsc ? this.renderBscCurrentValueFields() : nothing}
         ${isBsc ? this.renderObjectiveFields() : nothing}
         ${isBsc ? this.renderBscToggles() : nothing}
+        ${isPicture ? this.renderPictureFields() : nothing}
         ${this.errorMessage
           ? html`<p class="error" data-testid="modal-error">
               ${this.errorMessage}
             </p>`
           : nothing}
       </form>
+    `;
+  }
+
+  /**
+   * SPEC §17.119 — single-field picture form: just the image URL.
+   * `type="url"` triggers the platform's URL keyboard on mobile /
+   * touch kiosks and adds a soft client-side validation hint, but
+   * the gating predicate (`buildPicturePayload`) is the canonical
+   * "non-empty after trim" check — the field accepts `data:` and
+   * `blob:` URLs that the browser's strict URL validator would
+   * reject. The domain validates the same way (trim non-empty) and
+   * the `<img>`'s `error` event is the load-time validator.
+   */
+  private renderPictureFields() {
+    return html`
+      <div class="field" data-testid="image-url-row">
+        <input
+          data-testid="field-image-url"
+          type="url"
+          placeholder='Image URL — e.g. "https://example.com/photo.jpg"'
+          .value=${this.imageUrl}
+          required
+          @input=${(e: Event) => this.bindString(e, "imageUrl")}
+        />
+      </div>
     `;
   }
 
@@ -945,6 +1006,9 @@ export class AddChildModal extends LitElement {
       const description = this.description.trim() || undefined;
       return this.buildBscPayload(title, description, weight);
     }
+    if (this.chosenKind === "PictureNode") {
+      return this.buildPicturePayload(title, weight);
+    }
     return null;
   }
 
@@ -1008,6 +1072,28 @@ export class AddChildModal extends LitElement {
     };
   }
 
+  /**
+   * SPEC §17.119 — Picture payload is the simplest of the three:
+   * title + weight + a non-empty image URL. Returns `null` when the
+   * URL is missing/blank so `canConfirm()` keeps the Confirm button
+   * disabled until the operator types one. Mirrors the
+   * `PictureNode.normaliseImageUrl` domain contract (non-empty
+   * after trim).
+   */
+  private buildPicturePayload(
+    title: string,
+    weight: number | undefined,
+  ): AddChildModalPayload | null {
+    const imageUrl = this.imageUrl.trim();
+    if (imageUrl.length === 0) return null;
+    return {
+      kind: "PictureNode",
+      title,
+      ...(weight === undefined ? {} : { weight }),
+      imageUrl,
+    };
+  }
+
   private canConfirm(): boolean {
     return this.buildPayload() !== null;
   }
@@ -1023,7 +1109,8 @@ export class AddChildModal extends LitElement {
       | "targetValue"
       | "targetDate"
       | "currentValue"
-      | "currentValueDate",
+      | "currentValueDate"
+      | "imageUrl",
   ): void {
     const target = e.target as HTMLInputElement | HTMLTextAreaElement;
     this[field] = target.value;
@@ -1060,6 +1147,7 @@ export class AddChildModal extends LitElement {
     this.currentValueDate = AddChildModal.todayIsoDate();
     this.computed = false;
     this.eligibleForParentComputation = true;
+    this.imageUrl = "";
     this.errorMessage = null;
   }
 

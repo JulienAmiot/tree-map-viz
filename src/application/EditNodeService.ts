@@ -6,6 +6,7 @@ import { BusinessScoreNode } from "../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../domain/nodes/ComputedNode.js";
 import type { Node } from "../domain/nodes/Node.js";
+import { PictureNode } from "../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../domain/nodes/TextNode.js";
 import type { CardRegistry } from "../domain/Tree.js";
@@ -34,12 +35,20 @@ type CommonEdit = {
 };
 type BSEdit = { readonly unit?: string; readonly objective?: { readonly value: number; readonly at: Date } };
 type ComputedEdit = { readonly computationKind?: ComputationKind };
+/**
+ * SPEC §17.119 — `PictureEdit` adds an optional `imageUrl` swap; the
+ * service treats `undefined` as "no change" and an explicit non-empty
+ * string replaces the URL atomically alongside the title/weight edits
+ * so undo restores the prior image alongside everything else.
+ */
+type PictureEdit = { readonly imageUrl?: string };
 export type EditNodePayload =
   | (CommonEdit & { readonly kind: "TextNode" })
   | (CommonEdit & BSEdit & { readonly kind: "BusinessScore" })
   | (CommonEdit & { readonly kind: "StrictRange" })
   | (CommonEdit & ComputedEdit & { readonly kind: "Computed" })
-  | (CommonEdit & BSEdit & ComputedEdit & { readonly kind: "ComputedBusinessScore" });
+  | (CommonEdit & BSEdit & ComputedEdit & { readonly kind: "ComputedBusinessScore" })
+  | (CommonEdit & PictureEdit & { readonly kind: "Picture" });
 
 type Outcome =
   | { readonly ok: true; readonly node: Node }
@@ -95,6 +104,9 @@ export class EditNodeService {
       }
       if (payload.kind === "Computed" || payload.kind === "ComputedBusinessScore") {
         EditNodeService.applyComputedEdits(node as unknown as Computed<number>, payload, undos);
+      }
+      if (payload.kind === "Picture") {
+        EditNodeService.applyPictureEdits(node as PictureNode, payload, undos);
       }
     } catch (error) {
       return { undo, error };
@@ -160,6 +172,25 @@ export class EditNodeService {
     }
   }
 
+  /**
+   * SPEC §17.119 — Picture-specific edit branch. `setImageUrl` is the
+   * atomic-replacement mutator on `PictureNode`; the prior URL is
+   * captured before the swap so the all-or-nothing edit contract
+   * holds (a persister failure restores the previous image alongside
+   * the rolled-back title / weight / disabled changes).
+   */
+  private static applyPictureEdits(
+    pic: PictureNode,
+    payload: PictureEdit,
+    undos: Array<() => void>,
+  ): void {
+    if (payload.imageUrl !== undefined) {
+      const prev = pic.imageUrl;
+      pic.setImageUrl(payload.imageUrl);
+      undos.push(() => pic.setImageUrl(prev));
+    }
+  }
+
   private static applyAppendValue(node: Node, value: string | number, asOf: Timestamp): () => void {
     if (node instanceof TextNode && typeof value === "string") {
       node.addValue(asOf, value);
@@ -185,6 +216,7 @@ export class EditNodeService {
       case "StrictRange": return StrictRangeNode;
       case "Computed": return ComputedNode;
       case "ComputedBusinessScore": return ComputedBusinessScoreNode;
+      case "Picture": return PictureNode;
     }
   }
 

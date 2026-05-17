@@ -23,6 +23,8 @@ import "./BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import "./BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "./ComputedNode/ComputedCards.js";
 import "./NodeView.js";
+import "./PictureNode/PictureNodeAsChild.js";
+import "./PictureNode/PictureNodeAsParent.js";
 import "./TextNode/TextNodeAsChild.js";
 import "./TextNode/TextNodeAsParent.js";
 import "./plus/PlusTile.js";
@@ -44,6 +46,13 @@ if (!nodeViewRegistry.isFrozen()) {
     asParent: "computed-business-score-card",
     asChild: "computed-business-score-card",
   });
+  // §17.119 — PictureNode strand. Distinct tags per role: parent
+  // surfaces the click-to-edit title affordance; child stays read-
+  // only (parity with TextNode / BSC role split).
+  nodeViewRegistry.register("PictureNode", {
+    asParent: "picture-node-as-parent",
+    asChild: "picture-node-as-child",
+  });
   nodeViewRegistry.freeze();
 }
 
@@ -59,6 +68,7 @@ export type {
   NodeKind,
   NodeRole,
   NodeViewModel,
+  PictureNodeViewModel,
   TextNodeViewModel,
 } from "./NodeViewModel.js";
 export { nodeViewRegistry, NodeViewRegistryError } from "./nodeViewRegistry.js";

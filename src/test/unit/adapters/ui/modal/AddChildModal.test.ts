@@ -128,10 +128,13 @@ describe("<add-child-modal>", () => {
     const buttons = list.querySelectorAll<HTMLButtonElement>(
       '[data-testid="kind-btn"]',
     );
-    // One button per kind, in registration order.
+    // One button per kind, in registration order. SPEC §17.119
+    // appended `PictureNode` to the catalogue (PictureNode strand);
+    // a future kind addition lands at the end of this array.
     expect(Array.from(buttons).map((b) => b.dataset["kind"])).toEqual([
       "TextNode",
       "BusinessScoreCardNode",
+      "PictureNode",
     ]);
     // Each button shows "Name — Description" (same content the pre-§17.19
     // kind-cards rendered, layout-agnostic since §17.25).
@@ -1034,5 +1037,194 @@ describe("<add-child-modal> empty-field placeholder pattern (SPEC §6)", () => {
     expect(title.value).toBe("");
     await setInput(el, "field-title", "Filled");
     expect((fieldOf(el, "field-title") as HTMLInputElement).value).toBe("Filled");
+  });
+});
+
+/**
+ * SPEC §17.119 — `<add-child-modal>` Picture kind branch.
+ *
+ * Picture is the simplest of the three add-child forms: title +
+ * weight + a non-empty image URL, no description / no objective /
+ * no current-value seed / no toggles. The branch must:
+ *   - render `field-image-url` (and only the picture-relevant
+ *     fields) when `PictureNode` is picked;
+ *   - gate Confirm on title AND imageUrl being non-empty;
+ *   - dispatch an `AddChildConfirmDetail` with `kind: "PictureNode"`,
+ *     the trimmed URL, and the chosen weight when Confirm fires;
+ *   - reset the URL when the modal re-opens.
+ */
+async function pickPicture(el: AddChildModal): Promise<void> {
+  // `pickKind` is the local helper used by sibling tests; reuse so
+  // future "click route to a kind" tests stay consistent.
+  const btn = el.shadowRoot?.querySelector<HTMLButtonElement>(
+    '[data-testid="kind-btn"][data-kind="PictureNode"]',
+  );
+  if (!btn) throw new Error("expected PictureNode kind-btn");
+  btn.click();
+  await el.updateComplete;
+}
+
+describe("<add-child-modal> PictureNode branch (§17.119)", () => {
+  it("PictureNode is part of the default availableKinds catalogue (ALL_ADD_CHILD_KINDS)", () => {
+    expect(ALL_ADD_CHILD_KINDS).toContain("PictureNode");
+  });
+
+  it("picking PictureNode renders only the picture-relevant fields (title + weight + imageUrl)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickPicture(el);
+
+    const form = el.shadowRoot?.querySelector<HTMLFormElement>(
+      '[data-testid="modal-form"]',
+    );
+    expect(form).not.toBeNull();
+    expect(form?.dataset["kind"]).toBe("PictureNode");
+
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-title"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-image-url"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-weight"]'),
+    ).not.toBeNull();
+    // BSC-only fields stay hidden.
+    expect(el.shadowRoot?.querySelector('[data-testid="field-description"]')).toBeNull();
+    expect(el.shadowRoot?.querySelector('[data-testid="field-unit"]')).toBeNull();
+    expect(el.shadowRoot?.querySelector('[data-testid="field-initial"]')).toBeNull();
+    expect(el.shadowRoot?.querySelector('[data-testid="field-target"]')).toBeNull();
+    // TextNode-only seed (current-value) field stays hidden.
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-current-value"]'),
+    ).toBeNull();
+  });
+
+  it("placeholder on field-image-url matches the §6 '<Field name> — e.g. <mock>' pattern", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickPicture(el);
+    const img = fieldOf(el, "field-image-url") as HTMLInputElement;
+    expect(img.placeholder).toMatch(/^Image URL — e\.g\./);
+    expect(img.type).toBe("url");
+  });
+
+  it("Confirm stays disabled when title is blank, even if imageUrl is filled", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickPicture(el);
+    await setInput(el, "field-image-url", "https://example.com/p.jpg");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+  });
+
+  it("Confirm stays disabled when imageUrl is blank (or whitespace-only), even if title is filled", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickPicture(el);
+    await setInput(el, "field-title", "Office photo");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-image-url", "   ");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+  });
+
+  it("Confirm enables once title + imageUrl are both non-empty", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickPicture(el);
+    await setInput(el, "field-title", "Plan A");
+    await setInput(el, "field-image-url", "https://example.com/x.png");
+    expect(confirmBtnOf(el).disabled).toBe(false);
+  });
+
+  it("Confirm dispatches add-child-confirm with kind=PictureNode + trimmed imageUrl + chosen weight", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+        e.parentId = "uuid-parent-pic";
+      },
+    );
+    await pickPicture(el);
+    await setInput(el, "field-title", "Office plan");
+    // Surrounding whitespace must be trimmed in the payload (matches
+    // `PictureNode.normaliseImageUrl` domain contract).
+    await setInput(el, "field-image-url", "  https://example.com/o.jpg  ");
+    await setInput(el, "field-weight", "2");
+
+    const handler = vi.fn();
+    el.addEventListener("add-child-confirm", handler);
+    confirmBtnOf(el).click();
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    const ev = handler.mock.calls[0]![0] as CustomEvent<AddChildConfirmDetail>;
+    expect(ev.bubbles).toBe(true);
+    expect(ev.composed).toBe(true);
+    expect(ev.detail.parentId).toBe("uuid-parent-pic");
+    expect(ev.detail.payload).toEqual({
+      kind: "PictureNode",
+      title: "Office plan",
+      weight: 2,
+      imageUrl: "https://example.com/o.jpg",
+    });
+  });
+
+  it("re-opening the modal clears the previously-entered imageUrl (resetForm runs on open=true)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickPicture(el);
+    await setInput(el, "field-image-url", "https://example.com/stale.jpg");
+    // Close + reopen.
+    el.open = false;
+    await el.updateComplete;
+    el.open = true;
+    await el.updateComplete;
+    // No kind chosen yet on the fresh open; pick Picture again to
+    // surface the image-url field.
+    await pickPicture(el);
+    const img = fieldOf(el, "field-image-url") as HTMLInputElement;
+    expect(img.value).toBe("");
+  });
+
+  it("placeholder pattern: every text/number/url/date input on the Picture form matches '<Field name> — e.g. <mock>'", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickPicture(el);
+    const fields = Array.from(
+      el.shadowRoot?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+        '[data-testid="modal-form"] input[type="text"], [data-testid="modal-form"] input[type="number"], [data-testid="modal-form"] input[type="url"], [data-testid="modal-form"] input[type="date"], [data-testid="modal-form"] textarea',
+      ) ?? [],
+    );
+    expect(fields.length).toBeGreaterThan(0);
+    for (const f of fields) {
+      expect(f.placeholder).toMatch(/^[A-Z].* — e\.g\./);
+    }
   });
 });

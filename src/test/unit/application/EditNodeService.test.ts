@@ -7,6 +7,7 @@ import { ComputationKind } from "../../../domain/computation/ComputationKind.js"
 import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusinessScoreNode.js";
 import { ComputedNode } from "../../../domain/nodes/ComputedNode.js";
+import { PictureNode } from "../../../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
 import { NumericComparator } from "../../../domain/values/Comparator.js";
@@ -196,5 +197,87 @@ describe("EditNodeService (§17.101a — Phase C skeleton + 2 v3-compat kinds + 
     const r3 = await new EditNodeService(clock, failing).appendValue(bsn, 99);
     expect(r3.ok).toBe(false);
     expect(bsn.entries()).toHaveLength(before);
+  });
+
+  /**
+   * SPEC §17.119 — Picture edits: title / weight / disabled flow
+   * through the CommonEdit path; `imageUrl` flows through the
+   * Picture-specific branch. The all-or-nothing edit contract holds
+   * (a persister failure rolls back every touched field, including
+   * the prior image URL).
+   */
+  describe("Picture edits (§17.119)", () => {
+    it("swaps imageUrl + title + weight atomically and persists once", async () => {
+      const pic = new PictureNode(
+        "p1",
+        "Old name",
+        Weight.of(1),
+        "https://a.example/x.png",
+      );
+      const r = await svc.editFields(pic, {
+        kind: "Picture",
+        title: "  New name  ",
+        weight: 3,
+        imageUrl: "  https://b.example/y.png  ",
+      });
+      expect(r.ok).toBe(true);
+      expect(pic.title).toBe("New name");
+      expect(pic.weight.value).toBe(3);
+      expect(pic.imageUrl).toBe("https://b.example/y.png");
+      expect(persist).toHaveBeenCalledTimes(1);
+    });
+
+    it("rejects a Picture edit on a TextNode (kind-class match enforced)", async () => {
+      const txt = makeText();
+      const r = await svc.editFields(txt, {
+        kind: "Picture",
+        imageUrl: "https://x",
+      });
+      expect(r.ok).toBe(false);
+      expect(persist).not.toHaveBeenCalled();
+    });
+
+    it("rolls back imageUrl + title when the persister rejects (atomicity)", async () => {
+      const pic = new PictureNode(
+        "p2",
+        "Old",
+        Weight.of(1),
+        "https://before.example/x.png",
+      );
+      const failing = vi.fn().mockRejectedValue(new Error("disk full"));
+      const failingSvc = new EditNodeService(clock, failing);
+      const r = await failingSvc.editFields(pic, {
+        kind: "Picture",
+        title: "Would-be new",
+        imageUrl: "https://after.example/x.png",
+      });
+      expect(r.ok).toBe(false);
+      expect(pic.title).toBe("Old");
+      expect(pic.imageUrl).toBe("https://before.example/x.png");
+    });
+
+    it("rolls back when an invalid (empty) imageUrl throws mid-edit (the imageUrl swap is the LAST applied field; title/weight stayed atomic)", async () => {
+      const pic = new PictureNode(
+        "p3",
+        "Old",
+        Weight.of(1),
+        "https://before.example/x.png",
+      );
+      const r = await svc.editFields(pic, {
+        kind: "Picture",
+        title: "Would-be new",
+        weight: 4,
+        imageUrl: "   ",
+      });
+      expect(r.ok).toBe(false);
+      // SPEC §17.101a -- the edit contract is "all or nothing": the
+      // common-edit branch already swapped title + weight before the
+      // Picture branch threw on the invalid imageUrl, so the undo
+      // chain restores BOTH on the way out.
+      expect(pic.title).toBe("Old");
+      expect(pic.weight.value).toBe(1);
+      expect(pic.imageUrl).toBe("https://before.example/x.png");
+      expect(persist).not.toHaveBeenCalled();
+    });
   });
 });
