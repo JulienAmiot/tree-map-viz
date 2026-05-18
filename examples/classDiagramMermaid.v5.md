@@ -28,6 +28,12 @@ Round-7 trade-off explicitly accepted (eligibility):
 
 v3 §17.28 added `setEligibleForParentComputation` so the operator could exclude a specific child from its parent's average **without deleting the child or hiding it from the UI**. v5 retires that narrower-scope flag; the v5 `disabled` flag is broader (parks the child in BOTH the aggregation AND the UI). Operators that relied on the v3 "exclude from aggregation but keep visually active" pattern lose that capability — Phase C migration script will surface any kiosk that did so and ask the operator to either accept the new disabled-or-active binary, or restructure (e.g. move the excluded node under a non-Computed parent).
 
+Round-7 follow-up node kinds (additive, post sign-off):
+
+10. **`WorkflowNode`** (SPEC §17.117) — concrete sibling of `TextNode`, extending it. Adds a `statusId: string` field referencing one entry of the focused board's `workflowStatuses` table (a `WorkflowStatus` value object with `id` / `label` / `color`). The view layer resolves the id to a `{ label, color }` pair at map time; label + colour never enter the domain, so renaming or recolouring a status never orphans the nodes that point at it.
+11. **`PictureNode`** (SPEC §17.119) — concrete `ValueNode<string>` leaf carrying an `imageUrl: string`. **Snapshot semantics**: inherits directly from `ValueNode` (NOT `HistorizableValueNode`) — pictures have no meaningful "what was this last quarter?" timeline, swapping the URL is a replacement. `getValue()` returns the URL verbatim; the description slot stays empty.
+12. **`URLNode`** (SPEC §17.120) — concrete `ValueNode<string>` leaf carrying a `url: string` the adapter renders as a QR code. Same snapshot semantics as `PictureNode`. Storage quirk: the URL lives in the inherited description slot (`url IS the description`), so the wire envelope carries `"description": "<url>"` with no separate `url` field — existing `ValueNode`-shaped decoders pick it up unchanged.
+
 ---
 
 ```mermaid
@@ -74,6 +80,12 @@ classDiagram
       MAX
       WEIGHTED_AVERAGE
       COUNT
+    }
+    class WorkflowStatus {
+      <<value>>
+      +String id
+      +String label
+      +String color
     }
 
     %% --- Domain-side ports / capability interfaces ---
@@ -201,6 +213,20 @@ classDiagram
     class TextNode {
       +getValue() String
     }
+    class WorkflowNode {
+      +String statusId
+      +setStatusId(String id) void
+    }
+    class PictureNode {
+      +String imageUrl
+      +getValue() String
+      +setImageUrl(String url) void
+    }
+    class URLNode {
+      +String url
+      +getValue() String
+      +setUrl(String url) void
+    }
     class ComputedNode~T~ {
       +ComputationKind computationKind
       +Computation~T~ computation
@@ -260,6 +286,18 @@ classDiagram
       +TextNode node
       +getNode() TextNode
     }
+    class WorkflowCard {
+      +WorkflowNode node
+      +getNode() WorkflowNode
+    }
+    class PictureCard {
+      +PictureNode node
+      +getNode() PictureNode
+    }
+    class URLCard {
+      +URLNode node
+      +getNode() URLNode
+    }
     class ComputedCard~T~ {
       +ComputedNode~T~ node
       +getNode() ComputedNode~T~
@@ -296,7 +334,10 @@ classDiagram
     %% --- Inheritance (Node tree) ---
     Node                     <|-- ValueNode~T~
     ValueNode~T~             <|-- HistorizableValueNode~T~
+    ValueNode~T~             <|-- PictureNode
+    ValueNode~T~             <|-- URLNode
     HistorizableValueNode~T~ <|-- TextNode
+    TextNode                 <|-- WorkflowNode
     HistorizableValueNode~T~ <|-- ComputedNode~T~
     HistorizableValueNode~T~ <|-- RangedValueNode~T~
     RangedValueNode~T~       <|-- BusinessScoreNode~T~
@@ -317,6 +358,9 @@ classDiagram
 
     %% --- Inheritance (Card tree) ---
     Card~N~ <|-- TextCard
+    Card~N~ <|-- WorkflowCard
+    Card~N~ <|-- PictureCard
+    Card~N~ <|-- URLCard
     Card~N~ <|-- ComputedCard~T~
     Card~N~ <|-- BusinessScoreCard~T~
     Card~N~ <|-- ComputedBusinessScoreCard~T~
@@ -331,10 +375,16 @@ classDiagram
 
     %% --- Card -> Node wiring (hosting, not inheritance) ---
     TextCard                       *-- "1" TextNode                       : node
+    WorkflowCard                   *-- "1" WorkflowNode                   : node
+    PictureCard                    *-- "1" PictureNode                    : node
+    URLCard                        *-- "1" URLNode                        : node
     ComputedCard~T~                *-- "1" ComputedNode~T~                : node
     BusinessScoreCard~T~           *-- "1" BusinessScoreNode~T~           : node
     ComputedBusinessScoreCard~T~   *-- "1" ComputedBusinessScoreNode~T~   : node
     StrictRangeCard~T~             *-- "1" StrictRangeNode~T~             : node
+
+    %% --- WorkflowNode -> board-level status table (slug reference, label/colour resolved at map time) ---
+    WorkflowNode                   ..> WorkflowStatus : statusId references entry in board.workflowStatuses
 
     %% --- Strategy resolution (Computed kind → Computation singleton via registry) ---
     Computed~T~          ..> ComputationRegistry : resolves computationKind via
