@@ -11,8 +11,9 @@ Feature: Editing the focused node from the top panel
   → Enter), and exposing it through the modal as well duplicated an
   affordance the operator already had one tap away. The modal therefore
   covers ONLY fields with no inline equivalent: weight (slider + number
-  input), and on a BSC also description, unit, objective, computed,
-  and eligibleForParentComputation.
+  input), and on a BSC also description, unit, and objective. The v3-era
+  `computed` + `eligibleForParentComputation` checkboxes retired
+  post-§17.99b/c.
 
   Inline editing on the focused panel:
     - Tapping the title swaps it for a single-line input. Pressing

@@ -388,12 +388,17 @@ describe("<add-child-modal>", () => {
     expect(
       el.shadowRoot?.querySelector('[data-testid="field-current-value-date"]'),
     ).not.toBeNull();
+    // §17.99b/c retirement — the v3-era `computed` + `eligibleForParentComputation`
+    // checkboxes are gone from the BSC form. A "computed BSC" is now created by
+    // picking the dedicated `Computed` / `ComputedBusinessScore` kind from the
+    // catalogue, and per-node "eligibility" is a `disabled` toggle owned by the
+    // edit-node modal.
     expect(
       el.shadowRoot?.querySelector('[data-testid="field-computed"]'),
-    ).not.toBeNull();
+    ).toBeNull();
     expect(
       el.shadowRoot?.querySelector('[data-testid="field-eligible"]'),
-    ).not.toBeNull();
+    ).toBeNull();
   });
 
   it("BSC 'as of' date defaults to today's local-calendar ISO date (SPEC §17.13)", async () => {
@@ -589,8 +594,6 @@ describe("<add-child-modal>", () => {
     expect(p.objective.targetValue).toBe(120);
     expect(p.objective.targetDate).toBeInstanceOf(Date);
     expect(p.objective.targetDate.toISOString()).toBe("2027-03-31T00:00:00.000Z");
-    expect(p.computed).toBe(false);
-    expect(p.eligibleForParentComputation).toBe(true);
     // SPEC §17.13 — the seed TimestampedValue is in the payload exactly once.
     expect(p.initialHistory).toHaveLength(1);
     const seed = p.initialHistory?.[0];
@@ -1037,10 +1040,10 @@ describe("<add-child-modal> empty-field placeholder pattern (SPEC §6)", () => {
   });
 
   it("the form has no <label> siblings on its text/number inputs (SPEC §6 — placeholders carry the purpose)", async () => {
-    // The two checkboxes (computed + eligibleForParentComputation) ARE wrapped
-    // in <label> for accessibility (checkboxes are non-textual and need a
-    // visible accessible name); that is intentional. The §6 rule applies to
-    // form fields where a placeholder example doubles as the label.
+    // Any future checkboxes / radios would be wrapped in <label> for
+    // accessibility (non-textual controls need a visible accessible name).
+    // The §6 rule applies to form fields where a placeholder example
+    // doubles as the label.
     const el = await mountLitElement<AddChildModal>(
       "add-child-modal",
       (e) => {

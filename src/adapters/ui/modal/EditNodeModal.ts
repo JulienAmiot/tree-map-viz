@@ -43,8 +43,8 @@
  *      its title field while the inline editor is active or arbitrate
  *      between the two on confirm — neither is worth the surface). The
  *      modal therefore covers ONLY fields with no inline equivalent:
- *      weight, description, unit, objective, computed,
- *      eligibleForParentComputation. Title comes through this flow as
+ *      weight, description, unit, objective, the Picture / URL /
+ *      Workflow per-kind fields. Title comes through this flow as
  *      `payload.title === undefined` and `EditNodeService.editFields`
  *      skips the field per its existing `payload.title !== undefined`
  *      guard.
@@ -125,8 +125,6 @@ export type EditNodeModalPayload =
         readonly targetValue: number;
         readonly targetDate: Date;
       };
-      readonly computed?: boolean;
-      readonly eligibleForParentComputation?: boolean;
     }
   /**
    * SPEC §17.119 — `PictureNode` variant. Only weight + image URL are
@@ -193,8 +191,6 @@ export type EditNodeTarget =
         /** ISO `YYYY-MM-DD` (UTC) — the form's date input wants this format. */
         readonly targetDateIso: string;
       };
-      readonly computed: boolean;
-      readonly eligibleForParentComputation: boolean;
     }
   | {
       readonly nodeId: string;
@@ -279,12 +275,6 @@ export class EditNodeModal extends LitElement {
 
   @state()
   private targetDate = "";
-
-  @state()
-  private computed = false;
-
-  @state()
-  private eligibleForParentComputation = true;
 
   /** SPEC §17.119 — image URL for the Picture kind. Seeded from `target.imageUrl`. */
   @state()
@@ -567,7 +557,6 @@ export class EditNodeModal extends LitElement {
       ${this.renderWeightField()}
       ${isBsc ? this.renderUnitField() : nothing}
       ${isBsc ? this.renderObjectiveFields() : nothing}
-      ${isBsc ? this.renderBscToggles() : nothing}
       ${kind === "PictureNode" ? this.renderImageUrlField() : nothing}
       ${kind === "URLNode" ? this.renderURLField() : nothing}
     `;
@@ -795,31 +784,6 @@ export class EditNodeModal extends LitElement {
     `;
   }
 
-  private renderBscToggles() {
-    return html`
-      <div class="checkbox-row">
-        <label>
-          <input
-            data-testid="field-computed"
-            type="checkbox"
-            .checked=${this.computed}
-            @change=${(e: Event) => this.bindBool(e, "computed")}
-          />
-          Computed (aggregate from eligible children)
-        </label>
-        <label>
-          <input
-            data-testid="field-eligible"
-            type="checkbox"
-            .checked=${this.eligibleForParentComputation}
-            @change=${(e: Event) => this.bindBool(e, "eligibleForParentComputation")}
-          />
-          Eligible for parent computation
-        </label>
-      </div>
-    `;
-  }
-
   private cancel = (): void => {
     this.dispatchEvent(
       new CustomEvent(EDIT_NODE_CANCEL_EVENT, {
@@ -929,8 +893,8 @@ export class EditNodeModal extends LitElement {
   /**
    * BusinessScoreCardNode branch — unit + objective fields are
    * mandatory (mirroring the add-child contract); description stays
-   * optional. computed / eligibleForParentComputation are checkboxes,
-   * always defined (no "tristate" intermediate).
+   * optional. The v3-era `computed` + `eligibleForParentComputation`
+   * checkboxes retired post-§17.99b/c.
    */
   private buildBscPayload(weight: { weight?: number }): EditNodeModalPayload | null {
     const description = this.description.trim();
@@ -955,8 +919,6 @@ export class EditNodeModal extends LitElement {
       ...weight,
       unit,
       objective: { initialValue, targetValue, targetDate },
-      computed: this.computed,
-      eligibleForParentComputation: this.eligibleForParentComputation,
     };
   }
 
@@ -979,14 +941,6 @@ export class EditNodeModal extends LitElement {
   ): void {
     const target = e.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
     this[field] = target.value;
-  }
-
-  private bindBool(
-    e: Event,
-    field: "computed" | "eligibleForParentComputation",
-  ): void {
-    const target = e.target as HTMLInputElement;
-    this[field] = target.checked;
   }
 
   /**
@@ -1022,8 +976,6 @@ export class EditNodeModal extends LitElement {
     this.initialValue = "";
     this.targetValue = "";
     this.targetDate = "";
-    this.computed = false;
-    this.eligibleForParentComputation = true;
     this.imageUrl = "";
     this.statusId = "";
     this.url = "";
@@ -1048,8 +1000,6 @@ export class EditNodeModal extends LitElement {
     this.initialValue = String(target.objective.initialValue);
     this.targetValue = String(target.objective.targetValue);
     this.targetDate = target.objective.targetDateIso;
-    this.computed = target.computed;
-    this.eligibleForParentComputation = target.eligibleForParentComputation;
   }
 
   private handleBackdropClick = (e: Event): void => {

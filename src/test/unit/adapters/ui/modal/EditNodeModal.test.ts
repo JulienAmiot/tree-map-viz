@@ -34,8 +34,6 @@ const bscTarget: EditNodeTarget = {
     targetValue: 100,
     targetDateIso: "2026-12-31",
   },
-  computed: false,
-  eligibleForParentComputation: true,
 };
 
 function panelOf(el: EditNodeModal): HTMLElement | null {
@@ -81,17 +79,6 @@ async function setInput(
   const f = fieldOf(el, testid);
   f.value = value;
   f.dispatchEvent(new Event("input", { bubbles: true }));
-  await el.updateComplete;
-}
-
-async function setCheckbox(
-  el: EditNodeModal,
-  testid: string,
-  checked: boolean,
-): Promise<void> {
-  const f = fieldOf(el, testid) as HTMLInputElement;
-  f.checked = checked;
-  f.dispatchEvent(new Event("change", { bubbles: true }));
   await el.updateComplete;
 }
 
@@ -205,7 +192,8 @@ describe("<edit-node-modal>", () => {
     it("seeds every modal-editable field from the target on open (SPEC \u00a717.50 \u2014 no title)", async () => {
       // SPEC §17.50 -- title is intentionally NOT in the modal; it is
       // edited inline from the focused-panel strip. Description, unit,
-      // objective, and the two boolean toggles are still modal-only.
+      // and objective are still modal-only. The v3-era `computed` +
+      // `eligibleForParentComputation` checkboxes retired post-§17.99b/c.
       const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
         e.editTarget = bscTarget;
         e.open = true;
@@ -228,19 +216,21 @@ describe("<edit-node-modal>", () => {
       expect((fieldOf(el, "field-target-date") as HTMLInputElement).value).toBe(
         "2026-12-31",
       );
+      // Retired checkboxes must not be present in the BSC form anymore.
       expect(
-        (fieldOf(el, "field-computed") as HTMLInputElement).checked,
-      ).toBe(false);
+        el.shadowRoot?.querySelector('[data-testid="field-computed"]'),
+      ).toBeNull();
       expect(
-        (fieldOf(el, "field-eligible") as HTMLInputElement).checked,
-      ).toBe(true);
+        el.shadowRoot?.querySelector('[data-testid="field-eligible"]'),
+      ).toBeNull();
     });
 
     it("dispatches edit-node-confirm with a BSC payload (no title) on confirm", async () => {
       // SPEC §17.50 -- the payload omits `title`; `EditNodeService`
       // treats undefined title as "do not touch". The other modal-
-      // editable fields (description, unit, objective, computed,
-      // eligible) still flow through this confirm path.
+      // editable fields (description, unit, objective) still flow
+      // through this confirm path. The v3-era `computed` +
+      // `eligibleForParentComputation` checkboxes retired post-§17.99b/c.
       const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
         e.editTarget = bscTarget;
         e.open = true;
@@ -249,7 +239,6 @@ describe("<edit-node-modal>", () => {
       el.addEventListener(EDIT_NODE_CONFIRM_EVENT, handler);
 
       await setInput(el, "field-unit", "%");
-      await setCheckbox(el, "field-computed", true);
       confirmBtn(el).click();
 
       expect(handler).toHaveBeenCalledTimes(1);
@@ -264,7 +253,6 @@ describe("<edit-node-modal>", () => {
         (detail.payload as { title?: unknown }).title,
       ).toBeUndefined();
       expect(detail.payload.unit).toBe("%");
-      expect(detail.payload.computed).toBe(true);
       expect(detail.payload.objective).toEqual({
         initialValue: 0,
         targetValue: 100,
@@ -444,7 +432,7 @@ describe("<edit-node-modal>", () => {
       ).toBeNull();
     });
 
-    it("hides every BSC-only field (description / unit / objective / toggles)", async () => {
+    it("hides every BSC-only field (description / unit / objective)", async () => {
       const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
         e.editTarget = pictureTarget;
         e.open = true;
@@ -455,8 +443,6 @@ describe("<edit-node-modal>", () => {
         "field-initial",
         "field-target",
         "field-target-date",
-        "field-computed",
-        "field-eligible",
       ];
       for (const id of hidden) {
         expect(el.shadowRoot?.querySelector(`[data-testid="${id}"]`)).toBeNull();
@@ -695,8 +681,6 @@ describe("<edit-node-modal>", () => {
         "field-initial",
         "field-target",
         "field-target-date",
-        "field-computed",
-        "field-eligible",
         "field-image-url",
       ];
       for (const id of hidden) {

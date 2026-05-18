@@ -93,11 +93,16 @@
  *   - BusinessScoreCard: title + unit + objective + a **mandatory current
  *     value** (the seed `TimestampedValue<number>` of the otherwise-empty
  *     `BusinessScoreCard` history, SPEC §17.13) are all required;
- *     description optional, weight pre-filled with `1` (§17.16),
- *     computed default false, eligibleForParentComputation default
- *     true. Per §17.16 the BSC current-value row lays out **current
- *     value, unit, and as-of date on the same line** (cognitively a
- *     unit — the seed observation). The "as of" date for both kinds
+ *     description optional, weight pre-filled with `1` (§17.16). The
+ *     v3-era `computed` + `eligibleForParentComputation` checkboxes
+ *     retired post-§17.99b/c: a "computed BSC" is now created by
+ *     picking the future `Computed` / `ComputedBusinessScore` kind
+ *     rather than ticking a flag on a regular BSC; "eligibility" is
+ *     a per-node `disabled` toggle owned by the (forthcoming) edit
+ *     modal, not by the add-child modal. Per §17.16 the BSC current-
+ *     value row lays out **current value, unit, and as-of date on the
+ *     same line** (cognitively a unit — the seed observation). The
+ *     "as of" date for both kinds
  *     defaults to **today** (the kiosk operator's local calendar day,
  *     ISO `YYYY-MM-DD`) and stays editable — most field uses record
  *     "what we measured today", but back-filling a past observation
@@ -142,10 +147,11 @@ export const ADD_CHILD_CANCEL_EVENT = "add-child-cancel";
  * v3-compat 2-kind union it has always been; the round-7 leaf kinds
  * land on the application side first and reach the modal in a future
  * UI strand). Optional fields default sensibly at the modal/service
- * boundary (weight=1, description="", computed=false,
- * eligibleForParentComputation=true, empty initial history). TextNode
- * intentionally has no description (the latest history
- * `TimestampedValue<string>` IS the description per §17.15).
+ * boundary (weight=1, description="", empty initial history). The v3
+ * `computed` + `eligibleForParentComputation` flags retired post-
+ * §17.99b/c — see the class docblock above. TextNode intentionally
+ * has no description (the latest history `TimestampedValue<string>`
+ * IS the description per §17.15).
  */
 export type AddChildModalPayload =
   | {
@@ -172,8 +178,6 @@ export type AddChildModalPayload =
         readonly targetValue: number;
         readonly targetDate: Date;
       };
-      readonly computed?: boolean;
-      readonly eligibleForParentComputation?: boolean;
       readonly initialHistory?: readonly { readonly value: number; readonly asOf: Date }[];
     }
   /**
@@ -364,12 +368,6 @@ export class AddChildModal extends LitElement {
    */
   @state()
   private currentValueDate = "";
-
-  @state()
-  private computed = false;
-
-  @state()
-  private eligibleForParentComputation = true;
 
   /**
    * SPEC §17.119 — image URL for the Picture kind. A plain string;
@@ -862,7 +860,6 @@ export class AddChildModal extends LitElement {
         ${isTextOrWorkflow ? this.renderTextCurrentValueFields() : nothing}
         ${isBsc ? this.renderBscCurrentValueFields() : nothing}
         ${isBsc ? this.renderObjectiveFields() : nothing}
-        ${isBsc ? this.renderBscToggles() : nothing}
         ${isPicture ? this.renderPictureFields() : nothing}
         ${isUrl ? this.renderURLFields() : nothing}
         ${this.errorMessage
@@ -1103,31 +1100,6 @@ export class AddChildModal extends LitElement {
     `;
   }
 
-  private renderBscToggles() {
-    return html`
-      <div class="checkbox-row">
-        <label>
-          <input
-            data-testid="field-computed"
-            type="checkbox"
-            .checked=${this.computed}
-            @change=${(e: Event) => this.bindBool(e, "computed")}
-          />
-          Computed (aggregate from eligible children)
-        </label>
-        <label>
-          <input
-            data-testid="field-eligible"
-            type="checkbox"
-            .checked=${this.eligibleForParentComputation}
-            @change=${(e: Event) => this.bindBool(e, "eligibleForParentComputation")}
-          />
-          Eligible for parent computation
-        </label>
-      </div>
-    `;
-  }
-
   /**
    * SPEC §17.25 — pick a kind from the left-rail list. Switching kind
    * mid-edit clears the inline error (it referred to the previous
@@ -1283,8 +1255,6 @@ export class AddChildModal extends LitElement {
       ...(weight === undefined ? {} : { weight }),
       unit,
       objective: { initialValue, targetValue, targetDate },
-      computed: this.computed,
-      eligibleForParentComputation: this.eligibleForParentComputation,
       initialHistory: [{ value: currentValue, asOf: currentAsOf }],
     };
   }
@@ -1357,14 +1327,6 @@ export class AddChildModal extends LitElement {
     this[field] = target.value;
   }
 
-  private bindBool(
-    e: Event,
-    field: "computed" | "eligibleForParentComputation",
-  ): void {
-    const target = e.target as HTMLInputElement;
-    this[field] = target.checked;
-  }
-
   private resetForm(): void {
     // SPEC §17.19 — single-page flow: no `step` to reset, just the
     // chosen kind + the field state. SPEC §17.25 — the left-rail list
@@ -1386,8 +1348,6 @@ export class AddChildModal extends LitElement {
     this.targetDate = "";
     this.currentValue = "";
     this.currentValueDate = AddChildModal.todayIsoDate();
-    this.computed = false;
-    this.eligibleForParentComputation = true;
     this.imageUrl = "";
     // SPEC §17.118 — pre-select the first available workflow status so
     // the most common Workflow path ("accept the default — usually PLAN")

@@ -25,17 +25,19 @@
  * **Modal payload translation shims** — `EditNodeModal` / `AddChildModal`
  * still emit v3-shaped payloads (the v4-native modal migration is a
  * follow-on strand). `toAppAddChildPayload` + `toAppEditPayload`
- * rewrite the kind tag (`BusinessScoreCardNode` → `BusinessScore` or
- * `ComputedBusinessScore` when `computed:true`, defaulting to
- * `ComputationKind.AVERAGE` per the §17.99c migration choice) and the
- * objective shape (`{initialValue, targetValue, targetDate}` →
- * `{value: targetValue, at: targetDate}`; `initialValue` becomes the
- * `initialHistory` seed on Add when absent). The two modal payload
- * types (`AddChildModalPayload`, `EditNodeModalPayload`) live in the
+ * rewrite the kind tag (`BusinessScoreCardNode` → `BusinessScore`)
+ * and the objective shape (`{initialValue, targetValue, targetDate}`
+ * → `{value: targetValue, at: targetDate}`; `initialValue` becomes
+ * the `initialHistory` seed on Add when absent). The v3-era
+ * `computed` checkbox retired from the modal payload at the
+ * cleanup-stale-bsc-flags strand (post-§17.99c) — picking a
+ * `ComputedBusinessScore` will route through a dedicated modal
+ * kind option in a follow-on strand. The two modal payload types
+ * (`AddChildModalPayload`, `EditNodeModalPayload`) live in the
  * modal files themselves (adapter-owned outbound contracts, no
- * application reach); the canonical `AddChildPayload` / `EditNodePayload`
- * names belong to the application-layer 5-kind unions
- * (§17.114-followup-payloads).
+ * application reach); the canonical `AddChildPayload` /
+ * `EditNodePayload` names belong to the application-layer 5-kind
+ * unions (§17.114-followup-payloads).
  *
  * **`computation-kind-change` wiring** — §17.104 `<computed-card>` /
  * `<computed-business-score-card>` dispatch this event on the
@@ -520,8 +522,6 @@ function buildEditTarget(node: Node): EditNodeTarget | null {
         targetValue: Number(obj.value),
         targetDateIso: obj.at.moment.toISOString().slice(0, 10),
       },
-      computed: false,
-      eligibleForParentComputation: !node.disabled,
     };
   }
   return null;
@@ -588,11 +588,14 @@ function makeNewBoardSeedTree(boardName: string, idGen: () => string, clock: Clo
 /**
  * SPEC §17.110 — `AddChildModal` still emits the v3-shaped
  * `AddChildModalPayload`. Map to the application's
- * `AddChildPayload`: `BusinessScoreCardNode` → `BusinessScore`
- * (or `ComputedBusinessScore` when `computed:true`, defaulting to
- * `ComputationKind.AVERAGE` per the §17.99c bridge choice); v3
- * `objective.initialValue` becomes an `initialHistory` seed entry
- * stamped at `clock.now()` when no explicit history was provided.
+ * `AddChildPayload`: `BusinessScoreCardNode` → `BusinessScore`;
+ * v3 `objective.initialValue` becomes an `initialHistory` seed
+ * entry stamped at `clock.now()` when no explicit history was
+ * provided. The v3-era `computed` checkbox retired post-§17.99c
+ * (a "computed BSC" is now created by picking the dedicated
+ * `Computed` / `ComputedBusinessScore` kind from the modal
+ * catalogue once that strand wires them in); for now, the BSC
+ * branch always routes to `BusinessScore`.
  */
 function toAppAddChildPayload(payload: AddChildModalPayload, clock: Clock): AddChildPayload {
   if (payload.kind === "TextNode") {
@@ -648,18 +651,6 @@ function toAppAddChildPayload(payload: AddChildModalPayload, clock: Clock): AddC
   const seededHistory = payload.initialHistory ?? [
     { value: payload.objective.initialValue, asOf: new Date(clock.now().moment) },
   ];
-  if (payload.computed) {
-    return {
-      kind: "ComputedBusinessScore",
-      title: payload.title,
-      description: payload.description,
-      weight: payload.weight,
-      unit: payload.unit,
-      objective,
-      computationKind: ComputationKind.AVERAGE,
-      disabled: payload.eligibleForParentComputation === false,
-    };
-  }
   return {
     kind: "BusinessScore",
     title: payload.title,
@@ -667,7 +658,6 @@ function toAppAddChildPayload(payload: AddChildModalPayload, clock: Clock): AddC
     weight: payload.weight,
     unit: payload.unit,
     objective,
-    disabled: payload.eligibleForParentComputation === false,
     initialHistory: seededHistory,
   };
 }
