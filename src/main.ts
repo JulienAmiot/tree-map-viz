@@ -680,6 +680,26 @@ function toAppAddChildPayload(payload: AddChildModalPayload, clock: Clock): AddC
       computationKind: payload.computationKind,
     };
   }
+  if (payload.kind === "ComputedBusinessScoreNode") {
+    // SPEC §17.94 / §17.95 — modal-side "ComputedBusinessScoreNode"
+    // rewrites to the application-layer "ComputedBusinessScore"
+    // kind tag. Rewrites the modal's objective shape
+    // (`{ targetValue, targetDate }`) to the application's
+    // (`{ value, at }`); no seed history (the strategy + children
+    // produce the value).
+    return {
+      kind: "ComputedBusinessScore",
+      title: payload.title,
+      description: payload.description,
+      weight: payload.weight,
+      unit: payload.unit,
+      objective: {
+        value: payload.objective.targetValue,
+        at: payload.objective.targetDate,
+      },
+      computationKind: payload.computationKind,
+    };
+  }
   const objective = {
     value: payload.objective.targetValue,
     at: payload.objective.targetDate,

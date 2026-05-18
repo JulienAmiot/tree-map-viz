@@ -224,6 +224,30 @@ export type AddChildModalPayload =
       readonly computationKind: ComputationKind;
     }
   /**
+   * SPEC §17.94 / §17.95 — `ComputedBusinessScoreNode<number>`
+   * variant. A BSC whose current value is derived from its
+   * eligible children via a `Computation<T>` strategy, while still
+   * carrying an `Objective` + `unit` so the kiosk renders the
+   * usual progress-bar tile. No seed history (the value flows up
+   * from children, never up-front); no `objective.initialValue`
+   * (the application shape `{ value, at }` only models the
+   * target). main.ts's `toAppAddChildPayload` rewrites the
+   * modal-side `"ComputedBusinessScoreNode"` kind tag to the
+   * application-layer `"ComputedBusinessScore"`.
+   */
+  | {
+      readonly kind: "ComputedBusinessScoreNode";
+      readonly title: string;
+      readonly description?: string;
+      readonly weight?: number;
+      readonly unit: string;
+      readonly objective: {
+        readonly targetValue: number;
+        readonly targetDate: Date;
+      };
+      readonly computationKind: ComputationKind;
+    }
+  /**
    * SPEC §17.119 — `PictureNode` variant. A snapshot leaf carrying a
    * single image URL: no description (the title labels the picture,
    * the picture IS the content), no objective row, no
@@ -308,6 +332,12 @@ const KIND_OPTIONS: readonly KindOption[] = [
     name: "Computed",
     description:
       "A derived metric: title + a strategy (Sum / Average / Min / Max / Weighted Avg / Count). Value comes from eligible children.",
+  },
+  {
+    kind: "ComputedBusinessScoreNode",
+    name: "Computed Business Score Card",
+    description:
+      "A scored derived metric: unit + target objective + a strategy. Value rolls up from eligible children with an objective bar.",
   },
   {
     kind: "PictureNode",
@@ -910,13 +940,17 @@ export class AddChildModal extends LitElement {
     const isPicture = this.chosenKind === "PictureNode";
     const isStrictRange = this.chosenKind === "StrictRangeNode";
     const isComputed = this.chosenKind === "ComputedNode";
+    const isComputedBsc = this.chosenKind === "ComputedBusinessScoreNode";
     const isTextOrWorkflow = isText || isWorkflow;
     const isUrl = this.chosenKind === "URLNode";
     // SPEC §17.94 — kinds that carry an operator-editable description
-    // textarea: BSC, StrictRange, and the round-7 Computed roll-up.
+    // textarea: BSC, StrictRange, and the two round-7 Computed roll-ups.
     // (Picture / URL inherit description from the URL slot; Text /
     // Workflow are typed by the latest history entry.)
-    const wantsDescription = isBsc || isStrictRange || isComputed;
+    const wantsDescription = isBsc || isStrictRange || isComputed || isComputedBsc;
+    // SPEC §17.94 — kinds that surface the strategy dropdown: the two
+    // round-7 computed roll-ups share `renderComputationKindField`.
+    const wantsComputationKind = isComputed || isComputedBsc;
     return html`
       <form
         data-testid="modal-form"
@@ -967,7 +1001,8 @@ export class AddChildModal extends LitElement {
         ${isBsc ? this.renderBscCurrentValueFields() : nothing}
         ${isBsc ? this.renderObjectiveFields() : nothing}
         ${isStrictRange ? this.renderStrictRangeFields() : nothing}
-        ${isComputed ? this.renderComputationKindField() : nothing}
+        ${isComputedBsc ? this.renderComputedBscFields() : nothing}
+        ${wantsComputationKind ? this.renderComputationKindField() : nothing}
         ${isPicture ? this.renderPictureFields() : nothing}
         ${isUrl ? this.renderURLFields() : nothing}
         ${this.errorMessage
@@ -1169,13 +1204,64 @@ export class AddChildModal extends LitElement {
   }
 
   /**
+   * SPEC §17.94 / §17.95 — `ComputedBusinessScoreNode` form fields:
+   * unit + target objective (target value + target date). No
+   * current-value seed (ComputedBSC's value flows up from children
+   * via the `Computation<T>` strategy, never up-front) and no
+   * `objective.initialValue` (the application shape `{ value, at }`
+   * only models the target). Unit is mandatory like on a regular
+   * BSC; the kiosk tile renders the progress bar against the
+   * objective. The strategy dropdown is rendered separately by
+   * `renderComputationKindField` (shared with the `ComputedNode`
+   * branch).
+   */
+  private renderComputedBscFields() {
+    return html`
+      <div class="field-row" data-testid="unit-row">
+        <div class="field">
+          <input
+            data-testid="field-unit"
+            type="text"
+            placeholder='Unit — e.g. "%" or "M€"'
+            .value=${this.unit}
+            required
+            @input=${(e: Event) => this.bindString(e, "unit")}
+          />
+        </div>
+      </div>
+      <div class="field-row" data-testid="objective-row">
+        <div class="field">
+          <input
+            data-testid="field-target"
+            type="number"
+            placeholder="Objective target value — e.g. 100"
+            .value=${this.targetValue}
+            required
+            @input=${(e: Event) => this.bindString(e, "targetValue")}
+          />
+        </div>
+        <div class="field">
+          <input
+            data-testid="field-target-date"
+            type="date"
+            placeholder="Objective target date — e.g. 2026-12-31"
+            .value=${this.targetDate}
+            required
+            @input=${(e: Event) => this.bindString(e, "targetDate")}
+          />
+        </div>
+      </div>
+    `;
+  }
+
+  /**
    * SPEC §17.94 / §17.95 — strategy dropdown shared between the
-   * `ComputedNode` and (forthcoming) `ComputedBusinessScoreNode`
-   * forms. Lists the six `ComputationKind.ALL` inhabitants by
-   * their canonical `name` (matches the JSON wire format produced
-   * by `jsonCodecV4` per §17.106b), with a friendly UI label
-   * resolved through `COMPUTATION_KIND_LABELS`. Pre-selected via
-   * the `computationKindName` `@state` (defaults to `"AVERAGE"`),
+   * `ComputedNode` and `ComputedBusinessScoreNode` forms. Lists
+   * the six `ComputationKind.ALL` inhabitants by their canonical
+   * `name` (matches the JSON wire format produced by `jsonCodecV4`
+   * per §17.106b), with a friendly UI label resolved through
+   * `COMPUTATION_KIND_LABELS`. Pre-selected via the
+   * `computationKindName` `@state` (defaults to `"AVERAGE"`),
    * editable through the `change` event. Native `<select>` mirrors
    * the Workflow-status picker pattern (§17.118): lightweight,
    * OS-familiar, no custom radio rail to maintain.
@@ -1375,6 +1461,10 @@ export class AddChildModal extends LitElement {
       const description = this.description.trim() || undefined;
       return this.buildComputedPayload(title, description, weight);
     }
+    if (this.chosenKind === "ComputedBusinessScoreNode") {
+      const description = this.description.trim() || undefined;
+      return this.buildComputedBscPayload(title, description, weight);
+    }
     if (this.chosenKind === "PictureNode") {
       return this.buildPicturePayload(title, weight);
     }
@@ -1538,6 +1628,43 @@ export class AddChildModal extends LitElement {
       title,
       ...(description === undefined ? {} : { description }),
       ...(weight === undefined ? {} : { weight }),
+      computationKind,
+    };
+  }
+
+  /**
+   * SPEC §17.94 / §17.95 — ComputedBusinessScore payload: title +
+   * optional description + weight + `unit` + a target objective
+   * (target value + target date) + a `ComputationKind`. Returns
+   * `null` when any required field is missing/invalid (unit blank,
+   * target value not numeric, target date unparseable, strategy
+   * name unknown) so `canConfirm()` keeps the Confirm button
+   * disabled. No current-value seed (the strategy + children
+   * produce the value) and no `objective.initialValue` (the
+   * application shape only carries the target).
+   */
+  private buildComputedBscPayload(
+    title: string,
+    description: string | undefined,
+    weight: number | undefined,
+  ): AddChildModalPayload | null {
+    const unit = this.unit.trim();
+    const targetValue = Number(this.targetValue);
+    const targetDate = parseIsoDateInput(this.targetDate);
+    const computationKind = ComputationKind.fromName(this.computationKindName);
+    if (
+      !unit || Number.isNaN(targetValue) || targetDate === null ||
+      computationKind === undefined
+    ) {
+      return null;
+    }
+    return {
+      kind: "ComputedBusinessScoreNode",
+      title,
+      ...(description === undefined ? {} : { description }),
+      ...(weight === undefined ? {} : { weight }),
+      unit,
+      objective: { targetValue, targetDate },
       computationKind,
     };
   }

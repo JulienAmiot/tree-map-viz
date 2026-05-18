@@ -123,6 +123,10 @@ async function pickComputed(el: AddChildModal): Promise<void> {
   await pickKind(el, "ComputedNode");
 }
 
+async function pickComputedBsc(el: AddChildModal): Promise<void> {
+  await pickKind(el, "ComputedBusinessScoreNode");
+}
+
 async function pickURL(el: AddChildModal): Promise<void> {
   const btn = el.shadowRoot?.querySelector<HTMLButtonElement>(
     '[data-testid="kind-btn"][data-kind="URLNode"]',
@@ -187,6 +191,7 @@ describe("<add-child-modal>", () => {
       "BusinessScoreCardNode",
       "StrictRangeNode",
       "ComputedNode",
+      "ComputedBusinessScoreNode",
       "PictureNode",
       "URLNode",
     ]);
@@ -202,12 +207,15 @@ describe("<add-child-modal>", () => {
     expect(buttons[3]?.textContent).toMatch(/bounded|min\/max/);
     expect(buttons[4]?.textContent).toMatch(/Computed/);
     expect(buttons[4]?.textContent).toMatch(/derived|strategy|Sum|Average/);
+    expect(buttons[5]?.textContent).toMatch(/Computed Business Score Card/);
+    expect(buttons[5]?.textContent).toMatch(/scored|objective|target|strategy/);
     // None are pressed before a kind is picked.
     expect(buttons[0]?.getAttribute("aria-pressed")).toBe("false");
     expect(buttons[1]?.getAttribute("aria-pressed")).toBe("false");
     expect(buttons[2]?.getAttribute("aria-pressed")).toBe("false");
     expect(buttons[3]?.getAttribute("aria-pressed")).toBe("false");
     expect(buttons[4]?.getAttribute("aria-pressed")).toBe("false");
+    expect(buttons[5]?.getAttribute("aria-pressed")).toBe("false");
   });
 
   it("when no kind is chosen the right pane shows the empty-state hint and no form (\u00a717.25)", async () => {
@@ -1608,6 +1616,120 @@ describe("<add-child-modal> ComputedNode branch (§17.94 / §17.95)", () => {
     await pickComputed(el);
     const reseededSelect = selectOf(el, "field-computation-kind");
     expect(reseededSelect.value).toBe(ComputationKind.AVERAGE.name);
+  });
+});
+
+/**
+ * SPEC §17.94 / §17.95 — `ComputedBusinessScoreNode` combines the
+ * BSC's unit + target objective with the Computed roll-up's
+ * strategy dropdown. No current-value seed (the strategy + children
+ * produce the value) and no `objective.initialValue` (the
+ * application shape `{ value, at }` only models the target).
+ */
+describe("<add-child-modal> ComputedBusinessScoreNode branch (§17.94 / §17.95)", () => {
+  it("ComputedBusinessScoreNode is part of the default availableKinds catalogue (ALL_ADD_CHILD_KINDS)", () => {
+    expect(ALL_ADD_CHILD_KINDS).toContain("ComputedBusinessScoreNode");
+  });
+
+  it("picking ComputedBusinessScoreNode renders unit + target objective + strategy dropdown + description, and hides every irrelevant field", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickComputedBsc(el);
+    const form = el.shadowRoot?.querySelector<HTMLFormElement>(
+      '[data-testid="modal-form"]',
+    );
+    expect(form?.dataset["kind"]).toBe("ComputedBusinessScoreNode");
+    for (const id of [
+      "field-description",
+      "field-unit",
+      "field-target",
+      "field-target-date",
+      "field-computation-kind",
+    ]) {
+      expect(
+        el.shadowRoot?.querySelector(`[data-testid="${id}"]`),
+      ).not.toBeNull();
+    }
+    // No current-value seed, no `initialValue`, no range bounds, no
+    // picture / URL fields.
+    for (const id of [
+      "field-current-value",
+      "field-current-value-date",
+      "field-initial",
+      "field-range-min",
+      "field-range-max",
+      "field-image-url",
+      "field-url",
+    ]) {
+      expect(
+        el.shadowRoot?.querySelector(`[data-testid="${id}"]`),
+      ).toBeNull();
+    }
+  });
+
+  it("Confirm stays disabled until every required field is filled (title + unit + target value + target date)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickComputedBsc(el);
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-title", "EU revenue");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-unit", "M€");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-target", "120");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-target-date", "2027-03-31");
+    expect(confirmBtnOf(el).disabled).toBe(false);
+  });
+
+  it("dispatches `add-child-confirm` with a ComputedBusinessScoreNode payload carrying the chosen strategy + objective on Confirm", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+        e.parentId = "uuid-parent";
+      },
+    );
+    const handler = vi.fn();
+    el.addEventListener(ADD_CHILD_CONFIRM_EVENT, handler);
+    await pickComputedBsc(el);
+    await setInput(el, "field-title", "EU revenue");
+    await setInput(el, "field-unit", "M€");
+    await setInput(el, "field-target", "120");
+    await setInput(el, "field-target-date", "2027-03-31");
+    // Switch strategy from default AVERAGE → WEIGHTED_AVERAGE so the
+    // dropdown's `change` event flows through the payload builder.
+    const select = selectOf(el, "field-computation-kind");
+    select.value = ComputationKind.WEIGHTED_AVERAGE.name;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    await el.updateComplete;
+    confirmBtnOf(el).click();
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    const evt = handler.mock.calls[0]?.[0] as
+      | CustomEvent<AddChildConfirmDetail>
+      | undefined;
+    const p = evt?.detail.payload;
+    expect(p?.kind).toBe("ComputedBusinessScoreNode");
+    if (p?.kind !== "ComputedBusinessScoreNode") return;
+    expect(p.title).toBe("EU revenue");
+    expect(p.unit).toBe("M€");
+    expect(p.objective.targetValue).toBe(120);
+    expect(p.objective.targetDate).toBeInstanceOf(Date);
+    expect(p.objective.targetDate.toISOString()).toBe(
+      "2027-03-31T00:00:00.000Z",
+    );
+    expect(p.computationKind).toBe(ComputationKind.WEIGHTED_AVERAGE);
+    // SPEC §17.16 — weight defaults to 1 (form pre-fill).
+    expect(p.weight).toBe(1);
   });
 });
 
