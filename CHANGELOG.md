@@ -16,6 +16,31 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **E2E coverage for the Workflow + Picture + URL Add-Child
+  flows** (§17.121c — closes the deferred §17.117 / §17.118 /
+  §17.119 / §17.120 coverage gaps). Six new scenarios on
+  `add_child_modal.feature` complete the per-kind happy-create
+  matrix for the v5 round-7 catalogue. Picking **Workflow**
+  reveals title + weight + status picker + current-value + as-of
+  date (Workflow is a TextNode + a board-level status badge, so
+  it inherits the TextNode current-value row on top of the new
+  status `<select>`); confirming with the default `plan` status
+  appends and closes. Picking **Picture** reveals title + weight
+  + image-url and nothing else (no description, no current-value,
+  no unit, objective, range, strategy, or status); confirming
+  with a syntactically valid image URL appends. Picking **URL**
+  reveals title + weight + url and nothing else; confirming
+  with a syntactically valid URL appends. Six new step
+  definitions (`the modal has a status picker` + inverse,
+  `…has an image-url field` + inverse, `…has a url field` +
+  inverse) round out the per-kind assertion library; the
+  generic `I set the modal field "<testid>" to "<value>"`
+  setter from §17.121b is reused for both image-URL and URL
+  fills, no new fill-step plumbing. The Add-Child modal e2e
+  coverage now has at least one **picking-reveals-fields** and
+  at least one **confirm-and-append** scenario for all 8 kinds
+  in `KIND_OPTIONS`.
+
 - **E2E coverage for the Computed + Computed Business Score Card
   Add-Child flows** (§17.121b — follow-up to §17.94 / §17.95).
   Five new scenarios on `add_child_modal.feature`: picking

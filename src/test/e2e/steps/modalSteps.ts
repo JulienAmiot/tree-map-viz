@@ -321,6 +321,47 @@ When(
   },
 );
 
+// SPEC §17.118 — WorkflowNode adds a status `<select>` on top of the
+// TextNode form. `field-status` pins the testid. Status defaults to
+// `plan` (see DEFAULT_WORKFLOW_STATUS_ID) so the operator can confirm
+// without touching the dropdown.
+Then("the modal has a status picker", async ({ page }) => {
+  const kiosk = new TreeMapPage(page);
+  await expect(kiosk.addChildModalField("field-status")).toHaveCount(1);
+});
+
+Then("the modal has no status picker", async ({ page }) => {
+  const kiosk = new TreeMapPage(page);
+  await expect(kiosk.addChildModalField("field-status")).toHaveCount(0);
+});
+
+// SPEC §17.119 — PictureNode form: title + weight + an image URL.
+// `field-image-url` pins the only kind-specific testid.
+Then("the modal has an image-url field", async ({ page }) => {
+  const kiosk = new TreeMapPage(page);
+  await expect(kiosk.addChildModalField("field-image-url")).toHaveCount(1);
+});
+
+Then("the modal has no image-url field", async ({ page }) => {
+  const kiosk = new TreeMapPage(page);
+  await expect(kiosk.addChildModalField("field-image-url")).toHaveCount(0);
+});
+
+// SPEC §17.120 — URLNode form: title + weight + a URL (rendered as a QR
+// at view time). The URL input carries the `modal-url` testid (the
+// `field-` prefix would shadow the page-object's add-child kiosk
+// helpers since `url` is the @lit/reactive-element internal property
+// name; the bare `modal-url` keeps the binding clean).
+Then("the modal has a url field", async ({ page }) => {
+  const kiosk = new TreeMapPage(page);
+  await expect(kiosk.addChildModalField("modal-url")).toHaveCount(1);
+});
+
+Then("the modal has no url field", async ({ page }) => {
+  const kiosk = new TreeMapPage(page);
+  await expect(kiosk.addChildModalField("modal-url")).toHaveCount(0);
+});
+
 Then("the modal has a unit field", async ({ page }) => {
   const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-unit")).toHaveCount(1);
