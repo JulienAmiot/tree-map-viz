@@ -287,3 +287,108 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     Then the add-child modal is closed
     And there are 1 child tiles
     And the focused id is unchanged after the modal interaction
+
+  @HE-???? @priority:high
+  Scenario: Picking Workflow reveals title + weight + status picker + current-value + as-of (§17.118)
+    # SPEC §17.118 — Workflow is a TextNode plus a board-level status
+    # badge. The form therefore carries the full TextNode current-value
+    # row (textarea + as-of date) on top of the new status `<select>`.
+    # No unit / objective / range / strategy: those belong to
+    # measurable kinds and roll-up kinds respectively.
+    When I click the plus tile
+    And I pick the kind "Workflow"
+    Then the modal form is for kind "Workflow"
+    And the modal has a title field
+    And the modal has a weight field
+    And the modal has a status picker
+    And the modal has a current-value field
+    And the as-of date defaults to today's local-calendar ISO
+    And the modal has no unit field
+    And the modal has no objective fields
+    And the modal has no range fields
+    And the modal has no strategy picker
+
+  @HE-???? @priority:high
+  Scenario: Confirming a Workflow child appends with the default "plan" status (§17.118)
+    # SPEC §17.118 — `DEFAULT_WORKFLOW_STATUS_ID` is `"plan"`; the
+    # modal's `statusId` defaults to it so confirming without touching
+    # the status dropdown produces a PLAN-tagged WorkflowNode. The
+    # current value (textarea) is still required.
+    When I click the plus tile
+    And I pick the kind "Workflow"
+    And I fill in the title with "Migrate the kiosk to v3"
+    And I fill in the current value with "Kickoff scheduled for next sprint."
+    And I confirm the add-child modal
+    Then the add-child modal is closed
+    And there are 1 child tiles
+    And the focused id is unchanged after the modal interaction
+
+  @HE-???? @priority:high
+  Scenario: Picking Picture reveals title + weight + image-url and nothing else (§17.119)
+    # SPEC §17.119 — PictureNode is a title-bearing image card. The
+    # only kind-specific input is the image URL (object-fit: cover at
+    # render time). No description, no current-value, no unit, no
+    # objective, no range, no strategy, no status.
+    When I click the plus tile
+    And I pick the kind "PictureNode"
+    Then the modal form is for kind "PictureNode"
+    And the modal has a title field
+    And the modal has no description field
+    And the modal has a weight field
+    And the modal has an image-url field
+    And the modal has no current-value field
+    And the modal has no unit field
+    And the modal has no objective fields
+    And the modal has no range fields
+    And the modal has no strategy picker
+    And the modal has no status picker
+
+  @HE-???? @priority:high
+  Scenario: Confirming a Picture child appends with a valid image URL (§17.119)
+    # SPEC §17.119 — minimum-viable Picture seed: title + a syntactically
+    # valid image URL. Render-time load failures surface a warning glyph
+    # in the tile; the modal doesn't probe the URL.
+    When I click the plus tile
+    And I pick the kind "PictureNode"
+    And I fill in the title with "Team retrospective whiteboard"
+    And I set the modal field "field-image-url" to "https://example.com/retro.jpg"
+    And I confirm the add-child modal
+    Then the add-child modal is closed
+    And there are 1 child tiles
+    And the focused id is unchanged after the modal interaction
+
+  @HE-???? @priority:high
+  Scenario: Picking URL reveals title + weight + URL field and nothing else (§17.120)
+    # SPEC §17.120 — URLNode is a title-bearing QR card. The only
+    # kind-specific input is the URL (rendered as a scannable QR with
+    # object-fit: contain at render time). No description, no
+    # current-value, no unit, no objective, no range, no strategy,
+    # no status.
+    When I click the plus tile
+    And I pick the kind "URLNode"
+    Then the modal form is for kind "URLNode"
+    And the modal has a title field
+    And the modal has no description field
+    And the modal has a weight field
+    And the modal has a url field
+    And the modal has no image-url field
+    And the modal has no current-value field
+    And the modal has no unit field
+    And the modal has no objective fields
+    And the modal has no range fields
+    And the modal has no strategy picker
+    And the modal has no status picker
+
+  @HE-???? @priority:high
+  Scenario: Confirming a URL child appends with a valid URL (§17.120)
+    # SPEC §17.120 — minimum-viable URL seed: title + a syntactically
+    # valid URL. QR generation failures surface a warning glyph at
+    # render time; the modal doesn't probe the URL.
+    When I click the plus tile
+    And I pick the kind "URLNode"
+    And I fill in the title with "Onboarding handbook"
+    And I set the modal field "modal-url" to "https://example.com/onboarding"
+    And I confirm the add-child modal
+    Then the add-child modal is closed
+    And there are 1 child tiles
+    And the focused id is unchanged after the modal interaction
