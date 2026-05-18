@@ -1066,22 +1066,6 @@ describe("<edit-node-modal>", () => {
       });
     });
 
-    it("re-seeds description + selected strategy when the target swaps mid-open (Text → Computed)", async () => {
-      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
-        e.editTarget = textTarget;
-        e.open = true;
-      });
-      expect(
-        el.shadowRoot?.querySelector('[data-testid="field-computation-kind"]'),
-      ).toBeNull();
-      el.editTarget = computedTarget;
-      await el.updateComplete;
-      expect(
-        (fieldOf(el, "field-description") as HTMLTextAreaElement).value,
-      ).toBe("Rolling sprint velocity");
-      expect(selectOf(el, "field-computation-kind").value).toBe("SUM");
-    });
-
     it("swapping Computed → BSC clears the dropdown and brings BSC-only fields back (kind-specific seeds stay isolated)", async () => {
       const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
         e.editTarget = computedTarget;

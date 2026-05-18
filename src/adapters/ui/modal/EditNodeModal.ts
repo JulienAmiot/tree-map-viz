@@ -183,16 +183,12 @@ export type EditNodeModalPayload =
       readonly weight?: number;
     }
   /**
-   * SPEC §17.94 / §17.95 — `ComputedNode` variant. The roll-up
-   * strategy is editable through the same `ComputationKind`
-   * dropdown the add-child modal uses; the canonical name (e.g.
-   * `"SUM"`) flows through the wire and `main.ts`'s
-   * `toAppEditPayload` resolves it back to the singleton through
-   * `ComputationKind.fromName`. Description + weight ride the
-   * shared `CommonEdit` slots; title stays on the inline-edit seam
-   * per §17.50. main.ts rewrites the modal-side `"ComputedNode"`
-   * kind tag to the application-layer `"Computed"` (parity with
-   * the BSC / Picture / URL / StrictRange kind-tag rewrites).
+   * SPEC §17.94 / §17.95 — `ComputedNode` variant. Description +
+   * weight ride `CommonEdit`; the strategy dropdown emits the
+   * canonical `ComputationKind.name` (resolved back to the
+   * singleton in `main.ts#toAppEditPayload` via
+   * `ComputationKind.fromName`). main.ts rewrites the modal-side
+   * `"ComputedNode"` kind tag to the application-layer `"Computed"`.
    */
   | {
       readonly kind: "ComputedNode";
@@ -266,14 +262,7 @@ export type EditNodeTarget =
       readonly title: string;
       readonly description: string;
       readonly weight: number;
-      /**
-       * Canonical `ComputationKind.name` of the current strategy
-       * (e.g. `"SUM"`, `"AVERAGE"`). Pre-fills the dropdown so the
-       * operator's first interaction is "tweak", not "rediscover".
-       * Wire matches the JSON envelope produced by `jsonCodecV4`
-       * per §17.106b — the modal never hands a `ComputationKind`
-       * instance through the property boundary.
-       */
+      /** Canonical `ComputationKind.name` (e.g. `"SUM"`); pre-fills the dropdown. */
       readonly computationKindName: string;
     };
 
