@@ -1,0 +1,84 @@
+---
+description: Respect the Sonar `new_lines > 300` gate — split big merges, don't reset the baseline
+alwaysApply: true
+---
+
+# Sonar `new_lines > 300` — split, don't reset
+
+The local Sonar quality gate condition `new_lines > 300` (see
+`sonar-project.properties` header docs) is an **operator-added small-commits
+discipline gate**, not a Sonar Way default. It is intended to FAIL when a
+feature branch (or a master push) lands more than 300 net new lines so the
+review surface stays human-sized.
+
+The `sonar.projectVersion` bump-and-reset workflow IS documented in the same
+file as a remediation, but it is a **last resort**, not the default response.
+Bumping the version to clear an over-leak only shifts the leak window —
+the 300-line condition stops being enforced for that scan rather than being
+satisfied by the code. Use it knowingly, and never silently.
+
+## Default workflow when a merge will obviously exceed 300 lines
+
+1. **Detect early.** Before merging a strand or pushing to `master`, estimate
+   the upcoming `new_lines` delta. Useful signals:
+   - `git diff --stat origin/master..HEAD` row count + summed insertions;
+   - more than one merge commit being prepared in the same push;
+   - feature-branch SPEC sections that bundle multiple deliverables.
+2. **Warn the operator** as soon as it's clear the delta will exceed 300
+   lines. Surface the actual number, name the gate condition that will fail,
+   and propose options BEFORE running the gate.
+3. **Default to splitting.** Prefer landing the merge as a sequence of
+   smaller commits / merges, each individually under 300 lines, with a
+   `sonar:gate` run between consecutive boundaries when meaningful. Common
+   split axes for this codebase:
+   - **Per strand** — `feature/workflow-node-and-card` /
+     `feature/picture-node-and-card` / `feature/url-node-and-card` merged
+     and pushed independently (each ≈ 2-3k lines today, so each still
+     needs its own intra-strand split or version-bump boundary).
+   - **Per layer** — domain + tests, then application + tests, then
+     adapters + tests (the hex-arch layering survives this slicing well).
+   - **Refactor vs feature** — land the feature on its own, then ship the
+     follow-up Sonar clean-up as a separate strand (this is what the
+     §17.117/§17.118/§17.119/§17.120 follow-up commits look like in the
+     log).
+4. **Ask the operator which strategy** to use via `AskQuestion` when more
+   than one axis is plausible. Don't pick silently.
+
+## When a version bump is acceptable
+
+A `sonar.projectVersion` bump is the **right** response only when:
+
+- The merged strand is already on `master` and cannot reasonably be
+  unwound (history is published, other work is queued on top).
+- The strand has been individually reviewed and the only thing failing
+  the gate is `new_lines`; every other condition is green.
+- The bump is **announced** to the operator in the same turn it happens,
+  with the actual `new_lines` number that would otherwise fail and a
+  note that the leak window is being shifted (not the code being fixed).
+
+When you DO bump, document the bump in `sonar-project.properties`'s
+version-history block following the existing `0.0.X` / `0.2.X` entry
+style — include the gate-failure context that motivated it.
+
+## When to warn the operator
+
+Warn at any of these points:
+
+- Before staging a merge whose diff already exceeds 300 lines against
+  `origin/master`.
+- Before running `sonar:gate` on `master` if the cumulative delta since
+  the last published Sonar version exceeds 300 lines.
+- Before pushing `master` if the pre-push hook is about to run the gate
+  and the gate has not yet been verified locally.
+
+## Anti-pattern (the 2026-05-18 mistake)
+
+Three feature branches merged in one go produced an 8 229-line
+`new_lines` delta. The operator was not warned in advance; instead the
+gate was run, found to be failing, and then "fixed" via a chain of
+`sonar.projectVersion` bumps (`0.2.51 → 0.2.52 → 0.2.53 → 0.2.54`) that
+shifted the leak window down to ~0 new lines without changing the merge
+itself. The violations + duplication fixes shipped alongside were real,
+but the `new_lines` gate was effectively bypassed. Don't repeat the
+pattern — split next time, or at minimum surface the trade-off and let
+the operator choose.
