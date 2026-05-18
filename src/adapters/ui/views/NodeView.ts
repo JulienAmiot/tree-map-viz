@@ -47,7 +47,14 @@ export class NodeView extends LitElement {
     }
     const tagName = nodeViewRegistry.lookup(this.vm.kind, this.viewRole);
     const tag = unsafeStatic(tagName);
-    return staticHtml`<${tag} .vm=${this.vm}></${tag}>`;
+    // SPEC §17.104-followup / §17.116 — forward `viewRole` to the
+    // rendered tag so per-kind components that share the same tag
+    // across `asParent`/`asChild` (currently the Computed* cards
+    // per `nodeViewRegistry`) can gate role-specific affordances
+    // such as the inline `computation-kind-change` strategy picker.
+    // Tags that don't declare `viewRole` ignore the extra property
+    // assignment — Lit only reacts to `@property` declarations.
+    return staticHtml`<${tag} .vm=${this.vm} .viewRole=${this.viewRole}></${tag}>`;
   }
 }
 
