@@ -19,13 +19,20 @@
  * title).
  */
 
-import { css, html, nothing, type TemplateResult } from "lit";
+import {
+  css,
+  html,
+  nothing,
+  type ReactiveController,
+  type ReactiveControllerHost,
+  type TemplateResult,
+} from "lit";
 
 import {
   INLINE_EDIT_TITLE_EVENT,
   type InlineEditTitleDetail,
 } from "./inlineEditEvents.js";
-import { inlineEditKey } from "./inlineEditHelpers.js";
+import { focusAndSelectInline, inlineEditKey } from "./inlineEditHelpers.js";
 
 /**
  * CSS for the inline-editable title slot. Includes:
@@ -235,4 +242,145 @@ export function dispatchInlineTitleCommit(
     }),
   );
   return true;
+}
+
+/**
+ * Host contract for {@link InlineTitleEditController}. The host
+ * supplies the per-frame `target` (vm id + title) — the
+ * controller owns everything else: the `isEditing` state, the
+ * focus-after-render side effect, the key/blur handlers, and
+ * the commit dispatch. A view that wants the inline-title-edit
+ * affordance only has to:
+ *
+ *   1. extend `LitElement` (giving us a `ReactiveControllerHost`);
+ *   2. install the controller in its constructor or as a field;
+ *   3. expose its current target via `getInlineTitleEditTarget()`;
+ *   4. call `controller.renderTitle(viewKind)` in its render path.
+ *
+ * Three previously-duplicated lifecycle blocks (renderTitle +
+ * startTitleEdit + handleTitleKey + handleTitleBlur + commitTitle
+ * + the matching `updated()` focus call + the `editingField`
+ * `@state` slot) collapse to one controller instance — Sonar's
+ * CPD detector no longer matches the WorkflowNodeAsParent /
+ * PictureNodeAsParent / URLNodeAsParent block triplet, dropping
+ * new-code duplication well under the 3 % gate.
+ */
+export interface InlineTitleEditHost extends ReactiveControllerHost, EventTarget {
+  /**
+   * Surface the current inline-title-edit target. Views typically
+   * return `this.vm ? { nodeId: this.vm.id, title: this.vm.title } : null`.
+   * Returning `null` makes `renderTitle` emit `nothing` (no h1
+   * is mounted) — useful before the vm lands.
+   */
+  getInlineTitleEditTarget(): InlineTitleEditTarget | null;
+  /**
+   * LitElement gives every host a shadowRoot; surfaced on the
+   * interface so the controller can query the `<input.title-edit>`
+   * to focus it after Lit's render pass. The controller falls
+   * back gracefully when `shadowRoot` is `null` (unrooted host,
+   * e.g. a fixture that never mounted the element).
+   */
+  readonly shadowRoot: ShadowRoot | null;
+}
+
+/**
+ * ReactiveController that owns the inline-title-edit lifecycle
+ * for a host view. See {@link InlineTitleEditHost} for the host
+ * contract.
+ *
+ * The controller stores its `isEditing` flag locally (not via
+ * Lit's `@state`) and calls `host.requestUpdate()` on every flip
+ * so the host re-renders. Keeping the slot off the host means a
+ * view with a multi-field editor (e.g. WorkflowNodeAsParent
+ * editing title OR value) can layer the controller alongside its
+ * own value-edit state without their slots colliding.
+ *
+ * The `updated()` lifecycle hook on the host is wrapped via the
+ * `hostUpdated()` ReactiveController API: after every render
+ * pass the controller checks `isEditing` and, if true, queries
+ * the host's shadowRoot for `input.title-edit` and focuses it.
+ * The host's own `updated()` is unaffected — it can still do its
+ * own post-render work (e.g. the markdown body shrink-to-fit pass
+ * the TextNode parent role runs).
+ */
+export class InlineTitleEditController implements ReactiveController {
+  private readonly host: InlineTitleEditHost;
+  private isEditing = false;
+
+  constructor(host: InlineTitleEditHost) {
+    this.host = host;
+    host.addController(this);
+  }
+
+  hostUpdated(): void {
+    if (!this.isEditing) return;
+    const input = this.host.shadowRoot?.querySelector<HTMLInputElement>(
+      "input.title-edit",
+    );
+    focusAndSelectInline(input ?? null);
+  }
+
+  /** Whether the controller is currently in edit mode. */
+  get editing(): boolean {
+    return this.isEditing;
+  }
+
+  /** Force-cancel any active edit (e.g. when the host disconnects). */
+  cancel(): void {
+    if (!this.isEditing) return;
+    this.isEditing = false;
+    this.host.requestUpdate();
+  }
+
+  /**
+   * Renders the title block (`renderInlineEditableTitle`) bound
+   * to the controller's lifecycle. The view passes its `viewKind`
+   * tag so the rendered `<h1>` keeps the per-strand
+   * `data-view-kind` attribute that unit tests rely on.
+   */
+  renderTitle(viewKind: string): TemplateResult | typeof nothing {
+    return renderInlineEditableTitle({
+      target: this.host.getInlineTitleEditTarget(),
+      isEditing: this.isEditing,
+      viewKind,
+      onStart: this.start,
+      onKeydown: this.handleKey,
+      onBlur: this.handleBlur,
+    });
+  }
+
+  private readonly start = (): void => {
+    if (this.host.getInlineTitleEditTarget() === null) return;
+    this.isEditing = true;
+    this.host.requestUpdate();
+  };
+
+  private readonly handleKey = (e: KeyboardEvent): void => {
+    handleInlineTitleKey(
+      e,
+      (input) => this.commit(input),
+      () => {
+        this.isEditing = false;
+        this.host.requestUpdate();
+      },
+    );
+  };
+
+  private readonly handleBlur = (e: FocusEvent): void => {
+    this.commit(e.target as HTMLInputElement | null);
+  };
+
+  private commit(input: HTMLInputElement | null): void {
+    if (!this.isEditing) return;
+    const target = this.host.getInlineTitleEditTarget();
+    if (target === null || input === null) {
+      this.isEditing = false;
+      this.host.requestUpdate();
+      return;
+    }
+    const value = input.value;
+    this.isEditing = false;
+    this.host.requestUpdate();
+    dispatchInlineTitleCommit(this.host, target, value);
+  }
 }

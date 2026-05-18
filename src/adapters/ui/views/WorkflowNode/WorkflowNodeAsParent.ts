@@ -40,9 +40,8 @@ import {
   inlineEditKey,
 } from "../inlineEditHelpers.js";
 import {
-  dispatchInlineTitleCommit,
-  handleInlineTitleKey,
-  renderInlineEditableTitle,
+  InlineTitleEditController,
+  type InlineTitleEditTarget,
   titleInlineEditStyles,
 } from "../inlineTitleEdit.js";
 import type { WorkflowNodeViewModel } from "../NodeViewModel.js";
@@ -57,9 +56,15 @@ export class WorkflowNodeAsParent extends LitElement {
   vm: WorkflowNodeViewModel | null = null;
 
   @state()
-  private editingField: "title" | "value" | null = null;
+  private editingValue = false;
 
   private resizeObserver: ResizeObserver | null = null;
+
+  private readonly titleEditor = new InlineTitleEditController(this);
+
+  getInlineTitleEditTarget(): InlineTitleEditTarget | null {
+    return this.vm ? { nodeId: this.vm.id, title: this.vm.title } : null;
+  }
 
   static readonly styles = [
     tileLayoutStyles,
@@ -112,12 +117,7 @@ export class WorkflowNodeAsParent extends LitElement {
 
   override updated(): void {
     this.fitBody();
-    if (this.editingField === "title") {
-      const input = this.shadowRoot?.querySelector<HTMLInputElement>(
-        "input.title-edit",
-      );
-      focusAndSelectInline(input ?? null);
-    } else if (this.editingField === "value") {
+    if (this.editingValue) {
       const ta = this.shadowRoot?.querySelector<HTMLTextAreaElement>(
         "textarea.value-edit",
       );
@@ -126,7 +126,7 @@ export class WorkflowNodeAsParent extends LitElement {
   }
 
   private fitBody(): void {
-    if (this.editingField === "value") return;
+    if (this.editingValue) return;
     const body = this.shadowRoot?.querySelector<HTMLElement>(".md-body");
     fitMarkdownBodyToTile(body ?? null);
   }
@@ -140,8 +140,8 @@ export class WorkflowNodeAsParent extends LitElement {
     const bodyClass = empty ? "md-body empty is-editable" : "md-body is-editable";
     const bodyContent = empty ? "" : unsafeHTML(renderMarkdownToHtml(value.text));
     return html`
-      ${this.renderTitle()}
-      ${value.dateIso && this.editingField !== "value"
+      ${this.titleEditor.renderTitle("WorkflowNode")}
+      ${value.dateIso && !this.editingValue
         ? html`<time
             class="timestamp"
             data-testid="value-date"
@@ -151,7 +151,7 @@ export class WorkflowNodeAsParent extends LitElement {
           >`
         : nothing}
       <div class="value-area" data-testid="value-row">
-        ${this.editingField === "value"
+        ${this.editingValue
           ? this.renderValueEditor(value.text)
           : html`<div
               class=${bodyClass}
@@ -169,17 +169,6 @@ export class WorkflowNodeAsParent extends LitElement {
     `;
   }
 
-  private renderTitle() {
-    return renderInlineEditableTitle({
-      target: this.vm ? { nodeId: this.vm.id, title: this.vm.title } : null,
-      isEditing: this.editingField === "title",
-      viewKind: "WorkflowNode",
-      onStart: this.startTitleEdit,
-      onKeydown: this.handleTitleKey,
-      onBlur: this.handleTitleBlur,
-    });
-  }
-
   private renderValueEditor(initial: string) {
     return html`<textarea
       class="value-edit"
@@ -190,28 +179,9 @@ export class WorkflowNodeAsParent extends LitElement {
     ></textarea>`;
   }
 
-  private readonly startTitleEdit = (): void => {
-    if (!this.vm) return;
-    this.editingField = "title";
-  };
-
   private readonly startValueEdit = (): void => {
     if (!this.vm) return;
-    this.editingField = "value";
-  };
-
-  private readonly handleTitleKey = (e: KeyboardEvent): void => {
-    handleInlineTitleKey(
-      e,
-      (input) => this.commitTitle(input),
-      () => {
-        this.editingField = null;
-      },
-    );
-  };
-
-  private readonly handleTitleBlur = (e: FocusEvent): void => {
-    this.commitTitle(e.target as HTMLInputElement | null);
+    this.editingValue = true;
   };
 
   private readonly handleValueKey = (e: KeyboardEvent): void => {
@@ -221,7 +191,7 @@ export class WorkflowNodeAsParent extends LitElement {
       this.commitValue(e.currentTarget as HTMLTextAreaElement);
     } else if (intent === "cancel") {
       e.preventDefault();
-      this.editingField = null;
+      this.editingValue = false;
     }
   };
 
@@ -229,25 +199,14 @@ export class WorkflowNodeAsParent extends LitElement {
     this.commitValue(e.target as HTMLTextAreaElement | null);
   };
 
-  private commitTitle(input: HTMLInputElement | null): void {
-    if (this.editingField !== "title") return;
-    if (!this.vm || !input) {
-      this.editingField = null;
-      return;
-    }
-    const value = input.value;
-    this.editingField = null;
-    dispatchInlineTitleCommit(this, { nodeId: this.vm.id, title: this.vm.title }, value);
-  }
-
   private commitValue(area: HTMLTextAreaElement | null): void {
-    if (this.editingField !== "value") return;
+    if (!this.editingValue) return;
     if (!this.vm || !area) {
-      this.editingField = null;
+      this.editingValue = false;
       return;
     }
     const next = area.value;
-    this.editingField = null;
+    this.editingValue = false;
     if (next === this.vm.value.text) return;
     this.dispatchEvent(
       new CustomEvent<InlineEditValueDetail>(INLINE_EDIT_VALUE_EVENT, {

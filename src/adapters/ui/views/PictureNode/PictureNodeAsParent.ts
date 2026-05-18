@@ -20,19 +20,18 @@
  *   - No description.
  */
 
-import { LitElement, html, nothing, type PropertyValues } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+import { LitElement, html, nothing } from "lit";
+import { customElement, property } from "lit/decorators.js";
 
-import { focusAndSelectInline } from "../inlineEditHelpers.js";
 import {
-  dispatchInlineTitleCommit,
-  handleInlineTitleKey,
-  renderInlineEditableTitle,
+  InlineTitleEditController,
+  type InlineTitleEditTarget,
   titleInlineEditStyles,
 } from "../inlineTitleEdit.js";
 import type { PictureNodeViewModel } from "../NodeViewModel.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 
+import { ImageErrorController } from "./imageErrorController.js";
 import { pictureBodyStyles, renderPictureValueArea } from "./pictureBody.js";
 
 @customElement("picture-node-as-parent")
@@ -40,15 +39,16 @@ export class PictureNodeAsParent extends LitElement {
   @property({ attribute: false })
   vm: PictureNodeViewModel | null = null;
 
-  /** §17.28 — which field is currently being inline-edited (only `title` on a picture). */
-  @state()
-  private editingField: "title" | null = null;
+  private readonly titleEditor = new InlineTitleEditController(this);
+  private readonly imageError = new ImageErrorController(this);
 
-  /** §17.119 — flips to `true` on the `<img>`'s `error` event so the warning glyph renders. */
-  @state()
-  private hasError = false;
+  getInlineTitleEditTarget(): InlineTitleEditTarget | null {
+    return this.vm ? { nodeId: this.vm.id, title: this.vm.title } : null;
+  }
 
-  private lastUrl: string | null = null;
+  getURL(): string | null {
+    return this.vm?.imageUrl ?? null;
+  }
 
   static readonly styles = [
     tileLayoutStyles,
@@ -56,87 +56,19 @@ export class PictureNodeAsParent extends LitElement {
     titleInlineEditStyles,
   ];
 
-  override willUpdate(changed: PropertyValues<this>): void {
-    if (!changed.has("vm")) return;
-    const currentUrl = this.vm?.imageUrl ?? null;
-    if (currentUrl !== this.lastUrl) {
-      this.lastUrl = currentUrl;
-      if (this.hasError) {
-        this.hasError = false;
-      }
-    }
-  }
-
-  override updated(): void {
-    // SPEC §17.28 -- focus the title input after Lit re-renders the
-    // template so the operator's caret lands inside the input without
-    // an extra tap. Picture-strand parity with TextNodeAsParent.
-    if (this.editingField === "title") {
-      const input = this.shadowRoot?.querySelector<HTMLInputElement>(
-        "input.title-edit",
-      );
-      focusAndSelectInline(input ?? null);
-    }
-  }
-
-  private readonly handleImageError = (): void => {
-    this.hasError = true;
-  };
-
   render() {
     if (!this.vm) {
       return nothing;
     }
     return html`
-      ${this.renderTitle()}
+      ${this.titleEditor.renderTitle("PictureNode")}
       ${renderPictureValueArea(
         this.vm.imageUrl,
         this.vm.title,
-        this.hasError,
-        this.handleImageError,
+        this.imageError.hasError,
+        this.imageError.handleError,
       )}
     `;
-  }
-
-  private renderTitle() {
-    return renderInlineEditableTitle({
-      target: this.vm ? { nodeId: this.vm.id, title: this.vm.title } : null,
-      isEditing: this.editingField === "title",
-      viewKind: "PictureNode",
-      onStart: this.startTitleEdit,
-      onKeydown: this.handleTitleKey,
-      onBlur: this.handleTitleBlur,
-    });
-  }
-
-  private readonly startTitleEdit = (): void => {
-    if (!this.vm) return;
-    this.editingField = "title";
-  };
-
-  private readonly handleTitleKey = (e: KeyboardEvent): void => {
-    handleInlineTitleKey(
-      e,
-      (input) => this.commitTitle(input),
-      () => {
-        this.editingField = null;
-      },
-    );
-  };
-
-  private readonly handleTitleBlur = (e: FocusEvent): void => {
-    this.commitTitle(e.target as HTMLInputElement | null);
-  };
-
-  private commitTitle(input: HTMLInputElement | null): void {
-    if (this.editingField !== "title") return;
-    if (!this.vm || !input) {
-      this.editingField = null;
-      return;
-    }
-    const value = input.value;
-    this.editingField = null;
-    dispatchInlineTitleCommit(this, { nodeId: this.vm.id, title: this.vm.title }, value);
   }
 }
 
