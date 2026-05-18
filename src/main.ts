@@ -663,6 +663,23 @@ function toAppAddChildPayload(payload: AddChildModalPayload, clock: Clock): AddC
       initialHistory: payload.initialHistory,
     };
   }
+  if (payload.kind === "ComputedNode") {
+    // SPEC §17.94 / §17.95 — modal-side "ComputedNode" rewrites to
+    // the application-layer "Computed" kind tag. The service builds
+    // the `ComputedNode<number>` directly (no seed history, no
+    // objective, no unit, no range — children + the strategy carry
+    // every value). The picked `ComputationKind` flows through as
+    // the canonical singleton (`ComputationKind.fromName` resolved
+    // it in `buildComputedPayload`, so reference equality with the
+    // `static readonly` slots holds end-to-end).
+    return {
+      kind: "Computed",
+      title: payload.title,
+      description: payload.description,
+      weight: payload.weight,
+      computationKind: payload.computationKind,
+    };
+  }
   const objective = {
     value: payload.objective.targetValue,
     at: payload.objective.targetDate,

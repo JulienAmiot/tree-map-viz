@@ -120,6 +120,7 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
+import { ComputationKind } from "../../../domain/computation/ComputationKind.js";
 import type { WorkflowStatus } from "../../../domain/values/WorkflowStatus.js";
 import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
 
@@ -204,6 +205,25 @@ export type AddChildModalPayload =
       readonly initialHistory?: readonly { readonly value: number; readonly asOf: Date }[];
     }
   /**
+   * SPEC §17.94 / §17.95 — `ComputedNode<number>` variant. A node
+   * whose current value is **derived** from its eligible children
+   * via a `Computation<T>` strategy (Sum / Average / Min / Max /
+   * WeightedAverage / Count). The operator picks one of the six
+   * `ComputationKind` inhabitants at create-time; no seed history
+   * + no objective + no unit + no range — the children + the
+   * strategy carry every piece of information. main.ts's
+   * `toAppAddChildPayload` rewrites the modal-side `"ComputedNode"`
+   * kind tag to the application-layer `"Computed"` (parity with
+   * the BSC / StrictRange / Picture / URL kind rewrites).
+   */
+  | {
+      readonly kind: "ComputedNode";
+      readonly title: string;
+      readonly description?: string;
+      readonly weight?: number;
+      readonly computationKind: ComputationKind;
+    }
+  /**
    * SPEC §17.119 — `PictureNode` variant. A snapshot leaf carrying a
    * single image URL: no description (the title labels the picture,
    * the picture IS the content), no objective row, no
@@ -284,6 +304,12 @@ const KIND_OPTIONS: readonly KindOption[] = [
       "A bounded metric: title, min/max range, current value with history; out-of-range values are rejected.",
   },
   {
+    kind: "ComputedNode",
+    name: "Computed",
+    description:
+      "A derived metric: title + a strategy (Sum / Average / Min / Max / Weighted Avg / Count). Value comes from eligible children.",
+  },
+  {
     kind: "PictureNode",
     name: "Picture",
     description:
@@ -301,6 +327,24 @@ const KIND_OPTIONS: readonly KindOption[] = [
 export const ALL_ADD_CHILD_KINDS: readonly AddChildKind[] = KIND_OPTIONS.map(
   (o) => o.kind,
 );
+
+/**
+ * SPEC §17.94 / §17.95 — UI-friendly labels for the six
+ * `ComputationKind` inhabitants. Keyed by `ComputationKind.name`
+ * (the canonical SCREAMING_SNAKE_CASE persisted by `jsonCodecV4`)
+ * so a missing entry falls back to the raw enum name without
+ * crashing the dropdown. Exported for the EditNodeModal +
+ * focused-panel views which surface the same picker (the future
+ * `computation-kind-change` UI mentioned in §17.110).
+ */
+export const COMPUTATION_KIND_LABELS: Readonly<Record<string, string>> = {
+  SUM: "Sum (Σ children)",
+  AVERAGE: "Average (mean of children)",
+  MIN: "Min (smallest child)",
+  MAX: "Max (largest child)",
+  WEIGHTED_AVERAGE: "Weighted average (by child weight)",
+  COUNT: "Count (number of eligible children)",
+};
 
 /**
  * Parse a `YYYY-MM-DD` value from a native `<input type="date">` into
@@ -410,6 +454,19 @@ export class AddChildModal extends LitElement {
   /** SPEC §17.77 — upper bound for the StrictRange kind. */
   @state()
   private rangeMax = "";
+
+  /**
+   * SPEC §17.94 / §17.95 — selected `ComputationKind.name` for the
+   * Computed (and forthcoming ComputedBusinessScore) kinds. Stored
+   * as the string name (matching the `<select>` value) and resolved
+   * back to the singleton via `ComputationKind.fromName` at
+   * payload-build time. Defaults to `"AVERAGE"` — the most common
+   * choice for a generic computed roll-up (matches the §17.99c
+   * bridge default the v3-compat layer used to pick when an
+   * operator ticked the legacy `computed:true` checkbox).
+   */
+  @state()
+  private computationKindName = ComputationKind.AVERAGE.name;
 
   /**
    * SPEC §17.119 — image URL for the Picture kind. A plain string;
@@ -852,9 +909,14 @@ export class AddChildModal extends LitElement {
     const isBsc = this.chosenKind === "BusinessScoreCardNode";
     const isPicture = this.chosenKind === "PictureNode";
     const isStrictRange = this.chosenKind === "StrictRangeNode";
+    const isComputed = this.chosenKind === "ComputedNode";
     const isTextOrWorkflow = isText || isWorkflow;
     const isUrl = this.chosenKind === "URLNode";
-    const isBscOrStrictRange = isBsc || isStrictRange;
+    // SPEC §17.94 — kinds that carry an operator-editable description
+    // textarea: BSC, StrictRange, and the round-7 Computed roll-up.
+    // (Picture / URL inherit description from the URL slot; Text /
+    // Workflow are typed by the latest history entry.)
+    const wantsDescription = isBsc || isStrictRange || isComputed;
     return html`
       <form
         data-testid="modal-form"
@@ -873,7 +935,7 @@ export class AddChildModal extends LitElement {
             @input=${(e: Event) => this.bindString(e, "formTitle")}
           />
         </div>
-        ${isBscOrStrictRange ? this.renderDescriptionField() : nothing}
+        ${wantsDescription ? this.renderDescriptionField() : nothing}
         <div class="field-row" data-testid="weight-row">
           <div class="field">
             <div class="weight-control" data-testid="weight-control">
@@ -905,6 +967,7 @@ export class AddChildModal extends LitElement {
         ${isBsc ? this.renderBscCurrentValueFields() : nothing}
         ${isBsc ? this.renderObjectiveFields() : nothing}
         ${isStrictRange ? this.renderStrictRangeFields() : nothing}
+        ${isComputed ? this.renderComputationKindField() : nothing}
         ${isPicture ? this.renderPictureFields() : nothing}
         ${isUrl ? this.renderURLFields() : nothing}
         ${this.errorMessage
@@ -1106,6 +1169,42 @@ export class AddChildModal extends LitElement {
   }
 
   /**
+   * SPEC §17.94 / §17.95 — strategy dropdown shared between the
+   * `ComputedNode` and (forthcoming) `ComputedBusinessScoreNode`
+   * forms. Lists the six `ComputationKind.ALL` inhabitants by
+   * their canonical `name` (matches the JSON wire format produced
+   * by `jsonCodecV4` per §17.106b), with a friendly UI label
+   * resolved through `COMPUTATION_KIND_LABELS`. Pre-selected via
+   * the `computationKindName` `@state` (defaults to `"AVERAGE"`),
+   * editable through the `change` event. Native `<select>` mirrors
+   * the Workflow-status picker pattern (§17.118): lightweight,
+   * OS-familiar, no custom radio rail to maintain.
+   */
+  private renderComputationKindField() {
+    return html`
+      <div class="field" data-testid="computation-kind-row">
+        <select
+          data-testid="field-computation-kind"
+          required
+          .value=${this.computationKindName}
+          @change=${(e: Event) => this.bindString(e, "computationKindName")}
+        >
+          ${ComputationKind.ALL.map(
+            (k) => html`
+              <option
+                value=${k.name}
+                ?selected=${k.name === this.computationKindName}
+              >
+                ${COMPUTATION_KIND_LABELS[k.name] ?? k.name}
+              </option>
+            `,
+          )}
+        </select>
+      </div>
+    `;
+  }
+
+  /**
    * SPEC §17.14 — TextNode mirror of the BSC seed contract: every fresh
    * TextNode must boot with at least one `TimestampedValue<string>` so
    * `currentValue()` returns the displayed text instead of throwing.
@@ -1272,6 +1371,10 @@ export class AddChildModal extends LitElement {
       const description = this.description.trim() || undefined;
       return this.buildStrictRangePayload(title, description, weight);
     }
+    if (this.chosenKind === "ComputedNode") {
+      const description = this.description.trim() || undefined;
+      return this.buildComputedPayload(title, description, weight);
+    }
     if (this.chosenKind === "PictureNode") {
       return this.buildPicturePayload(title, weight);
     }
@@ -1413,6 +1516,33 @@ export class AddChildModal extends LitElement {
   }
 
   /**
+   * SPEC §17.94 / §17.95 — Computed payload: title + optional
+   * description + weight + a `ComputationKind`. Resolves the
+   * selected dropdown string back to its singleton via
+   * `ComputationKind.fromName` and returns `null` when the name
+   * doesn't match one of the six inhabitants (defensive — the
+   * `<select>` only offers the canonical names, but this guards
+   * against a future feature that lets operators paste a stale
+   * persisted value). No seed history + no objective + no unit
+   * + no range — the children + the strategy own every value.
+   */
+  private buildComputedPayload(
+    title: string,
+    description: string | undefined,
+    weight: number | undefined,
+  ): AddChildModalPayload | null {
+    const computationKind = ComputationKind.fromName(this.computationKindName);
+    if (computationKind === undefined) return null;
+    return {
+      kind: "ComputedNode",
+      title,
+      ...(description === undefined ? {} : { description }),
+      ...(weight === undefined ? {} : { weight }),
+      computationKind,
+    };
+  }
+
+  /**
    * SPEC §17.119 — Picture payload is the simplest of the three:
    * title + weight + a non-empty image URL. Returns `null` when the
    * URL is missing/blank so `canConfirm()` keeps the Confirm button
@@ -1474,6 +1604,7 @@ export class AddChildModal extends LitElement {
       | "currentValueDate"
       | "rangeMin"
       | "rangeMax"
+      | "computationKindName"
       | "imageUrl"
       | "statusId"
       | "url",
@@ -1505,6 +1636,11 @@ export class AddChildModal extends LitElement {
     this.currentValueDate = AddChildModal.todayIsoDate();
     this.rangeMin = "";
     this.rangeMax = "";
+    // SPEC §17.94 — Computed defaults to AVERAGE (the §17.99c bridge
+    // choice for v3 `computed:true` BSCs). Resetting between opens
+    // means the operator sees the same default every time the modal
+    // re-opens, regardless of whatever they picked last.
+    this.computationKindName = ComputationKind.AVERAGE.name;
     this.imageUrl = "";
     // SPEC §17.118 — pre-select the first available workflow status so
     // the most common Workflow path ("accept the default — usually PLAN")

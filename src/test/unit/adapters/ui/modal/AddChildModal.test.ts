@@ -5,10 +5,12 @@ import {
   ADD_CHILD_CANCEL_EVENT,
   ADD_CHILD_CONFIRM_EVENT,
   ALL_ADD_CHILD_KINDS,
+  COMPUTATION_KIND_LABELS,
   type AddChildConfirmDetail,
   type AddChildKind,
   type AddChildModal,
 } from "../../../../../adapters/ui/modal/AddChildModal.js";
+import { ComputationKind } from "../../../../../domain/computation/ComputationKind.js";
 import {
   cleanupLitFixtures,
   mountLitElement,
@@ -62,6 +64,15 @@ function fieldOf(
   return f;
 }
 
+/** SPEC §17.94 — narrow selector for the `<select>`-typed form controls. */
+function selectOf(el: AddChildModal, testid: string): HTMLSelectElement {
+  const s = el.shadowRoot?.querySelector<HTMLSelectElement>(
+    `[data-testid="${testid}"]`,
+  );
+  if (!s) throw new Error(`expected <select> field [${testid}]`);
+  return s;
+}
+
 function confirmBtnOf(el: AddChildModal): HTMLButtonElement {
   const b = el.shadowRoot?.querySelector<HTMLButtonElement>(
     '[data-testid="modal-confirm"]',
@@ -106,6 +117,10 @@ async function pickWorkflow(el: AddChildModal): Promise<void> {
 
 async function pickStrictRange(el: AddChildModal): Promise<void> {
   await pickKind(el, "StrictRangeNode");
+}
+
+async function pickComputed(el: AddChildModal): Promise<void> {
+  await pickKind(el, "ComputedNode");
 }
 
 async function pickURL(el: AddChildModal): Promise<void> {
@@ -171,6 +186,7 @@ describe("<add-child-modal>", () => {
       "Workflow",
       "BusinessScoreCardNode",
       "StrictRangeNode",
+      "ComputedNode",
       "PictureNode",
       "URLNode",
     ]);
@@ -184,11 +200,14 @@ describe("<add-child-modal>", () => {
     expect(buttons[2]?.textContent).toMatch(/measurable|target/);
     expect(buttons[3]?.textContent).toMatch(/Strict Range/);
     expect(buttons[3]?.textContent).toMatch(/bounded|min\/max/);
+    expect(buttons[4]?.textContent).toMatch(/Computed/);
+    expect(buttons[4]?.textContent).toMatch(/derived|strategy|Sum|Average/);
     // None are pressed before a kind is picked.
     expect(buttons[0]?.getAttribute("aria-pressed")).toBe("false");
     expect(buttons[1]?.getAttribute("aria-pressed")).toBe("false");
     expect(buttons[2]?.getAttribute("aria-pressed")).toBe("false");
     expect(buttons[3]?.getAttribute("aria-pressed")).toBe("false");
+    expect(buttons[4]?.getAttribute("aria-pressed")).toBe("false");
   });
 
   it("when no kind is chosen the right pane shows the empty-state hint and no form (\u00a717.25)", async () => {
@@ -1445,6 +1464,150 @@ describe("<add-child-modal> StrictRangeNode branch (§17.77 / §17.94)", () => {
     expect((fieldOf(el, "field-range-min") as HTMLInputElement).value).toBe("");
     expect((fieldOf(el, "field-range-max") as HTMLInputElement).value).toBe("");
     expect((fieldOf(el, "field-current-value") as HTMLInputElement).value).toBe("");
+  });
+});
+
+/**
+ * SPEC §17.94 / §17.95 — `ComputedNode` is the round-7 leaf whose
+ * current value is derived from its eligible children via a
+ * `Computation<T>` strategy. The modal form is the simplest of
+ * the round-7 additions: title + optional description + weight +
+ * a strategy dropdown listing the six `ComputationKind.ALL`
+ * inhabitants. No seed value, no objective, no unit, no range —
+ * the children + the picked strategy own every value.
+ */
+describe("<add-child-modal> ComputedNode branch (§17.94 / §17.95)", () => {
+  it("ComputedNode is part of the default availableKinds catalogue (ALL_ADD_CHILD_KINDS)", () => {
+    expect(ALL_ADD_CHILD_KINDS).toContain("ComputedNode");
+  });
+
+  it("picking ComputedNode renders the strategy dropdown + description, and hides every BSC / StrictRange-only field", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickComputed(el);
+    const form = el.shadowRoot?.querySelector<HTMLFormElement>(
+      '[data-testid="modal-form"]',
+    );
+    expect(form?.dataset["kind"]).toBe("ComputedNode");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-description"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-computation-kind"]'),
+    ).not.toBeNull();
+    // No seed value, no objective, no unit, no range bounds.
+    for (const id of [
+      "field-current-value",
+      "field-current-value-date",
+      "field-unit",
+      "field-initial",
+      "field-target",
+      "field-target-date",
+      "field-range-min",
+      "field-range-max",
+    ]) {
+      expect(
+        el.shadowRoot?.querySelector(`[data-testid="${id}"]`),
+      ).toBeNull();
+    }
+  });
+
+  it("strategy dropdown lists every ComputationKind.ALL inhabitant, defaulting to AVERAGE", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickComputed(el);
+    const select = selectOf(el, "field-computation-kind");
+    expect(select.tagName).toBe("SELECT");
+    const options = Array.from(select.querySelectorAll("option"));
+    expect(options.map((o) => o.value)).toEqual(
+      ComputationKind.ALL.map((k) => k.name),
+    );
+    // Pre-selected default is AVERAGE (the §17.99c bridge choice).
+    expect(select.value).toBe(ComputationKind.AVERAGE.name);
+    // Each option carries the friendly label from COMPUTATION_KIND_LABELS.
+    for (const opt of options) {
+      const label = COMPUTATION_KIND_LABELS[opt.value];
+      expect(label).toBeDefined();
+      expect(opt.textContent?.trim()).toBe(label);
+    }
+  });
+
+  it("Confirm stays disabled until a title is filled, then enables (every other field has a usable default)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickComputed(el);
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-title", "Throughput");
+    expect(confirmBtnOf(el).disabled).toBe(false);
+  });
+
+  it("dispatches `add-child-confirm` with the picked ComputationKind singleton on Confirm", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+        e.parentId = "uuid-parent";
+      },
+    );
+    const handler = vi.fn();
+    el.addEventListener(ADD_CHILD_CONFIRM_EVENT, handler);
+    await pickComputed(el);
+    await setInput(el, "field-title", "Throughput");
+    // Switch the strategy from the default AVERAGE → SUM to ensure
+    // the dropdown's `change` event actually flows through the
+    // payload builder.
+    const select = selectOf(el, "field-computation-kind");
+    select.value = ComputationKind.SUM.name;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    await el.updateComplete;
+    confirmBtnOf(el).click();
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    const evt = handler.mock.calls[0]?.[0] as
+      | CustomEvent<AddChildConfirmDetail>
+      | undefined;
+    const p = evt?.detail.payload;
+    expect(p?.kind).toBe("ComputedNode");
+    if (p?.kind !== "ComputedNode") return;
+    expect(p.title).toBe("Throughput");
+    // Reference equality with the static singleton holds — `fromName`
+    // resolved the dropdown string back to the canonical slot.
+    expect(p.computationKind).toBe(ComputationKind.SUM);
+    expect(p.weight).toBe(1);
+  });
+
+  it("resetForm resets the strategy back to AVERAGE between opens", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickComputed(el);
+    const select = selectOf(el, "field-computation-kind");
+    select.value = ComputationKind.MAX.name;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    await el.updateComplete;
+    // Close + reopen → resetForm fires on the open=false→true edge.
+    el.open = false;
+    await el.updateComplete;
+    el.open = true;
+    await el.updateComplete;
+    await pickComputed(el);
+    const reseededSelect = selectOf(el, "field-computation-kind");
+    expect(reseededSelect.value).toBe(ComputationKind.AVERAGE.name);
   });
 });
 
