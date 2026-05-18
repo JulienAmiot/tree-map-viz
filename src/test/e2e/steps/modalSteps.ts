@@ -276,6 +276,51 @@ When(
   },
 );
 
+// SPEC §17.94 / §17.95 — the Computed roll-ups share a strategy dropdown.
+// `field-computation-kind` is the testid the modal pins on the `<select>`
+// element listing every `ComputationKind.ALL` inhabitant.
+Then("the modal has a strategy picker", async ({ page }) => {
+  const kiosk = new TreeMapPage(page);
+  await expect(
+    kiosk.addChildModalField("field-computation-kind"),
+  ).toHaveCount(1);
+});
+
+Then("the modal has no strategy picker", async ({ page }) => {
+  const kiosk = new TreeMapPage(page);
+  await expect(
+    kiosk.addChildModalField("field-computation-kind"),
+  ).toHaveCount(0);
+});
+
+// SPEC §17.95 — the ComputedBusinessScoreNode form's objective row drops
+// the BSC's `field-initial` baseline (the rolled-up value carries no
+// up-front observation) and surfaces only the `field-target` value +
+// `field-target-date`. The plain `the modal has objective fields` step
+// asserts all three (initial + target + target-date) and won't match
+// CBSN's two-input row, hence the dedicated assertion below.
+Then("the modal has the target-only objective fields", async ({ page }) => {
+  const kiosk = new TreeMapPage(page);
+  await expect(kiosk.addChildModalField("field-initial")).toHaveCount(0);
+  await expect(kiosk.addChildModalField("field-target")).toHaveCount(1);
+  await expect(kiosk.addChildModalField("field-target-date")).toHaveCount(1);
+});
+
+// SPEC §17.94 / §17.95 — parametric setter for the long-tail fields the
+// per-kind happy-create scenarios touch (unit, target value, target date,
+// and the upcoming §17.121-followup picture / url fields). The legacy
+// per-field steps (`I fill in the title with X`, `I fill in the current
+// value with X`) cover the two ubiquitous fields; everything else routes
+// through this generic setter so adding a new field type costs only a
+// new `data-testid` in the modal, no new step plumbing.
+When(
+  "I set the modal field {string} to {string}",
+  async ({ page }, testId: string, value: string) => {
+    const kiosk = new TreeMapPage(page);
+    await kiosk.addChildModalField(testId).fill(value);
+  },
+);
+
 Then("the modal has a unit field", async ({ page }) => {
   const kiosk = new TreeMapPage(page);
   await expect(kiosk.addChildModalField("field-unit")).toHaveCount(1);

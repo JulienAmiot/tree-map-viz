@@ -201,3 +201,89 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     Then the add-child modal is closed
     And there are 1 child tiles
     And the focused id is unchanged after the modal interaction
+
+  @HE-???? @priority:high
+  Scenario: Picking Computed reveals title + description + weight + strategy picker (no seed value, no unit, no objective — §17.94)
+    # SPEC §17.94 — `ComputedNode` is a derived metric: its value is
+    # rolled up from eligible children through a strategy, so the
+    # modal collects ONLY the strategy choice (no seed observation,
+    # no unit, no objective, no range).
+    When I click the plus tile
+    And I pick the kind "ComputedNode"
+    Then the modal form is for kind "ComputedNode"
+    And the modal has a title field
+    And the modal has a description field
+    And the modal has a weight field
+    And the modal has a strategy picker
+    And the modal has no current-value field
+    And the modal has no unit field
+    And the modal has no objective fields
+    And the modal has no range fields
+
+  @HE-???? @priority:high
+  Scenario: Confirming a Computed child with the default strategy appends and closes the modal (§17.94)
+    # SPEC §17.94 — `computationKindName` defaults to "AVERAGE" so
+    # confirming without touching the strategy dropdown still produces
+    # a valid ComputedNode. No seed value to fill (the derived value
+    # is computed from the focused parent's eligible children at
+    # render time).
+    When I click the plus tile
+    And I pick the kind "ComputedNode"
+    And I fill in the title with "North-region rollup"
+    And I confirm the add-child modal
+    Then the add-child modal is closed
+    And there are 1 child tiles
+    And the focused id is unchanged after the modal interaction
+
+  @HE-???? @priority:high
+  Scenario: Picking Computed Business Score Card reveals unit + target objective + strategy (no initial baseline, no seed value — §17.95)
+    # SPEC §17.95 — `ComputedBusinessScoreNode` combines the BSC's
+    # measured shape (unit + target objective) with the Computed
+    # roll-up strategy. The "initial" baseline that a plain BSC
+    # carries is omitted (the rolled-up value carries no up-front
+    # observation), so the objective row exposes only target value
+    # + target date.
+    When I click the plus tile
+    And I pick the kind "ComputedBusinessScoreNode"
+    Then the modal form is for kind "ComputedBusinessScoreNode"
+    And the modal has a title field
+    And the modal has a description field
+    And the modal has a weight field
+    And the modal has a unit field
+    And the modal has the target-only objective fields
+    And the modal has a strategy picker
+    And the modal has no current-value field
+    And the modal has no range fields
+
+  @HE-???? @priority:high
+  Scenario: Switching from Computed to Computed Business Score Card adds unit + objective fields (§17.25 / §17.95)
+    # SPEC §17.25 — kind swaps re-render the right pane without
+    # closing the modal. The strategy picker stays put (both Computed
+    # variants share `renderComputationKindField`); the CBSN switch
+    # adds unit + target objective rows on top.
+    When I click the plus tile
+    And I pick the kind "ComputedNode"
+    Then the modal has a strategy picker
+    And the modal has no unit field
+    When I pick the kind "ComputedBusinessScoreNode"
+    Then the modal form is for kind "ComputedBusinessScoreNode"
+    And the modal has a strategy picker
+    And the modal has a unit field
+    And the modal has the target-only objective fields
+
+  @HE-???? @priority:high
+  Scenario: Confirming a Computed Business Score Card child with the default strategy appends and closes the modal (§17.95)
+    # SPEC §17.95 — minimum-viable CBSN seed: title + unit + target value
+    # + target date. Description is optional (no `required` attribute);
+    # the strategy defaults to AVERAGE. The seed observation field is
+    # absent on this kind, so there's no current-value to fill.
+    When I click the plus tile
+    And I pick the kind "ComputedBusinessScoreNode"
+    And I fill in the title with "North-region scored rollup"
+    And I set the modal field "field-unit" to "%"
+    And I set the modal field "field-target" to "100"
+    And I set the modal field "field-target-date" to "2027-12-31"
+    And I confirm the add-child modal
+    Then the add-child modal is closed
+    And there are 1 child tiles
+    And the focused id is unchanged after the modal interaction

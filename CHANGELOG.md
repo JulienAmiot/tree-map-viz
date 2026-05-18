@@ -16,6 +16,30 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **E2E coverage for the Computed + Computed Business Score Card
+  Add-Child flows** (§17.121b — follow-up to §17.94 / §17.95).
+  Five new scenarios on `add_child_modal.feature`: picking
+  **Computed** reveals title + description + weight + strategy
+  picker (and suppresses every measurable affordance — no
+  current-value, unit, objective, or range — since a Computed
+  node's value rolls up from children); confirming a Computed
+  child with the default strategy "AVERAGE" appends and closes
+  the modal with the focused id unchanged. Picking **Computed
+  Business Score Card** reveals the same strategy picker plus
+  the BSC's unit + objective row, but the objective row is the
+  target-only variant (`field-target` + `field-target-date`, no
+  `field-initial` baseline since the rolled-up value carries no
+  up-front observation). Swapping from Computed to CBSN
+  hot-swaps the form, layering unit + objective rows on top of
+  the shared strategy picker. Confirming a minimum-viable CBSN
+  seed (title + unit + target + target-date) appends and closes
+  the modal. Two new assertion steps (`the modal has a strategy
+  picker` + inverse; `the modal has the target-only objective
+  fields`) and one parametric setter (`I set the modal field
+  "<testid>" to "<value>"`) — the setter generalises the
+  long-tail field-fill pattern so future per-kind happy-create
+  scenarios cost just a new `data-testid`, no new step plumbing.
+
 - **E2E coverage for the Strict Range Add-Child flow** (§17.121 —
   follow-up to §17.77 / §17.94). `add_child_modal.feature` gains
   three new scenarios: picking **Strict Range** reveals the
