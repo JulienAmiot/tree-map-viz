@@ -16,6 +16,19 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **Computed Business Score Card editing in the Edit-Node modal**
+  (§17.94 / §17.95). The combined edit form closes the third v5
+  round-7 surface gap on the edit side. It surfaces the BSC ladder
+  (description, unit, target objective rows) **and** the Computed
+  strategy `<select>` dropdown in a single panel so the operator
+  can swap the roll-up strategy while tweaking the objective the
+  score targets. `main.ts`'s `buildEditTarget` snapshots
+  `ComputedBusinessScoreNode` instances ahead of the generic
+  `ComputedNode` / `BusinessScoreNode` branches (the narrower
+  subclass must come first), and `toAppEditPayload` rewrites the
+  modal-side `ComputedBusinessScoreNode` kind tag to the
+  application-layer `ComputedBusinessScore` (parity with the BSC /
+  Picture / URL / StrictRange / Computed kind-tag rewrites).
 - **Computed editing in the Edit-Node modal** (§17.94 / §17.95).
   ComputedNode instances are now editable from the kiosk: description
   and weight flow through the shared `CommonEdit` slots, and a

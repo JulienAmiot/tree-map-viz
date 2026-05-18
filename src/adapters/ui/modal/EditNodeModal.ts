@@ -196,6 +196,28 @@ export type EditNodeModalPayload =
       readonly description?: string;
       readonly weight?: number;
       readonly computationKindName?: string;
+    }
+  /**
+   * SPEC §17.94 / §17.95 — `ComputedBusinessScoreNode` variant.
+   * Combines the BSC slots (`unit` + `objective`) with the Computed
+   * strategy dropdown. The application service's edit shape is
+   * `CommonEdit & BSEdit & ComputedEdit`, mirrored field-by-field
+   * here. main.ts rewrites the modal-side `"ComputedBusinessScore
+   * Node"` kind tag to the application-layer `"ComputedBusiness
+   * Score"`.
+   */
+  | {
+      readonly kind: "ComputedBusinessScoreNode";
+      readonly title?: string;
+      readonly description?: string;
+      readonly weight?: number;
+      readonly unit?: string;
+      readonly objective?: {
+        readonly initialValue: number;
+        readonly targetValue: number;
+        readonly targetDate: Date;
+      };
+      readonly computationKindName?: string;
     };
 
 /** Pre-edit snapshot supplied by the composition root when opening the modal. */
@@ -264,6 +286,20 @@ export type EditNodeTarget =
       readonly weight: number;
       /** Canonical `ComputationKind.name` (e.g. `"SUM"`); pre-fills the dropdown. */
       readonly computationKindName: string;
+    }
+  | {
+      readonly nodeId: string;
+      readonly kind: "ComputedBusinessScoreNode";
+      readonly title: string;
+      readonly description: string;
+      readonly weight: number;
+      readonly unit: string;
+      readonly objective: {
+        readonly initialValue: number;
+        readonly targetValue: number;
+        readonly targetDateIso: string;
+      };
+      readonly computationKindName: string;
     };
 
 export type EditNodeConfirmDetail = {
@@ -279,6 +315,7 @@ const KIND_LABELS: Record<EditNodeTarget["kind"], string> = {
   URLNode: "URL",
   StrictRangeNode: "Strict Range",
   ComputedNode: "Computed",
+  ComputedBusinessScoreNode: "Computed Business Score Card",
 };
 
 @customElement("edit-node-modal")
@@ -636,25 +673,28 @@ export class EditNodeModal extends LitElement {
    * unchanged from the in-line version.
    */
   private renderKindSpecificFields(kind: EditNodeTarget["kind"]) {
-    const isBsc = kind === "BusinessScoreCardNode";
+    // SPEC §17.94 / §17.95 — `ComputedBusinessScoreNode` mixes the
+    // BSC slots (description / unit / objective) with the Computed
+    // strategy dropdown. `wantsBscFields` therefore fires for both
+    // the plain BSC and the computed-BSC kinds; `wantsComputation
+    // Kind` fires for both plain Computed and computed-BSC.
+    const wantsBscFields =
+      kind === "BusinessScoreCardNode" || kind === "ComputedBusinessScoreNode";
     const isStrictRange = kind === "StrictRangeNode";
-    const isComputed = kind === "ComputedNode";
-    // SPEC §17.94 — kinds that surface an editable description
-    // textarea on the edit modal. BSC has carried one since v3;
-    // StrictRange + Computed join the club at this strand (the
-    // application service's `CommonEdit` shape has supported
-    // `description` on every `ValueNode<T>` since §17.101b).
-    const wantsDescription = isBsc || isStrictRange || isComputed;
+    const wantsComputationKind =
+      kind === "ComputedNode" || kind === "ComputedBusinessScoreNode";
+    const wantsDescription =
+      wantsBscFields || isStrictRange || kind === "ComputedNode";
     return html`
       ${wantsDescription ? this.renderDescriptionField() : nothing}
       ${kind === "Workflow" ? this.renderWorkflowStatusField() : nothing}
       ${this.renderWeightField()}
-      ${isBsc ? this.renderUnitField() : nothing}
-      ${isBsc ? this.renderObjectiveFields() : nothing}
+      ${wantsBscFields ? this.renderUnitField() : nothing}
+      ${wantsBscFields ? this.renderObjectiveFields() : nothing}
       ${kind === "PictureNode" ? this.renderImageUrlField() : nothing}
       ${kind === "URLNode" ? this.renderURLField() : nothing}
       ${isStrictRange ? this.renderStrictRangeBounds() : nothing}
-      ${isComputed ? this.renderComputationKindField() : nothing}
+      ${wantsComputationKind ? this.renderComputationKindField() : nothing}
     `;
   }
 
@@ -988,6 +1028,8 @@ export class EditNodeModal extends LitElement {
         return this.buildStrictRangePayload(weight);
       case "ComputedNode":
         return this.buildComputedPayload(weight);
+      case "ComputedBusinessScoreNode":
+        return this.buildComputedBscPayload(weight);
     }
   }
 
@@ -1115,6 +1157,43 @@ export class EditNodeModal extends LitElement {
     };
   }
 
+  /**
+   * SPEC §17.94 / §17.95 — ComputedBusinessScore edit: combines the
+   * BSC slots (description / unit / objective) with the Computed
+   * strategy dropdown. Gating mirrors `buildBscPayload` field-by-
+   * field (unit non-empty after trim, finite numeric initial /
+   * target values, parseable target date); the trimmed
+   * `computationKindName` falls back to `undefined` on a corrupt
+   * seed so the service treats it as "no change". Returning `null`
+   * disables Confirm exactly when the BSC gates would.
+   */
+  private buildComputedBscPayload(weight: { weight?: number }): EditNodeModalPayload | null {
+    const unit = this.unit.trim();
+    const initialValue = Number(this.initialValue);
+    const targetValue = Number(this.targetValue);
+    const targetDate = this.targetDate
+      ? new Date(`${this.targetDate}T00:00:00.000Z`)
+      : null;
+    if (
+      !unit ||
+      Number.isNaN(initialValue) ||
+      Number.isNaN(targetValue) ||
+      targetDate === null ||
+      Number.isNaN(targetDate.getTime())
+    ) {
+      return null;
+    }
+    const computationKindName = this.computationKindName.trim();
+    return {
+      kind: "ComputedBusinessScoreNode",
+      description: this.description.trim(),
+      ...weight,
+      unit,
+      objective: { initialValue, targetValue, targetDate },
+      ...(computationKindName === "" ? {} : { computationKindName }),
+    };
+  }
+
   private canConfirm(): boolean {
     return this.buildPayload() !== null;
   }
@@ -1198,6 +1277,15 @@ export class EditNodeModal extends LitElement {
     }
     if (target.kind === "ComputedNode") {
       this.description = target.description;
+      this.computationKindName = target.computationKindName;
+      return;
+    }
+    if (target.kind === "ComputedBusinessScoreNode") {
+      this.description = target.description;
+      this.unit = target.unit;
+      this.initialValue = String(target.objective.initialValue);
+      this.targetValue = String(target.objective.targetValue);
+      this.targetDate = target.objective.targetDateIso;
       this.computationKindName = target.computationKindName;
       return;
     }

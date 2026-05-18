@@ -538,18 +538,36 @@ function buildEditTarget(node: Node): EditNodeTarget | null {
       bounds: { min: Number(range.minimalValue), max: Number(range.maximalValue) },
     };
   }
-  // SPEC §17.94 / §17.95 — ComputedNode branch checked BEFORE the
-  // BusinessScoreNode-based generic branch below. `ComputedBusiness
-  // ScoreNode` extends both `ComputedNode` AND `BusinessScoreNode`,
-  // so this branch explicitly excludes it (a future BSC-edit-modal
-  // parity strand will surface the §17.95 combined ComputedBusiness
-  // Score editor; until then, ComputedBusinessScore nodes simply
-  // fall through to the BSN branch below — they're editable as a
-  // plain BSC, the strategy stays untouched). The canonical
+  // SPEC §17.94 / §17.95 — ComputedBusinessScoreNode branch checked
+  // BEFORE the ComputedNode + BusinessScoreNode branches below; CBSN
+  // extends both, so the narrower class must come first. Combines
+  // the BSC slots (`unit` + `objective`) with the Computed strategy
+  // name into a single snapshot the modal renders through the
+  // §17.95 combined form (description / weight / unit / objective /
+  // computation-kind dropdown).
+  if (node instanceof ComputedBusinessScoreNode) {
+    const obj = node.objective;
+    return {
+      nodeId: node.id,
+      kind: "ComputedBusinessScoreNode",
+      title: node.title,
+      description: node.getDescription(),
+      weight: node.weight.value,
+      unit: node.unit,
+      objective: {
+        initialValue: 0,
+        targetValue: Number(obj.value),
+        targetDateIso: obj.at.moment.toISOString().slice(0, 10),
+      },
+      computationKindName: node.computationKind.name,
+    };
+  }
+  // SPEC §17.94 / §17.95 — ComputedNode branch checked AFTER the
+  // narrower ComputedBusinessScoreNode check above. The canonical
   // `computationKind.name` flows through the snapshot; the dropdown
   // re-resolves it to the singleton on confirm via `main.ts`'s
   // `toAppEditPayload`.
-  if (node instanceof ComputedNode && !(node instanceof ComputedBusinessScoreNode)) {
+  if (node instanceof ComputedNode) {
     return {
       nodeId: node.id,
       kind: "ComputedNode",
@@ -854,6 +872,26 @@ function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
       title: payload.title,
       description: payload.description,
       weight: payload.weight,
+      computationKind,
+    };
+  }
+  if (payload.kind === "ComputedBusinessScoreNode") {
+    // SPEC §17.94 / §17.95 — modal-side "ComputedBusinessScoreNode"
+    // → app "ComputedBusinessScore" kind tag. Combines the BSC
+    // objective rewrite (`{ value, at }` shape) with the Computed
+    // strategy resolution (same fromName lookup as plain Computed).
+    const computationKind = payload.computationKindName
+      ? (ComputationKind.fromName(payload.computationKindName) ?? undefined)
+      : undefined;
+    return {
+      kind: "ComputedBusinessScore",
+      title: payload.title,
+      description: payload.description,
+      weight: payload.weight,
+      unit: payload.unit,
+      objective: payload.objective
+        ? { value: payload.objective.targetValue, at: payload.objective.targetDate }
+        : undefined,
       computationKind,
     };
   }

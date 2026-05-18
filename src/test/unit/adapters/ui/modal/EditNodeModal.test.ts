@@ -1084,4 +1084,127 @@ describe("<edit-node-modal>", () => {
       ).toBe("M\u20ac");
     });
   });
+
+  /**
+   * ComputedBusinessScoreNode editing (SPEC §17.94 / §17.95).
+   *
+   * The application service's `ComputedBusinessScore` edit shape
+   * combines `CommonEdit & BSEdit & ComputedEdit`. The modal
+   * therefore surfaces the full BSC ladder (description, unit,
+   * objective) AND the Computed strategy dropdown in a single
+   * form. Tests cover the catalogue, the seeding (BSC slots +
+   * computation-kind dropdown pre-selected), the Confirm gating
+   * (mirrors `buildBscPayload`'s "unit non-empty / numeric
+   * objective / parseable date"), and the dispatched payload
+   * (both BSC AND strategy fields land in the wire).
+   */
+  describe("ComputedBusinessScoreNode target (§17.94 / §17.95)", () => {
+    const computedBscTarget: EditNodeTarget = {
+      nodeId: "uuid-cbsn",
+      kind: "ComputedBusinessScoreNode",
+      title: "Portfolio score",
+      description: "Roll-up of project deliveries",
+      weight: 4,
+      unit: "pts",
+      objective: {
+        initialValue: 0,
+        targetValue: 100,
+        targetDateIso: "2027-03-31",
+      },
+      computationKindName: "WEIGHTED_AVERAGE",
+    };
+
+    function selectOf(el: EditNodeModal, testid: string): HTMLSelectElement {
+      const s = el.shadowRoot?.querySelector<HTMLSelectElement>(
+        `[data-testid="${testid}"]`,
+      );
+      if (!s) throw new Error(`expected <select> [${testid}]`);
+      return s;
+    }
+
+    it("seeds description + weight + unit + objective + dropdown from the target on open", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = computedBscTarget;
+        e.open = true;
+      });
+      expect(panelOf(el)?.dataset["kind"]).toBe("ComputedBusinessScoreNode");
+      expect((fieldOf(el, "field-weight") as HTMLInputElement).value).toBe("4");
+      expect(
+        (fieldOf(el, "field-description") as HTMLTextAreaElement).value,
+      ).toBe("Roll-up of project deliveries");
+      expect((fieldOf(el, "field-unit") as HTMLInputElement).value).toBe("pts");
+      expect((fieldOf(el, "field-target") as HTMLInputElement).value).toBe("100");
+      expect((fieldOf(el, "field-target-date") as HTMLInputElement).value).toBe(
+        "2027-03-31",
+      );
+      expect(selectOf(el, "field-computation-kind").value).toBe(
+        "WEIGHTED_AVERAGE",
+      );
+    });
+
+    it("hides every Picture-only / URL-only / StrictRange-only field", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = computedBscTarget;
+        e.open = true;
+      });
+      const hidden = ["field-image-url", "field-url", "range-bounds-row"];
+      for (const id of hidden) {
+        expect(el.shadowRoot?.querySelector(`[data-testid="${id}"]`)).toBeNull();
+      }
+    });
+
+    it("Confirm disables when the unit is blanked (gates mirror buildBscPayload)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = computedBscTarget;
+        e.open = true;
+      });
+      expect(confirmBtn(el).disabled).toBe(false);
+      await setInput(el, "field-unit", "   ");
+      expect(confirmBtn(el).disabled).toBe(true);
+    });
+
+    it("Confirm dispatches edit-node-confirm with kind=ComputedBusinessScoreNode + BSC fields + chosen strategy", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = computedBscTarget;
+        e.open = true;
+      });
+      const select = selectOf(el, "field-computation-kind");
+      select.value = "SUM";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      await el.updateComplete;
+      await setInput(el, "field-target", "150");
+
+      const handler = vi.fn();
+      el.addEventListener(EDIT_NODE_CONFIRM_EVENT, handler);
+      confirmBtn(el).click();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      const ev = handler.mock.calls[0]![0] as CustomEvent<EditNodeConfirmDetail>;
+      expect(ev.detail.nodeId).toBe("uuid-cbsn");
+      const p = ev.detail.payload;
+      expect(p.kind).toBe("ComputedBusinessScoreNode");
+      if (p.kind !== "ComputedBusinessScoreNode") return;
+      expect(p.unit).toBe("pts");
+      expect(p.computationKindName).toBe("SUM");
+      expect(p.objective?.targetValue).toBe(150);
+    });
+
+    it("swapping ComputedBSC → BSC keeps BSC fields but drops the dropdown (kind-specific seeds stay isolated)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = computedBscTarget;
+        e.open = true;
+      });
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-computation-kind"]'),
+      ).not.toBeNull();
+      el.editTarget = bscTarget;
+      await el.updateComplete;
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-computation-kind"]'),
+      ).toBeNull();
+      expect((fieldOf(el, "field-unit") as HTMLInputElement).value).toBe(
+        "M\u20ac",
+      );
+    });
+  });
 });
