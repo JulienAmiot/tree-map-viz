@@ -32,11 +32,18 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
   Scenario: Clicking the "+" tile opens the modal with a left-rail kind list (§17.25)
     When I click the plus tile
     Then the add-child modal is open
-    # §17.118 — the catalogue now lists 3 kinds: TextNode, Workflow, BSC.
-    And the modal kind list shows "3" options labelled with name and description
+    # §17.118 / §17.119 / §17.120 / §17.94 / §17.95 / §17.77 — catalogue grew
+    # from the initial 3 (Text + Workflow + BSC) to 8 across the v5 round-7
+    # surface-coverage strands. Order matches `KIND_OPTIONS` in `AddChildModal.ts`.
+    And the modal kind list shows "8" options labelled with name and description
     And the modal offers a "Text" kind
     And the modal offers a "Workflow" kind
     And the modal offers a "Business Score Card" kind
+    And the modal offers a "Strict Range" kind
+    And the modal offers a "Computed" kind
+    And the modal offers a "Computed Business Score Card" kind
+    And the modal offers a "Picture" kind
+    And the modal offers a "URL" kind
 
   @HE-???? @priority:high
   Scenario: Before a kind is chosen, no type-specific fields render in the right pane (§17.25)
@@ -145,3 +152,52 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     Then the weight slider runs 0.5..10 step 0.5 and mirrors the number input
     When I set the weight slider to "3.5"
     Then the weight number input shows the value "3.5"
+
+  @HE-???? @priority:high
+  Scenario: Picking Strict Range reveals title + description + weight + range + current-value + as-of (no unit, no objective — §17.77 / §17.94)
+    # SPEC §17.77 / §17.94 — `StrictRangeNode<number>` is the bounded-metric
+    # kind. The form collects min + max + a seed observation, but no unit
+    # (the bounds carry the dimension implicitly) and no objective (the
+    # range itself defines acceptance; no target progression bar).
+    When I click the plus tile
+    And I pick the kind "StrictRangeNode"
+    Then the modal form is for kind "StrictRangeNode"
+    And the modal has a title field
+    And the modal has a description field
+    And the modal has a weight field
+    And the modal has range fields
+    And the modal has a current-value field
+    And the as-of date defaults to today's local-calendar ISO
+    And the modal has no unit field
+    And the modal has no objective fields
+
+  @HE-???? @priority:high
+  Scenario: Switching from BSC to Strict Range swaps the form (§17.25 / §17.77)
+    # SPEC §17.25 — kind swaps re-render the right-pane form without
+    # closing the modal. The previously-visible unit + objective rows
+    # retire and the range row appears in their place.
+    When I click the plus tile
+    And I pick the kind "BusinessScoreCardNode"
+    Then the modal has a unit field
+    And the modal has objective fields
+    And the modal has no range fields
+    When I pick the kind "StrictRangeNode"
+    Then the modal form is for kind "StrictRangeNode"
+    And the modal has range fields
+    And the modal has no unit field
+    And the modal has no objective fields
+
+  @HE-???? @priority:high
+  Scenario: Confirming a Strict Range child appends it to the focused parent and closes the modal (§17.77 / §17.94)
+    # SPEC §17.77 — the seed value `42` lives inside `[0, 100]` so the
+    # domain accepts it; the child appends and the modal closes.
+    When I click the plus tile
+    And I pick the kind "StrictRangeNode"
+    And I fill in the title with "Headcount"
+    And I set the range min to "0"
+    And I set the range max to "100"
+    And I fill in the current value with "42"
+    And I confirm the add-child modal
+    Then the add-child modal is closed
+    And there are 1 child tiles
+    And the focused id is unchanged after the modal interaction

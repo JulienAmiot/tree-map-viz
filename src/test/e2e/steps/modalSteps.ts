@@ -80,15 +80,22 @@ Then(
   async ({ page }, kindLabel: string) => {
     // SPEC §17.25 — the modal lists the available kinds as `<button>`
     // entries inside the left-rail kind list, each labelled with the
-    // kind's name (top) + description (bottom). The button's full
-    // text content concatenates both, so a `startsWith(kindLabel)`
-    // check identifies the right entry.
+    // kind's name (top) + description (bottom). We match `kindLabel`
+    // against the `.kind-btn-name` text with strict equality. Pre-§17.121
+    // this step used `startsWith(kindLabel)` against the full innerText,
+    // which became ambiguous after the §17.95 catalogue grew to 8 kinds
+    // ("Computed" startsWith-matches both "Computed" and
+    // "Computed Business Score Card"; an exact `.kind-btn-name` check
+    // disambiguates without breaking the legacy three-kind invocations).
     const kiosk = new TreeMapPage(page);
     const buttons = kiosk.addChildModalKindButtons();
-    const buttonTexts = await buttons.evaluateAll((nodes: Element[]) =>
-      nodes.map((n) => (n as HTMLElement).innerText.trim()),
+    const buttonNames = await buttons.evaluateAll((nodes: Element[]) =>
+      nodes.map(
+        (n) =>
+          n.querySelector(".kind-btn-name")?.textContent?.trim() ?? "",
+      ),
     );
-    const matching = buttonTexts.filter((t) => t.startsWith(kindLabel));
+    const matching = buttonNames.filter((t) => t === kindLabel);
     expect(matching).toHaveLength(1);
   },
 );
@@ -237,6 +244,37 @@ Then("the modal has no objective fields", async ({ page }) => {
   await expect(kiosk.addChildModalField("field-target")).toHaveCount(0);
   await expect(kiosk.addChildModalField("field-target-date")).toHaveCount(0);
 });
+
+// SPEC §17.77 / §17.94 — StrictRange-only fields. The range row carries
+// two `<input type="number">`s pinned to `field-range-min` / `field-range-max`.
+// Asserted as a pair so the per-scenario step reads naturally.
+Then("the modal has range fields", async ({ page }) => {
+  const kiosk = new TreeMapPage(page);
+  await expect(kiosk.addChildModalField("field-range-min")).toHaveCount(1);
+  await expect(kiosk.addChildModalField("field-range-max")).toHaveCount(1);
+});
+
+Then("the modal has no range fields", async ({ page }) => {
+  const kiosk = new TreeMapPage(page);
+  await expect(kiosk.addChildModalField("field-range-min")).toHaveCount(0);
+  await expect(kiosk.addChildModalField("field-range-max")).toHaveCount(0);
+});
+
+When(
+  "I set the range min to {string}",
+  async ({ page }, value: string) => {
+    const kiosk = new TreeMapPage(page);
+    await kiosk.addChildModalField("field-range-min").fill(value);
+  },
+);
+
+When(
+  "I set the range max to {string}",
+  async ({ page }, value: string) => {
+    const kiosk = new TreeMapPage(page);
+    await kiosk.addChildModalField("field-range-max").fill(value);
+  },
+);
 
 Then("the modal has a unit field", async ({ page }) => {
   const kiosk = new TreeMapPage(page);
