@@ -644,6 +644,25 @@ function toAppAddChildPayload(payload: AddChildModalPayload, clock: Clock): AddC
       url: payload.url,
     };
   }
+  if (payload.kind === "StrictRangeNode") {
+    // SPEC §17.77 / §17.94 — modal-side "StrictRangeNode" rewrites
+    // to the application-layer "StrictRange" kind tag (parity with
+    // the BSC / Picture / URL kind-tag rewrites). Forward every
+    // field verbatim; the service builds the `StrictRange` value
+    // object + replays `initialHistory` through `addValue` which
+    // gates on `StrictRange.requireValue` (throws `OutOfRangeError`
+    // for a seed value outside the bounds — surfaced as
+    // `{ ok: false }` by the service).
+    return {
+      kind: "StrictRange",
+      title: payload.title,
+      description: payload.description,
+      weight: payload.weight,
+      min: payload.min,
+      max: payload.max,
+      initialHistory: payload.initialHistory,
+    };
+  }
   const objective = {
     value: payload.objective.targetValue,
     at: payload.objective.targetDate,

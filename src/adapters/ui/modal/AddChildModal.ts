@@ -181,6 +181,29 @@ export type AddChildModalPayload =
       readonly initialHistory?: readonly { readonly value: number; readonly asOf: Date }[];
     }
   /**
+   * SPEC §17.77 / §17.94 — `StrictRangeNode<number>` variant. A
+   * historicised value-must-stay-within-range node (range is
+   * structural, not edit-time mutable). No objective + no unit:
+   * the operator collects title + optional description + weight +
+   * `min` + `max` + a mandatory seed `TimestampedValue<number>`
+   * (current value + as-of date) so the freshly attached node
+   * boots with a non-empty history (`currentValue()` would
+   * otherwise throw `EmptyHistoryError`). main.ts's
+   * `toAppAddChildPayload` rewrites the modal-side
+   * `"StrictRangeNode"` kind tag to the application-layer
+   * `"StrictRange"` (parity with the BSC / Picture / URL kind
+   * rewrites).
+   */
+  | {
+      readonly kind: "StrictRangeNode";
+      readonly title: string;
+      readonly description?: string;
+      readonly weight?: number;
+      readonly min: number;
+      readonly max: number;
+      readonly initialHistory?: readonly { readonly value: number; readonly asOf: Date }[];
+    }
+  /**
    * SPEC §17.119 — `PictureNode` variant. A snapshot leaf carrying a
    * single image URL: no description (the title labels the picture,
    * the picture IS the content), no objective row, no
@@ -253,6 +276,12 @@ const KIND_OPTIONS: readonly KindOption[] = [
     kind: "BusinessScoreCardNode",
     name: "Business Score Card",
     description: "A measurable: title, unit, target, history, optional \u03a3.",
+  },
+  {
+    kind: "StrictRangeNode",
+    name: "Strict Range",
+    description:
+      "A bounded metric: title, min/max range, current value with history; out-of-range values are rejected.",
   },
   {
     kind: "PictureNode",
@@ -368,6 +397,19 @@ export class AddChildModal extends LitElement {
    */
   @state()
   private currentValueDate = "";
+
+  /**
+   * SPEC §17.77 — lower bound for the StrictRange kind. Kept as a
+   * raw `string` (the underlying input is `type="number"` but Lit
+   * binds via `value`); the build-payload helper coerces with
+   * `Number(...)` and gates on `Number.isNaN`.
+   */
+  @state()
+  private rangeMin = "";
+
+  /** SPEC §17.77 — upper bound for the StrictRange kind. */
+  @state()
+  private rangeMax = "";
 
   /**
    * SPEC §17.119 — image URL for the Picture kind. A plain string;
@@ -809,8 +851,10 @@ export class AddChildModal extends LitElement {
     const isWorkflow = this.chosenKind === "Workflow";
     const isBsc = this.chosenKind === "BusinessScoreCardNode";
     const isPicture = this.chosenKind === "PictureNode";
+    const isStrictRange = this.chosenKind === "StrictRangeNode";
     const isTextOrWorkflow = isText || isWorkflow;
     const isUrl = this.chosenKind === "URLNode";
+    const isBscOrStrictRange = isBsc || isStrictRange;
     return html`
       <form
         data-testid="modal-form"
@@ -829,7 +873,7 @@ export class AddChildModal extends LitElement {
             @input=${(e: Event) => this.bindString(e, "formTitle")}
           />
         </div>
-        ${isBsc ? this.renderDescriptionField() : nothing}
+        ${isBscOrStrictRange ? this.renderDescriptionField() : nothing}
         <div class="field-row" data-testid="weight-row">
           <div class="field">
             <div class="weight-control" data-testid="weight-control">
@@ -860,6 +904,7 @@ export class AddChildModal extends LitElement {
         ${isTextOrWorkflow ? this.renderTextCurrentValueFields() : nothing}
         ${isBsc ? this.renderBscCurrentValueFields() : nothing}
         ${isBsc ? this.renderObjectiveFields() : nothing}
+        ${isStrictRange ? this.renderStrictRangeFields() : nothing}
         ${isPicture ? this.renderPictureFields() : nothing}
         ${isUrl ? this.renderURLFields() : nothing}
         ${this.errorMessage
@@ -980,6 +1025,70 @@ export class AddChildModal extends LitElement {
             .value=${this.unit}
             required
             @input=${(e: Event) => this.bindString(e, "unit")}
+          />
+        </div>
+        <div class="field">
+          <input
+            data-testid="field-current-value-date"
+            type="date"
+            placeholder="As of — e.g. 2026-04-30 (today)"
+            .value=${this.currentValueDate}
+            required
+            @input=${(e: Event) => this.bindString(e, "currentValueDate")}
+          />
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * SPEC §17.77 / §17.94 — Strict-range form: bounds row (min + max)
+   * + a seed-observation row (current value + as-of date) mirroring
+   * the BSC seed contract (every fresh historicised value-node must
+   * boot with at least one `TimestampedValue<number>` so
+   * `currentValue()` returns a value instead of throwing
+   * `EmptyHistoryError`). No unit + no objective: a StrictRange
+   * scores nothing, it just keeps measurements within bounds. The
+   * domain rejects out-of-range seed values via
+   * `StrictRange.requireValue` → `OutOfRangeError`, which the modal
+   * surfaces through the existing form-error path; gating Confirm
+   * on (`min < max`, finite numbers, current value finite, as-of
+   * date parses) catches the obvious operator slips before the
+   * service throws.
+   */
+  private renderStrictRangeFields() {
+    return html`
+      <div class="field-row" data-testid="range-row">
+        <div class="field">
+          <input
+            data-testid="field-range-min"
+            type="number"
+            placeholder="Range min — e.g. 0"
+            .value=${this.rangeMin}
+            required
+            @input=${(e: Event) => this.bindString(e, "rangeMin")}
+          />
+        </div>
+        <div class="field">
+          <input
+            data-testid="field-range-max"
+            type="number"
+            placeholder="Range max — e.g. 100"
+            .value=${this.rangeMax}
+            required
+            @input=${(e: Event) => this.bindString(e, "rangeMax")}
+          />
+        </div>
+      </div>
+      <div class="field-row" data-testid="current-value-row">
+        <div class="field">
+          <input
+            data-testid="field-current-value"
+            type="number"
+            placeholder="Current value — e.g. 42"
+            .value=${this.currentValue}
+            required
+            @input=${(e: Event) => this.bindString(e, "currentValue")}
           />
         </div>
         <div class="field">
@@ -1159,6 +1268,10 @@ export class AddChildModal extends LitElement {
       const description = this.description.trim() || undefined;
       return this.buildBscPayload(title, description, weight);
     }
+    if (this.chosenKind === "StrictRangeNode") {
+      const description = this.description.trim() || undefined;
+      return this.buildStrictRangePayload(title, description, weight);
+    }
     if (this.chosenKind === "PictureNode") {
       return this.buildPicturePayload(title, weight);
     }
@@ -1260,6 +1373,46 @@ export class AddChildModal extends LitElement {
   }
 
   /**
+   * SPEC §17.77 / §17.94 — Strict-range payload: title + optional
+   * description + weight + `min` + `max` + a mandatory seed
+   * `TimestampedValue<number>`. Returns `null` when any required
+   * piece (numeric bounds with `min < max`, numeric current value,
+   * parseable as-of date) is missing or invalid so `canConfirm()`
+   * keeps the Confirm button disabled. The application service
+   * still gets the final say (`StrictRange.requireValue` may throw
+   * `OutOfRangeError` for a seed value that sits at `min` exactly
+   * or that crosses the bounds due to operator typos — gated here
+   * only as a UI nicety).
+   */
+  private buildStrictRangePayload(
+    title: string,
+    description: string | undefined,
+    weight: number | undefined,
+  ): AddChildModalPayload | null {
+    const min = Number(this.rangeMin);
+    const max = Number(this.rangeMax);
+    const currentValueRaw = this.currentValue.trim();
+    const currentValue = Number(this.currentValue);
+    const currentAsOf = parseIsoDateInput(this.currentValueDate);
+    if (
+      this.rangeMin.trim() === "" || this.rangeMax.trim() === "" ||
+      Number.isNaN(min) || Number.isNaN(max) || min >= max ||
+      currentValueRaw === "" || Number.isNaN(currentValue) || currentAsOf === null
+    ) {
+      return null;
+    }
+    return {
+      kind: "StrictRangeNode",
+      title,
+      ...(description === undefined ? {} : { description }),
+      ...(weight === undefined ? {} : { weight }),
+      min,
+      max,
+      initialHistory: [{ value: currentValue, asOf: currentAsOf }],
+    };
+  }
+
+  /**
    * SPEC §17.119 — Picture payload is the simplest of the three:
    * title + weight + a non-empty image URL. Returns `null` when the
    * URL is missing/blank so `canConfirm()` keeps the Confirm button
@@ -1319,6 +1472,8 @@ export class AddChildModal extends LitElement {
       | "targetDate"
       | "currentValue"
       | "currentValueDate"
+      | "rangeMin"
+      | "rangeMax"
       | "imageUrl"
       | "statusId"
       | "url",
@@ -1348,6 +1503,8 @@ export class AddChildModal extends LitElement {
     this.targetDate = "";
     this.currentValue = "";
     this.currentValueDate = AddChildModal.todayIsoDate();
+    this.rangeMin = "";
+    this.rangeMax = "";
     this.imageUrl = "";
     // SPEC §17.118 — pre-select the first available workflow status so
     // the most common Workflow path ("accept the default — usually PLAN")

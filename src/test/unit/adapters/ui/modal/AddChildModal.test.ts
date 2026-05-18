@@ -104,6 +104,10 @@ async function pickWorkflow(el: AddChildModal): Promise<void> {
   await pickKind(el, "Workflow");
 }
 
+async function pickStrictRange(el: AddChildModal): Promise<void> {
+  await pickKind(el, "StrictRangeNode");
+}
+
 async function pickURL(el: AddChildModal): Promise<void> {
   const btn = el.shadowRoot?.querySelector<HTMLButtonElement>(
     '[data-testid="kind-btn"][data-kind="URLNode"]',
@@ -166,6 +170,7 @@ describe("<add-child-modal>", () => {
       "TextNode",
       "Workflow",
       "BusinessScoreCardNode",
+      "StrictRangeNode",
       "PictureNode",
       "URLNode",
     ]);
@@ -177,10 +182,13 @@ describe("<add-child-modal>", () => {
     expect(buttons[1]?.textContent).toMatch(/status badge|PLAN/);
     expect(buttons[2]?.textContent).toMatch(/Business Score Card/);
     expect(buttons[2]?.textContent).toMatch(/measurable|target/);
+    expect(buttons[3]?.textContent).toMatch(/Strict Range/);
+    expect(buttons[3]?.textContent).toMatch(/bounded|min\/max/);
     // None are pressed before a kind is picked.
     expect(buttons[0]?.getAttribute("aria-pressed")).toBe("false");
     expect(buttons[1]?.getAttribute("aria-pressed")).toBe("false");
     expect(buttons[2]?.getAttribute("aria-pressed")).toBe("false");
+    expect(buttons[3]?.getAttribute("aria-pressed")).toBe("false");
   });
 
   it("when no kind is chosen the right pane shows the empty-state hint and no form (\u00a717.25)", async () => {
@@ -1039,6 +1047,27 @@ describe("<add-child-modal> empty-field placeholder pattern (SPEC §6)", () => {
     }
   });
 
+  it("every text/number/date/textarea on the StrictRange form has a placeholder of the form '<Field name> — e.g. <mock>'", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickStrictRange(el);
+    const fields = Array.from(
+      el.shadowRoot?.querySelectorAll<
+        HTMLInputElement | HTMLTextAreaElement
+      >(
+        '[data-testid="modal-form"] input[type="text"], [data-testid="modal-form"] input[type="number"], [data-testid="modal-form"] input[type="date"], [data-testid="modal-form"] textarea',
+      ) ?? [],
+    );
+    expect(fields.length).toBeGreaterThan(0);
+    for (const f of fields) {
+      expect(f.placeholder).toMatch(FIELD_NAME_AND_EG);
+    }
+  });
+
   it("the form has no <label> siblings on its text/number inputs (SPEC §6 — placeholders carry the purpose)", async () => {
     // Any future checkboxes / radios would be wrapped in <label> for
     // accessibility (non-textual controls need a visible accessible name).
@@ -1265,6 +1294,157 @@ describe("<add-child-modal> PictureNode branch (§17.119)", () => {
     for (const f of fields) {
       expect(f.placeholder).toMatch(/^[A-Z].* — e\.g\./);
     }
+  });
+});
+
+/**
+ * SPEC §17.77 / §17.94 — `StrictRangeNode` form: title + optional
+ * description + weight + `min` + `max` + a mandatory seed
+ * (current value + as-of date). No unit + no objective. The kind
+ * was previously reachable only through showcase / fixture seeding;
+ * this strand wires it into the AddChildModal so operators can
+ * create one from the kiosk.
+ */
+describe("<add-child-modal> StrictRangeNode branch (§17.77 / §17.94)", () => {
+  it("StrictRangeNode is part of the default availableKinds catalogue (ALL_ADD_CHILD_KINDS)", () => {
+    expect(ALL_ADD_CHILD_KINDS).toContain("StrictRangeNode");
+  });
+
+  it("picking StrictRangeNode renders the range-bound row + seed row + description", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickStrictRange(el);
+    const form = el.shadowRoot?.querySelector<HTMLFormElement>(
+      '[data-testid="modal-form"]',
+    );
+    expect(form?.dataset["kind"]).toBe("StrictRangeNode");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-range-min"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-range-max"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-current-value"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-current-value-date"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-description"]'),
+    ).not.toBeNull();
+    // BSC-only fields must stay hidden on the StrictRange branch.
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-unit"]'),
+    ).toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-initial"]'),
+    ).toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-target"]'),
+    ).toBeNull();
+  });
+
+  it("Confirm stays disabled until every required field is filled", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickStrictRange(el);
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-title", "CPU saturation");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-range-min", "0");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-range-max", "100");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-current-value", "42");
+    // current-value-date defaults to today, so Confirm should now enable.
+    expect(confirmBtnOf(el).disabled).toBe(false);
+  });
+
+  it("Confirm stays disabled when min >= max (invalid range)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickStrictRange(el);
+    await setInput(el, "field-title", "Invalid");
+    await setInput(el, "field-range-min", "100");
+    await setInput(el, "field-range-max", "100");
+    await setInput(el, "field-current-value", "42");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-range-max", "200");
+    expect(confirmBtnOf(el).disabled).toBe(false);
+  });
+
+  it("dispatches `add-child-confirm` with a StrictRangeNode payload on Confirm", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+        e.parentId = "uuid-parent";
+      },
+    );
+    const handler = vi.fn();
+    el.addEventListener(ADD_CHILD_CONFIRM_EVENT, handler);
+    await pickStrictRange(el);
+    await setInput(el, "field-title", "CPU saturation");
+    await setInput(el, "field-range-min", "0");
+    await setInput(el, "field-range-max", "100");
+    await setInput(el, "field-current-value", "42");
+    await setInput(el, "field-current-value-date", "2026-05-18");
+    confirmBtnOf(el).click();
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    const evt = handler.mock.calls[0]?.[0] as
+      | CustomEvent<AddChildConfirmDetail>
+      | undefined;
+    const p = evt?.detail.payload;
+    expect(p?.kind).toBe("StrictRangeNode");
+    if (p?.kind !== "StrictRangeNode") return;
+    expect(p.title).toBe("CPU saturation");
+    expect(p.min).toBe(0);
+    expect(p.max).toBe(100);
+    // SPEC §17.16 — weight defaults to 1 (form pre-fill).
+    expect(p.weight).toBe(1);
+    expect(p.initialHistory).toHaveLength(1);
+    const seed = p.initialHistory?.[0];
+    expect(seed?.value).toBe(42);
+    expect(seed?.asOf).toBeInstanceOf(Date);
+    expect(seed?.asOf.toISOString()).toBe("2026-05-18T00:00:00.000Z");
+  });
+
+  it("resetForm clears the range-bound + seed fields between opens", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickStrictRange(el);
+    await setInput(el, "field-range-min", "5");
+    await setInput(el, "field-range-max", "95");
+    await setInput(el, "field-current-value", "12");
+    // Closing + reopening triggers `resetForm` (the willUpdate gate on
+    // `open` going false→true), which must blank the range fields so
+    // the next open starts clean.
+    el.open = false;
+    await el.updateComplete;
+    el.open = true;
+    await el.updateComplete;
+    await pickStrictRange(el);
+    expect((fieldOf(el, "field-range-min") as HTMLInputElement).value).toBe("");
+    expect((fieldOf(el, "field-range-max") as HTMLInputElement).value).toBe("");
+    expect((fieldOf(el, "field-current-value") as HTMLInputElement).value).toBe("");
   });
 });
 
