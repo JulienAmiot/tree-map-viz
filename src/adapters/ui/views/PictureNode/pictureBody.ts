@@ -40,6 +40,8 @@
 
 import { type TemplateResult, css, html } from "lit";
 
+import { renderWarningFill } from "../warningFill.js";
+
 /**
  * CSS scoped to the `PictureNode` views. Adds the `<img>` sizing rule
  * + the `object-fit: cover` operator contract; everything else
@@ -108,13 +110,7 @@ export function renderPictureValueArea(
 ): TemplateResult {
   return html`<div class="value-area" data-testid="value-row">
     ${hasError
-      ? html`<div
-          class="warning-fill"
-          data-testid="warning-fill"
-          data-reason="image-load-failed"
-          role="img"
-          aria-label="Image failed to load"
-        ></div>`
+      ? renderWarningFill("image-load-failed", "Image failed to load")
       : html`<img
           class="picture-img"
           data-testid="picture-image"

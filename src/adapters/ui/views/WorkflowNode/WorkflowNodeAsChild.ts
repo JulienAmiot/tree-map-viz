@@ -23,6 +23,7 @@ import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../markdown/markdownToHtml.js";
+import { renderStaticTitle } from "../inlineTitleEdit.js";
 import type { WorkflowNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../ageFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
@@ -36,7 +37,7 @@ export class WorkflowNodeAsChild extends LitElement {
 
   private resizeObserver: ResizeObserver | null = null;
 
-  static styles = [tileLayoutStyles, textBodyStyles, statusBadgeStyles];
+  static readonly styles = [tileLayoutStyles, textBodyStyles, statusBadgeStyles];
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -66,21 +67,18 @@ export class WorkflowNodeAsChild extends LitElement {
     const { value, status } = this.vm;
     const dateLabel = value.dateIso ? formatAge(value.dateIso) : "";
     const empty = value.text.length === 0;
+    const dateStyle = value.dateColor ? `--age-color: ${value.dateColor}` : "";
     return html`
-      <h2
-        class="title"
-        data-testid="title"
-        data-view-kind="WorkflowNode"
-        data-id=${this.vm.id}
-      >
-        ${this.vm.title}
-      </h2>
+      ${renderStaticTitle({
+        target: { nodeId: this.vm.id, title: this.vm.title },
+        viewKind: "WorkflowNode",
+      })}
       ${value.dateIso
         ? html`<time
             class="timestamp"
             data-testid="value-date"
             datetime=${value.dateIso}
-            style=${value.dateColor ? `--age-color: ${value.dateColor}` : ""}
+            style=${dateStyle}
             >${dateLabel}</time
           >`
         : html``}

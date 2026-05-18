@@ -27,6 +27,7 @@
 import { LitElement, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
+import { renderStaticTitle } from "../inlineTitleEdit.js";
 import type { PictureNodeViewModel } from "../NodeViewModel.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 
@@ -62,7 +63,7 @@ export class PictureNodeAsChild extends LitElement {
    */
   private lastUrl: string | null = null;
 
-  static styles = [tileLayoutStyles, pictureBodyStyles];
+  static readonly styles = [tileLayoutStyles, pictureBodyStyles];
 
   override willUpdate(changed: PropertyValues<this>): void {
     if (!changed.has("vm")) return;
@@ -75,7 +76,7 @@ export class PictureNodeAsChild extends LitElement {
     }
   }
 
-  private handleImageError = (): void => {
+  private readonly handleImageError = (): void => {
     this.hasError = true;
   };
 
@@ -84,14 +85,10 @@ export class PictureNodeAsChild extends LitElement {
       return nothing;
     }
     return html`
-      <h2
-        class="title"
-        data-testid="title"
-        data-view-kind="PictureNode"
-        data-id=${this.vm.id}
-      >
-        ${this.vm.title}
-      </h2>
+      ${renderStaticTitle({
+        target: { nodeId: this.vm.id, title: this.vm.title },
+        viewKind: "PictureNode",
+      })}
       ${renderPictureValueArea(
         this.vm.imageUrl,
         this.vm.title,

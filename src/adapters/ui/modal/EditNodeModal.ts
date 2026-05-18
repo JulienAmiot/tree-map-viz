@@ -537,10 +537,6 @@ export class EditNodeModal extends LitElement {
 
   private renderForm() {
     const target = this.editTarget!;
-    const isBsc = target.kind === "BusinessScoreCardNode";
-    const isPicture = target.kind === "PictureNode";
-    const isWorkflow = target.kind === "Workflow";
-    const isUrl = target.kind === "URLNode";
     return html`
       <form
         data-testid="edit-modal-form"
@@ -548,66 +544,100 @@ export class EditNodeModal extends LitElement {
         ?data-error=${this.errorMessage !== null}
         @submit=${this.handleSubmit}
       >
-        ${isBsc ? this.renderDescriptionField() : nothing}
-        ${isWorkflow ? this.renderWorkflowStatusField() : nothing}
-        <div class="field-row" data-testid="weight-row">
-          <div class="field">
-            <div class="weight-control" data-testid="weight-control">
-              <input
-                data-testid="field-weight-slider"
-                type="range"
-                min="0.5"
-                max="10"
-                step="0.5"
-                aria-label="Weight"
-                .value=${this.weight}
-                @input=${(e: Event) => this.bindString(e, "weight")}
-              />
-              <input
-                data-testid="field-weight"
-                type="number"
-                min="0.5"
-                max="10"
-                step="0.5"
-                placeholder="Weight — e.g. 1"
-                .value=${this.weight}
-                @input=${(e: Event) => this.bindString(e, "weight")}
-              />
-            </div>
-          </div>
-        </div>
-        ${isBsc ? this.renderUnitField() : nothing}
-        ${isBsc ? this.renderObjectiveFields() : nothing}
-        ${isBsc ? this.renderBscToggles() : nothing}
-        ${isPicture ? this.renderImageUrlField() : nothing}
-        ${isUrl ? this.renderURLField() : nothing}
-        ${this.errorMessage
-          ? html`<p class="error" data-testid="edit-modal-error">
-              ${this.errorMessage}
-            </p>`
-          : nothing}
-        <div class="actions" data-testid="edit-modal-actions">
-          <button
-            class="btn"
-            type="button"
-            data-testid="edit-modal-cancel"
-            @click=${this.cancel}
-          >
-            Cancel
-          </button>
-          <button
-            class="btn btn--primary"
-            type="button"
-            data-testid="edit-modal-confirm"
-            ?disabled=${!this.canConfirm()}
-            @click=${this.confirm}
-          >
-            Confirm
-          </button>
-        </div>
+        ${this.renderKindSpecificFields(target.kind)}
+        ${this.renderErrorMessage()}
+        ${this.renderActions()}
       </form>
     `;
   }
+
+  /**
+   * Per-kind form-fields ladder, extracted from `renderForm` to keep
+   * the latter's cognitive complexity under Sonar's S3776 cap. The
+   * weight control is unconditional and gets emitted between the
+   * "pre-weight" kind fields (description / status) and the
+   * "post-weight" ones (BSC + Picture + URL), so the visual order is
+   * unchanged from the in-line version.
+   */
+  private renderKindSpecificFields(kind: EditNodeTarget["kind"]) {
+    const isBsc = kind === "BusinessScoreCardNode";
+    return html`
+      ${isBsc ? this.renderDescriptionField() : nothing}
+      ${kind === "Workflow" ? this.renderWorkflowStatusField() : nothing}
+      ${this.renderWeightField()}
+      ${isBsc ? this.renderUnitField() : nothing}
+      ${isBsc ? this.renderObjectiveFields() : nothing}
+      ${isBsc ? this.renderBscToggles() : nothing}
+      ${kind === "PictureNode" ? this.renderImageUrlField() : nothing}
+      ${kind === "URLNode" ? this.renderURLField() : nothing}
+    `;
+  }
+
+  private renderWeightField() {
+    return html`
+      <div class="field-row" data-testid="weight-row">
+        <div class="field">
+          <div class="weight-control" data-testid="weight-control">
+            <input
+              data-testid="field-weight-slider"
+              type="range"
+              min="0.5"
+              max="10"
+              step="0.5"
+              aria-label="Weight"
+              .value=${this.weight}
+              @input=${this.handleWeightInput}
+            />
+            <input
+              data-testid="field-weight"
+              type="number"
+              min="0.5"
+              max="10"
+              step="0.5"
+              placeholder="Weight — e.g. 1"
+              .value=${this.weight}
+              @input=${this.handleWeightInput}
+            />
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderErrorMessage() {
+    if (this.errorMessage === null) return nothing;
+    return html`<p class="error" data-testid="edit-modal-error">
+      ${this.errorMessage}
+    </p>`;
+  }
+
+  private renderActions() {
+    return html`
+      <div class="actions" data-testid="edit-modal-actions">
+        <button
+          class="btn"
+          type="button"
+          data-testid="edit-modal-cancel"
+          @click=${this.cancel}
+        >
+          Cancel
+        </button>
+        <button
+          class="btn btn--primary"
+          type="button"
+          data-testid="edit-modal-confirm"
+          ?disabled=${!this.canConfirm()}
+          @click=${this.confirm}
+        >
+          Confirm
+        </button>
+      </div>
+    `;
+  }
+
+  private readonly handleWeightInput = (e: Event): void => {
+    this.bindString(e, "weight");
+  };
 
   private renderDescriptionField() {
     return html`
@@ -827,63 +857,82 @@ export class EditNodeModal extends LitElement {
     // is `undefined`, so the operator's inline title edit (which is
     // the canonical entry point for renames) is the only path that
     // mutates the node's identity.title.
-    const weight = this.weight.trim() === "" ? undefined : Number(this.weight);
-    if (this.editTarget.kind === "TextNode") {
-      return {
-        kind: "TextNode",
-        ...(weight === undefined || Number.isNaN(weight) ? {} : { weight }),
-      };
+    const weight = this.parseOptionalWeight();
+    switch (this.editTarget.kind) {
+      case "TextNode":
+        return { kind: "TextNode", ...weight };
+      case "PictureNode":
+        return this.buildPicturePayload(weight);
+      case "Workflow":
+        return this.buildWorkflowPayload(weight);
+      case "URLNode":
+        return this.buildURLPayload(weight);
+      case "BusinessScoreCardNode":
+        return this.buildBscPayload(weight);
     }
-    if (this.editTarget.kind === "PictureNode") {
-      // SPEC §17.119 — Picture edit: weight + imageUrl. Both fields
-      // stay optional in the payload shape (the application service
-      // treats `undefined` as "do not touch"); the modal still gates
-      // Confirm on "imageUrl is non-empty after trim" because the
-      // domain rejects an empty URL — leaving the field blank would
-      // throw at the service boundary and roll back uselessly.
-      const imageUrl = this.imageUrl.trim();
-      if (imageUrl.length === 0) return null;
-      return {
-        kind: "PictureNode",
-        ...(weight === undefined || Number.isNaN(weight) ? {} : { weight }),
-        imageUrl,
-      };
-    }
-    // SPEC §17.118 — Workflow shares the TextNode edit shape (weight)
-    // and adds an optional `statusId` swap. The service treats
-    // `undefined` as "no change", so the payload omits `statusId` when
-    // the operator hasn't touched the dropdown or when the field is
-    // empty. An orphan `statusId` (board's status table no longer
-    // contains the id) is still acceptable — the field renders it
-    // verbatim, the operator can replace it, and the service applies
-    // whatever lands in the payload (the application layer is the
-    // authority on validity).
-    if (this.editTarget.kind === "Workflow") {
-      const trimmed = this.statusId.trim();
-      return {
-        kind: "Workflow",
-        ...(weight === undefined || Number.isNaN(weight) ? {} : { weight }),
-        ...(trimmed === "" ? {} : { statusId: trimmed }),
-      };
-    }
-    if (this.editTarget.kind === "URLNode") {
-      // SPEC §17.120 — URL edit: weight + url. Mirrors the Picture
-      // branch structurally; gate is the same "url is non-empty
-      // after trim" predicate (the URLNode domain layer applies the
-      // same validator, so leaving the field blank would throw at
-      // the service boundary and roll back uselessly).
-      const url = this.url.trim();
-      if (url.length === 0) return null;
-      return {
-        kind: "URLNode",
-        ...(weight === undefined || Number.isNaN(weight) ? {} : { weight }),
-        url,
-      };
-    }
-    // BusinessScoreCardNode branch — unit + objective fields are
-    // mandatory (mirroring the add-child contract); description stays
-    // optional. computed / eligibleForParentComputation are checkboxes,
-    // always defined (no "tristate" intermediate).
+  }
+
+  /** Trim-and-`Number()` the slider/number-pair binding into the optional `weight` slot. */
+  private parseOptionalWeight(): { weight?: number } {
+    if (this.weight.trim() === "") return {};
+    const n = Number(this.weight);
+    return Number.isNaN(n) ? {} : { weight: n };
+  }
+
+  /**
+   * SPEC §17.119 — Picture edit: weight + imageUrl. Both fields stay
+   * optional in the payload shape (the application service treats
+   * `undefined` as "do not touch"); the modal still gates Confirm on
+   * "imageUrl is non-empty after trim" because the domain rejects an
+   * empty URL — leaving the field blank would throw at the service
+   * boundary and roll back uselessly.
+   */
+  private buildPicturePayload(weight: { weight?: number }): EditNodeModalPayload | null {
+    const imageUrl = this.imageUrl.trim();
+    if (imageUrl.length === 0) return null;
+    return { kind: "PictureNode", ...weight, imageUrl };
+  }
+
+  /**
+   * SPEC §17.118 — Workflow shares the TextNode edit shape (weight)
+   * and adds an optional `statusId` swap. The service treats
+   * `undefined` as "no change", so the payload omits `statusId` when
+   * the operator hasn't touched the dropdown or when the field is
+   * empty. An orphan `statusId` (board's status table no longer
+   * contains the id) is still acceptable — the field renders it
+   * verbatim, the operator can replace it, and the service applies
+   * whatever lands in the payload (the application layer is the
+   * authority on validity).
+   */
+  private buildWorkflowPayload(weight: { weight?: number }): EditNodeModalPayload {
+    const trimmed = this.statusId.trim();
+    return {
+      kind: "Workflow",
+      ...weight,
+      ...(trimmed === "" ? {} : { statusId: trimmed }),
+    };
+  }
+
+  /**
+   * SPEC §17.120 — URL edit: weight + url. Mirrors the Picture branch
+   * structurally; gate is the same "url is non-empty after trim"
+   * predicate (the URLNode domain layer applies the same validator,
+   * so leaving the field blank would throw at the service boundary
+   * and roll back uselessly).
+   */
+  private buildURLPayload(weight: { weight?: number }): EditNodeModalPayload | null {
+    const url = this.url.trim();
+    if (url.length === 0) return null;
+    return { kind: "URLNode", ...weight, url };
+  }
+
+  /**
+   * BusinessScoreCardNode branch — unit + objective fields are
+   * mandatory (mirroring the add-child contract); description stays
+   * optional. computed / eligibleForParentComputation are checkboxes,
+   * always defined (no "tristate" intermediate).
+   */
+  private buildBscPayload(weight: { weight?: number }): EditNodeModalPayload | null {
     const description = this.description.trim();
     const unit = this.unit.trim();
     const initialValue = Number(this.initialValue);
@@ -903,7 +952,7 @@ export class EditNodeModal extends LitElement {
     return {
       kind: "BusinessScoreCardNode",
       description,
-      ...(weight === undefined || Number.isNaN(weight) ? {} : { weight }),
+      ...weight,
       unit,
       objective: { initialValue, targetValue, targetDate },
       computed: this.computed,
@@ -951,70 +1000,49 @@ export class EditNodeModal extends LitElement {
   private seedFromTarget(target: EditNodeTarget): void {
     // SPEC §17.50 -- no `formTitle` to seed; title is edited inline.
     this.weight = String(target.weight);
-    if (target.kind === "TextNode") {
-      this.description = "";
-      this.unit = "";
-      this.initialValue = "";
-      this.targetValue = "";
-      this.targetDate = "";
-      this.computed = false;
-      this.eligibleForParentComputation = true;
-      this.imageUrl = "";
-      this.statusId = "";
-      this.url = "";
-      return;
-    }
+    this.resetKindSpecificFields();
+    this.applyKindSpecificSeed(target);
+  }
+
+  /**
+   * Clears every kind-specific seed back to its empty/default value.
+   * Pulled out of `seedFromTarget` so each per-kind branch only writes
+   * the slots it actually owns; this drops both the function's
+   * cognitive complexity AND its duplication footprint (every branch
+   * used to repeat the same eleven-line "clear everything else"
+   * preamble). Keeping a single source of truth for "what an unset
+   * form looks like" also means a future kind addition only has to
+   * append its slot here and write the seed branch — no risk of a
+   * stale field bleeding through because one branch forgot to clear
+   * it.
+   */
+  private resetKindSpecificFields(): void {
+    this.description = "";
+    this.unit = "";
+    this.initialValue = "";
+    this.targetValue = "";
+    this.targetDate = "";
+    this.computed = false;
+    this.eligibleForParentComputation = true;
+    this.imageUrl = "";
+    this.statusId = "";
+    this.url = "";
+  }
+
+  private applyKindSpecificSeed(target: EditNodeTarget): void {
+    if (target.kind === "TextNode") return;
     if (target.kind === "PictureNode") {
-      // SPEC §17.119 -- Picture edit only surfaces weight + imageUrl;
-      // the BSC-only fields stay cleared so a future kind switch on
-      // the modal would not bleed seed values across kinds.
-      this.description = "";
-      this.unit = "";
-      this.initialValue = "";
-      this.targetValue = "";
-      this.targetDate = "";
-      this.computed = false;
-      this.eligibleForParentComputation = true;
       this.imageUrl = target.imageUrl;
-      this.statusId = "";
-      this.url = "";
       return;
     }
     if (target.kind === "URLNode") {
-      // SPEC §17.120 -- URL edit only surfaces weight + url; every
-      // other kind-specific seed stays cleared so a future kind
-      // switch on the modal cannot leak stale BSC / Picture seeds
-      // into the URL form.
-      this.description = "";
-      this.unit = "";
-      this.initialValue = "";
-      this.targetValue = "";
-      this.targetDate = "";
-      this.computed = false;
-      this.eligibleForParentComputation = true;
-      this.imageUrl = "";
-      this.statusId = "";
       this.url = target.url;
       return;
     }
-    // SPEC §17.118 — Workflow seeds the status dropdown with the
-    // node's current `statusId`. If the active board's `workflowStatuses`
-    // catalogue no longer contains that id (orphan reference), the
-    // render path surfaces it verbatim so the operator can replace it.
     if (target.kind === "Workflow") {
-      this.description = "";
-      this.unit = "";
-      this.initialValue = "";
-      this.targetValue = "";
-      this.targetDate = "";
-      this.computed = false;
-      this.eligibleForParentComputation = true;
-      this.imageUrl = "";
-      this.url = "";
       this.statusId = target.statusId;
       return;
     }
-    this.statusId = "";
     this.description = target.description;
     this.unit = target.unit;
     this.initialValue = String(target.objective.initialValue);
@@ -1022,8 +1050,6 @@ export class EditNodeModal extends LitElement {
     this.targetDate = target.objective.targetDateIso;
     this.computed = target.computed;
     this.eligibleForParentComputation = target.eligibleForParentComputation;
-    this.imageUrl = "";
-    this.url = "";
   }
 
   private handleBackdropClick = (e: Event): void => {

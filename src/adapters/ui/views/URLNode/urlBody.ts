@@ -44,6 +44,8 @@
 
 import { type TemplateResult, css, html, nothing } from "lit";
 
+import { renderWarningFill } from "../warningFill.js";
+
 /**
  * CSS scoped to the `URLNode` views. Adds the `<img>` sizing rule +
  * the `object-fit: contain` operator contract; everything else
@@ -122,31 +124,43 @@ export const urlBodyStyles = css`
  *   the chosen error-correction level) and the warning fallback
  *   should render.
  */
+function renderURLBody(
+  qrDataUrl: string | null,
+  alt: string,
+  hasError: boolean,
+): TemplateResult | typeof nothing {
+  // SPEC §17.120 — three exclusive states: (a) generation rejected →
+  // warning glyph fallback; (b) generation still pending → no body
+  // (the value-area renders empty until the async promise resolves);
+  // (c) success → QR image. Flattened from a nested ternary to keep
+  // Sonar S3358 happy without changing semantics.
+  if (hasError) {
+    return renderWarningFill(
+      "qr-generation-failed",
+      "QR code could not be generated",
+    );
+  }
+  if (qrDataUrl !== null) {
+    return html`<img
+      class="qr-img"
+      data-testid="qr-image"
+      data-value-kind="url"
+      src=${qrDataUrl}
+      alt=${alt}
+      loading="lazy"
+      decoding="async"
+      referrerpolicy="no-referrer"
+    />`;
+  }
+  return nothing;
+}
+
 export function renderURLValueArea(
   qrDataUrl: string | null,
   alt: string,
   hasError: boolean,
 ): TemplateResult {
   return html`<div class="value-area" data-testid="value-row">
-    ${hasError
-      ? html`<div
-          class="warning-fill"
-          data-testid="warning-fill"
-          data-reason="qr-generation-failed"
-          role="img"
-          aria-label="QR code could not be generated"
-        ></div>`
-      : qrDataUrl !== null
-        ? html`<img
-            class="qr-img"
-            data-testid="qr-image"
-            data-value-kind="url"
-            src=${qrDataUrl}
-            alt=${alt}
-            loading="lazy"
-            decoding="async"
-            referrerpolicy="no-referrer"
-          />`
-        : nothing}
+    ${renderURLBody(qrDataUrl, alt, hasError)}
   </div>`;
 }

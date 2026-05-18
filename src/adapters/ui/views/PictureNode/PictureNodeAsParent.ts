@@ -20,17 +20,16 @@
  *   - No description.
  */
 
-import { LitElement, css, html, nothing, type PropertyValues } from "lit";
+import { LitElement, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
+import { focusAndSelectInline } from "../inlineEditHelpers.js";
 import {
-  INLINE_EDIT_TITLE_EVENT,
-  type InlineEditTitleDetail,
-} from "../inlineEditEvents.js";
-import {
-  focusAndSelectInline,
-  inlineEditKey,
-} from "../inlineEditHelpers.js";
+  dispatchInlineTitleCommit,
+  handleInlineTitleKey,
+  renderInlineEditableTitle,
+  titleInlineEditStyles,
+} from "../inlineTitleEdit.js";
 import type { PictureNodeViewModel } from "../NodeViewModel.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 
@@ -51,49 +50,10 @@ export class PictureNodeAsParent extends LitElement {
 
   private lastUrl: string | null = null;
 
-  static styles = [
+  static readonly styles = [
     tileLayoutStyles,
     pictureBodyStyles,
-    css`
-      /* Parent strip uses a slightly larger title than the children,
-         while still respecting the §17.14 vh-relative sizing — same
-         literals as TextNodeAsParent / BSCNodeAsParent. */
-      .title {
-        font-size: 2.4vh;
-        /* SPEC §17.42 — focused-panel title is bright off-white. */
-        color: rgb(245, 245, 245);
-      }
-      .title.is-editable {
-        cursor: text;
-      }
-      /* Inline title-edit input -- same affordance as TextNodeAsParent,
-         same literals so a future tweak to the inline-edit visual
-         contract stays as a one-place change in the shared
-         tileLayoutStyles plus per-view selector parity. */
-      .title-edit {
-        box-sizing: border-box;
-        width: 100%;
-        height: 100%;
-        background: color-mix(in srgb, currentColor 6%, transparent);
-        color: inherit;
-        border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
-        border-radius: 4px;
-        padding: 0 0.4rem;
-        line-height: 1;
-        font: inherit;
-        font-size: inherit;
-        font-weight: inherit;
-        min-width: 0;
-        /* SPEC §17.50 — clear the focused-panel close-X / edit-pencil
-           buttons that overlay the title row's right end. */
-        max-width: calc(100% - var(--strip-gutter-right, 0px));
-      }
-      .title-edit:focus {
-        outline: none;
-        border-color: color-mix(in srgb, currentColor 65%, transparent);
-        background: color-mix(in srgb, currentColor 12%, transparent);
-      }
-    `,
+    titleInlineEditStyles,
   ];
 
   override willUpdate(changed: PropertyValues<this>): void {
@@ -119,7 +79,7 @@ export class PictureNodeAsParent extends LitElement {
     }
   }
 
-  private handleImageError = (): void => {
+  private readonly handleImageError = (): void => {
     this.hasError = true;
   };
 
@@ -139,54 +99,34 @@ export class PictureNodeAsParent extends LitElement {
   }
 
   private renderTitle() {
-    if (!this.vm) return nothing;
-    if (this.editingField === "title") {
-      return html`<h1
-        class="title"
-        data-testid="title"
-        data-view-kind="PictureNode"
-        data-id=${this.vm.id}
-      >
-        <input
-          class="title-edit"
-          data-testid="title-edit"
-          type="text"
-          maxlength="120"
-          .value=${this.vm.title}
-          @keydown=${(e: KeyboardEvent) => this.handleTitleKey(e)}
-          @blur=${(e: FocusEvent) => this.commitTitle(e.target as HTMLInputElement)}
-        />
-      </h1>`;
-    }
-    return html`<h1
-      class="title is-editable"
-      data-testid="title"
-      data-view-kind="PictureNode"
-      data-id=${this.vm.id}
-      role="button"
-      tabindex="0"
-      title="Click to edit title"
-      @click=${this.startTitleEdit}
-    >
-      ${this.vm.title}
-    </h1>`;
+    return renderInlineEditableTitle({
+      target: this.vm ? { nodeId: this.vm.id, title: this.vm.title } : null,
+      isEditing: this.editingField === "title",
+      viewKind: "PictureNode",
+      onStart: this.startTitleEdit,
+      onKeydown: this.handleTitleKey,
+      onBlur: this.handleTitleBlur,
+    });
   }
 
-  private startTitleEdit = (): void => {
+  private readonly startTitleEdit = (): void => {
     if (!this.vm) return;
     this.editingField = "title";
   };
 
-  private handleTitleKey(e: KeyboardEvent): void {
-    const intent = inlineEditKey(e, /* multiline */ false);
-    if (intent === "commit") {
-      e.preventDefault();
-      this.commitTitle(e.currentTarget as HTMLInputElement);
-    } else if (intent === "cancel") {
-      e.preventDefault();
-      this.editingField = null;
-    }
-  }
+  private readonly handleTitleKey = (e: KeyboardEvent): void => {
+    handleInlineTitleKey(
+      e,
+      (input) => this.commitTitle(input),
+      () => {
+        this.editingField = null;
+      },
+    );
+  };
+
+  private readonly handleTitleBlur = (e: FocusEvent): void => {
+    this.commitTitle(e.target as HTMLInputElement | null);
+  };
 
   private commitTitle(input: HTMLInputElement | null): void {
     if (this.editingField !== "title") return;
@@ -194,18 +134,9 @@ export class PictureNodeAsParent extends LitElement {
       this.editingField = null;
       return;
     }
-    const next = input.value.trim();
+    const value = input.value;
     this.editingField = null;
-    if (next.length === 0 || next === this.vm.title) {
-      return;
-    }
-    this.dispatchEvent(
-      new CustomEvent<InlineEditTitleDetail>(INLINE_EDIT_TITLE_EVENT, {
-        bubbles: true,
-        composed: true,
-        detail: { nodeId: this.vm.id, title: next },
-      }),
-    );
+    dispatchInlineTitleCommit(this, { nodeId: this.vm.id, title: this.vm.title }, value);
   }
 }
 

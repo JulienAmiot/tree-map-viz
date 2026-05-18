@@ -41,6 +41,7 @@
 import { LitElement, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
+import { renderStaticTitle } from "../inlineTitleEdit.js";
 import type { URLNodeViewModel } from "../NodeViewModel.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 
@@ -88,7 +89,7 @@ export class URLNodeAsChild extends LitElement {
    */
   private lastUrl: string | null = null;
 
-  static styles = [tileLayoutStyles, urlBodyStyles];
+  static readonly styles = [tileLayoutStyles, urlBodyStyles];
 
   override willUpdate(changed: PropertyValues<this>): void {
     if (!changed.has("vm")) return;
@@ -134,14 +135,10 @@ export class URLNodeAsChild extends LitElement {
       return nothing;
     }
     return html`
-      <h2
-        class="title"
-        data-testid="title"
-        data-view-kind="URLNode"
-        data-id=${this.vm.id}
-      >
-        ${this.vm.title}
-      </h2>
+      ${renderStaticTitle({
+        target: { nodeId: this.vm.id, title: this.vm.title },
+        viewKind: "URLNode",
+      })}
       ${renderURLValueArea(this.qrDataUrl, this.vm.title, this.hasError)}
     `;
   }

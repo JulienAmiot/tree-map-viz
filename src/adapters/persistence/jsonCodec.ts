@@ -230,48 +230,73 @@ function decodeNode(raw: unknown, p: string, clock: Clock): Node {
   const id = requireString(obj, "id", p);
   const title = requireString(obj, "title", p);
   const w = Weight.of(requireNumber(obj, "weight", p));
-  let node: ValueNode<unknown>;
-  if (kind === "TextNode") {
-    const t = new TextNode(id, title, w, clock);
-    for (const h of decodeHistory(obj, p, "string")) t.addValue(h.at, h.value as string);
-    node = t;
-  } else if (kind === "WorkflowNode") {
-    const statusId = requireString(obj, "statusId", p);
-    const wf = new WorkflowNode(id, title, w, clock, statusId);
-    for (const h of decodeHistory(obj, p, "string")) wf.addValue(h.at, h.value as string);
-    node = wf;
-  } else if (kind === "BusinessScoreNode") {
-    const bsn = buildBSN(id, title, w, obj, p, clock);
-    for (const h of decodeHistory(obj, p, "number")) bsn.addValue(h.at, h.value as number);
-    node = bsn;
-  } else if (kind === "ComputedBusinessScoreNode") {
-    node = buildCBSN(id, title, w, obj, p, clock);
-  } else if (kind === "ComputedNode") {
-    node = new ComputedNode<unknown>(id, title, w, requireString(obj, "description", p), clock, decodeComputationKind(obj, p));
-  } else if (kind === "StrictRangeNode") {
-    const srn = new StrictRangeNode<number>(id, title, w, requireString(obj, "description", p), clock, decodeRange(obj, p, "strict", StrictRange.of));
-    for (const h of decodeHistory(obj, p, "number")) srn.addValue(h.at, h.value as number);
-    node = srn;
-  } else if (kind === "PictureNode") {
-    // §17.119 — PictureNode wire shape: `kind` + commonFields + `imageUrl`.
-    // No history / objective / description path; we read the URL with the
-    // standard non-empty-string guard and feed it to the constructor
-    // (which re-validates synchronously — defence in depth at the seam).
-    node = new PictureNode(id, title, w, requireString(obj, "imageUrl", p));
-  } else if (kind === "URLNode") {
-    // §17.120 — URLNode wire shape: `kind` + commonFields + `description`
-    // (the URL ships in the description slot per the operator's "URL is
-    // in the description" contract). `requireString` raises on missing /
-    // non-string / empty payloads at the seam; the URLNode constructor
-    // re-validates "non-empty after trim" defensively.
-    node = new URLNode(id, title, w, requireString(obj, "description", p));
-  } else {
-    throw new JsonCodecDecodeError(joinPointer(p, "kind"), `unknown kind "${kind}"`);
-  }
+  const node = buildValueNodeForKind(kind, id, title, w, obj, p, clock);
   if (obj["disabled"] === true) node.setDisabled(true);
   const cp = joinPointer(p, "children");
   requireArray(obj, "children", p).forEach((c, i) => node.attach(decodeNode(c, joinPointer(cp, String(i)), clock)));
   return node;
+}
+
+/**
+ * Dispatches the `kind` discriminator to the matching ValueNode
+ * constructor + history-seeding helper. Pulled out of `decodeNode` so
+ * the outer function only owns the post-build invariants (disabled
+ * flag + child recursion); each kind branch now lives in a leaf
+ * helper, keeping `decodeNode`'s cognitive complexity well under
+ * the Sonar S3776 cap (the dispatcher itself stays a flat ladder
+ * the linter treats as a single switch).
+ */
+function buildValueNodeForKind(
+  kind: string,
+  id: string,
+  title: string,
+  w: Weight,
+  obj: Record<string, unknown>,
+  p: string,
+  clock: Clock,
+): ValueNode<unknown> {
+  if (kind === "TextNode") return buildTextNode(id, title, w, obj, p, clock);
+  if (kind === "WorkflowNode") return buildWorkflowNode(id, title, w, obj, p, clock);
+  if (kind === "BusinessScoreNode") return buildBSNWithHistory(id, title, w, obj, p, clock);
+  if (kind === "ComputedBusinessScoreNode") return buildCBSN(id, title, w, obj, p, clock);
+  if (kind === "ComputedNode") return new ComputedNode<unknown>(id, title, w, requireString(obj, "description", p), clock, decodeComputationKind(obj, p));
+  if (kind === "StrictRangeNode") return buildStrictRangeNode(id, title, w, obj, p, clock);
+  // §17.119 — PictureNode wire shape: `kind` + commonFields + `imageUrl`.
+  // No history / objective / description path; we read the URL with the
+  // standard non-empty-string guard and feed it to the constructor
+  // (which re-validates synchronously — defence in depth at the seam).
+  if (kind === "PictureNode") return new PictureNode(id, title, w, requireString(obj, "imageUrl", p));
+  // §17.120 — URLNode wire shape: `kind` + commonFields + `description`
+  // (the URL ships in the description slot per the operator's "URL is
+  // in the description" contract). `requireString` raises on missing /
+  // non-string / empty payloads at the seam; the URLNode constructor
+  // re-validates "non-empty after trim" defensively.
+  if (kind === "URLNode") return new URLNode(id, title, w, requireString(obj, "description", p));
+  throw new JsonCodecDecodeError(joinPointer(p, "kind"), `unknown kind "${kind}"`);
+}
+
+function buildTextNode(id: string, title: string, w: Weight, obj: Record<string, unknown>, p: string, clock: Clock): TextNode {
+  const t = new TextNode(id, title, w, clock);
+  for (const h of decodeHistory(obj, p, "string")) t.addValue(h.at, h.value as string);
+  return t;
+}
+
+function buildWorkflowNode(id: string, title: string, w: Weight, obj: Record<string, unknown>, p: string, clock: Clock): WorkflowNode {
+  const wf = new WorkflowNode(id, title, w, clock, requireString(obj, "statusId", p));
+  for (const h of decodeHistory(obj, p, "string")) wf.addValue(h.at, h.value as string);
+  return wf;
+}
+
+function buildBSNWithHistory(id: string, title: string, w: Weight, obj: Record<string, unknown>, p: string, clock: Clock): BusinessScoreNode<number> {
+  const bsn = buildBSN(id, title, w, obj, p, clock);
+  for (const h of decodeHistory(obj, p, "number")) bsn.addValue(h.at, h.value as number);
+  return bsn;
+}
+
+function buildStrictRangeNode(id: string, title: string, w: Weight, obj: Record<string, unknown>, p: string, clock: Clock): StrictRangeNode<number> {
+  const srn = new StrictRangeNode<number>(id, title, w, requireString(obj, "description", p), clock, decodeRange(obj, p, "strict", StrictRange.of));
+  for (const h of decodeHistory(obj, p, "number")) srn.addValue(h.at, h.value as number);
+  return srn;
 }
 
 function buildBSN(id: string, title: string, w: Weight, obj: Record<string, unknown>, p: string, clock: Clock): BusinessScoreNode<number> {
