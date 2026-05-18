@@ -192,6 +192,24 @@ export type AddChildModalPayload =
       readonly title: string;
       readonly weight?: number;
       readonly imageUrl: string;
+    }
+  /**
+   * SPEC §17.120 — `URLNode` variant. A snapshot leaf carrying a
+   * single URL that the view layer renders as a QR code (the URL
+   * lives in the inherited description slot per the operator's "the
+   * URL is in the description" contract). The modal collects title
+   * + weight + url and that is the full surface (no separate
+   * description field — entering the URL IS entering the
+   * description). main.ts's `toAppAddChildPayload` rewrites the
+   * modal-side `"URLNode"` kind tag to the application-layer
+   * `"URL"` kind tag before handing off to `AddChildService`.
+   * Parity with the §17.119 PictureNode kind-tag rewrite.
+   */
+  | {
+      readonly kind: "URLNode";
+      readonly title: string;
+      readonly weight?: number;
+      readonly url: string;
     };
 
 export type AddChildKind = AddChildModalPayload["kind"];
@@ -237,6 +255,12 @@ const KIND_OPTIONS: readonly KindOption[] = [
     name: "Picture",
     description:
       "An image: a title + an image URL (object-fit: cover); shows a warning glyph on load failure.",
+  },
+  {
+    kind: "URLNode",
+    name: "URL",
+    description:
+      "A QR code: a title + a URL the kiosk renders as a scannable QR (object-fit: contain); shows a warning glyph on generation failure.",
   },
 ];
 
@@ -366,6 +390,25 @@ export class AddChildModal extends LitElement {
    */
   @state()
   private statusId = "";
+
+  /**
+   * SPEC §17.120 — URL for the URL kind. A plain string; the domain
+   * (`URLNode`) validates "non-empty after trim" and the qrcode
+   * library is the authoritative validator for "can I encode this
+   * as a QR" (extremely long payloads exceed the library's max
+   * bit-density and trigger the warning-fill fallback at render
+   * time). The modal gates Confirm on "non-empty after trim" to
+   * match the domain's minimum contract — same predicate as
+   * `imageUrl` for the Picture kind. The URL accepts any non-empty
+   * string (https:, mailto:, tel:, custom schemes, plain text); we
+   * intentionally do NOT enforce a stricter shape here because the
+   * qrcode library encodes arbitrary text and scanners surface
+   * non-URL payloads as plain text — restricting at the modal
+   * would block legitimate kiosk use cases (e.g. a QR that
+   * scanners interpret as a wifi-credential payload).
+   */
+  @state()
+  private url = "";
 
   static styles = [
     modalFrameStyles,
@@ -769,6 +812,7 @@ export class AddChildModal extends LitElement {
     const isBsc = this.chosenKind === "BusinessScoreCardNode";
     const isPicture = this.chosenKind === "PictureNode";
     const isTextOrWorkflow = isText || isWorkflow;
+    const isUrl = this.chosenKind === "URLNode";
     return html`
       <form
         data-testid="modal-form"
@@ -820,6 +864,7 @@ export class AddChildModal extends LitElement {
         ${isBsc ? this.renderObjectiveFields() : nothing}
         ${isBsc ? this.renderBscToggles() : nothing}
         ${isPicture ? this.renderPictureFields() : nothing}
+        ${isUrl ? this.renderURLFields() : nothing}
         ${this.errorMessage
           ? html`<p class="error" data-testid="modal-error">
               ${this.errorMessage}
@@ -839,6 +884,36 @@ export class AddChildModal extends LitElement {
    * reject. The domain validates the same way (trim non-empty) and
    * the `<img>`'s `error` event is the load-time validator.
    */
+  /**
+   * SPEC §17.120 — single-field URL form: just the URL. The URL ends
+   * up in the description slot per the operator's "URL is in the
+   * description" contract, but the modal exposes it as a `url`
+   * field for clarity ("Description: https://..." would read worse
+   * to a kiosk operator than "URL: https://..."). `type="url"`
+   * triggers the platform's URL keyboard on mobile / touch kiosks
+   * and adds a soft client-side validation hint, but the gating
+   * predicate (`buildURLPayload`) is the canonical "non-empty after
+   * trim" check — the field accepts `mailto:`, `tel:`, custom
+   * schemes, and even plain text that the browser's strict URL
+   * validator would reject. The domain validates the same way
+   * (trim non-empty) and the qrcode library is the authoritative
+   * "can I encode this" validator.
+   */
+  private renderURLFields() {
+    return html`
+      <div class="field" data-testid="url-row">
+        <input
+          type="url"
+          data-testid="modal-url"
+          placeholder='URL — e.g. "https://example.com/docs"'
+          .value=${this.url}
+          required
+          @input=${(e: Event) => this.bindString(e, "url")}
+        />
+      </div>
+    `;
+  }
+
   private renderPictureFields() {
     return html`
       <div class="field" data-testid="image-url-row">
@@ -1115,6 +1190,9 @@ export class AddChildModal extends LitElement {
     if (this.chosenKind === "PictureNode") {
       return this.buildPicturePayload(title, weight);
     }
+    if (this.chosenKind === "URLNode") {
+      return this.buildURLPayload(title, weight);
+    }
     return null;
   }
 
@@ -1233,6 +1311,28 @@ export class AddChildModal extends LitElement {
     };
   }
 
+  /**
+   * SPEC §17.120 — URL payload mirrors `buildPicturePayload`
+   * structurally: title + weight + a non-empty URL. Returns `null`
+   * when the URL is missing / blank so `canConfirm()` keeps the
+   * Confirm button disabled until the operator types one. Matches
+   * the `URLNode.normaliseUrl` domain contract (non-empty after
+   * trim).
+   */
+  private buildURLPayload(
+    title: string,
+    weight: number | undefined,
+  ): AddChildModalPayload | null {
+    const url = this.url.trim();
+    if (url.length === 0) return null;
+    return {
+      kind: "URLNode",
+      title,
+      ...(weight === undefined ? {} : { weight }),
+      url,
+    };
+  }
+
   private canConfirm(): boolean {
     return this.buildPayload() !== null;
   }
@@ -1250,7 +1350,8 @@ export class AddChildModal extends LitElement {
       | "currentValue"
       | "currentValueDate"
       | "imageUrl"
-      | "statusId",
+      | "statusId"
+      | "url",
   ): void {
     const target = e.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
     this[field] = target.value;
@@ -1294,6 +1395,7 @@ export class AddChildModal extends LitElement {
     // when the catalogue is empty (Confirm stays disabled in that case;
     // the operator can't pick a status that doesn't exist).
     this.statusId = this.workflowStatuses[0]?.id ?? "";
+    this.url = "";
     this.errorMessage = null;
   }
 

@@ -104,6 +104,15 @@ async function pickWorkflow(el: AddChildModal): Promise<void> {
   await pickKind(el, "Workflow");
 }
 
+async function pickURL(el: AddChildModal): Promise<void> {
+  const btn = el.shadowRoot?.querySelector<HTMLButtonElement>(
+    '[data-testid="kind-btn"][data-kind="URLNode"]',
+  );
+  if (!btn) throw new Error("expected URLNode kind-btn");
+  btn.click();
+  await el.updateComplete;
+}
+
 async function setSelect(
   el: AddChildModal,
   testid: string,
@@ -150,13 +159,15 @@ describe("<add-child-modal>", () => {
     // `Workflow` kind between `TextNode` and `BusinessScoreCardNode`
     // (it's a TextNode-with-status; the catalogue keeps "general note"
     // → "note with status badge" → "measurable" reading order).
-    // SPEC §17.119 appended `PictureNode` at the end of the catalogue;
-    // a future kind addition lands at the end of this array.
+    // SPEC §17.119 appended `PictureNode` to the catalogue; SPEC §17.120
+    // appended `URLNode` after that. A future kind addition lands at the
+    // end of this array.
     expect(Array.from(buttons).map((b) => b.dataset["kind"])).toEqual([
       "TextNode",
       "Workflow",
       "BusinessScoreCardNode",
       "PictureNode",
+      "URLNode",
     ]);
     // Each button shows "Name — Description" (same content the pre-§17.19
     // kind-cards rendered, layout-agnostic since §17.25).
@@ -1381,5 +1392,214 @@ describe("<add-child-modal> Workflow form (SPEC §17.118)", () => {
     // §17.118 — the willUpdate guard reassigns `statusId` to the first
     // surviving entry so a stale pick can't sneak into a confirm payload.
     expect(select?.value).toBe("plan");
+  });
+});
+
+describe("<add-child-modal> URLNode branch (§17.120)", () => {
+  it("URLNode is part of the default availableKinds catalogue (ALL_ADD_CHILD_KINDS)", () => {
+    expect(ALL_ADD_CHILD_KINDS).toContain("URLNode");
+  });
+
+  it("picking URLNode renders only the URL-relevant fields (title + weight + url)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickURL(el);
+
+    const form = el.shadowRoot?.querySelector<HTMLFormElement>(
+      '[data-testid="modal-form"]',
+    );
+    expect(form).not.toBeNull();
+    expect(form?.dataset["kind"]).toBe("URLNode");
+
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-title"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="modal-url"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-weight"]'),
+    ).not.toBeNull();
+    // BSC-only / Picture-only fields stay hidden — the URL form is
+    // strictly title + weight + url.
+    expect(el.shadowRoot?.querySelector('[data-testid="field-description"]')).toBeNull();
+    expect(el.shadowRoot?.querySelector('[data-testid="field-unit"]')).toBeNull();
+    expect(el.shadowRoot?.querySelector('[data-testid="field-initial"]')).toBeNull();
+    expect(el.shadowRoot?.querySelector('[data-testid="field-target"]')).toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-current-value"]'),
+    ).toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-image-url"]'),
+    ).toBeNull();
+  });
+
+  it("placeholder on modal-url matches the §6 '<Field name> — e.g. <mock>' pattern + uses type=url for the platform URL keyboard", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickURL(el);
+    const input = fieldOf(el, "modal-url") as HTMLInputElement;
+    expect(input.placeholder).toMatch(/^URL — e\.g\./);
+    expect(input.type).toBe("url");
+  });
+
+  it("Confirm stays disabled when title is blank, even if url is filled", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickURL(el);
+    await setInput(el, "modal-url", "https://example.com/docs");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+  });
+
+  it("Confirm stays disabled when url is blank (or whitespace-only), even if title is filled", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickURL(el);
+    await setInput(el, "field-title", "Docs");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "modal-url", "   ");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+  });
+
+  it("Confirm enables once title + url are both non-empty (mirrors the Picture gating contract)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickURL(el);
+    await setInput(el, "field-title", "Docs");
+    await setInput(el, "modal-url", "https://example.com/docs");
+    expect(confirmBtnOf(el).disabled).toBe(false);
+  });
+
+  it("Confirm accepts non-https schemes (mailto:, tel:, custom — the qrcode library encodes anything, so the modal stays loose)", async () => {
+    // SPEC §17.120 — the modal is intentionally not stricter than
+    // the domain or the qrcode library. mailto: / tel: / custom-
+    // scheme: payloads are all legitimate kiosk use cases.
+    for (const u of [
+      "mailto:ops@example.com",
+      "tel:+33-1-23-45-67-89",
+      "custom-scheme://payload",
+    ]) {
+      const el = await mountLitElement<AddChildModal>(
+        "add-child-modal",
+        (e) => {
+          e.open = true;
+        },
+      );
+      await pickURL(el);
+      await setInput(el, "field-title", "Link");
+      await setInput(el, "modal-url", u);
+      expect(confirmBtnOf(el).disabled).toBe(false);
+    }
+  });
+
+  it("Confirm dispatches add-child-confirm with kind=URLNode + trimmed url + chosen weight", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+        e.parentId = "uuid-parent-url";
+      },
+    );
+    await pickURL(el);
+    await setInput(el, "field-title", "Docs");
+    // SPEC §17.120 — surrounding whitespace MUST be trimmed in the
+    // payload (matches `URLNode.normaliseUrl` domain contract).
+    await setInput(el, "modal-url", "  https://example.com/docs  ");
+    await setInput(el, "field-weight", "2");
+
+    const handler = vi.fn();
+    el.addEventListener("add-child-confirm", handler);
+    confirmBtnOf(el).click();
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    const ev = handler.mock.calls[0]![0] as CustomEvent<AddChildConfirmDetail>;
+    expect(ev.bubbles).toBe(true);
+    expect(ev.composed).toBe(true);
+    expect(ev.detail.parentId).toBe("uuid-parent-url");
+    expect(ev.detail.payload).toEqual({
+      kind: "URLNode",
+      title: "Docs",
+      weight: 2,
+      url: "https://example.com/docs",
+    });
+  });
+
+  it("re-opening the modal clears the previously-entered url (resetForm runs on open=true)", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickURL(el);
+    await setInput(el, "modal-url", "https://stale.example/x");
+    el.open = false;
+    await el.updateComplete;
+    el.open = true;
+    await el.updateComplete;
+    await pickURL(el);
+    const input = fieldOf(el, "modal-url") as HTMLInputElement;
+    expect(input.value).toBe("");
+  });
+
+  it("switching from Picture to URL between two opens does NOT leak the imageUrl seed into the url field (kind-specific resets are independent)", async () => {
+    // SPEC §17.120 — resetForm clears every kind-specific slot
+    // unconditionally on open, so an operator who picked Picture
+    // last session and pasted an image URL there does NOT see that
+    // URL pre-filled when they pick URL next session.
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickPicture(el);
+    await setInput(el, "field-image-url", "https://stale.example/img.jpg");
+    el.open = false;
+    await el.updateComplete;
+    el.open = true;
+    await el.updateComplete;
+    await pickURL(el);
+    const input = fieldOf(el, "modal-url") as HTMLInputElement;
+    expect(input.value).toBe("");
+  });
+
+  it("placeholder pattern: every text/number/url/date input on the URL form matches '<Field name> — e.g. <mock>'", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickURL(el);
+    const fields = Array.from(
+      el.shadowRoot?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+        '[data-testid="modal-form"] input[type="text"], [data-testid="modal-form"] input[type="number"], [data-testid="modal-form"] input[type="url"], [data-testid="modal-form"] input[type="date"], [data-testid="modal-form"] textarea',
+      ) ?? [],
+    );
+    expect(fields.length).toBeGreaterThan(0);
+    for (const f of fields) {
+      expect(f.placeholder).toMatch(/^[A-Z].* — e\.g\./);
+    }
   });
 });

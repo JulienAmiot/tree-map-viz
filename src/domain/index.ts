@@ -58,6 +58,7 @@ export { TextCard } from "./cards/TextCard.js";
 export { StrictRangeCard } from "./cards/StrictRangeCard.js";
 export { PictureCard } from "./cards/PictureCard.js";
 export { WorkflowCard } from "./cards/WorkflowCard.js";
+export { URLCard } from "./cards/URLCard.js";
 
 export { Node } from "./nodes/Node.js";
 export { ValueNode } from "./nodes/ValueNode.js";
@@ -70,6 +71,7 @@ export { StrictRangeNode } from "./nodes/StrictRangeNode.js";
 export { ComputedNode } from "./nodes/ComputedNode.js";
 export { ComputedBusinessScoreNode } from "./nodes/ComputedBusinessScoreNode.js";
 export { PictureNode } from "./nodes/PictureNode.js";
+export { URLNode } from "./nodes/URLNode.js";
 export { EmptyHistoryError } from "./nodes/EmptyHistoryError.js";
 
 export { Tree } from "./Tree.js";

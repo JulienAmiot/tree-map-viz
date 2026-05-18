@@ -17,7 +17,8 @@ export type NodeKind =
   | "BusinessScoreCardNode"
   | "ComputedNode"
   | "ComputedBusinessScoreNode"
-  | "PictureNode";
+  | "PictureNode"
+  | "URLNode";
 
 /** SPEC §17.104 — Lit-friendly mirror of `ComputationKind` names (§17.95 / §17.94 D2). */
 export type ComputationKindName = "SUM" | "AVERAGE" | "MIN" | "MAX" | "WEIGHTED_AVERAGE" | "COUNT";
@@ -314,13 +315,43 @@ export type PictureNodeViewModel = {
   readonly imageUrl: string;
 };
 
+/**
+ * SPEC §17.120 — `URLNode` view-model. Carries the operator-visible
+ * title plus the URL the view layer encodes as a QR code. No
+ * timestamp / no objective row — URL nodes are snapshot leaves; the
+ * tile body IS the QR code.
+ *
+ * `url` is the baked URL the mapper already normalised against the
+ * domain (non-empty, trimmed). The view layer is responsible for
+ * generating a QR-code image from it (via the `qrcode` npm package)
+ * and rendering the §17.44 warning-fill glyph when the QR generation
+ * fails — the operator's "display the same warning sign as the
+ * computed card on failure" requirement, mirroring §17.119 PictureNode
+ * load-failure behaviour. No further validation happens in the view;
+ * the QR-encoder is the authoritative source of "can I render this?".
+ *
+ * Note — there is no separate `description` field on this VM despite
+ * the domain storing the URL in the description slot: surfacing both
+ * `url` and `description` on the VM would tempt the view to render
+ * the URL twice. The mapper exposes a single `url` field per the
+ * §17.15 TextNode precedent ("the value IS the description; never
+ * leak both onto the VM").
+ */
+export type URLNodeViewModel = {
+  readonly kind: "URLNode";
+  readonly id: string;
+  readonly title: string;
+  readonly url: string;
+};
+
 export type NodeViewModel =
   | TextNodeViewModel
   | WorkflowNodeViewModel
   | BusinessScoreCardNodeViewModel
   | ComputedNodeViewModel
   | ComputedBusinessScoreNodeViewModel
-  | PictureNodeViewModel;
+  | PictureNodeViewModel
+  | URLNodeViewModel;
 
 /**
  * One slot in the focused view's children grid. Either a regular node tile

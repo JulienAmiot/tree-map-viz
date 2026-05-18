@@ -7,11 +7,13 @@ import { PictureCard } from "../../../../domain/cards/PictureCard.js";
 import { StrictRangeCard } from "../../../../domain/cards/StrictRangeCard.js";
 import { TextCard } from "../../../../domain/cards/TextCard.js";
 import { WorkflowCard } from "../../../../domain/cards/WorkflowCard.js";
+import { URLCard } from "../../../../domain/cards/URLCard.js";
 import { BusinessScoreNode } from "../../../../domain/nodes/BusinessScoreNode.js";
 import { PictureNode } from "../../../../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../../domain/nodes/TextNode.js";
 import { WorkflowNode } from "../../../../domain/nodes/WorkflowNode.js";
+import { URLNode } from "../../../../domain/nodes/URLNode.js";
 import { NumericComparator } from "../../../../domain/values/Comparator.js";
 import { Objective } from "../../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../../domain/values/Range.js";
@@ -123,6 +125,23 @@ describe("Card hierarchy (§17.78 — v4 part 14: visual cards hosting v4 nodes)
       // consumer can still talk to a WorkflowNode through its Card.
       expect(card.getNode()).toBeInstanceOf(TextNode);
       expect(card.getNode().statusId).toBe("do");
+    });
+  });
+
+  describe("URLCard extends Card<URLNode> (§17.120)", () => {
+    it("hosts a URLNode reference-equal to the constructor argument, with the URL reachable through getNode().url AND getNode().getDescription() (§17.120 \"URL is the description\" contract)", () => {
+      const node = new URLNode("u-1", "Docs", weight, "https://example.com/docs");
+      const card = new URLCard(node);
+      expect(card).toBeInstanceOf(URLCard);
+      expect(card).toBeInstanceOf(Card);
+      expect(card.getNode()).toBe(node);
+      expect(card.getNode()).toBeInstanceOf(URLNode);
+      expect(card.getNode().url).toBe("https://example.com/docs");
+      // SPEC §17.120 — the URL is stored in the description slot.
+      expect(card.getNode().getDescription()).toBe("https://example.com/docs");
+      // SPEC §17.120 — getValue() / url / getDescription all surface
+      // the same string on a URLNode.
+      expect(card.getNode().getValue()).toBe("https://example.com/docs");
     });
   });
 });
