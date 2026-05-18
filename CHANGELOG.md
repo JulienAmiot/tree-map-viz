@@ -16,6 +16,21 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **Inline strategy picker on focused-panel Computed* tiles**
+  (§17.104 / §17.116-followup). The `<computed-card>` and
+  `<computed-business-score-card>` tiles now render a small native
+  `<select>` in the top-left corner when shown as the focused
+  parent (`viewRole === "asParent"`); changing it dispatches the
+  long-existing `computation-kind-change` event, which `main.ts`
+  routes to `EditNodeService.editFields` end-to-end. The picker
+  stays hidden on child tiles in the treemap grid (parity with the
+  v3 inline-edit pattern: heavy affordances live on the parent
+  strip, child tiles stay read-only). `<node-view>` now forwards
+  `viewRole` to the rendered per-kind tag so kinds that share the
+  same tag across roles (Computed* per the registry) can gate
+  role-specific affordances. Operators get one-tap strategy swaps
+  for everyday tuning, with the full edit modal still available
+  via the pencil button for combined edits.
 - **Computed Business Score Card editing in the Edit-Node modal**
   (§17.94 / §17.95). The combined edit form closes the third v5
   round-7 surface gap on the edit side. It surfaces the BSC ladder

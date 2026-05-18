@@ -74,12 +74,15 @@
 import { LitElement, html, css, nothing, type TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
+import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
+import { COMPUTATION_KIND_LABELS } from "../../modal/AddChildModal.js";
 import type {
   BusinessScoreCardObjectiveViewModel,
   ComputationKindName,
   ComputedBusinessScoreNodeViewModel,
   ComputedNodeViewModel,
   ComputedValueViewModel,
+  NodeRole,
   TrendArrowDirection,
 } from "../NodeViewModel.js";
 import { formatAge } from "../ageFormat.js";
@@ -89,6 +92,41 @@ import { tileLayoutStyles } from "../tileLayoutStyles.js";
 /** SPEC §17.104 — custom event name + payload shape. Retained for the §17.116-followup modal wiring. */
 export const COMPUTATION_KIND_CHANGE_EVENT = "computation-kind-change";
 export type ComputationKindChangeDetail = { readonly nodeId: string; readonly newKind: ComputationKindName };
+
+/**
+ * SPEC §17.104 / §17.116-followup — inline strategy picker dispatched
+ * from the focused-panel Computed* tile (`viewRole === "asParent"`).
+ * One-tap swap without opening `<edit-node-modal>` — the picker fires
+ * the `computation-kind-change` event with `{ nodeId, newKind }`,
+ * already wired in `main.ts` to `EditNodeService.editFields` via the
+ * `computedKindFor` discriminator. The shared `COMPUTATION_KIND_LABELS`
+ * map from `AddChildModal.ts` keeps the friendly labels identical to
+ * the modal's strategy dropdown (operator sees the same labels in
+ * both surfaces).
+ */
+function renderStrategyPicker(
+  hostNodeId: string,
+  currentKind: ComputationKindName,
+  onChange: (next: ComputationKindName) => void,
+): TemplateResult {
+  return html`<div class="strategy-picker" data-testid="strategy-picker">
+    <select
+      data-testid="strategy-select"
+      data-node-id=${hostNodeId}
+      .value=${currentKind}
+      @change=${(e: Event) => {
+        const target = e.target as HTMLSelectElement;
+        onChange(target.value as ComputationKindName);
+      }}
+    >
+      ${ComputationKind.ALL.map(
+        (k) => html`<option value=${k.name} ?selected=${k.name === currentKind}>
+          ${COMPUTATION_KIND_LABELS[k.name] ?? k.name}
+        </option>`,
+      )}
+    </select>
+  </div>`;
+}
 
 const sharedStyles = css`
   /* SPEC §17.116 — Σ prefix in the title row. Sized at ~0.85em of
@@ -105,6 +143,23 @@ const sharedStyles = css`
      absolute .timestamp (declared on tileLayoutStyles) anchors to
      the pane's edges, mirroring the v3 BSC asParent layout. */
   .metric-pane { position: relative; }
+  /* SPEC §17.104 / §17.116-followup — inline strategy picker on the
+     focused-panel tile. Pinned to the top-left so it never overlaps
+     the §17.116 corner timestamp (which lives bottom-right via
+     tileLayoutStyles). Sized at ~0.75rem to read as a tooling
+     affordance, not a primary value. */
+  .strategy-picker {
+    position: absolute;
+    top: 0.4rem;
+    left: 0.4rem;
+    z-index: 2;
+  }
+  .strategy-picker select {
+    font: inherit;
+    font-size: 0.75rem;
+    padding: 0.1rem 0.2rem;
+    border-radius: 0.25rem;
+  }
 `;
 
 /**
@@ -286,13 +341,40 @@ export class ComputedCard extends LitElement {
   @property({ attribute: false })
   vm: ComputedNodeViewModel | null = null;
 
+  /**
+   * SPEC §17.104 / §17.116-followup — forwarded by `<node-view>` so
+   * the inline strategy picker only renders on the focused-panel
+   * tile (`asParent`), not on every child tile in the treemap grid.
+   * Defaults to `asChild` so a bare mount (e.g. unit tests that
+   * don't set the property) stays read-only and the picker stays
+   * hidden. Lit's `@property` declaration makes the read reactive
+   * so a runtime role swap re-renders the picker conditionally.
+   */
+  @property({ attribute: "view-role", reflect: true })
+  viewRole: NodeRole = "asChild";
+
   static readonly styles = [tileLayoutStyles, sharedStyles];
+
+  private readonly dispatchKindChange = (newKind: ComputationKindName): void => {
+    if (!this.vm) return;
+    this.dispatchEvent(
+      new CustomEvent<ComputationKindChangeDetail>(COMPUTATION_KIND_CHANGE_EVENT, {
+        bubbles: true,
+        composed: true,
+        detail: { nodeId: this.vm.id, newKind },
+      }),
+    );
+  };
 
   render(): TemplateResult {
     if (!this.vm) return html``;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
+    const showPicker = this.viewRole === "asParent";
     return html`
+      ${showPicker
+        ? renderStrategyPicker(this.vm.id, this.vm.computationKind, this.dispatchKindChange)
+        : nothing}
       ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedNode", showBadge)}
       ${canCompute
         ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>)
@@ -306,14 +388,33 @@ export class ComputedBusinessScoreCard extends LitElement {
   @property({ attribute: false })
   vm: ComputedBusinessScoreNodeViewModel | null = null;
 
+  /** SPEC §17.104 / §17.116-followup — see `ComputedCard.viewRole`. */
+  @property({ attribute: "view-role", reflect: true })
+  viewRole: NodeRole = "asChild";
+
   static readonly styles = [tileLayoutStyles, sharedStyles, cbsnHostStyles];
+
+  private readonly dispatchKindChange = (newKind: ComputationKindName): void => {
+    if (!this.vm) return;
+    this.dispatchEvent(
+      new CustomEvent<ComputationKindChangeDetail>(COMPUTATION_KIND_CHANGE_EVENT, {
+        bubbles: true,
+        composed: true,
+        detail: { nodeId: this.vm.id, newKind },
+      }),
+    );
+  };
 
   render(): TemplateResult {
     if (!this.vm) return html``;
     const { dateIso, dateColor, objective } = this.vm;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
+    const showPicker = this.viewRole === "asParent";
     return html`
+      ${showPicker
+        ? renderStrategyPicker(this.vm.id, this.vm.computationKind, this.dispatchKindChange)
+        : nothing}
       ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedBusinessScoreNode", showBadge)}
       <div class="metric-pane" data-testid="metric-pane">
         ${canCompute ? renderTimestamp(dateIso, dateColor) : nothing}

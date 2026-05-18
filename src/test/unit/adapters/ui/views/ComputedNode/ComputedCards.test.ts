@@ -236,3 +236,95 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(cssText).toMatch(/\.value-area\s*\{\s*height:\s*100%\s*;?\s*\}/);
   });
 });
+
+/**
+ * Inline strategy picker (SPEC §17.104 / §17.116-followup).
+ *
+ * The picker is the operator's one-tap surface for swapping the
+ * `ComputationKind` of a focused-panel Computed* tile. It re-instates
+ * the `computation-kind-change` dispatcher that was retired at
+ * §17.116-followup-2 (when no UI fired the event any more); main.ts's
+ * existing handler already routes the event to `EditNodeService
+ * .editFields`. Visibility is gated on `viewRole === "asParent"` so
+ * the picker only appears on the focused parent strip and never on
+ * the grid-of-children tiles.
+ */
+describe("<computed-card> + <computed-business-score-card> inline strategy picker (§17.104 / §17.116-followup)", () => {
+  it("renders the picker only when viewRole === 'asParent'; defaults to hidden (asChild)", async () => {
+    const childEl = await mountLitElement<ComputedCard>("computed-card", (e) => {
+      e.vm = computedVm({ kind: "numeric", value: 42, unit: "" }, "SUM");
+    });
+    expect(
+      childEl.shadowRoot?.querySelector('[data-testid="strategy-picker"]'),
+    ).toBeNull();
+    const parentEl = await mountLitElement<ComputedCard>("computed-card", (e) => {
+      e.vm = computedVm({ kind: "numeric", value: 42, unit: "" }, "SUM");
+      e.viewRole = "asParent";
+    });
+    expect(
+      parentEl.shadowRoot?.querySelector('[data-testid="strategy-picker"]'),
+    ).not.toBeNull();
+  });
+
+  it("the parent-mode picker pre-selects the VM's current strategy and lists every ComputationKind.ALL inhabitant", async () => {
+    const el = await mountLitElement<ComputedCard>("computed-card", (e) => {
+      e.vm = computedVm({ kind: "numeric", value: 42, unit: "" }, "WEIGHTED_AVERAGE");
+      e.viewRole = "asParent";
+    });
+    const select = el.shadowRoot!.querySelector<HTMLSelectElement>(
+      '[data-testid="strategy-select"]',
+    );
+    if (!select) throw new Error("expected strategy-select");
+    expect(select.value).toBe("WEIGHTED_AVERAGE");
+    const names = Array.from(select.options).map((o) => o.value);
+    expect(names).toEqual([
+      "SUM",
+      "AVERAGE",
+      "MIN",
+      "MAX",
+      "WEIGHTED_AVERAGE",
+      "COUNT",
+    ]);
+  });
+
+  it("a change on the picker dispatches a bubbling, composed COMPUTATION_KIND_CHANGE_EVENT with { nodeId, newKind }", async () => {
+    const el = await mountLitElement<ComputedCard>("computed-card", (e) => {
+      e.vm = computedVm({ kind: "numeric", value: 42, unit: "" }, "SUM");
+      e.viewRole = "asParent";
+    });
+    const received: ComputationKindChangeDetail[] = [];
+    el.addEventListener(COMPUTATION_KIND_CHANGE_EVENT, (ev) => {
+      received.push((ev as CustomEvent<ComputationKindChangeDetail>).detail);
+    });
+    const select = el.shadowRoot!.querySelector<HTMLSelectElement>(
+      '[data-testid="strategy-select"]',
+    );
+    if (!select) throw new Error("expected strategy-select");
+    select.value = "MAX";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    await el.updateComplete;
+    expect(received).toEqual([{ nodeId: "c-1", newKind: "MAX" }]);
+  });
+
+  it("the ComputedBusinessScoreCard parent-mode picker fires the same event with the CBSN's id", async () => {
+    const el = await mountLitElement<ComputedBusinessScoreCard>(
+      "computed-business-score-card",
+      (e) => {
+        e.vm = cbsnVm({ kind: "numeric", value: 42, unit: "" }, "MIN");
+        e.viewRole = "asParent";
+      },
+    );
+    const received: ComputationKindChangeDetail[] = [];
+    el.addEventListener(COMPUTATION_KIND_CHANGE_EVENT, (ev) => {
+      received.push((ev as CustomEvent<ComputationKindChangeDetail>).detail);
+    });
+    const select = el.shadowRoot!.querySelector<HTMLSelectElement>(
+      '[data-testid="strategy-select"]',
+    );
+    if (!select) throw new Error("expected strategy-select");
+    select.value = "AVERAGE";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    await el.updateComplete;
+    expect(received).toEqual([{ nodeId: "cbsn-1", newKind: "AVERAGE" }]);
+  });
+});
