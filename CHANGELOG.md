@@ -14,7 +14,28 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
-## [0.3.0] — 2026-05-18
+### Added
+
+- **E2E coverage for the Strict Range Add-Child flow** (§17.121 —
+  follow-up to §17.77 / §17.94). `add_child_modal.feature` gains
+  three new scenarios: picking **Strict Range** reveals the
+  range-min + range-max + current-value + as-of fields and
+  suppresses the BSC's unit + objective rows; swapping from a
+  Business Score Card to Strict Range hot-swaps the form pane
+  without closing the modal; confirming a valid `[0, 100]` range
+  with seed `42` appends the child and closes the modal with the
+  focused id unchanged. The pre-existing **catalogue scenario**
+  is brought back in sync with master — the kind-count assertion
+  is bumped `3 → 8` and five new `the modal offers a "<Kind>" kind`
+  rows cover Strict Range / Computed / Computed Business Score
+  Card / Picture / URL (the catalogue grew through §17.95 /
+  §17.118 / §17.119 / §17.120 but the e2e was left behind, so a
+  hypothetical e2e run on master had been failing on the count
+  assertion). The `the modal offers a "X" kind` step is tightened
+  from a `startsWith(label)` substring match against the button's
+  full innerText to a strict-equality check against the
+  `.kind-btn-name` element so "Computed" no longer ambiguously
+  matches "Computed Business Score Card" too.
 
 ### Changed
 
