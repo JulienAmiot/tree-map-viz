@@ -14,6 +14,8 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-05-18
+
 ### Changed
 
 - **v5 round-7 class diagram refreshed for the §17.117 / §17.119 /
@@ -174,6 +176,7 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   value for the field; signals **pre-release** while the v3 → v4
   migration is still in flight.
 
-[Unreleased]: https://github.com/JulienAmiot/tree-map-viz/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/JulienAmiot/tree-map-viz/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/JulienAmiot/tree-map-viz/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/JulienAmiot/tree-map-viz/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/JulienAmiot/tree-map-viz/releases/tag/v0.1.0
