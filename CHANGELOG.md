@@ -25,6 +25,19 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   seed observation (current value + as-of date). Out-of-range seed
   values are rejected by the domain (`StrictRange.requireValue`) and
   surfaced through the modal's existing error path.
+- **Computed card kind in the Add-Child modal** (§17.94 / §17.95). The
+  derived-value roll-up kind is now reachable from the kiosk catalogue.
+  Operators pick a strategy (**Sum**, **Average**, **Min**, **Max**,
+  **Weighted Average**, or **Count**) from a native dropdown that lists
+  every `ComputationKind` inhabitant with friendly labels (e.g. "Sum (Σ
+  children)"); the current value is computed from the node's eligible
+  children, no seed observation required.
+- **Computed Business Score Card kind in the Add-Child modal** (§17.94 /
+  §17.95). The scored-derived-metric kind closes the third v5 round-7
+  surface gap. The form combines the BSC's unit + target objective rows
+  with the Computed roll-up's strategy dropdown — the value rolls up
+  from eligible children while still rendering against an objective bar
+  on the kiosk tile.
 
 ### Removed
 
@@ -32,11 +45,10 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   from the Business Score Card forms in both `<add-child-modal>` and
   `<edit-node-modal>` (§17.99b / §17.99c follow-up). The v3-era flags
   were no-ops since round-7: a "computed BSC" is now created by picking
-  a dedicated computed kind from the catalogue (`ComputedBusinessScore`
-  lands in a follow-up strand) and per-node eligibility is the
-  `disabled` flag owned by the edit modal. No operator action required;
-  pre-existing BSC nodes keep their effective behaviour through the
-  v3 → v4 bridge.
+  a dedicated **Computed Business Score Card** kind from the catalogue
+  (see above), and per-node eligibility is the `disabled` flag owned by
+  the edit modal. No operator action required; pre-existing BSC nodes
+  keep their effective behaviour through the v3 → v4 bridge.
 
 ## [0.2.0] — 2026-05-14
 
