@@ -355,7 +355,7 @@ export class ComputedCard extends LitElement {
 
   static readonly styles = [tileLayoutStyles, sharedStyles];
 
-  private dispatchKindChange = (newKind: ComputationKindName): void => {
+  private readonly dispatchKindChange = (newKind: ComputationKindName): void => {
     if (!this.vm) return;
     this.dispatchEvent(
       new CustomEvent<ComputationKindChangeDetail>(COMPUTATION_KIND_CHANGE_EVENT, {
@@ -394,7 +394,7 @@ export class ComputedBusinessScoreCard extends LitElement {
 
   static readonly styles = [tileLayoutStyles, sharedStyles, cbsnHostStyles];
 
-  private dispatchKindChange = (newKind: ComputationKindName): void => {
+  private readonly dispatchKindChange = (newKind: ComputationKindName): void => {
     if (!this.vm) return;
     this.dispatchEvent(
       new CustomEvent<ComputationKindChangeDetail>(COMPUTATION_KIND_CHANGE_EVENT, {
