@@ -14,6 +14,7 @@ import { LenientRange, StrictRange } from "../domain/values/Range.js";
 import { Timestamp } from "../domain/values/Timestamp.js";
 import { Unit } from "../domain/values/Unit.js";
 import { Weight } from "../domain/values/Weight.js";
+import { DEFAULT_WORKFLOW_STATUSES } from "../domain/values/WorkflowStatus.js";
 
 /**
  * §17.109 — v4 successor to v3's §17.21 `buildShowcaseTree` /
@@ -190,5 +191,9 @@ export function buildShowcaseBoard(clock: Clock, now: Date = new Date()): Board 
     id: SHOWCASE_BOARD_ID,
     name: SHOWCASE_BOARD_NAME,
     tree: buildShowcaseTree(clock, now),
+    // §17.117 — every Board carries a workflow-status table; the
+    // showcase board adopts the PDCA defaults so the operator sees
+    // working WorkflowNode tiles immediately after a kiosk reset.
+    workflowStatuses: DEFAULT_WORKFLOW_STATUSES,
   };
 }

@@ -75,6 +75,9 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
+import type { WorkflowStatus } from "../../../domain/values/WorkflowStatus.js";
+import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
+
 import {
   modalFrameStyles,
   renderModalCloseX,
@@ -104,6 +107,12 @@ export type EditNodeModalPayload =
       readonly kind: "TextNode";
       readonly title?: string;
       readonly weight?: number;
+    }
+  | {
+      readonly kind: "Workflow";
+      readonly title?: string;
+      readonly weight?: number;
+      readonly statusId?: string;
     }
   | {
       readonly kind: "BusinessScoreCardNode";
@@ -147,6 +156,13 @@ export type EditNodeTarget =
     }
   | {
       readonly nodeId: string;
+      readonly kind: "Workflow";
+      readonly title: string;
+      readonly weight: number;
+      readonly statusId: string;
+    }
+  | {
+      readonly nodeId: string;
       readonly kind: "BusinessScoreCardNode";
       readonly title: string;
       readonly description: string;
@@ -176,6 +192,7 @@ export type EditNodeConfirmDetail = {
 
 const KIND_LABELS: Record<EditNodeTarget["kind"], string> = {
   TextNode: "Text",
+  Workflow: "Workflow",
   BusinessScoreCardNode: "Business Score Card",
   PictureNode: "Picture",
 };
@@ -193,6 +210,23 @@ export class EditNodeModal extends LitElement {
   /** Free-form error rendered inline as `data-error` on the form. */
   @property({ attribute: false })
   errorMessage: string | null = null;
+
+  /**
+   * Catalogue of workflow statuses offered by the `Workflow` form
+   * (SPEC §17.118), sourced from `Board.workflowStatuses`. The
+   * composition root sets this whenever the active board changes so
+   * the status dropdown always reflects the current board's table.
+   *
+   * Defaulted to {@link DEFAULT_WORKFLOW_STATUSES} so unit tests that
+   * mount the modal in isolation still render a usable Workflow form
+   * without the caller having to mirror the seed. If the active board's
+   * table doesn't include the target node's current `statusId`, the
+   * dropdown still displays the orphan id verbatim (selected) so the
+   * operator can swap it for a known status — they can't accidentally
+   * lose the orphan reference by opening the modal.
+   */
+  @property({ attribute: false })
+  workflowStatuses: readonly WorkflowStatus[] = DEFAULT_WORKFLOW_STATUSES;
 
   // SPEC §17.50 -- the modal no longer carries a title field. Title is
   // edited inline from the focused-panel strip (the §17.28 click-to-edit
@@ -228,6 +262,10 @@ export class EditNodeModal extends LitElement {
   /** SPEC §17.119 — image URL for the Picture kind. Seeded from `target.imageUrl`. */
   @state()
   private imageUrl = "";
+
+  /** Currently selected `WorkflowStatus.id` for the Workflow form (SPEC §17.118). */
+  @state()
+  private statusId = "";
 
   /**
    * Layout-specific styles layered on top of the shared `modalFrameStyles`
@@ -304,7 +342,8 @@ export class EditNodeModal extends LitElement {
       min-width: 0;
     }
     input,
-    textarea {
+    textarea,
+    select {
       box-sizing: border-box;
       width: 100%;
       padding: 0.55rem 0.7rem;
@@ -315,7 +354,8 @@ export class EditNodeModal extends LitElement {
       font: inherit;
     }
     input:focus,
-    textarea:focus {
+    textarea:focus,
+    select:focus {
       outline: none;
       border-color: color-mix(in srgb, currentColor 55%, transparent);
       background: color-mix(in srgb, currentColor 8%, transparent);
@@ -324,6 +364,15 @@ export class EditNodeModal extends LitElement {
     textarea::placeholder {
       color: color-mix(in srgb, currentColor 50%, transparent);
       font-style: italic;
+    }
+    /* §17.118 -- keep the native dropdown legible on both light and dark
+       backgrounds. Mirrors the add-child-modal select rule. */
+    select {
+      color-scheme: light dark;
+      appearance: auto;
+    }
+    select option {
+      color: black;
     }
     .weight-control {
       display: flex;
@@ -453,6 +502,7 @@ export class EditNodeModal extends LitElement {
     const target = this.editTarget!;
     const isBsc = target.kind === "BusinessScoreCardNode";
     const isPicture = target.kind === "PictureNode";
+    const isWorkflow = target.kind === "Workflow";
     return html`
       <form
         data-testid="edit-modal-form"
@@ -461,6 +511,7 @@ export class EditNodeModal extends LitElement {
         @submit=${this.handleSubmit}
       >
         ${isBsc ? this.renderDescriptionField() : nothing}
+        ${isWorkflow ? this.renderWorkflowStatusField() : nothing}
         <div class="field-row" data-testid="weight-row">
           <div class="field">
             <div class="weight-control" data-testid="weight-control">
@@ -530,6 +581,44 @@ export class EditNodeModal extends LitElement {
           .value=${this.description}
           @input=${(e: Event) => this.bindString(e, "description")}
         ></textarea>
+      </div>
+    `;
+  }
+
+  /**
+   * SPEC §17.118 — Workflow status dropdown. Defends against an orphan
+   * `statusId` (board's status table was trimmed after the node was
+   * created): if the current pick isn't in `workflowStatuses`, the
+   * dropdown still shows it as the leading option (rendered verbatim
+   * with a "— missing" tail) so the operator can see the orphan and
+   * choose a replacement; selecting any known status will overwrite
+   * it on Confirm.
+   */
+  private renderWorkflowStatusField() {
+    const known = this.workflowStatuses.some((s) => s.id === this.statusId);
+    return html`
+      <div class="field">
+        <select
+          data-testid="field-status"
+          required
+          .value=${this.statusId}
+          @change=${(e: Event) => this.bindString(e, "statusId")}
+        >
+          ${!known && this.statusId !== ""
+            ? html`
+                <option value=${this.statusId} selected>
+                  ${this.statusId} — missing
+                </option>
+              `
+            : nothing}
+          ${this.workflowStatuses.map(
+            (s) => html`
+              <option value=${s.id} ?selected=${s.id === this.statusId}>
+                ${s.label}
+              </option>
+            `,
+          )}
+        </select>
       </div>
     `;
   }
@@ -696,6 +785,23 @@ export class EditNodeModal extends LitElement {
         imageUrl,
       };
     }
+    // SPEC §17.118 — Workflow shares the TextNode edit shape (weight)
+    // and adds an optional `statusId` swap. The service treats
+    // `undefined` as "no change", so the payload omits `statusId` when
+    // the operator hasn't touched the dropdown or when the field is
+    // empty. An orphan `statusId` (board's status table no longer
+    // contains the id) is still acceptable — the field renders it
+    // verbatim, the operator can replace it, and the service applies
+    // whatever lands in the payload (the application layer is the
+    // authority on validity).
+    if (this.editTarget.kind === "Workflow") {
+      const trimmed = this.statusId.trim();
+      return {
+        kind: "Workflow",
+        ...(weight === undefined || Number.isNaN(weight) ? {} : { weight }),
+        ...(trimmed === "" ? {} : { statusId: trimmed }),
+      };
+    }
     // BusinessScoreCardNode branch — unit + objective fields are
     // mandatory (mirroring the add-child contract); description stays
     // optional. computed / eligibleForParentComputation are checkboxes,
@@ -740,9 +846,10 @@ export class EditNodeModal extends LitElement {
       | "initialValue"
       | "targetValue"
       | "targetDate"
-      | "imageUrl",
+      | "imageUrl"
+      | "statusId",
   ): void {
-    const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+    const target = e.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
     this[field] = target.value;
   }
 
@@ -774,6 +881,7 @@ export class EditNodeModal extends LitElement {
       this.computed = false;
       this.eligibleForParentComputation = true;
       this.imageUrl = "";
+      this.statusId = "";
       return;
     }
     if (target.kind === "PictureNode") {
@@ -788,8 +896,26 @@ export class EditNodeModal extends LitElement {
       this.computed = false;
       this.eligibleForParentComputation = true;
       this.imageUrl = target.imageUrl;
+      this.statusId = "";
       return;
     }
+    // SPEC §17.118 — Workflow seeds the status dropdown with the
+    // node's current `statusId`. If the active board's `workflowStatuses`
+    // catalogue no longer contains that id (orphan reference), the
+    // render path surfaces it verbatim so the operator can replace it.
+    if (target.kind === "Workflow") {
+      this.description = "";
+      this.unit = "";
+      this.initialValue = "";
+      this.targetValue = "";
+      this.targetDate = "";
+      this.computed = false;
+      this.eligibleForParentComputation = true;
+      this.imageUrl = "";
+      this.statusId = target.statusId;
+      return;
+    }
+    this.statusId = "";
     this.description = target.description;
     this.unit = target.unit;
     this.initialValue = String(target.objective.initialValue);

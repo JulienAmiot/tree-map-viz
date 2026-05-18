@@ -9,6 +9,7 @@ import type { Node } from "../domain/nodes/Node.js";
 import { PictureNode } from "../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../domain/nodes/TextNode.js";
+import { WorkflowNode } from "../domain/nodes/WorkflowNode.js";
 import type { CardRegistry } from "../domain/Tree.js";
 import { Objective } from "../domain/values/Objective.js";
 import { Timestamp } from "../domain/values/Timestamp.js";
@@ -42,8 +43,10 @@ type ComputedEdit = { readonly computationKind?: ComputationKind };
  * so undo restores the prior image alongside everything else.
  */
 type PictureEdit = { readonly imageUrl?: string };
+type WorkflowEdit = { readonly statusId?: string };
 export type EditNodePayload =
   | (CommonEdit & { readonly kind: "TextNode" })
+  | (CommonEdit & WorkflowEdit & { readonly kind: "Workflow" })
   | (CommonEdit & BSEdit & { readonly kind: "BusinessScore" })
   | (CommonEdit & { readonly kind: "StrictRange" })
   | (CommonEdit & ComputedEdit & { readonly kind: "Computed" })
@@ -107,6 +110,9 @@ export class EditNodeService {
       }
       if (payload.kind === "Picture") {
         EditNodeService.applyPictureEdits(node as PictureNode, payload, undos);
+      }
+      if (payload.kind === "Workflow") {
+        EditNodeService.applyWorkflowEdits(node as WorkflowNode, payload, undos);
       }
     } catch (error) {
       return { undo, error };
@@ -191,7 +197,35 @@ export class EditNodeService {
     }
   }
 
+  /**
+   * §17.117 — WorkflowNode statusId is a board-table reference; the
+   * undo restores the prior id so a persister failure does not
+   * leave the node pointing at the new status. The id-validation
+   * `WorkflowNode.setStatusId` performs is the trim + non-empty guard
+   * the domain layer enforces — referential validity against the
+   * focused board's table is intentionally NOT checked here. The
+   * service has no port into `BoardCollectionService`, and a board-
+   * level garbage-collection pass belongs to the future settings
+   * strand (orphaned ids surface in the VM mapper as a neutral
+   * grey fallback rather than rejecting the edit outright).
+   */
+  private static applyWorkflowEdits(
+    wf: WorkflowNode,
+    payload: WorkflowEdit,
+    undos: Array<() => void>,
+  ): void {
+    if (payload.statusId !== undefined) {
+      const prev = wf.statusId;
+      wf.setStatusId(payload.statusId);
+      undos.push(() => wf.setStatusId(prev));
+    }
+  }
+
   private static applyAppendValue(node: Node, value: string | number, asOf: Timestamp): () => void {
+    // §17.117 — WorkflowNode IS-A TextNode, so the existing
+    // `instanceof TextNode + string value` branch already covers it.
+    // No new branch needed; the inline-edit-value path uses the same
+    // contract for both kinds.
     if (node instanceof TextNode && typeof value === "string") {
       node.addValue(asOf, value);
       return () => node.removeValue(asOf);
@@ -212,6 +246,7 @@ export class EditNodeService {
   private static classFor(kind: EditNodePayload["kind"]): new (...args: never[]) => Node {
     switch (kind) {
       case "TextNode": return TextNode;
+      case "Workflow": return WorkflowNode;
       case "BusinessScore": return BusinessScoreNode;
       case "StrictRange": return StrictRangeNode;
       case "Computed": return ComputedNode;

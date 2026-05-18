@@ -18,8 +18,10 @@ import type { Node } from "../../../domain/nodes/Node.js";
 import { PictureNode } from "../../../domain/nodes/PictureNode.js";
 import { RangedValueNode } from "../../../domain/nodes/RangedValueNode.js";
 import { TextNode } from "../../../domain/nodes/TextNode.js";
+import { WorkflowNode } from "../../../domain/nodes/WorkflowNode.js";
 import type { CardRegistry } from "../../../domain/Tree.js";
 import { Tree } from "../../../domain/Tree.js";
+import type { WorkflowStatus } from "../../../domain/values/WorkflowStatus.js";
 
 import { dateAgeColor } from "./dateAgeColor.js";
 import type {
@@ -33,6 +35,7 @@ import type {
   FocusedTreeViewModel,
   NodeViewModel,
   PictureNodeViewModel,
+  WorkflowNodeViewModel,
 } from "./NodeViewModel.js";
 
 /**
@@ -94,12 +97,26 @@ export interface MapToViewModelOptions {
    * fall back to the legacy getter. Defaults to an empty registry.
    */
   readonly cards?: CardRegistry;
+  /**
+   * §17.117 — board-level workflow-status lookup table. Used by the
+   * `WorkflowNode` branch to resolve `statusId` → `{ label, color }`
+   * baked into the VM. Missing / empty falls back to a single neutral
+   * grey entry — the mapper never throws on an unknown id, it paints
+   * a `{ label: id.toUpperCase(), color: <muted-grey> }` placeholder.
+   */
+  readonly workflowStatuses?: readonly WorkflowStatus[];
 }
 
 export function mapNodeToViewModel(
   node: Node,
   options: MapToViewModelOptions = {},
 ): NodeViewModel {
+  // §17.117 — `WorkflowNode extends TextNode` (sibling-by-extension),
+  // so the more-specific kind MUST be checked first. Identical
+  // discipline to the §17.106 codec's `encodeNode` instanceof order.
+  if (node instanceof WorkflowNode) {
+    return mapWorkflowNode(node, options);
+  }
   if (node instanceof TextNode) {
     return mapTextNode(node, options);
   }
@@ -145,6 +162,43 @@ function mapTextNode(
       dateIso,
       dateColor: dateIso ? colorFor(dateIso, options) : "",
     },
+  };
+}
+
+/**
+ * §17.117 — WorkflowNode VM. Same value / date / dateColor shape as
+ * the §17.27 TextNode branch (`WorkflowNode extends TextNode`) +
+ * a baked `{ id, label, color }` status object resolved against
+ * `options.workflowStatuses`. Missing-id fallback paints a muted-grey
+ * placeholder badge with the orphan id uppercased — never throws.
+ */
+const ORPHAN_STATUS_COLOR = "rgb(150, 150, 150)";
+
+function mapWorkflowNode(
+  node: WorkflowNode,
+  options: MapToViewModelOptions,
+): WorkflowNodeViewModel {
+  const latest = node.entries().at(-1);
+  const dateIso = latest?.asOf.moment.toISOString() ?? "";
+  const statuses = options.workflowStatuses ?? [];
+  const resolved = statuses.find((s) => s.id === node.statusId);
+  const status = resolved
+    ? { id: resolved.id, label: resolved.label, color: resolved.color }
+    : {
+        id: node.statusId,
+        label: node.statusId.toUpperCase(),
+        color: ORPHAN_STATUS_COLOR,
+      };
+  return {
+    kind: "WorkflowNode",
+    id: node.id,
+    title: node.title,
+    value: {
+      text: latest?.value ?? "",
+      dateIso,
+      dateColor: dateIso ? colorFor(dateIso, options) : "",
+    },
+    status,
   };
 }
 

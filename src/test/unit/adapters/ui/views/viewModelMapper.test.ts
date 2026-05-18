@@ -15,12 +15,14 @@ import { Node } from "../../../../../domain/nodes/Node.js";
 import { PictureNode } from "../../../../../domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "../../../../../domain/nodes/StrictRangeNode.js";
 import { TextNode } from "../../../../../domain/nodes/TextNode.js";
+import { WorkflowNode } from "../../../../../domain/nodes/WorkflowNode.js";
 import { NumericComparator } from "../../../../../domain/values/Comparator.js";
 import { Objective } from "../../../../../domain/values/Objective.js";
 import { LenientRange, StrictRange } from "../../../../../domain/values/Range.js";
 import { Timestamp } from "../../../../../domain/values/Timestamp.js";
 import { Unit } from "../../../../../domain/values/Unit.js";
 import { Weight } from "../../../../../domain/values/Weight.js";
+import { WorkflowStatus } from "../../../../../domain/values/WorkflowStatus.js";
 
 const T = (iso: string): Timestamp => Timestamp.of(new Date(iso));
 const NOW = new Date("2026-05-11T10:00:00Z");
@@ -72,6 +74,33 @@ const buildText = (
   return node;
 };
 
+const buildWorkflow = (
+  id: string,
+  options: {
+    title?: string;
+    weight?: number;
+    statusId?: string;
+    history?: [string, string][];
+  } = {},
+): WorkflowNode => {
+  const node = new WorkflowNode(
+    id,
+    options.title ?? id,
+    w(options.weight ?? 1),
+    clock,
+    options.statusId ?? "plan",
+  );
+  for (const [iso, v] of options.history ?? []) node.addValue(T(iso), v);
+  return node;
+};
+
+const STATUSES = [
+  WorkflowStatus.of("plan", "PLAN", "rgb(161, 161, 170)"),
+  WorkflowStatus.of("do", "DO", "rgb(59, 130, 246)"),
+  WorkflowStatus.of("check", "CHECK", "rgb(34, 197, 94)"),
+  WorkflowStatus.of("act", "ACT", "rgb(239, 68, 68)"),
+];
+
 describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)", () => {
   describe("mapNodeToViewModel — TextNode branch", () => {
     it("maps id/title and the latest history entry's value + ISO date", () => {
@@ -104,6 +133,61 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       const vm = mapNodeToViewModel(text, { now: NOW });
       if (vm.kind !== "TextNode") throw new Error("expected TextNode");
       expect(vm.value.dateColor).toMatch(/^rgb\(/);
+    });
+  });
+
+  describe("mapNodeToViewModel — WorkflowNode branch (§17.117)", () => {
+    it("emits kind=\"WorkflowNode\" with the value / dateIso / dateColor mirroring the TextNode branch AND the status object resolved against options.workflowStatuses", () => {
+      const wf = buildWorkflow("w", {
+        statusId: "do",
+        history: [["2026-04-01T00:00:00Z", "ready for review"]],
+      });
+      const vm = mapNodeToViewModel(wf, { workflowStatuses: STATUSES, now: NOW });
+      expect(vm).toMatchObject({
+        kind: "WorkflowNode",
+        id: "w",
+        value: { text: "ready for review", dateIso: "2026-04-01T00:00:00.000Z" },
+        status: { id: "do", label: "DO", color: "rgb(59, 130, 246)" },
+      });
+      if (vm.kind !== "WorkflowNode") throw new Error("expected WorkflowNode");
+      expect(vm.value.dateColor).toMatch(/^rgb\(/);
+    });
+
+    it("WorkflowNode wins over the generic TextNode branch (instanceof order matters; the more-specific kind paints the VM)", () => {
+      const wf = buildWorkflow("w");
+      const vm = mapNodeToViewModel(wf, { workflowStatuses: STATUSES });
+      expect(vm.kind).toBe("WorkflowNode");
+      // Defensive: a plain TextNode in the same tree still maps to
+      // the TextNode branch (siblings, not subsumed).
+      const tn = buildText("t");
+      expect(mapNodeToViewModel(tn, { workflowStatuses: STATUSES }).kind).toBe("TextNode");
+    });
+
+    it("orphan statusId (id not in the workflow-status table) falls back to a muted-grey placeholder badge with the id uppercased — does NOT throw", () => {
+      const wf = buildWorkflow("w", { statusId: "ghost" });
+      const vm = mapNodeToViewModel(wf, { workflowStatuses: STATUSES });
+      if (vm.kind !== "WorkflowNode") throw new Error("expected WorkflowNode");
+      expect(vm.status).toEqual({
+        id: "ghost",
+        label: "GHOST",
+        color: "rgb(150, 150, 150)",
+      });
+    });
+
+    it("missing options.workflowStatuses (e.g. unit fixture forgot to pass it) treats every id as orphan rather than throwing", () => {
+      const wf = buildWorkflow("w", { statusId: "plan" });
+      const vm = mapNodeToViewModel(wf);
+      if (vm.kind !== "WorkflowNode") throw new Error("expected WorkflowNode");
+      expect(vm.status.color).toBe("rgb(150, 150, 150)");
+      expect(vm.status.label).toBe("PLAN");
+    });
+
+    it("empty history → empty text + empty dateIso + empty dateColor (same defensive contract as TextNode)", () => {
+      const vm = mapNodeToViewModel(buildWorkflow("w"), { workflowStatuses: STATUSES });
+      expect(vm).toMatchObject({
+        kind: "WorkflowNode",
+        value: { text: "", dateIso: "", dateColor: "" },
+      });
     });
   });
 

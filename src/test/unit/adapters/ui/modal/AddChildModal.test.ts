@@ -100,6 +100,24 @@ async function pickBsc(el: AddChildModal): Promise<void> {
   await pickKind(el, "BusinessScoreCardNode");
 }
 
+async function pickWorkflow(el: AddChildModal): Promise<void> {
+  await pickKind(el, "Workflow");
+}
+
+async function setSelect(
+  el: AddChildModal,
+  testid: string,
+  value: string,
+): Promise<void> {
+  const f = el.shadowRoot?.querySelector<HTMLSelectElement>(
+    `[data-testid="${testid}"]`,
+  );
+  if (!f) throw new Error(`expected select [${testid}]`);
+  f.value = value;
+  f.dispatchEvent(new Event("change", { bubbles: true }));
+  await el.updateComplete;
+}
+
 describe("<add-child-modal>", () => {
   it("renders nothing in the body when open=false (no backdrop, no panel)", async () => {
     const el = await mountLitElement<AddChildModal>("add-child-modal");
@@ -128,11 +146,15 @@ describe("<add-child-modal>", () => {
     const buttons = list.querySelectorAll<HTMLButtonElement>(
       '[data-testid="kind-btn"]',
     );
-    // One button per kind, in registration order. SPEC §17.119
-    // appended `PictureNode` to the catalogue (PictureNode strand);
+    // One button per kind, in registration order. §17.118 inserts the
+    // `Workflow` kind between `TextNode` and `BusinessScoreCardNode`
+    // (it's a TextNode-with-status; the catalogue keeps "general note"
+    // → "note with status badge" → "measurable" reading order).
+    // SPEC §17.119 appended `PictureNode` at the end of the catalogue;
     // a future kind addition lands at the end of this array.
     expect(Array.from(buttons).map((b) => b.dataset["kind"])).toEqual([
       "TextNode",
+      "Workflow",
       "BusinessScoreCardNode",
       "PictureNode",
     ]);
@@ -140,11 +162,14 @@ describe("<add-child-modal>", () => {
     // kind-cards rendered, layout-agnostic since §17.25).
     expect(buttons[0]?.textContent).toMatch(/Text/);
     expect(buttons[0]?.textContent).toMatch(/note|free-form/);
-    expect(buttons[1]?.textContent).toMatch(/Business Score Card/);
-    expect(buttons[1]?.textContent).toMatch(/measurable|target/);
+    expect(buttons[1]?.textContent).toMatch(/Workflow/);
+    expect(buttons[1]?.textContent).toMatch(/status badge|PLAN/);
+    expect(buttons[2]?.textContent).toMatch(/Business Score Card/);
+    expect(buttons[2]?.textContent).toMatch(/measurable|target/);
     // None are pressed before a kind is picked.
     expect(buttons[0]?.getAttribute("aria-pressed")).toBe("false");
     expect(buttons[1]?.getAttribute("aria-pressed")).toBe("false");
+    expect(buttons[2]?.getAttribute("aria-pressed")).toBe("false");
   });
 
   it("when no kind is chosen the right pane shows the empty-state hint and no form (\u00a717.25)", async () => {
@@ -1226,5 +1251,135 @@ describe("<add-child-modal> PictureNode branch (§17.119)", () => {
     for (const f of fields) {
       expect(f.placeholder).toMatch(/^[A-Z].* — e\.g\./);
     }
+  });
+});
+
+/**
+ * SPEC §17.118 — `Workflow` is a sibling of TextNode that adds a
+ * board-level status badge. The form mirrors TextNode (title +
+ * weight + current value + as-of date) and adds a single status
+ * dropdown sourced from {@link AddChildModal.workflowStatuses}; the
+ * payload is the TextNode payload plus a mandatory `statusId`.
+ */
+describe("<add-child-modal> Workflow form (SPEC §17.118)", () => {
+  it("picking Workflow renders the form with the status dropdown and a current-value seed row", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickWorkflow(el);
+    const form = el.shadowRoot?.querySelector<HTMLFormElement>(
+      '[data-testid="modal-form"]',
+    );
+    expect(form?.dataset["kind"]).toBe("Workflow");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-status"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-current-value"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-current-value-date"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-unit"]'),
+    ).toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="field-initial"]'),
+    ).toBeNull();
+  });
+
+  it("the status dropdown shows one option per `workflowStatuses` entry, pre-selecting the first", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickWorkflow(el);
+    const select = el.shadowRoot?.querySelector<HTMLSelectElement>(
+      '[data-testid="field-status"]',
+    );
+    expect(select).not.toBeNull();
+    const options = Array.from(select?.querySelectorAll("option") ?? []);
+    // §17.118 — default catalogue is PDCA (4 entries) seeded at modal init.
+    expect(options.map((o) => o.value)).toEqual(["plan", "do", "check", "act"]);
+    expect(select?.value).toBe("plan");
+  });
+
+  it("Confirm stays disabled until title + current value + as-of date + statusId are all set", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickWorkflow(el);
+    // §17.13 -- the "as of" date pre-fills with today's ISO at open,
+    // so we blank it here to test the gating contract end-to-end.
+    await setInput(el, "field-current-value-date", "");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-title", "Sprint planning");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-current-value", "Define the backlog cut.");
+    expect(confirmBtnOf(el).disabled).toBe(true);
+    await setInput(el, "field-current-value-date", "2026-04-30");
+    expect(confirmBtnOf(el).disabled).toBe(false);
+  });
+
+  it("clicking Confirm fires `add-child-confirm` with a Workflow payload carrying statusId + the TextNode seed", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+        e.parentId = "uuid-parent";
+      },
+    );
+    const handler = vi.fn();
+    el.addEventListener(ADD_CHILD_CONFIRM_EVENT, handler);
+
+    await pickWorkflow(el);
+    await setInput(el, "field-title", "Sprint planning");
+    await setSelect(el, "field-status", "do");
+    await setInput(el, "field-current-value", "Define the backlog cut.");
+    await setInput(el, "field-current-value-date", "2026-04-30");
+    confirmBtnOf(el).click();
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    const evt = handler.mock.calls[0]?.[0] as
+      | CustomEvent<AddChildConfirmDetail>
+      | undefined;
+    const p = evt?.detail.payload;
+    expect(p?.kind).toBe("Workflow");
+    if (p?.kind !== "Workflow") return;
+    expect(p.title).toBe("Sprint planning");
+    expect(p.statusId).toBe("do");
+    expect(p.weight).toBe(1);
+    expect(p.initialHistory).toHaveLength(1);
+    const seed = p.initialHistory?.[0];
+    expect(seed?.value).toBe("Define the backlog cut.");
+    expect(seed?.asOf).toBeInstanceOf(Date);
+    expect(seed?.asOf.toISOString()).toBe("2026-04-30T00:00:00.000Z");
+  });
+
+  it("narrowing `workflowStatuses` mid-edit drops an orphan pick and snaps to the first remaining entry", async () => {
+    const el = await mountLitElement<AddChildModal>(
+      "add-child-modal",
+      (e) => {
+        e.open = true;
+      },
+    );
+    await pickWorkflow(el);
+    await setSelect(el, "field-status", "act");
+    el.workflowStatuses = el.workflowStatuses.filter((s) => s.id !== "act");
+    await el.updateComplete;
+    const select = el.shadowRoot?.querySelector<HTMLSelectElement>(
+      '[data-testid="field-status"]',
+    );
+    // §17.118 — the willUpdate guard reassigns `statusId` to the first
+    // surviving entry so a stale pick can't sneak into a confirm payload.
+    expect(select?.value).toBe("plan");
   });
 });

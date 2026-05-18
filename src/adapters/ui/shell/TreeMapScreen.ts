@@ -113,6 +113,8 @@ import type { WeightEditOpenDetail } from "../views/childWeight/weightEditEvents
 import type { PlusTileActivateDetail } from "../views/plus/PlusTile.js";
 import "../views/index.js";
 import type { FocusedTreeViewModel } from "../views/NodeViewModel.js";
+import type { WorkflowStatus } from "../../../domain/values/WorkflowStatus.js";
+import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
 import type { BreadcrumbSegment } from "./Breadcrumb.js";
 import "./Breadcrumb.js";
 import "./BurgerMenu.js";
@@ -131,6 +133,16 @@ export class TreeMapScreen extends LitElement {
   /** Path from root to the focused node, used by `<focus-breadcrumb>`. */
   @property({ attribute: false })
   breadcrumbPath: readonly BreadcrumbSegment[] = [];
+
+  /**
+   * Workflow-status catalogue for the active board (SPEC §17.118). The
+   * composition root pushes this whenever the active board changes so
+   * `<add-child-modal>` and `<edit-node-modal>` can populate the
+   * Workflow status dropdown. Defaulted to the PDCA seed so the screen
+   * is usable in isolation (unit tests, story-mode previews).
+   */
+  @property({ attribute: false })
+  workflowStatuses: readonly WorkflowStatus[] = DEFAULT_WORKFLOW_STATUSES;
 
   /** Whether the add-child modal (SPEC §7) is open. The shell owns this so the
    * `<plus-tile>` → `<add-child-modal>` interaction is local; the composition
@@ -408,12 +420,14 @@ export class TreeMapScreen extends LitElement {
         ?open=${this.modalOpen}
         .parentId=${this.modalParentId}
         .errorMessage=${this.addChildError}
+        .workflowStatuses=${this.workflowStatuses}
         @add-child-cancel=${this.handleModalClose}
       ></add-child-modal>
       <edit-node-modal
         ?open=${this.editModalOpen}
         .editTarget=${this.editTarget}
         .errorMessage=${this.editNodeError}
+        .workflowStatuses=${this.workflowStatuses}
         @edit-node-cancel=${this.handleEditModalClose}
       ></edit-node-modal>
       <board-settings-modal

@@ -27,6 +27,8 @@ import "./PictureNode/PictureNodeAsChild.js";
 import "./PictureNode/PictureNodeAsParent.js";
 import "./TextNode/TextNodeAsChild.js";
 import "./TextNode/TextNodeAsParent.js";
+import "./WorkflowNode/WorkflowNodeAsChild.js";
+import "./WorkflowNode/WorkflowNodeAsParent.js";
 import "./plus/PlusTile.js";
 
 import { nodeViewRegistry } from "./nodeViewRegistry.js";
@@ -35,6 +37,13 @@ if (!nodeViewRegistry.isFrozen()) {
   nodeViewRegistry.register("TextNode", {
     asParent: "text-node-as-parent",
     asChild: "text-node-as-child",
+  });
+  // §17.117 — WorkflowNode mirrors TextNode + the bottom-left status
+  // badge; each role gets its own tag (parent role carries the
+  // inline-edit affordances, child role is read-only).
+  nodeViewRegistry.register("WorkflowNode", {
+    asParent: "workflow-node-as-parent",
+    asChild: "workflow-node-as-child",
   });
   nodeViewRegistry.register("BusinessScoreCardNode", {
     asParent: "business-score-card-as-parent",
@@ -70,6 +79,7 @@ export type {
   NodeViewModel,
   PictureNodeViewModel,
   TextNodeViewModel,
+  WorkflowNodeViewModel,
 } from "./NodeViewModel.js";
 export { nodeViewRegistry, NodeViewRegistryError } from "./nodeViewRegistry.js";
 export { COMPUTATION_KIND_CHANGE_EVENT, type ComputationKindChangeDetail } from "./ComputedNode/ComputedCards.js";

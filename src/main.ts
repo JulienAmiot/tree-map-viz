@@ -101,6 +101,7 @@ import type { Node } from "./domain/nodes/Node.js";
 import { PictureNode } from "./domain/nodes/PictureNode.js";
 import { StrictRangeNode } from "./domain/nodes/StrictRangeNode.js";
 import { TextNode } from "./domain/nodes/TextNode.js";
+import { WorkflowNode } from "./domain/nodes/WorkflowNode.js";
 import { Tree } from "./domain/Tree.js";
 import { Timestamp } from "./domain/values/Timestamp.js";
 import { Weight } from "./domain/values/Weight.js";
@@ -151,12 +152,19 @@ async function main(): Promise<void> {
     if (view) {
       screen.view = mapFocusedToViewModel(view.center, view.childrenNodes, {
         cards: current.tree.cards,
+        workflowStatuses: current.workflowStatuses,
       });
     } else {
       screen.view = null;
     }
     screen.boardName = current.name;
     screen.breadcrumbPath = computeBreadcrumb(current.tree, nav.getFocusedId());
+    // SPEC §17.118 — push the active board's workflow-status catalogue
+    // down so both modals' status dropdown reflects the live table
+    // (PDCA defaults out of the box; per-board configuration once the
+    // board-settings UI ships). Updated on every refresh so a board
+    // switch picks up the new catalogue without a dedicated event.
+    screen.workflowStatuses = current.workflowStatuses;
   };
 
   screen.addEventListener("add-child-confirm", (e) => {
@@ -465,6 +473,18 @@ function buildEditTarget(node: Node): EditNodeTarget | null {
       imageUrl: node.imageUrl,
     };
   }
+  // SPEC §17.118 — WorkflowNode subclasses TextNode, so check the
+  // narrower class FIRST; otherwise the TextNode branch would shadow
+  // the Workflow branch and the edit modal would drop the status field.
+  if (node instanceof WorkflowNode) {
+    return {
+      nodeId: node.id,
+      kind: "Workflow",
+      title: node.title,
+      weight: node.weight.value,
+      statusId: node.statusId,
+    };
+  }
   if (node instanceof TextNode) {
     return { nodeId: node.id, kind: "TextNode", title: node.title, weight: node.weight.value };
   }
@@ -506,6 +526,12 @@ function inferV4Kind(node: Node): EditNodePayload["kind"] | null {
   // ladder follows the existing subclass-first ordering
   // (ComputedBusinessScore before BusinessScore, etc.).
   if (node instanceof PictureNode) return "Picture";
+  // SPEC §17.118 — WorkflowNode subclasses TextNode; the narrower
+  // check must come first so inline edits route to the Workflow
+  // branch (statusId-preserving) rather than the generic TextNode
+  // path (which would still work for title/value but would skip the
+  // Workflow-specific assertions).
+  if (node instanceof WorkflowNode) return "Workflow";
   if (node instanceof TextNode) return "TextNode";
   if (node instanceof ComputedBusinessScoreNode) return "ComputedBusinessScore";
   if (node instanceof BusinessScoreNode) return "BusinessScore";
@@ -568,6 +594,18 @@ function toAppAddChildPayload(payload: AddChildModalPayload, clock: Clock): AddC
       imageUrl: payload.imageUrl,
     };
   }
+  // SPEC §17.118 — Workflow is a TextNode-with-status; the modal payload
+  // is a 1:1 superset of the TextNode payload plus a mandatory
+  // `statusId` referencing the active Board's `workflowStatuses` table.
+  if (payload.kind === "Workflow") {
+    return {
+      kind: "Workflow",
+      title: payload.title,
+      weight: payload.weight,
+      statusId: payload.statusId,
+      initialHistory: payload.initialHistory,
+    };
+  }
   const objective = {
     value: payload.objective.targetValue,
     at: payload.objective.targetDate,
@@ -627,6 +665,18 @@ function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
       title: payload.title,
       weight: payload.weight,
       imageUrl: payload.imageUrl,
+    };
+  }
+  // SPEC §17.118 — Workflow mirrors TextNode edits and adds an optional
+  // `statusId` swap. The service treats `undefined` as "no change"; an
+  // explicit string replaces the badge atomically with the title/weight
+  // edits so undo restores the prior status alongside everything else.
+  if (payload.kind === "Workflow") {
+    return {
+      kind: "Workflow",
+      title: payload.title,
+      weight: payload.weight,
+      statusId: payload.statusId,
     };
   }
   return {

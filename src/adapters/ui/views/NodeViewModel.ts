@@ -13,6 +13,7 @@
 
 export type NodeKind =
   | "TextNode"
+  | "WorkflowNode"
   | "BusinessScoreCardNode"
   | "ComputedNode"
   | "ComputedBusinessScoreNode"
@@ -93,6 +94,43 @@ export type TextNodeViewModel = {
      * Empty when `dateIso` is empty.
      */
     readonly dateColor: string;
+  };
+};
+
+/**
+ * SPEC §17.117 — `WorkflowNode` tiles.
+ *
+ * Mirrors {@link TextNodeViewModel} (markdown body + bottom-right
+ * timestamp) and adds a single new field — `status` — carrying the
+ * pre-resolved label + colour of the focused board's
+ * `WorkflowStatus[]` entry the node's `statusId` references. The
+ * mapper bakes the colour in (rather than handing the view a raw
+ * id) so the view layer remains a pure consumer: no lookup table,
+ * no JS colour math.
+ *
+ * Fallback semantics — when the node's `statusId` references a
+ * status that no longer exists on the board (e.g. operator deleted
+ * the entry before migrating downstream nodes — the future settings
+ * strand will surface a board-level GC pass), `status.id` retains
+ * the orphan id verbatim AND `status.color` falls back to a muted
+ * grey so the badge still renders, just neutrally. `status.label`
+ * surfaces the uppercased orphan id so the operator can identify
+ * which status to add back. Same defensive pattern the mapper uses
+ * for empty-history TextNodes (§17.15) — never throw, always paint.
+ */
+export type WorkflowNodeViewModel = {
+  readonly kind: "WorkflowNode";
+  readonly id: string;
+  readonly title: string;
+  readonly value: {
+    readonly text: string;
+    readonly dateIso: string;
+    readonly dateColor: string;
+  };
+  readonly status: {
+    readonly id: string;
+    readonly label: string;
+    readonly color: string;
   };
 };
 
@@ -278,6 +316,7 @@ export type PictureNodeViewModel = {
 
 export type NodeViewModel =
   | TextNodeViewModel
+  | WorkflowNodeViewModel
   | BusinessScoreCardNodeViewModel
   | ComputedNodeViewModel
   | ComputedBusinessScoreNodeViewModel

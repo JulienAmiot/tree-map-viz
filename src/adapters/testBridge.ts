@@ -16,6 +16,7 @@
 import type { BoardCollectionRepository } from "../application/ports/BoardCollectionRepository.js";
 import type { Router } from "../application/ports/Router.js";
 import type { TreeCodec } from "../application/ports/TreeCodec.js";
+import { DEFAULT_WORKFLOW_STATUSES } from "../domain/values/WorkflowStatus.js";
 
 /** Public JSON-only API exposed on `window.__appTestApi__`. See SPEC §14.4. */
 export interface TestApi {
@@ -56,7 +57,18 @@ export function installTestBridge(target: Window & typeof globalThis, deps: Test
       const text = typeof json === "string" ? json : JSON.stringify(json);
       const tree = codec.decode(text);
       await repo.save({
-        boards: [{ id: TEST_BOARD_ID, name: "Test board", tree }],
+        boards: [
+          {
+            id: TEST_BOARD_ID,
+            name: "Test board",
+            tree,
+            // SPEC §17.118 -- seed the test board with the PDCA defaults so
+            // workflow-card scenarios get a working status table out of the
+            // gate. E2E fixtures that need a custom catalogue can re-seed
+            // through the bridge once the board-settings UI lands.
+            workflowStatuses: DEFAULT_WORKFLOW_STATUSES,
+          },
+        ],
         currentBoardId: TEST_BOARD_ID,
       });
     },

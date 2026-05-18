@@ -11,6 +11,10 @@ import { SHOWCASE_BOARD_ID } from "../../../../adapters/showcaseSeed.js";
 import type { BoardCollectionSnapshot, Board } from "../../../../application/ports/BoardCollectionRepository.js";
 import type { Clock } from "../../../../domain/capabilities/Clock.js";
 import { Timestamp } from "../../../../domain/values/Timestamp.js";
+import {
+  DEFAULT_WORKFLOW_STATUSES,
+  WorkflowStatus,
+} from "../../../../domain/values/WorkflowStatus.js";
 
 const NOW = new Date("2026-05-17T00:00:00Z");
 const clock: Clock = { now: () => Timestamp.of(NOW) };
@@ -31,11 +35,16 @@ function newRepo(storage: Storage = new InMemoryStorage(), seed?: () => BoardCol
 }
 
 function sampleBoard(id: string, name: string): Board {
-  return { id, name, tree: buildSampleTree(clock) };
+  return {
+    id,
+    name,
+    tree: buildSampleTree(clock),
+    workflowStatuses: DEFAULT_WORKFLOW_STATUSES,
+  };
 }
 
 describe("LocalStorageBoardCollectionRepository (§17.107)", () => {
-  it("empty storage → seeds via buildShowcaseBoard (id matches SHOWCASE_BOARD_ID) AND persists the seed (next load reads back the same snapshot byte-for-byte)", async () => {
+  it("empty storage → seeds via buildShowcaseBoard (id matches SHOWCASE_BOARD_ID) AND persists the seed (next load reads back the same snapshot byte-for-byte) with envelope v: 3 and the PDCA workflowStatuses inline", async () => {
     const storage = new InMemoryStorage();
     const repo = newRepo(storage);
     const loaded = await repo.load();
@@ -44,10 +53,26 @@ describe("LocalStorageBoardCollectionRepository (§17.107)", () => {
     expect(loaded.boards[0]!.id).toBe(SHOWCASE_BOARD_ID);
     const persisted = storage.getItem(STORAGE_KEY);
     expect(persisted).not.toBeNull();
-    const env = JSON.parse(persisted!) as { v: number; currentBoardId: string; boards: { tree: { schemaVersion: string } }[] };
-    expect(env.v).toBe(2);
+    const env = JSON.parse(persisted!) as {
+      v: number;
+      currentBoardId: string;
+      boards: {
+        tree: { schemaVersion: string };
+        workflowStatuses: { id: string; label: string; color: string }[];
+      }[];
+    };
+    expect(env.v).toBe(3);
     expect(env.currentBoardId).toBe(SHOWCASE_BOARD_ID);
     expect(env.boards[0]!.tree.schemaVersion).toBe("v4.0");
+    // §17.117 — every showcase board is seeded with the four PDCA
+    // statuses and they round-trip verbatim through the wire envelope.
+    expect(env.boards[0]!.workflowStatuses.map((s) => s.id)).toEqual([
+      "plan",
+      "do",
+      "check",
+      "act",
+    ]);
+    expect(loaded.boards[0]!.workflowStatuses[0]).toBeInstanceOf(WorkflowStatus);
   });
 
   it("save → load round-trips every kind in the sampleDataV4 tree + preserves currentBoardId + every board id/name across multiple boards", async () => {
@@ -93,14 +118,100 @@ describe("LocalStorageBoardCollectionRepository (§17.107)", () => {
     const cases: [string, RegExp][] = [
       ["{not json", /not valid JSON/],
       ["42", /not an object/],
-      [JSON.stringify({ v: 2, boards: [] }), /missing required fields/],
-      [JSON.stringify({ v: 2, currentBoardId: "a" }), /missing required fields/],
+      [JSON.stringify({ v: 3, boards: [] }), /missing required fields/],
+      [JSON.stringify({ v: 3, currentBoardId: "a" }), /missing required fields/],
     ];
     for (const [raw, pattern] of cases) {
       const storage = new InMemoryStorage();
       storage.setItem(STORAGE_KEY, raw);
       await expect(newRepo(storage).load()).rejects.toThrow(pattern);
     }
+  });
+
+  describe("§17.117 v: 2 → v: 3 workflow-status migration", () => {
+    function v2Envelope(boardWithoutStatuses: { id: string; name: string; tree: unknown }) {
+      return {
+        v: 2,
+        currentBoardId: boardWithoutStatuses.id,
+        boards: [boardWithoutStatuses],
+      };
+    }
+
+    it("loads a legacy v: 2 envelope (no workflowStatuses field per board) and seeds the four PDCA defaults verbatim on every board", async () => {
+      const storage = new InMemoryStorage();
+      const legacyTree = JSON.parse(codec.encode(buildSampleTree(clock))) as unknown;
+      storage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(v2Envelope({ id: "legacy", name: "Legacy", tree: legacyTree })),
+      );
+      const loaded = await newRepo(storage).load();
+      expect(loaded.boards[0]!.workflowStatuses.map((s) => s.id)).toEqual([
+        "plan",
+        "do",
+        "check",
+        "act",
+      ]);
+      expect(loaded.boards[0]!.workflowStatuses[0]).toBeInstanceOf(WorkflowStatus);
+    });
+
+    it("the next save() upgrades the stored envelope to v: 3 with the seeded workflowStatuses inline (one-way migration; legacy shape never goes back to disk)", async () => {
+      const storage = new InMemoryStorage();
+      const legacyTree = JSON.parse(codec.encode(buildSampleTree(clock))) as unknown;
+      storage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(v2Envelope({ id: "legacy", name: "Legacy", tree: legacyTree })),
+      );
+      const repo = newRepo(storage);
+      const loaded = await repo.load();
+      await repo.save(loaded);
+      const persisted = JSON.parse(storage.getItem(STORAGE_KEY)!) as {
+        v: number;
+        boards: { workflowStatuses: { id: string }[] }[];
+      };
+      expect(persisted.v).toBe(3);
+      expect(persisted.boards[0]!.workflowStatuses.map((s) => s.id)).toEqual([
+        "plan",
+        "do",
+        "check",
+        "act",
+      ]);
+    });
+
+    it("honours an EXPLICITLY-empty workflowStatuses array on a v: 3 envelope (a future settings strand may let an operator clear the table; we do NOT silently refill defaults)", async () => {
+      const storage = new InMemoryStorage();
+      const tree = JSON.parse(codec.encode(buildSampleTree(clock))) as unknown;
+      storage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          v: 3,
+          currentBoardId: "b",
+          boards: [{ id: "b", name: "B", tree, workflowStatuses: [] }],
+        }),
+      );
+      const loaded = await newRepo(storage).load();
+      expect(loaded.boards[0]!.workflowStatuses).toEqual([]);
+    });
+
+    it("surfaces a typed error when a persisted workflowStatuses entry violates the WorkflowStatus invariants (bad slug, empty label, etc.)", async () => {
+      const storage = new InMemoryStorage();
+      const tree = JSON.parse(codec.encode(buildSampleTree(clock))) as unknown;
+      storage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          v: 3,
+          currentBoardId: "b",
+          boards: [
+            {
+              id: "b",
+              name: "B",
+              tree,
+              workflowStatuses: [{ id: "Bad Slug!", label: "Bad", color: "#000" }],
+            },
+          ],
+        }),
+      );
+      await expect(newRepo(storage).load()).rejects.toThrow(/workflowStatuses\[0\]/);
+    });
   });
 
   it("§17.112 v3 sweep: a v:2 envelope whose per-board tree fails v4 decode now throws verbatim — belt-and-braces v3 recovery retired with the v3 source files", async () => {
