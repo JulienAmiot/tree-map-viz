@@ -75,9 +75,11 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
+import { ComputationKind } from "../../../domain/computation/ComputationKind.js";
 import type { WorkflowStatus } from "../../../domain/values/WorkflowStatus.js";
 import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
 
+import { COMPUTATION_KIND_LABELS } from "./AddChildModal.js";
 import {
   modalFrameStyles,
   renderModalCloseX,
@@ -179,6 +181,25 @@ export type EditNodeModalPayload =
       readonly title?: string;
       readonly description?: string;
       readonly weight?: number;
+    }
+  /**
+   * SPEC §17.94 / §17.95 — `ComputedNode` variant. The roll-up
+   * strategy is editable through the same `ComputationKind`
+   * dropdown the add-child modal uses; the canonical name (e.g.
+   * `"SUM"`) flows through the wire and `main.ts`'s
+   * `toAppEditPayload` resolves it back to the singleton through
+   * `ComputationKind.fromName`. Description + weight ride the
+   * shared `CommonEdit` slots; title stays on the inline-edit seam
+   * per §17.50. main.ts rewrites the modal-side `"ComputedNode"`
+   * kind tag to the application-layer `"Computed"` (parity with
+   * the BSC / Picture / URL / StrictRange kind-tag rewrites).
+   */
+  | {
+      readonly kind: "ComputedNode";
+      readonly title?: string;
+      readonly description?: string;
+      readonly weight?: number;
+      readonly computationKindName?: string;
     };
 
 /** Pre-edit snapshot supplied by the composition root when opening the modal. */
@@ -238,6 +259,22 @@ export type EditNodeTarget =
        * editing description / weight.
        */
       readonly bounds: { readonly min: number; readonly max: number };
+    }
+  | {
+      readonly nodeId: string;
+      readonly kind: "ComputedNode";
+      readonly title: string;
+      readonly description: string;
+      readonly weight: number;
+      /**
+       * Canonical `ComputationKind.name` of the current strategy
+       * (e.g. `"SUM"`, `"AVERAGE"`). Pre-fills the dropdown so the
+       * operator's first interaction is "tweak", not "rediscover".
+       * Wire matches the JSON envelope produced by `jsonCodecV4`
+       * per §17.106b — the modal never hands a `ComputationKind`
+       * instance through the property boundary.
+       */
+      readonly computationKindName: string;
     };
 
 export type EditNodeConfirmDetail = {
@@ -252,6 +289,7 @@ const KIND_LABELS: Record<EditNodeTarget["kind"], string> = {
   PictureNode: "Picture",
   URLNode: "URL",
   StrictRangeNode: "Strict Range",
+  ComputedNode: "Computed",
 };
 
 @customElement("edit-node-modal")
@@ -340,6 +378,18 @@ export class EditNodeModal extends LitElement {
    */
   @state()
   private bounds = { min: 0, max: 0 };
+
+  /**
+   * SPEC §17.94 / §17.95 — canonical `ComputationKind.name` driving
+   * the strategy dropdown for the Computed kind. Seeded from
+   * `target.computationKindName` on open; defaulted to `"AVERAGE"`
+   * between opens (matches the add-child modal's default so the
+   * pickers feel consistent). The wire is the canonical name; the
+   * service-side resolution to the singleton happens in
+   * `main.ts`'s `toAppEditPayload`.
+   */
+  @state()
+  private computationKindName = "AVERAGE";
 
   /**
    * Layout-specific styles layered on top of the shared `modalFrameStyles`
@@ -599,12 +649,13 @@ export class EditNodeModal extends LitElement {
   private renderKindSpecificFields(kind: EditNodeTarget["kind"]) {
     const isBsc = kind === "BusinessScoreCardNode";
     const isStrictRange = kind === "StrictRangeNode";
+    const isComputed = kind === "ComputedNode";
     // SPEC §17.94 — kinds that surface an editable description
     // textarea on the edit modal. BSC has carried one since v3;
-    // StrictRange joins the club at this strand (the application
-    // service's `CommonEdit` shape has supported `description` on
-    // every `ValueNode<T>` since §17.101b).
-    const wantsDescription = isBsc || isStrictRange;
+    // StrictRange + Computed join the club at this strand (the
+    // application service's `CommonEdit` shape has supported
+    // `description` on every `ValueNode<T>` since §17.101b).
+    const wantsDescription = isBsc || isStrictRange || isComputed;
     return html`
       ${wantsDescription ? this.renderDescriptionField() : nothing}
       ${kind === "Workflow" ? this.renderWorkflowStatusField() : nothing}
@@ -614,6 +665,7 @@ export class EditNodeModal extends LitElement {
       ${kind === "PictureNode" ? this.renderImageUrlField() : nothing}
       ${kind === "URLNode" ? this.renderURLField() : nothing}
       ${isStrictRange ? this.renderStrictRangeBounds() : nothing}
+      ${isComputed ? this.renderComputationKindField() : nothing}
     `;
   }
 
@@ -860,6 +912,40 @@ export class EditNodeModal extends LitElement {
     `;
   }
 
+  /**
+   * SPEC §17.94 / §17.95 — strategy dropdown for the Computed kind.
+   * Shares the same `ComputationKind.ALL` catalogue + label map as
+   * the add-child modal (`COMPUTATION_KIND_LABELS` imported from
+   * `AddChildModal.js` per the §17.110 "future computation-kind-
+   * change UI" anticipation). Pre-selected via the
+   * `computationKindName` `@state` (seeded from the snapshot on
+   * open); editable through the `change` event. Native `<select>`
+   * mirrors the Workflow-status picker pattern (§17.118).
+   */
+  private renderComputationKindField() {
+    return html`
+      <div class="field" data-testid="computation-kind-row">
+        <select
+          data-testid="field-computation-kind"
+          required
+          .value=${this.computationKindName}
+          @change=${(e: Event) => this.bindString(e, "computationKindName")}
+        >
+          ${ComputationKind.ALL.map(
+            (k) => html`
+              <option
+                value=${k.name}
+                ?selected=${k.name === this.computationKindName}
+              >
+                ${COMPUTATION_KIND_LABELS[k.name] ?? k.name}
+              </option>
+            `,
+          )}
+        </select>
+      </div>
+    `;
+  }
+
   private cancel = (): void => {
     this.dispatchEvent(
       new CustomEvent(EDIT_NODE_CANCEL_EVENT, {
@@ -911,6 +997,8 @@ export class EditNodeModal extends LitElement {
         return this.buildBscPayload(weight);
       case "StrictRangeNode":
         return this.buildStrictRangePayload(weight);
+      case "ComputedNode":
+        return this.buildComputedPayload(weight);
     }
   }
 
@@ -1019,6 +1107,25 @@ export class EditNodeModal extends LitElement {
     };
   }
 
+  /**
+   * SPEC §17.94 / §17.95 — Computed edit: description + weight +
+   * computationKind. The dropdown is gated to `ComputationKind.ALL`,
+   * so the trimmed `computationKindName` is always a valid singleton
+   * name; the field-emission predicate is "non-empty after trim" so
+   * a corrupt seed (e.g. a future enum-shrink) drops to `undefined`
+   * and the service treats it as "no change". Confirm is always
+   * enabled — every editable field has a usable default.
+   */
+  private buildComputedPayload(weight: { weight?: number }): EditNodeModalPayload {
+    const computationKindName = this.computationKindName.trim();
+    return {
+      kind: "ComputedNode",
+      description: this.description.trim(),
+      ...weight,
+      ...(computationKindName === "" ? {} : { computationKindName }),
+    };
+  }
+
   private canConfirm(): boolean {
     return this.buildPayload() !== null;
   }
@@ -1034,7 +1141,8 @@ export class EditNodeModal extends LitElement {
       | "targetDate"
       | "imageUrl"
       | "statusId"
-      | "url",
+      | "url"
+      | "computationKindName",
   ): void {
     const target = e.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
     this[field] = target.value;
@@ -1077,6 +1185,7 @@ export class EditNodeModal extends LitElement {
     this.statusId = "";
     this.url = "";
     this.bounds = { min: 0, max: 0 };
+    this.computationKindName = "AVERAGE";
   }
 
   private applyKindSpecificSeed(target: EditNodeTarget): void {
@@ -1096,6 +1205,11 @@ export class EditNodeModal extends LitElement {
     if (target.kind === "StrictRangeNode") {
       this.description = target.description;
       this.bounds = { min: target.bounds.min, max: target.bounds.max };
+      return;
+    }
+    if (target.kind === "ComputedNode") {
+      this.description = target.description;
+      this.computationKindName = target.computationKindName;
       return;
     }
     this.description = target.description;

@@ -16,6 +16,19 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **Computed editing in the Edit-Node modal** (§17.94 / §17.95).
+  ComputedNode instances are now editable from the kiosk: description
+  and weight flow through the shared `CommonEdit` slots, and a
+  strategy `<select>` dropdown (the same one the Add-Child modal
+  exposes via `COMPUTATION_KIND_LABELS`) lets the operator swap the
+  roll-up between **Sum**, **Average**, **Min**, **Max**, **Weighted
+  Average** and **Count** without leaving the modal. The canonical
+  `ComputationKind.name` flows through the wire and `main.ts`
+  resolves it back to the singleton via `ComputationKind.fromName`
+  (so reference equality with the `static readonly` slots holds
+  end-to-end). ComputedBusinessScoreNode editing still falls through
+  to the BSC branch for now (combined editor lands in the next
+  strand).
 - **Strict Range editing in the Edit-Node modal** (§17.77 / §17.94).
   StrictRange nodes are now editable from the kiosk: description and
   weight flow through the existing modal, and the structural

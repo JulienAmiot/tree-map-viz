@@ -955,4 +955,149 @@ describe("<edit-node-modal>", () => {
       ).toBe("M\u20ac");
     });
   });
+
+  /**
+   * ComputedNode editing (SPEC §17.94 / §17.95).
+   *
+   * The application service's `Computed` edit shape is `CommonEdit`
+   * + an optional `computationKind` swap. The modal collects
+   * description + weight + a `<select>` dropdown bound to
+   * `ComputationKind.ALL`, pre-selecting the snapshot's current
+   * strategy. Tests cover:
+   *   - seeding (description + weight + selected `<option>`),
+   *   - the hidden fields (every BSC/Picture/URL/StrictRange-only
+   *     slot stays off),
+   *   - the dropdown catalogue (all six kinds listed, friendly
+   *     labels from the shared `COMPUTATION_KIND_LABELS`),
+   *   - the dispatched payload shape on confirm (canonical
+   *     `ComputationKind.name` flows through the wire),
+   *   - kind-swap isolation (Text → Computed seeds the dropdown;
+   *     Computed → BSC clears it).
+   */
+  describe("ComputedNode target (§17.94 / §17.95)", () => {
+    const computedTarget: EditNodeTarget = {
+      nodeId: "uuid-cn",
+      kind: "ComputedNode",
+      title: "Team velocity",
+      description: "Rolling sprint velocity",
+      weight: 2,
+      computationKindName: "SUM",
+    };
+
+    function selectOf(el: EditNodeModal, testid: string): HTMLSelectElement {
+      const s = el.shadowRoot?.querySelector<HTMLSelectElement>(
+        `[data-testid="${testid}"]`,
+      );
+      if (!s) throw new Error(`expected <select> [${testid}]`);
+      return s;
+    }
+
+    it("seeds weight + description + computation-kind dropdown from the target on open", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = computedTarget;
+        e.open = true;
+      });
+      expect(panelOf(el)?.dataset["kind"]).toBe("ComputedNode");
+      expect((fieldOf(el, "field-weight") as HTMLInputElement).value).toBe("2");
+      expect(
+        (fieldOf(el, "field-description") as HTMLTextAreaElement).value,
+      ).toBe("Rolling sprint velocity");
+      expect(selectOf(el, "field-computation-kind").value).toBe("SUM");
+      // §17.50 — title is edited inline, not via the modal.
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-title"]'),
+      ).toBeNull();
+    });
+
+    it("hides every BSC/Picture/URL/StrictRange-only field (unit / objective / image-url / url / range-bounds)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = computedTarget;
+        e.open = true;
+      });
+      const hidden = [
+        "field-unit",
+        "field-initial",
+        "field-target",
+        "field-target-date",
+        "field-image-url",
+        "field-url",
+        "range-bounds-row",
+      ];
+      for (const id of hidden) {
+        expect(el.shadowRoot?.querySelector(`[data-testid="${id}"]`)).toBeNull();
+      }
+    });
+
+    it("the dropdown lists every `ComputationKind.ALL` inhabitant with the shared friendly label", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = computedTarget;
+        e.open = true;
+      });
+      const opts = Array.from(selectOf(el, "field-computation-kind").options);
+      const names = opts.map((o) => o.value);
+      expect(names).toEqual(["SUM", "AVERAGE", "MIN", "MAX", "WEIGHTED_AVERAGE", "COUNT"]);
+      expect(opts.find((o) => o.value === "SUM")?.textContent).toMatch(/Sum/);
+    });
+
+    it("Confirm dispatches edit-node-confirm with kind=ComputedNode + chosen strategy + trimmed description", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = computedTarget;
+        e.open = true;
+      });
+      const select = selectOf(el, "field-computation-kind");
+      select.value = "AVERAGE";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      await el.updateComplete;
+      await setInput(el, "field-description", "  Velocity (rolling)  ");
+      await setInput(el, "field-weight", "3");
+
+      const handler = vi.fn();
+      el.addEventListener(EDIT_NODE_CONFIRM_EVENT, handler);
+      confirmBtn(el).click();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      const ev = handler.mock.calls[0]![0] as CustomEvent<EditNodeConfirmDetail>;
+      expect(ev.detail.nodeId).toBe("uuid-cn");
+      expect(ev.detail.payload).toEqual({
+        kind: "ComputedNode",
+        weight: 3,
+        description: "Velocity (rolling)",
+        computationKindName: "AVERAGE",
+      });
+    });
+
+    it("re-seeds description + selected strategy when the target swaps mid-open (Text → Computed)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = textTarget;
+        e.open = true;
+      });
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-computation-kind"]'),
+      ).toBeNull();
+      el.editTarget = computedTarget;
+      await el.updateComplete;
+      expect(
+        (fieldOf(el, "field-description") as HTMLTextAreaElement).value,
+      ).toBe("Rolling sprint velocity");
+      expect(selectOf(el, "field-computation-kind").value).toBe("SUM");
+    });
+
+    it("swapping Computed → BSC clears the dropdown and brings BSC-only fields back (kind-specific seeds stay isolated)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = computedTarget;
+        e.open = true;
+      });
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-computation-kind"]'),
+      ).not.toBeNull();
+      el.editTarget = bscTarget;
+      await el.updateComplete;
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-computation-kind"]'),
+      ).toBeNull();
+      expect(
+        (fieldOf(el, "field-unit") as HTMLInputElement).value,
+      ).toBe("M\u20ac");
+    });
+  });
 });

@@ -538,6 +538,27 @@ function buildEditTarget(node: Node): EditNodeTarget | null {
       bounds: { min: Number(range.minimalValue), max: Number(range.maximalValue) },
     };
   }
+  // SPEC §17.94 / §17.95 — ComputedNode branch checked BEFORE the
+  // BusinessScoreNode-based generic branch below. `ComputedBusiness
+  // ScoreNode` extends both `ComputedNode` AND `BusinessScoreNode`,
+  // so this branch explicitly excludes it (a future BSC-edit-modal
+  // parity strand will surface the §17.95 combined ComputedBusiness
+  // Score editor; until then, ComputedBusinessScore nodes simply
+  // fall through to the BSN branch below — they're editable as a
+  // plain BSC, the strategy stays untouched). The canonical
+  // `computationKind.name` flows through the snapshot; the dropdown
+  // re-resolves it to the singleton on confirm via `main.ts`'s
+  // `toAppEditPayload`.
+  if (node instanceof ComputedNode && !(node instanceof ComputedBusinessScoreNode)) {
+    return {
+      nodeId: node.id,
+      kind: "ComputedNode",
+      title: node.title,
+      description: node.getDescription(),
+      weight: node.weight.value,
+      computationKindName: node.computationKind.name,
+    };
+  }
   if (node instanceof BusinessScoreNode && !(node instanceof ComputedBusinessScoreNode)) {
     const obj = node.objective;
     return {
@@ -815,6 +836,25 @@ function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
       title: payload.title,
       description: payload.description,
       weight: payload.weight,
+    };
+  }
+  if (payload.kind === "ComputedNode") {
+    // SPEC §17.94 / §17.95 — modal-side "ComputedNode" → app
+    // "Computed" kind tag (parity with the add-child rewrite).
+    // The dropdown emits the canonical `ComputationKind.name`;
+    // resolve back to the singleton through `ComputationKind.from
+    // Name` so reference equality with the `static readonly` slots
+    // holds end-to-end. An unknown name (post-enum-shrink) drops
+    // to `undefined` and the service treats it as "no change".
+    const computationKind = payload.computationKindName
+      ? (ComputationKind.fromName(payload.computationKindName) ?? undefined)
+      : undefined;
+    return {
+      kind: "Computed",
+      title: payload.title,
+      description: payload.description,
+      weight: payload.weight,
+      computationKind,
     };
   }
   return {
