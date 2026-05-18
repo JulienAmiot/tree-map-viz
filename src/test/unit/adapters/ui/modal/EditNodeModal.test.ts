@@ -806,4 +806,153 @@ describe("<edit-node-modal>", () => {
       ).toBe("M\u20ac");
     });
   });
+
+  /**
+   * StrictRangeNode editing (SPEC §17.77 / §17.94).
+   *
+   * The application service's `StrictRange` edit shape is `CommonEdit`
+   * only (title + weight + disabled + description). The modal therefore
+   * collects only description + weight and surfaces the structural
+   * `[min, max]` bounds as a read-only display so the operator sees the
+   * active contract while editing. These tests cover:
+   *   - seeding (description + weight + bounds row from the snapshot),
+   *   - the hidden fields (every BSC/Picture/URL-only slot stays off),
+   *   - the bounds row's read-only nature (no editable inputs),
+   *   - the dispatched payload shape on confirm,
+   *   - kind-swap isolation (StrictRange → BSC clears the bounds row).
+   */
+  describe("StrictRangeNode target (§17.77 / §17.94)", () => {
+    const strictRangeTarget: EditNodeTarget = {
+      nodeId: "uuid-srn",
+      kind: "StrictRangeNode",
+      title: "Latency budget",
+      description: "p99 latency budget per request",
+      weight: 1.25,
+      bounds: { min: 0, max: 250 },
+    };
+
+    it("seeds weight + description + bounds row from the target on open; no title field (§17.50 parity)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = strictRangeTarget;
+        e.open = true;
+      });
+      expect(panelOf(el)?.dataset["kind"]).toBe("StrictRangeNode");
+      expect((fieldOf(el, "field-weight") as HTMLInputElement).value).toBe("1.25");
+      expect(
+        (fieldOf(el, "field-description") as HTMLTextAreaElement).value,
+      ).toBe("p99 latency budget per request");
+      const bounds = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="range-bounds"]',
+      );
+      expect(bounds?.textContent).toMatch(/0/);
+      expect(bounds?.textContent).toMatch(/250/);
+      // §17.50 — title is edited inline, not via the modal.
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="field-title"]'),
+      ).toBeNull();
+    });
+
+    it("hides every BSC-only / Picture-only / URL-only field (unit / objective / image-url / url)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = strictRangeTarget;
+        e.open = true;
+      });
+      const hidden = [
+        "field-unit",
+        "field-initial",
+        "field-target",
+        "field-target-date",
+        "field-image-url",
+        "field-url",
+      ];
+      for (const id of hidden) {
+        expect(el.shadowRoot?.querySelector(`[data-testid="${id}"]`)).toBeNull();
+      }
+    });
+
+    it("the range-bounds row carries no editable input (bounds are structural)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = strictRangeTarget;
+        e.open = true;
+      });
+      const row = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="range-bounds-row"]',
+      );
+      expect(row).not.toBeNull();
+      // No <input> / <textarea> / <select> inside the bounds row —
+      // the bounds are read-only and the application service's
+      // `StrictRange` edit shape is `CommonEdit` only.
+      expect(row?.querySelector("input")).toBeNull();
+      expect(row?.querySelector("textarea")).toBeNull();
+      expect(row?.querySelector("select")).toBeNull();
+    });
+
+    it("Confirm stays enabled for a StrictRange target (description / weight always usable)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = strictRangeTarget;
+        e.open = true;
+      });
+      expect(confirmBtn(el).disabled).toBe(false);
+    });
+
+    it("Confirm dispatches edit-node-confirm with kind=StrictRangeNode + trimmed description + chosen weight", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = strictRangeTarget;
+        e.open = true;
+      });
+      await setInput(el, "field-description", "  p99 budget revised  ");
+      await setInput(el, "field-weight", "2");
+
+      const handler = vi.fn();
+      el.addEventListener(EDIT_NODE_CONFIRM_EVENT, handler);
+      confirmBtn(el).click();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      const ev = handler.mock.calls[0]![0] as CustomEvent<EditNodeConfirmDetail>;
+      expect(ev.detail.nodeId).toBe("uuid-srn");
+      expect(ev.detail.payload).toEqual({
+        kind: "StrictRangeNode",
+        weight: 2,
+        description: "p99 budget revised",
+      });
+    });
+
+    it("re-seeds bounds + description when the target swaps mid-open (Text → StrictRange)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = textTarget;
+        e.open = true;
+      });
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="range-bounds"]'),
+      ).toBeNull();
+      el.editTarget = strictRangeTarget;
+      await el.updateComplete;
+      const bounds = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="range-bounds"]',
+      );
+      expect(bounds?.textContent).toMatch(/0/);
+      expect(bounds?.textContent).toMatch(/250/);
+      expect(
+        (fieldOf(el, "field-description") as HTMLTextAreaElement).value,
+      ).toBe("p99 latency budget per request");
+    });
+
+    it("swapping StrictRange → BSC clears the bounds row and brings BSC-only fields back (kind-specific seeds stay isolated)", async () => {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = strictRangeTarget;
+        e.open = true;
+      });
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="range-bounds-row"]'),
+      ).not.toBeNull();
+      el.editTarget = bscTarget;
+      await el.updateComplete;
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="range-bounds-row"]'),
+      ).toBeNull();
+      expect(
+        (fieldOf(el, "field-unit") as HTMLInputElement).value,
+      ).toBe("M\u20ac");
+    });
+  });
 });

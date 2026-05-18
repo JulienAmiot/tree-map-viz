@@ -16,6 +16,16 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **Strict Range editing in the Edit-Node modal** (§17.77 / §17.94).
+  StrictRange nodes are now editable from the kiosk: description and
+  weight flow through the existing modal, and the structural
+  `[min, max]` bounds appear as a read-only row so the operator sees
+  the active range contract while editing. Bounds remain structural
+  (the application service's `StrictRange` edit shape is `CommonEdit`
+  only); changing the bounds still requires re-creation through
+  `<add-child-modal>`. `main.ts` rewrites the modal-side
+  `StrictRangeNode` kind tag to the application-layer `StrictRange`
+  (parity with the BSC / Picture / URL kind-tag rewrites).
 - **Strict Range card kind in the Add-Child modal** (§17.77 / §17.94).
   The bounded-metric kind has been supported by the application service
   since the v5 round-7 Phase C landing, but operators couldn't reach it

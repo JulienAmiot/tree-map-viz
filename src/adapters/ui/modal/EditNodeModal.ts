@@ -161,6 +161,24 @@ export type EditNodeModalPayload =
       readonly title?: string;
       readonly weight?: number;
       readonly url?: string;
+    }
+  /**
+   * SPEC §17.77 / §17.94 — `StrictRangeNode` variant. Range bounds
+   * (`min` / `max`) are **structural**: the application service's
+   * `StrictRange` edit shape is `CommonEdit` only (title + weight
+   * + disabled + description), so the modal collects only
+   * description + weight here. Title still rides the inline-edit
+   * seam per §17.50; range bounds can only change by deleting the
+   * node and re-adding it through `<add-child-modal>`. main.ts's
+   * `toAppEditPayload` rewrites the modal-side `"StrictRangeNode"`
+   * kind tag to the application-layer `"StrictRange"` (parity
+   * with the BSC / Picture / URL kind-tag rewrites).
+   */
+  | {
+      readonly kind: "StrictRangeNode";
+      readonly title?: string;
+      readonly description?: string;
+      readonly weight?: number;
     };
 
 /** Pre-edit snapshot supplied by the composition root when opening the modal. */
@@ -205,6 +223,21 @@ export type EditNodeTarget =
       readonly title: string;
       readonly weight: number;
       readonly url: string;
+    }
+  | {
+      readonly nodeId: string;
+      readonly kind: "StrictRangeNode";
+      readonly title: string;
+      readonly description: string;
+      readonly weight: number;
+      /**
+       * Read-only `[min, max]` bounds rendered for context. Editable
+       * via this modal is **not** supported (the application service's
+       * `StrictRange` edit shape is `CommonEdit` only); the bounds
+       * are surfaced so the operator sees the current contract while
+       * editing description / weight.
+       */
+      readonly bounds: { readonly min: number; readonly max: number };
     };
 
 export type EditNodeConfirmDetail = {
@@ -218,6 +251,7 @@ const KIND_LABELS: Record<EditNodeTarget["kind"], string> = {
   BusinessScoreCardNode: "Business Score Card",
   PictureNode: "Picture",
   URLNode: "URL",
+  StrictRangeNode: "Strict Range",
 };
 
 @customElement("edit-node-modal")
@@ -293,6 +327,19 @@ export class EditNodeModal extends LitElement {
    */
   @state()
   private url = "";
+
+  /**
+   * SPEC §17.77 / §17.94 — read-only `[min, max]` snapshot for the
+   * StrictRange kind. Surfaces the structural range so the operator
+   * sees the active contract while editing description / weight;
+   * not editable through this modal (the application service's
+   * `StrictRange` edit shape is `CommonEdit` only). Reset to a
+   * neutral `[0, 0]` placeholder between opens; seeded from
+   * `target.bounds` on the open=false→true edge for a StrictRange
+   * target.
+   */
+  @state()
+  private bounds = { min: 0, max: 0 };
 
   /**
    * Layout-specific styles layered on top of the shared `modalFrameStyles`
@@ -551,14 +598,22 @@ export class EditNodeModal extends LitElement {
    */
   private renderKindSpecificFields(kind: EditNodeTarget["kind"]) {
     const isBsc = kind === "BusinessScoreCardNode";
+    const isStrictRange = kind === "StrictRangeNode";
+    // SPEC §17.94 — kinds that surface an editable description
+    // textarea on the edit modal. BSC has carried one since v3;
+    // StrictRange joins the club at this strand (the application
+    // service's `CommonEdit` shape has supported `description` on
+    // every `ValueNode<T>` since §17.101b).
+    const wantsDescription = isBsc || isStrictRange;
     return html`
-      ${isBsc ? this.renderDescriptionField() : nothing}
+      ${wantsDescription ? this.renderDescriptionField() : nothing}
       ${kind === "Workflow" ? this.renderWorkflowStatusField() : nothing}
       ${this.renderWeightField()}
       ${isBsc ? this.renderUnitField() : nothing}
       ${isBsc ? this.renderObjectiveFields() : nothing}
       ${kind === "PictureNode" ? this.renderImageUrlField() : nothing}
       ${kind === "URLNode" ? this.renderURLField() : nothing}
+      ${isStrictRange ? this.renderStrictRangeBounds() : nothing}
     `;
   }
 
@@ -784,6 +839,27 @@ export class EditNodeModal extends LitElement {
     `;
   }
 
+  /**
+   * SPEC §17.77 / §17.94 — read-only display of the StrictRange's
+   * `[min, max]` bounds. The application service's `StrictRange`
+   * edit shape is `CommonEdit` only (title / weight / disabled /
+   * description); the bounds are structural and not editable from
+   * this modal. Surfacing them here keeps the operator informed of
+   * the active contract while editing description / weight (so a
+   * future "out-of-range value" rejection from the seed-edit seam
+   * isn't a surprise) without offering a non-functional input.
+   */
+  private renderStrictRangeBounds() {
+    return html`
+      <div class="field" data-testid="range-bounds-row">
+        <p class="range-bounds" data-testid="range-bounds">
+          Range bounds (read-only): <strong>${this.bounds.min}</strong> –
+          <strong>${this.bounds.max}</strong>
+        </p>
+      </div>
+    `;
+  }
+
   private cancel = (): void => {
     this.dispatchEvent(
       new CustomEvent(EDIT_NODE_CANCEL_EVENT, {
@@ -833,6 +909,8 @@ export class EditNodeModal extends LitElement {
         return this.buildURLPayload(weight);
       case "BusinessScoreCardNode":
         return this.buildBscPayload(weight);
+      case "StrictRangeNode":
+        return this.buildStrictRangePayload(weight);
     }
   }
 
@@ -922,6 +1000,25 @@ export class EditNodeModal extends LitElement {
     };
   }
 
+  /**
+   * SPEC §17.77 / §17.94 — StrictRange edit: description + weight.
+   * Range bounds are structural (the application service's
+   * `StrictRange` edit shape is `CommonEdit` only); only description
+   * + weight flow through. Description is always defined (the
+   * underlying form binding produces an empty string when blank,
+   * which the service treats as "clear the description"). Confirm
+   * is always enabled — every editable field has a usable default
+   * (weight pre-seeded from the snapshot, description trimmable to
+   * empty).
+   */
+  private buildStrictRangePayload(weight: { weight?: number }): EditNodeModalPayload {
+    return {
+      kind: "StrictRangeNode",
+      description: this.description.trim(),
+      ...weight,
+    };
+  }
+
   private canConfirm(): boolean {
     return this.buildPayload() !== null;
   }
@@ -979,6 +1076,7 @@ export class EditNodeModal extends LitElement {
     this.imageUrl = "";
     this.statusId = "";
     this.url = "";
+    this.bounds = { min: 0, max: 0 };
   }
 
   private applyKindSpecificSeed(target: EditNodeTarget): void {
@@ -993,6 +1091,11 @@ export class EditNodeModal extends LitElement {
     }
     if (target.kind === "Workflow") {
       this.statusId = target.statusId;
+      return;
+    }
+    if (target.kind === "StrictRangeNode") {
+      this.description = target.description;
+      this.bounds = { min: target.bounds.min, max: target.bounds.max };
       return;
     }
     this.description = target.description;

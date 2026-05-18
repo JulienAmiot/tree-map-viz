@@ -508,6 +508,36 @@ function buildEditTarget(node: Node): EditNodeTarget | null {
   if (node instanceof TextNode) {
     return { nodeId: node.id, kind: "TextNode", title: node.title, weight: node.weight.value };
   }
+  // SPEC §17.77 / §17.94 — StrictRangeNode branch surfaces the
+  // structural `[min, max]` bounds (read-only in the modal) plus
+  // the editable description. Checked BEFORE the ValueNode-based
+  // generic branches would have a chance to misclassify it; the
+  // bounds are read off the `StrictRange` value object exposed by
+  // the node, so the modal pre-fills the read-only bounds row
+  // with the operator's current contract. Title flows through for
+  // the inline-edit seam (the modal does not edit titles per
+  // §17.50).
+  if (node instanceof StrictRangeNode) {
+    // SPEC §17.77 / §17.94 — surface the structural `[min, max]`
+    // bounds from the underlying `StrictRange<T>`. The modal renders
+    // them read-only (the application service's `StrictRange` edit
+    // shape is `CommonEdit` only), but pre-filling them keeps the
+    // operator informed of the active contract while editing
+    // description / weight. The modal is currently typed against
+    // numeric ranges; non-numeric `T` lands as the JS `Number(...)`
+    // coercion at the snapshot boundary, which matches every
+    // existing in-app usage (every persisted StrictRange is numeric
+    // per the §17.77 jsonCodec contract).
+    const range = node.range;
+    return {
+      nodeId: node.id,
+      kind: "StrictRangeNode",
+      title: node.title,
+      description: node.getDescription(),
+      weight: node.weight.value,
+      bounds: { min: Number(range.minimalValue), max: Number(range.maximalValue) },
+    };
+  }
   if (node instanceof BusinessScoreNode && !(node instanceof ComputedBusinessScoreNode)) {
     const obj = node.objective;
     return {
@@ -771,6 +801,20 @@ function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
       title: payload.title,
       weight: payload.weight,
       url: payload.url,
+    };
+  }
+  if (payload.kind === "StrictRangeNode") {
+    // SPEC §17.77 / §17.94 — modal-side "StrictRangeNode" → app
+    // "StrictRange" kind tag (parity with the add-child rewrite).
+    // Only `CommonEdit` fields flow through (title / weight /
+    // description); range bounds are structural and not editable
+    // from this modal, so no min/max here. Title-forwarding
+    // rationale identical to Picture / URL above.
+    return {
+      kind: "StrictRange",
+      title: payload.title,
+      description: payload.description,
+      weight: payload.weight,
     };
   }
   return {
