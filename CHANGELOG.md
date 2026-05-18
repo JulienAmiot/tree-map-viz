@@ -14,6 +14,27 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **v5 round-7 class diagram refreshed for the §17.117 / §17.119 /
+  §17.120 follow-up node kinds.** `examples/classDiagramMermaid.v5
+  .mermaid` (canonical) and its `.md` IDE-preview companion now
+  include `WorkflowNode` (concrete `TextNode` subclass with a
+  `statusId` slug field referencing one entry of the board's
+  `workflowStatuses` table), `PictureNode` and `URLNode` (both
+  concrete `ValueNode<string>` snapshot leaves that inherit
+  **directly** from `ValueNode` rather than `HistorizableValue-
+  Node` — pictures and URLs have no meaningful timeline), plus
+  the `WorkflowStatus` value object (`id` / `label` / `color`)
+  and the three matching `WorkflowCard` / `PictureCard` /
+  `URLCard` entries in the visual layer. A new soft dependency
+  `WorkflowNode ..> WorkflowStatus` documents the slug-reference
+  pattern (label + colour stay out of the domain; the view layer
+  resolves them at map time so renames don't orphan nodes). The
+  `.md` companion also gains a "Round-7 follow-up node kinds"
+  block 10/11/12 above the diagram. Diagram is the
+  documentation; no runtime code changes.
+
 ### Added
 
 - **Inline strategy picker on focused-panel Computed* tiles**
