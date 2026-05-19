@@ -88,6 +88,7 @@
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
+import { disabledToggleStyles, renderDisabledToggleFor } from "../disabledToggle.js";
 import {
   INLINE_EDIT_TITLE_EVENT,
   INLINE_EDIT_VALUE_EVENT,
@@ -165,7 +166,11 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
 
   static styles = [
     tileLayoutStyles,
+    disabledToggleStyles,
     css`
+      :host {
+        --subtitle-row-height: 2vh;
+      }
       /* SPEC 17.45 -- the per-view's host stacks title + body
          vertically. The body row holds the metric-pane (left) and the
          optional description (right). The shared tileLayoutStyles
@@ -829,6 +834,9 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
     const hasDescription = description.length > 0;
     return html`
       ${this.renderTitle()}
+      <div class="subtitle" data-testid="subtitle">
+        ${renderDisabledToggleFor(this, this.vm.id, this.vm.disabled ?? false)}
+      </div>
       <div
         class="body"
         data-has-description=${hasDescription ? "true" : "false"}

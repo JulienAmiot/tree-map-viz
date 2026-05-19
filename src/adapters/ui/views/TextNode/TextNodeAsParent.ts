@@ -34,6 +34,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../markdown/markdownToHtml.js";
+import { disabledToggleStyles, renderDisabledToggleFor } from "../disabledToggle.js";
 import {
   INLINE_EDIT_TITLE_EVENT,
   INLINE_EDIT_VALUE_EVENT,
@@ -70,7 +71,11 @@ export class TextNodeAsParent extends LitElement {
   static styles = [
     tileLayoutStyles,
     textBodyStyles,
+    disabledToggleStyles,
     css`
+      :host {
+        --subtitle-row-height: 2vh;
+      }
       /* SPEC 17.30 -- escape the parent strip's outer padding so the
          absolutely-positioned .timestamp lands at the strip's outer
          bottom-right corner with the same 0.4rem / 0.6rem offsets a
@@ -222,6 +227,9 @@ export class TextNodeAsParent extends LitElement {
     const empty = value.text.length === 0;
     return html`
       ${this.renderTitle()}
+      <div class="subtitle" data-testid="subtitle">
+        ${renderDisabledToggleFor(this, this.vm.id, this.vm.disabled ?? false)}
+      </div>
       ${value.dateIso && this.editingField !== "value"
         ? html`<time
             class="timestamp"

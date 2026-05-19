@@ -35,6 +35,19 @@ function cbsnVm(
 }
 
 describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
+  it("\u00a717.121h \u2014 the enable/disable toggle pill renders ONLY in the AsParent role (AsChild tree-map tiles never surface the write affordance)", async () => {
+    const asParent = await mountLitElement<ComputedCard>("computed-card", (e) => {
+      e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" });
+      e.viewRole = "asParent";
+    });
+    expect(asParent.shadowRoot?.querySelector('[data-testid="disabled-toggle"]')).not.toBeNull();
+    const asChild = await mountLitElement<ComputedCard>("computed-card", (e) => {
+      e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" });
+      e.viewRole = "asChild";
+    });
+    expect(asChild.shadowRoot?.querySelector('[data-testid="disabled-toggle"]')).toBeNull();
+  });
+
   it("\u00a717.121g \u2014 a disabled VM strikes + dims ONLY in the AsChild role; the AsParent (focused-panel) role keeps full opacity so the operator can still read + edit the parked node", async () => {
     const vm = { ...computedVm({ kind: "numeric", value: 42, unit: "EUR" }), disabled: true };
     const asChild = await mountLitElement<ComputedCard>("computed-card", (e) => {

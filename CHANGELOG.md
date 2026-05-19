@@ -16,6 +16,26 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **Inline enable/disable toggle pill on the focused panel (§17.121h, write-side)**.
+  Closes the loop on §17.121g: every focused-panel (AsParent) tile
+  now hosts a single tap-to-toggle pill in the shared `.subtitle`
+  slot that flips the v5 round-7 `ValueNode<T>.disabled` flag
+  through `EditNodeService.editFields({ kind, disabled })`. The
+  service applies `ValueNode.setDisabled` uniformly across kinds
+  (§17.99a) so the routing in `main.ts` is kind-agnostic on the
+  application side. The pill mirrors the §17.117 status-badge
+  shape (rounded rectangle, transparent background, coloured
+  border + text + dot) and toggles between an "Active" (green)
+  and "Disabled" (warm gold, §17.121f ACT colour) state. On the
+  WorkflowNode and Computed* AsParents the pill sits next to the
+  pre-existing status / strategy picker — the shared `.subtitle`
+  row gained a small flex `gap` so the two pills breathe. The
+  AsChild tree-map tile intentionally does NOT carry the pill —
+  the §17.121g strike + dim already signals state at-a-glance,
+  and adding a second affordance would crowd the small tile. The
+  loop is now end-to-end: tap → state flips → mapper re-bakes →
+  tree-map repaints with the §17.121g strike + dim.
+
 - **Disabled-node visibility in the tree-map (§17.121g, read-side)**.
   The v5 round-7 `ValueNode<T>.disabled` flag (§17.99a) was a
   domain-only concept until now — every node carried it, no view

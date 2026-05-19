@@ -51,6 +51,7 @@ import type { WorkflowNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../ageFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import { fitMarkdownBodyToTile, textBodyStyles } from "../TextNode/textBody.js";
+import { disabledToggleStyles, renderDisabledToggleFor } from "../disabledToggle.js";
 import {
   WORKFLOW_STATUS_CHANGE_EVENT,
   renderStatusBadgePicker,
@@ -79,6 +80,7 @@ export class WorkflowNodeAsParent extends LitElement {
     textBodyStyles,
     statusBadgeStyles,
     titleInlineEditStyles,
+    disabledToggleStyles,
     css`
       :host {
         position: static;
@@ -165,6 +167,7 @@ export class WorkflowNodeAsParent extends LitElement {
           this.vm.availableStatuses,
           this.dispatchStatusChange,
         )}
+        ${renderDisabledToggleFor(this, this.vm.id, this.vm.disabled ?? false)}
       </div>
       ${value.dateIso && !this.editingValue
         ? html`<time
@@ -239,6 +242,7 @@ export class WorkflowNodeAsParent extends LitElement {
       }),
     );
   };
+
 
   private commitValue(area: HTMLTextAreaElement | null): void {
     if (!this.editingValue) return;

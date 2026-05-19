@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import "../../../../../../adapters/ui/views/TextNode/TextNodeAsParent.js";
 import { TextNodeAsParent } from "../../../../../../adapters/ui/views/TextNode/TextNodeAsParent.js";
 import type { TextNodeViewModel } from "../../../../../../adapters/ui/views/NodeViewModel.js";
+import { VALUE_NODE_DISABLED_CHANGE_EVENT, type ValueNodeDisabledChangeDetail } from "../../../../../../adapters/ui/views/disabledToggle.js";
 import {
   cleanupLitFixtures,
   mountLitElement,
@@ -24,6 +25,35 @@ function vmWith(opts: Partial<TextNodeViewModel> = {}): TextNodeViewModel {
 }
 
 describe("<text-node-as-parent>", () => {
+  it("\u00a717.121h \u2014 renders the disabled-toggle pill in .subtitle reflecting vm.disabled (Active/Disabled label + aria-pressed + data-disabled attr)", async () => {
+    const active = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith(); });
+    const activePill = active.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-toggle"]');
+    expect(activePill?.hasAttribute("data-disabled")).toBe(false);
+    expect(activePill?.textContent?.trim()).toBe("Active");
+    expect(activePill?.getAttribute("aria-pressed")).toBe("false");
+    const off = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith({ disabled: true }); });
+    const offPill = off.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-toggle"]');
+    expect(offPill?.hasAttribute("data-disabled")).toBe(true);
+    expect(offPill?.textContent?.trim()).toBe("Disabled");
+    expect(offPill?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("\u00a717.121h \u2014 click flips the boolean and dispatches a bubbling, composed VALUE_NODE_DISABLED_CHANGE_EVENT", async () => {
+    const el = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith({ id: "node-x" }); });
+    const received: ValueNodeDisabledChangeDetail[] = [];
+    el.addEventListener(VALUE_NODE_DISABLED_CHANGE_EVENT, (ev) => {
+      received.push((ev as CustomEvent<ValueNodeDisabledChangeDetail>).detail);
+    });
+    el.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-toggle"]')?.click();
+    expect(received).toEqual([{ nodeId: "node-x", disabled: true }]);
+    const off = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith({ id: "node-y", disabled: true }); });
+    off.addEventListener(VALUE_NODE_DISABLED_CHANGE_EVENT, (ev) => {
+      received.push((ev as CustomEvent<ValueNodeDisabledChangeDetail>).detail);
+    });
+    off.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-toggle"]')?.click();
+    expect(received).toEqual([{ nodeId: "node-x", disabled: true }, { nodeId: "node-y", disabled: false }]);
+  });
+
   it("renders Title + the latest text value (\u00a717.14 — no description in the tile)", async () => {
     const el = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => {
       e.vm = vmWith();

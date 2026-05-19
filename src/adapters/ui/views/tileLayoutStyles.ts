@@ -164,6 +164,10 @@ export const tileLayoutStyles = css`
     display: flex;
     align-items: center;
     justify-content: center;
+    /* SPEC §17.121h — flex gap so the focused-panel subtitle row can
+       host multiple pills side-by-side (status / strategy picker +
+       enable/disable toggle). Single-child subtitles unaffected. */
+    gap: 0.5em;
     height: var(--subtitle-row-height, 0vh);
     line-height: 1;
     font-size: 1.4vh;
