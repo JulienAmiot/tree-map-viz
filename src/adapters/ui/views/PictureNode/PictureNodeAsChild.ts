@@ -62,6 +62,7 @@ export class PictureNodeAsChild extends LitElement {
         viewKind: "PictureNode",
         prefix: renderDisabledIndicator(disabled),
       })}
+      <div class="subtitle" data-testid="subtitle"></div>
       ${renderPictureValueArea(
         this.vm.imageUrl,
         this.vm.title,

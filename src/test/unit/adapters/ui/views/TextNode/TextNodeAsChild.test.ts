@@ -26,14 +26,29 @@ function vmWith(opts: Partial<TextNodeViewModel> = {}): TextNodeViewModel {
 }
 
 describe("<text-node-as-child>", () => {
-  it("\u00a717.121i \u2014 vm.disabled prepends a .disabled-indicator pill at the LEFT of the title, only when disabled (no strike, no value-area dim)", async () => {
+  it("\u00a717.121i \u2014 vm.disabled prepends a .disabled-indicator forbidden-sign glyph at the LEFT of the title, only when disabled (no strike, no value-area dim)", async () => {
     const enabled = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => { e.vm = vmWith(); });
     expect(enabled.shadowRoot?.querySelector('[data-testid="disabled-indicator"]')).toBeNull();
     expect(enabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
     const off = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => { e.vm = vmWith({ disabled: true }); });
     const title = off.shadowRoot?.querySelector('[data-testid="title"]');
-    expect(title?.firstElementChild?.getAttribute("data-testid")).toBe("disabled-indicator");
+    const indicator = title?.firstElementChild as HTMLElement | null;
+    expect(indicator?.getAttribute("data-testid")).toBe("disabled-indicator");
+    // SPEC §17.121j — the indicator is a plain inline span (no
+    // child elements / pill chrome) so it never clips against the
+    // 3vh title row's overflow: hidden; the glyph itself is painted
+    // via the `.disabled-indicator::before` rule.
+    expect(indicator?.tagName).toBe("SPAN");
+    expect(indicator?.children.length).toBe(0);
+    expect(indicator?.getAttribute("role")).toBe("img");
     expect(off.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
+  });
+
+  it("\u00a717.121j \u2014 reserves the shared `.subtitle` slot (empty) so the value-area lands at the same y-offset as every other tile", async () => {
+    const el = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => { e.vm = vmWith(); });
+    const subtitle = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="subtitle"]');
+    expect(subtitle).not.toBeNull();
+    expect(subtitle?.textContent?.trim()).toBe("");
   });
 
   it("renders Title + the latest text value (uniform with AsParent, \u00a75 + \u00a717.14)", async () => {

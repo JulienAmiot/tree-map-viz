@@ -281,4 +281,63 @@ describe("<url-node-as-parent>", () => {
       el.shadowRoot?.querySelector('[data-testid="qr-image"]'),
     ).toBeNull();
   });
+
+  describe("\u00a717.121j \u2014 description aside (QR + URL split body)", () => {
+    it("renders a `.body` row with both `.metric-pane` (QR) and `.description` (URL text) when the URL is non-empty", async () => {
+      const el = await mountLitElement<URLNodeAsParent>(
+        "url-node-as-parent",
+        (e) => {
+          e.vm = vmWith({ url: "https://example.com/region/north-east" });
+        },
+      );
+      await waitForQRSettled(el);
+      const body = el.shadowRoot?.querySelector<HTMLElement>(".body");
+      expect(body).not.toBeNull();
+      expect(body?.getAttribute("data-has-description")).toBe("true");
+      const pane = body?.querySelector<HTMLElement>('[data-testid="metric-pane"]');
+      expect(pane).not.toBeNull();
+      expect(pane?.querySelector('[data-testid="qr-image"]')).not.toBeNull();
+      const aside = body?.querySelector<HTMLElement>('[data-testid="description"]');
+      expect(aside).not.toBeNull();
+      expect(aside?.textContent?.trim()).toBe(
+        "https://example.com/region/north-east",
+      );
+    });
+
+    it("omits the `.description` aside (and flags the body data-has-description=\"false\") when the URL is empty", async () => {
+      const el = await mountLitElement<URLNodeAsParent>(
+        "url-node-as-parent",
+        (e) => {
+          e.vm = vmWith({ url: "" });
+        },
+      );
+      await el.updateComplete;
+      const body = el.shadowRoot?.querySelector<HTMLElement>(".body");
+      expect(body).not.toBeNull();
+      expect(body?.getAttribute("data-has-description")).toBe("false");
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="description"]'),
+      ).toBeNull();
+      // The metric-pane still renders so the QR fallback (warning or
+      // empty) keeps the strip well-formed.
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="metric-pane"]'),
+      ).not.toBeNull();
+    });
+  });
+
+  it("\u00a717.121j \u2014 reserves the shared `.subtitle` slot even though URLNode has no per-property content for it (operator-requested alignment contract: every kiosk tile reserves the row)", async () => {
+    const el = await mountLitElement<URLNodeAsParent>(
+      "url-node-as-parent",
+      (e) => {
+        e.vm = vmWith();
+      },
+    );
+    await waitForQRSettled(el);
+    const subtitle = el.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="subtitle"]',
+    );
+    expect(subtitle).not.toBeNull();
+    expect(subtitle?.textContent?.trim()).toBe("");
+  });
 });

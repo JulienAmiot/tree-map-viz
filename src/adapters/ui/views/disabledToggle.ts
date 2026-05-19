@@ -1,21 +1,30 @@
 /**
  * SPEC §17.121i — inline disable affordance for the §17.99a
- * `ValueNode.disabled` flag. Two surfaces share one visual
- * language (a compact pill with a sliding knob in warm gold):
+ * `ValueNode.disabled` flag. Two surfaces, two visual languages:
  *
- *  - **AsChild (passive)** — `renderDisabledIndicator(disabled)`
- *    returns the gold "switch-on" pill ONLY when `disabled` is
- *    true, otherwise `nothing`. Sits at the left of the tree-map
- *    tile title (operator's §17.121i requirement: "appear on the
- *    left of the title; if enabled, don't show anything").
- *  - **AsParent (interactive)** — `renderDisabledSwitch(host,
- *    nodeId, disabled)` returns a `<button role="switch">` that
- *    toggles between the OFF (outlined, knob left) and ON (gold,
- *    knob right) state. Sits at the same left-of-title position
- *    as the AsChild indicator (operator's §17.121i requirement:
- *    "toggle button appears at the same position as the state").
- *    Click dispatches `value-node-disabled-change` (bubbles +
- *    composed); `main.ts` routes through `EditNodeService.editFields`.
+ *  - **AsChild (passive, tree-map tile)** —
+ *    `renderDisabledIndicator(disabled)` returns a small, muted
+ *    "forbidden sign" glyph (U+29B8 CIRCLED REVERSE SOLIDUS) ONLY
+ *    when `disabled` is true, otherwise `nothing`. Sits at the
+ *    left of the tree-map tile title. The glyph is text-style
+ *    (monochrome on every system, no colour-emoji surprise), sized
+ *    at ~0.9em of the title font, and painted in a desaturated
+ *    grey so it reads as a quiet "this card is parked" badge at a
+ *    glance without competing with the title text. The §17.121i
+ *    follow-up: a pill-shaped read-only switch was visually
+ *    confusing on small tiles (the bottom of the pill clipped
+ *    against the 3vh title row's `overflow: hidden` because of the
+ *    1.5px border + line-height baseline mismatch) — the glyph has
+ *    no decorative box of its own so it always fits the row.
+ *  - **AsParent (interactive, focused panel)** —
+ *    `renderDisabledSwitch(host, nodeId, disabled)` returns a
+ *    `<button role="switch">` that toggles between OFF (outlined,
+ *    knob left) and ON (warm gold, knob right). Sits at the same
+ *    left-of-title position as the AsChild indicator. Sized
+ *    tightly (1em tall) so the pill fits cleanly inside the 3vh
+ *    title row's line-box at every kiosk viewport. Click
+ *    dispatches `value-node-disabled-change` (bubbles + composed);
+ *    `main.ts` routes through `EditNodeService.editFields`.
  */
 
 import { type TemplateResult, css, html, nothing } from "lit";
@@ -27,10 +36,39 @@ export type ValueNodeDisabledChangeDetail = {
 };
 
 export const disabledToggleStyles = css`
-  .disabled-indicator,
+  /* SPEC §17.121i — read-side "forbidden sign" glyph. Plain inline
+     span, sized in em so it scales with the title font; no border,
+     no background, no pseudo-element box that could clip against
+     the 3vh title row. Muted grey so the indicator reads as a calm
+     status badge rather than competing with the title text. */
+  .disabled-indicator {
+    display: inline-block;
+    vertical-align: baseline;
+    margin-right: 0.35em;
+    font-size: 0.9em;
+    line-height: 1;
+    color: color-mix(in srgb, currentColor 38%, transparent);
+    user-select: none;
+    pointer-events: none;
+  }
+  .disabled-indicator::before {
+    /* U+29B8 CIRCLED REVERSE SOLIDUS — a text-style "no/blocked"
+       glyph (circle with a backslash through it), always
+       monochrome (no colour-emoji presentation), present in the
+       system symbol fonts every kiosk target ships (Segoe UI
+       Symbol, Apple Symbols, Noto Sans Symbols). Reads as a
+       forbidden sign at a glance without the colour-emoji "red
+       ring" the U+1F6AB / U+26D4 variants paint by default. */
+    content: "\u29B8";
+    font-weight: 700;
+  }
+  /* SPEC §17.121i — write-side toggle switch. Sized at 1em tall
+     (was 1.1em pre-fix) so the pill fits comfortably inside the
+     3vh title row's line-box without the 1.5px border clipping
+     against the row's overflow: hidden. */
   .disabled-switch {
-    --dts-w: 2em;
-    --dts-h: 1.1em;
+    --dts-w: 1.8em;
+    --dts-h: 1em;
     --dts-gold: rgb(245, 158, 11);
     --dts-off: color-mix(in srgb, currentColor 40%, transparent);
     display: inline-flex;
@@ -48,31 +86,25 @@ export const disabledToggleStyles = css`
     font: inherit;
     user-select: none;
     flex: 0 0 auto;
-    overflow: visible;
+    cursor: pointer;
   }
-  .disabled-indicator,
   .disabled-switch[aria-checked="true"] {
     background: var(--dts-gold);
     border-color: var(--dts-gold);
   }
-  .disabled-switch {
-    cursor: pointer;
-  }
-  .disabled-indicator .knob,
   .disabled-switch .knob {
     position: absolute;
     top: 50%;
-    left: 0.1em;
-    width: calc(var(--dts-h) - 0.3em);
-    height: calc(var(--dts-h) - 0.3em);
+    left: 0.12em;
+    width: calc(var(--dts-h) - 0.36em);
+    height: calc(var(--dts-h) - 0.36em);
     border-radius: 50%;
     background: var(--dts-off);
     transform: translateY(-50%);
     transition: left 160ms ease, background 160ms ease;
   }
-  .disabled-indicator .knob,
   .disabled-switch[aria-checked="true"] .knob {
-    left: calc(100% - var(--dts-h) + 0.15em);
+    left: calc(100% - var(--dts-h) + 0.18em);
     background: rgb(245, 245, 245);
   }
 `;
@@ -85,7 +117,7 @@ export function renderDisabledIndicator(
     class="disabled-indicator"
     data-testid="disabled-indicator"
     aria-label="Disabled"
-    ><span class="knob" aria-hidden="true"></span
+    role="img"
   ></span>`;
 }
 

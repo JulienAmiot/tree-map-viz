@@ -71,14 +71,24 @@ const OVERSIZED_URL = "a".repeat(10000);
  * parent-role surface.
  */
 describe("<url-node-as-child>", () => {
-  it("\u00a717.121i \u2014 a disabled VM prepends a `.disabled-indicator` pill at the LEFT of the title; an enabled VM emits nothing (no strike, no value-area dim)", async () => {
+  it("\u00a717.121i \u2014 a disabled VM prepends a `.disabled-indicator` forbidden-sign glyph at the LEFT of the title; an enabled VM emits nothing (no strike, no value-area dim)", async () => {
     const enabled = await mountLitElement<URLNodeAsChild>("url-node-as-child", (e) => { e.vm = vmWith(); });
     expect(enabled.shadowRoot?.querySelector('[data-testid="disabled-indicator"]')).toBeNull();
     expect(enabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
     const off = await mountLitElement<URLNodeAsChild>("url-node-as-child", (e) => { e.vm = vmWith({ disabled: true }); });
     const title = off.shadowRoot?.querySelector('[data-testid="title"]');
-    expect(title?.firstElementChild?.getAttribute("data-testid")).toBe("disabled-indicator");
+    const indicator = title?.firstElementChild as HTMLElement | null;
+    expect(indicator?.getAttribute("data-testid")).toBe("disabled-indicator");
+    expect(indicator?.tagName).toBe("SPAN");
+    expect(indicator?.children.length).toBe(0);
     expect(off.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
+  });
+
+  it("\u00a717.121j \u2014 reserves the shared `.subtitle` slot (empty) so the QR area lands at the same y-offset as the rest of the tile wall", async () => {
+    const el = await mountLitElement<URLNodeAsChild>("url-node-as-child", (e) => { e.vm = vmWith(); });
+    const subtitle = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="subtitle"]');
+    expect(subtitle).not.toBeNull();
+    expect(subtitle?.textContent?.trim()).toBe("");
   });
 
   it("renders the title with the URLNode view-kind tag", async () => {

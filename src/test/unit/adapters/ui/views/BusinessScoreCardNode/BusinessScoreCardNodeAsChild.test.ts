@@ -47,7 +47,7 @@ function makeVm(
 }
 
 describe("<business-score-card-as-child>", () => {
-  it("\u00a717.121i \u2014 a disabled VM prepends a `.disabled-indicator` pill at the LEFT of the title; an enabled VM emits nothing (no strike, no value-area dim)", async () => {
+  it("\u00a717.121i \u2014 a disabled VM prepends a `.disabled-indicator` forbidden-sign glyph at the LEFT of the title; an enabled VM emits nothing (no strike, no value-area dim)", async () => {
     const enabledVm = makeVm({ kind: "recordedValue", value: 50, unit: "%", dateIso: "2026-04-23T18:25:43.511Z" });
     const enabled = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
@@ -60,8 +60,22 @@ describe("<business-score-card-as-child>", () => {
       (e) => { e.vm = { ...enabledVm, disabled: true }; },
     );
     const title = off.shadowRoot?.querySelector('[data-testid="title"]');
-    expect(title?.firstElementChild?.getAttribute("data-testid")).toBe("disabled-indicator");
+    const indicator = title?.firstElementChild as HTMLElement | null;
+    expect(indicator?.getAttribute("data-testid")).toBe("disabled-indicator");
+    expect(indicator?.tagName).toBe("SPAN");
+    expect(indicator?.children.length).toBe(0);
     expect(off.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
+  });
+
+  it("\u00a717.121j \u2014 reserves the shared `.subtitle` slot (empty) so the value-area aligns with workflow/computed tiles in the wall", async () => {
+    const vm = makeVm({ kind: "recordedValue", value: 50, unit: "%", dateIso: "2026-04-23T18:25:43.511Z" });
+    const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
+      "business-score-card-as-child",
+      (e) => { e.vm = vm; },
+    );
+    const subtitle = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="subtitle"]');
+    expect(subtitle).not.toBeNull();
+    expect(subtitle?.textContent?.trim()).toBe("");
   });
 
   it("\u00a717.116 — renders the \u03a3 prefix in the title row for the computedMean branch (same role-uniform rule as AsParent), the bare numeric value with no trailing zero, and the unit in a .unit-below sibling", async () => {

@@ -79,6 +79,17 @@ function makeVm(
 }
 
 describe("<business-score-card-as-parent>", () => {
+  it("\u00a717.121j \u2014 reserves the shared `.subtitle` slot (empty) between the title and the body so the metric pane aligns with workflow / computed parent strips", async () => {
+    const vm = makeVm({ kind: "recordedValue", value: 50, unit: "%", dateIso: "2026-04-23T18:25:43.511Z" });
+    const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+      "business-score-card-as-parent",
+      (e) => { e.vm = vm; },
+    );
+    const subtitle = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="subtitle"]');
+    expect(subtitle).not.toBeNull();
+    expect(subtitle?.textContent?.trim()).toBe("");
+  });
+
   it("renders Title and the description (\u00a717.30 \u2014 BSC parent view shows the metric's definition)", async () => {
     // SPEC §17.30 — the description (the BSC's definition, e.g.
     // "Quarterly revenue across the EU-North region…") is rendered on

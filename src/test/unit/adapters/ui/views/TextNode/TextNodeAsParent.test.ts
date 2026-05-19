@@ -25,6 +25,13 @@ function vmWith(opts: Partial<TextNodeViewModel> = {}): TextNodeViewModel {
 }
 
 describe("<text-node-as-parent>", () => {
+  it("\u00a717.121j \u2014 reserves the shared `.subtitle` slot (empty) so the value-area aligns with workflow/computed tiles in the focused-panel column", async () => {
+    const el = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith(); });
+    const subtitle = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="subtitle"]');
+    expect(subtitle).not.toBeNull();
+    expect(subtitle?.textContent?.trim()).toBe("");
+  });
+
   it("\u00a717.121i \u2014 renders a `.disabled-switch` toggle button as the FIRST child of the title row, reflecting vm.disabled via aria-checked", async () => {
     const active = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith(); });
     const activeTitle = active.shadowRoot?.querySelector('[data-testid="title"]');
