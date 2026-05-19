@@ -117,6 +117,29 @@ describe("<workflow-node-as-child> (§17.117)", () => {
     ).toBeNull();
   });
 
+  it("\u00a717.121g \u2014 a disabled VM paints data-disabled on .title + .value-area so the shared tileLayoutStyles rule strikes the title + dims the body in the tree-map", async () => {
+    const enabled = await mountLitElement<WorkflowNodeAsChild>(
+      "workflow-node-as-child",
+      (e) => { e.vm = vmWith(); },
+    );
+    expect(
+      enabled.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled"),
+    ).toBe(false);
+    expect(
+      enabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled"),
+    ).toBe(false);
+    const disabled = await mountLitElement<WorkflowNodeAsChild>(
+      "workflow-node-as-child",
+      (e) => { e.vm = vmWith({ disabled: true }); },
+    );
+    expect(
+      disabled.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled"),
+    ).toBe(true);
+    expect(
+      disabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled"),
+    ).toBe(true);
+  });
+
   it("renders the orphan-id muted-grey fallback when the mapper could not resolve the statusId (§17.117 — surfaces the uppercased id so the operator can repair it)", async () => {
     const el = await mountLitElement<WorkflowNodeAsChild>(
       "workflow-node-as-child",

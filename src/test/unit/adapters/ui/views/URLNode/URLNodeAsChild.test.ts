@@ -71,6 +71,15 @@ const OVERSIZED_URL = "a".repeat(10000);
  * parent-role surface.
  */
 describe("<url-node-as-child>", () => {
+  it("\u00a717.121g \u2014 a disabled VM paints data-disabled on .title + .value-area so the shared tileLayoutStyles rule strikes + dims the URL tile in the tree-map", async () => {
+    const enabled = await mountLitElement<URLNodeAsChild>("url-node-as-child", (e) => { e.vm = vmWith(); });
+    expect(enabled.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(false);
+    expect(enabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
+    const off = await mountLitElement<URLNodeAsChild>("url-node-as-child", (e) => { e.vm = vmWith({ disabled: true }); });
+    expect(off.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(true);
+    expect(off.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(true);
+  });
+
   it("renders the title with the URLNode view-kind tag", async () => {
     const el = await mountLitElement<URLNodeAsChild>(
       "url-node-as-child",

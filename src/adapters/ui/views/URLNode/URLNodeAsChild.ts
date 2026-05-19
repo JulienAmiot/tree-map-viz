@@ -65,12 +65,14 @@ export class URLNodeAsChild extends LitElement {
     if (!this.vm) {
       return nothing;
     }
+    const disabled = this.vm.disabled ?? false;
     return html`
       ${renderStaticTitle({
         target: { nodeId: this.vm.id, title: this.vm.title },
         viewKind: "URLNode",
+        disabled,
       })}
-      ${renderURLValueArea(this.qr.dataUrl, this.vm.title, this.qr.hasError)}
+      ${renderURLValueArea(this.qr.dataUrl, this.vm.title, this.qr.hasError, disabled)}
     `;
   }
 }

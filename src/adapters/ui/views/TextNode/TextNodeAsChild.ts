@@ -74,12 +74,14 @@ export class TextNodeAsChild extends LitElement {
     const { value } = this.vm;
     const dateLabel = value.dateIso ? formatAge(value.dateIso) : "";
     const empty = value.text.length === 0;
+    const disabled = this.vm.disabled ?? false;
     return html`
       <h2
         class="title"
         data-testid="title"
         data-view-kind="TextNode"
         data-id=${this.vm.id}
+        ?data-disabled=${disabled}
       >
         ${this.vm.title}
       </h2>
@@ -92,7 +94,7 @@ export class TextNodeAsChild extends LitElement {
             >${dateLabel}</time
           >`
         : html``}
-      <div class="value-area" data-testid="value-row">
+      <div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>
         <div
           class=${empty ? "md-body empty" : "md-body"}
           data-testid="value"

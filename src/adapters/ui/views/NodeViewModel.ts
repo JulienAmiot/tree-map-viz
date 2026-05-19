@@ -80,10 +80,21 @@ export type NodeRole = "asParent" | "asChild";
  * carries a description slot for shape uniformity; it is just always
  * `""` for `TextNode` and never crosses the VM boundary.
  */
+/**
+ * SPEC §17.121g — `disabled?` surfaces the v5 round-7
+ * `ValueNode<T>.disabled` eligibility flag (§17.99a) on every value
+ * VM so the tree-map (AsChild) view can paint a strike-through title
+ * + dimmed value-area for parked nodes. Optional so legacy unit
+ * fixtures (and the future board-less stub paths) don't need a
+ * `disabled: false` line each; the mapper still always populates it,
+ * and views read `vm.disabled ?? false`. The §17.121h follow-on
+ * strand adds the inline operator-facing write affordance.
+ */
 export type TextNodeViewModel = {
   readonly kind: "TextNode";
   readonly id: string;
   readonly title: string;
+  readonly disabled?: boolean;
   readonly value: {
     readonly text: string;
     readonly dateIso: string;
@@ -131,6 +142,7 @@ export type WorkflowNodeViewModel = {
   readonly kind: "WorkflowNode";
   readonly id: string;
   readonly title: string;
+  readonly disabled?: boolean;
   readonly value: {
     readonly text: string;
     readonly dateIso: string;
@@ -260,6 +272,7 @@ export type BusinessScoreCardNodeViewModel = {
   readonly kind: "BusinessScoreCardNode";
   readonly id: string;
   readonly title: string;
+  readonly disabled?: boolean;
   readonly description: string;
   readonly value: BusinessScoreCardValueViewModel;
   /**
@@ -288,6 +301,7 @@ export type ComputedNodeViewModel = {
   readonly kind: "ComputedNode";
   readonly id: string;
   readonly title: string;
+  readonly disabled?: boolean;
   readonly value: ComputedValueViewModel;
   readonly computationKind: ComputationKindName;
   readonly availableKinds: readonly ComputationKindName[];
@@ -298,6 +312,7 @@ export type ComputedBusinessScoreNodeViewModel = {
   readonly kind: "ComputedBusinessScoreNode";
   readonly id: string;
   readonly title: string;
+  readonly disabled?: boolean;
   readonly description: string;
   readonly value: ComputedValueViewModel;
   readonly computationKind: ComputationKindName;
@@ -325,6 +340,7 @@ export type PictureNodeViewModel = {
   readonly kind: "PictureNode";
   readonly id: string;
   readonly title: string;
+  readonly disabled?: boolean;
   readonly imageUrl: string;
 };
 
@@ -354,6 +370,7 @@ export type URLNodeViewModel = {
   readonly kind: "URLNode";
   readonly id: string;
   readonly title: string;
+  readonly disabled?: boolean;
   readonly url: string;
 };
 

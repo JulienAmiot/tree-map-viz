@@ -562,4 +562,23 @@ export const tileLayoutStyles = css`
     content: "\u26A0\uFE0E";
     font-feature-settings: normal;
   }
+  /* SPEC §17.121g — visual signal that a node is excluded from
+     parent aggregation (the v5 round-7 §17.99a ValueNode.disabled
+     flag). Applied via a data-disabled attribute on the .title +
+     .value-area emitted by each AsChild view; the AsParent (focused-
+     panel) tile intentionally does NOT carry these attributes — the
+     focused panel stays at full opacity so the operator can still
+     read + edit the parked node, and the §17.121h follow-on strand
+     adds the inline operator-facing write affordance on the parent
+     subtitle slot. Strike + dim are independent rules so a future
+     refresh that wants only one (e.g. dim without strike on
+     PictureNode where strike is meaningless on a thumbnail title
+     bar) can drop one selector without touching the other. */
+  .title[data-disabled] {
+    text-decoration: line-through;
+    text-decoration-thickness: 0.1em;
+  }
+  .value-area[data-disabled] {
+    opacity: 0.4;
+  }
 `;

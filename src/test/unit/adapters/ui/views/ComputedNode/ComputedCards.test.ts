@@ -35,6 +35,22 @@ function cbsnVm(
 }
 
 describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
+  it("\u00a717.121g \u2014 a disabled VM strikes + dims ONLY in the AsChild role; the AsParent (focused-panel) role keeps full opacity so the operator can still read + edit the parked node", async () => {
+    const vm = { ...computedVm({ kind: "numeric", value: 42, unit: "EUR" }), disabled: true };
+    const asChild = await mountLitElement<ComputedCard>("computed-card", (e) => {
+      e.vm = vm;
+      e.viewRole = "asChild";
+    });
+    expect(asChild.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(true);
+    expect(asChild.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(true);
+    const asParent = await mountLitElement<ComputedCard>("computed-card", (e) => {
+      e.vm = vm;
+      e.viewRole = "asParent";
+    });
+    expect(asParent.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(false);
+    expect(asParent.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
+  });
+
   it("\u00a717.116 + \u00a717.121e \u2014 \u03a3 prefixes the title; numeric value renders without inline unit; unit appears in a .unit-below block; AsChild kind-label sits in the shared `.subtitle` slot directly under the title", async () => {
     const el = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" }, "WEIGHTED_AVERAGE");
@@ -153,6 +169,22 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
 });
 
 describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
+  it("\u00a717.121g \u2014 a disabled VM strikes + dims ONLY in the AsChild role; mirror of the ComputedCard role-gating rule", async () => {
+    const vm = { ...cbsnVm({ kind: "numeric", value: 42, unit: "EUR" }), disabled: true };
+    const asChild = await mountLitElement<ComputedBusinessScoreCard>("computed-business-score-card", (e) => {
+      e.vm = vm;
+      e.viewRole = "asChild";
+    });
+    expect(asChild.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(true);
+    expect(asChild.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(true);
+    const asParent = await mountLitElement<ComputedBusinessScoreCard>("computed-business-score-card", (e) => {
+      e.vm = vm;
+      e.viewRole = "asParent";
+    });
+    expect(asParent.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(false);
+    expect(asParent.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
+  });
+
   it("\u00a717.116 + \u00a717.121e \u2014 full surface: \u03a3 title prefix, AsChild kind-label in the `.subtitle` slot under the title, value (no inline unit, no trailing zero), unit-below, target row, age timestamp, metric-pane wrapper", async () => {
     const el = await mountLitElement<ComputedBusinessScoreCard>(
       "computed-business-score-card", (e) => { e.vm = cbsnVm({ kind: "numeric", value: 75, unit: "%" }); },
