@@ -10,6 +10,10 @@ import {
 } from "../../../../../../adapters/ui/views/inlineEditEvents.js";
 import type { WorkflowNodeViewModel } from "../../../../../../adapters/ui/views/NodeViewModel.js";
 import {
+  WORKFLOW_STATUS_CHANGE_EVENT,
+  type WorkflowStatusChangeDetail,
+} from "../../../../../../adapters/ui/views/WorkflowNode/statusBadge.js";
+import {
   cleanupLitFixtures,
   mountLitElement,
 } from "../../../../../fixtures/litElementFixture.js";
@@ -17,6 +21,13 @@ import {
 afterEach(cleanupLitFixtures);
 
 const DATE_ISO = "2026-04-23T18:25:43.511Z";
+
+const STATUSES = [
+  { id: "plan", label: "PLAN", color: "rgb(161, 161, 170)" },
+  { id: "do", label: "DO", color: "rgb(59, 130, 246)" },
+  { id: "check", label: "CHECK", color: "rgb(34, 197, 94)" },
+  { id: "act", label: "ACT", color: "rgb(239, 68, 68)" },
+] as const;
 
 function vmWith(opts: Partial<WorkflowNodeViewModel> = {}): WorkflowNodeViewModel {
   return {
@@ -33,12 +44,13 @@ function vmWith(opts: Partial<WorkflowNodeViewModel> = {}): WorkflowNodeViewMode
       label: "DO",
       color: "rgb(59, 130, 246)",
     },
+    availableStatuses: STATUSES,
     ...opts,
   } as WorkflowNodeViewModel;
 }
 
-describe("<workflow-node-as-parent> (§17.117)", () => {
-  it("renders Title + markdown value + status badge with the parent-role data-view-kind hook", async () => {
+describe("<workflow-node-as-parent> (§17.117 / §17.121f)", () => {
+  it("renders Title + markdown value + inline status picker with the parent-role data-view-kind hook (§17.121f swaps the static badge for an editable <select>)", async () => {
     const el = await mountLitElement<WorkflowNodeAsParent>(
       "workflow-node-as-parent",
       (e) => { e.vm = vmWith(); },
@@ -49,6 +61,64 @@ describe("<workflow-node-as-parent> (§17.117)", () => {
     expect(
       el.shadowRoot?.querySelector('[data-testid="value"]')?.textContent?.trim(),
     ).toBe("design review pending");
+    // §17.121f — the AsParent role renders the editable picker, not
+    // the static .status-badge <span>. The picker carries the
+    // active status's id as data-status-id (mirror of the badge's
+    // selector contract) so existing assertions can still read the
+    // currently-pinned status without knowing about the picker shape.
+    const picker = el.shadowRoot?.querySelector<HTMLSelectElement>(
+      '[data-testid="status-badge-picker"]',
+    );
+    expect(picker).not.toBeNull();
+    expect(picker?.getAttribute("data-status-id")).toBe("do");
+    expect(picker?.value).toBe("do");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="status-badge"]'),
+    ).toBeNull();
+  });
+
+  it("\u00a717.121f \u2014 the picker lists every available status from vm.availableStatuses (one <option> per entry) so the operator can swap to any board-defined status", async () => {
+    const el = await mountLitElement<WorkflowNodeAsParent>(
+      "workflow-node-as-parent",
+      (e) => { e.vm = vmWith(); },
+    );
+    const picker = el.shadowRoot!.querySelector<HTMLSelectElement>(
+      '[data-testid="status-badge-picker"]',
+    );
+    if (!picker) throw new Error("expected status-badge-picker");
+    const ids = Array.from(picker.options).map((o) => o.value);
+    expect(ids).toEqual(["plan", "do", "check", "act"]);
+    const labels = Array.from(picker.options).map((o) => o.textContent?.trim());
+    expect(labels).toEqual(["PLAN", "DO", "CHECK", "ACT"]);
+  });
+
+  it("\u00a717.121f \u2014 a change on the picker dispatches a bubbling, composed WORKFLOW_STATUS_CHANGE_EVENT with { nodeId, newStatusId }", async () => {
+    const el = await mountLitElement<WorkflowNodeAsParent>(
+      "workflow-node-as-parent",
+      (e) => { e.vm = vmWith(); },
+    );
+    const received: WorkflowStatusChangeDetail[] = [];
+    el.addEventListener(WORKFLOW_STATUS_CHANGE_EVENT, (ev) => {
+      received.push((ev as CustomEvent<WorkflowStatusChangeDetail>).detail);
+    });
+    const picker = el.shadowRoot!.querySelector<HTMLSelectElement>(
+      '[data-testid="status-badge-picker"]',
+    );
+    if (!picker) throw new Error("expected status-badge-picker");
+    picker.value = "check";
+    picker.dispatchEvent(new Event("change", { bubbles: true }));
+    await el.updateComplete;
+    expect(received).toEqual([{ nodeId: "wf1", newStatusId: "check" }]);
+  });
+
+  it("\u00a717.121f \u2014 missing availableStatuses (e.g. a board-less stub) collapses the picker to the read-only status badge \u2014 graceful degrade, never throws", async () => {
+    const el = await mountLitElement<WorkflowNodeAsParent>(
+      "workflow-node-as-parent",
+      (e) => { e.vm = vmWith({ availableStatuses: [] }); },
+    );
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="status-badge-picker"]'),
+    ).toBeNull();
     const badge = el.shadowRoot?.querySelector<HTMLElement>(
       '[data-testid="status-badge"]',
     );

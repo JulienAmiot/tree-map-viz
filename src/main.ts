@@ -44,6 +44,13 @@
  * dropdown's `change`; the handler routes to
  * `EditNodeService.editFields` with `{ computationKind: ... }`
  * resolved through `ComputationKind.fromName`.
+ *
+ * **`workflow-status-change` wiring** — §17.121f
+ * `<workflow-node-as-parent>` dispatches this event on the inline
+ * status `<select>` change; the handler routes to
+ * `EditNodeService.editFields` with `{ kind: "Workflow", statusId }`.
+ * Mirror of the `computation-kind-change` path, atomic + rolled-back
+ * on persist failure.
  */
 
 import { LocalStorageBoardCollectionRepository } from "./adapters/persistence/LocalStorageBoardCollectionRepository.js";
@@ -79,6 +86,7 @@ import type {
 import "./adapters/ui/shell/TreeMapScreen.js";
 import type { TreeMapScreen } from "./adapters/ui/shell/TreeMapScreen.js";
 import type { ComputationKindChangeDetail } from "./adapters/ui/views/ComputedNode/ComputedCards.js";
+import type { WorkflowStatusChangeDetail } from "./adapters/ui/views/WorkflowNode/statusBadge.js";
 import type { InlineEditWeightDetail } from "./adapters/ui/views/childWeight/weightEditEvents.js";
 import type { InlineEditTitleDetail } from "./adapters/ui/views/inlineEditEvents.js";
 import type { InlineEditValueDetail } from "./adapters/ui/views/inlineEditEvents.js";
@@ -286,6 +294,26 @@ async function main(): Promise<void> {
       const kind = computedKindFor(node);
       if (!kind) return;
       await editNodeSvc.editFields(node, { kind, computationKind } as EditNodePayload);
+      refresh();
+    })();
+  });
+
+  // SPEC §17.121f — mirror of the §17.110 `computation-kind-change`
+  // wiring; routes the inline status-picker change to
+  // `EditNodeService.editFields({ kind: "Workflow", statusId })`.
+  // Defensive kind-check survives a stale build firing the event
+  // from an unexpected source.
+  screen.addEventListener("workflow-status-change", (e) => {
+    void (async () => {
+      const detail = (e as CustomEvent<WorkflowStatusChangeDetail>).detail;
+      const node = current().findById(detail.nodeId);
+      if (!node) return;
+      const kind = inferV4Kind(node);
+      if (kind !== "Workflow") return;
+      await editNodeSvc.editFields(node, {
+        kind,
+        statusId: detail.newStatusId,
+      } as EditNodePayload);
       refresh();
     })();
   });

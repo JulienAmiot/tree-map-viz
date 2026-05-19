@@ -21,12 +21,12 @@
  * timestamp still rides the §17.30 playbook), but the badge no
  * longer depends on it.
  *
- * The status itself is NOT inline-editable from the parent strip —
- * status mutations go through the Edit-node modal (§17.117 — the
- * status dropdown is sourced from `Board.workflowStatuses`, and the
- * parent strip's inline editors only handle the title + the
- * markdown-source value). A future strand may add a quick-cycle
- * affordance on the badge itself; today the badge is presentational.
+ * SPEC §17.121f — the parent-strip status is now INLINE EDITABLE.
+ * The subtitle slot renders a `<select class="status-badge-picker">`
+ * (mirror of the §17.104 Computed* strategy picker); a change fires
+ * `workflow-status-change` which `main.ts` routes to
+ * `EditNodeService.editFields({ kind: "Workflow", statusId })`. The
+ * AsChild role keeps the read-only badge.
  */
 
 import { LitElement, css, html, nothing } from "lit";
@@ -51,7 +51,12 @@ import type { WorkflowNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../ageFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import { fitMarkdownBodyToTile, textBodyStyles } from "../TextNode/textBody.js";
-import { renderStatusBadge, statusBadgeStyles } from "./statusBadge.js";
+import {
+  WORKFLOW_STATUS_CHANGE_EVENT,
+  renderStatusBadgePicker,
+  statusBadgeStyles,
+  type WorkflowStatusChangeDetail,
+} from "./statusBadge.js";
 
 @customElement("workflow-node-as-parent")
 export class WorkflowNodeAsParent extends LitElement {
@@ -154,7 +159,12 @@ export class WorkflowNodeAsParent extends LitElement {
     return html`
       ${this.titleEditor.renderTitle("WorkflowNode")}
       <div class="subtitle" data-testid="subtitle">
-        ${renderStatusBadge(status)}
+        ${renderStatusBadgePicker(
+          this.vm.id,
+          status,
+          this.vm.availableStatuses,
+          this.dispatchStatusChange,
+        )}
       </div>
       ${value.dateIso && !this.editingValue
         ? html`<time
@@ -211,6 +221,23 @@ export class WorkflowNodeAsParent extends LitElement {
 
   private readonly handleValueBlur = (e: FocusEvent): void => {
     this.commitValue(e.target as HTMLTextAreaElement | null);
+  };
+
+  /**
+   * SPEC §17.121f — dispatch the inline status-picker change as a
+   * bubbling + composed `workflow-status-change` event. The arrow
+   * binding makes the function identity-stable across renders so
+   * Lit's `@change` listener doesn't have to rebind every paint.
+   */
+  private readonly dispatchStatusChange = (newStatusId: string): void => {
+    if (!this.vm) return;
+    this.dispatchEvent(
+      new CustomEvent<WorkflowStatusChangeDetail>(WORKFLOW_STATUS_CHANGE_EVENT, {
+        bubbles: true,
+        composed: true,
+        detail: { nodeId: this.vm.id, newStatusId },
+      }),
+    );
   };
 
   private commitValue(area: HTMLTextAreaElement | null): void {

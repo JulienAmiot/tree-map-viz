@@ -14,6 +14,25 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Added
+
+- **Inline status editing on the focused WorkflowNode tile**
+  (§17.121f). The §17.121e subtitle slot's read-only status badge
+  on `<workflow-node-as-parent>` becomes an editable `<select
+  class="status-badge-picker">` populated from the focused board's
+  full `workflowStatuses` table (baked into the VM at map-time as a
+  new `availableStatuses` field). A change on the picker dispatches
+  a bubbling, composed `workflow-status-change` event with
+  `{ nodeId, newStatusId }`; the composition root in `main.ts`
+  routes it to `EditNodeService.editFields({ kind: "Workflow",
+  statusId })` — atomic + persister-rolled-back, mirror of the
+  §17.110 `computation-kind-change` wiring. The picker's pill
+  styling reuses the badge's coloured-border / coloured-text
+  contract so the visual at idle is unchanged. AsChild keeps the
+  read-only badge (child tiles never expose inline editors). A
+  board-less VM (empty `availableStatuses`) gracefully degrades the
+  picker back to the read-only badge so unit fixtures don't break.
+
 ### Changed
 
 - **Added an optional `.subtitle` slot directly under the tile

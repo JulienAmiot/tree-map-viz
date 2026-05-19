@@ -119,6 +119,14 @@ export type TextNodeViewModel = {
  * which status to add back. Same defensive pattern the mapper uses
  * for empty-history TextNodes (§17.15) — never throw, always paint.
  */
+/**
+ * SPEC §17.117 / §17.121f — view-model shape for `WorkflowNode` tiles.
+ * `status` is the board-resolved current pin; `availableStatuses` is
+ * the board's full status table baked in for the §17.121f AsParent
+ * inline-edit `<select>` picker (mirror of the §17.104 Computed*
+ * strategy picker). Optional + may be empty — the picker then
+ * collapses back to the read-only badge.
+ */
 export type WorkflowNodeViewModel = {
   readonly kind: "WorkflowNode";
   readonly id: string;
@@ -133,6 +141,11 @@ export type WorkflowNodeViewModel = {
     readonly label: string;
     readonly color: string;
   };
+  readonly availableStatuses?: readonly {
+    readonly id: string;
+    readonly label: string;
+    readonly color: string;
+  }[];
 };
 
 /**

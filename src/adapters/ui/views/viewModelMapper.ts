@@ -199,6 +199,14 @@ function mapWorkflowNode(
         label: node.statusId.toUpperCase(),
         color: ORPHAN_STATUS_COLOR,
       };
+  // SPEC §17.121f — flatten the board's status table for the
+  // AsParent inline picker (`<option>` per entry); empty when the
+  // caller did not pass `options.workflowStatuses`.
+  const availableStatuses = statuses.map((s) => ({
+    id: s.id,
+    label: s.label,
+    color: s.color,
+  }));
   return {
     kind: "WorkflowNode",
     id: node.id,
@@ -209,6 +217,7 @@ function mapWorkflowNode(
       dateColor: dateIso ? colorFor(dateIso, options) : "",
     },
     status,
+    availableStatuses,
   };
 }
 
