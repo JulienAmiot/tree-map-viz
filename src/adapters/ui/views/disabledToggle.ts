@@ -1,6 +1,7 @@
 /**
- * SPEC §17.121i — inline disable affordance for the §17.99a
- * `ValueNode.disabled` flag. Two surfaces, two visual languages:
+ * SPEC §17.121i / §17.122a — inline disable affordance for the
+ * §17.99a `ValueNode.disabled` flag. Two surfaces, two visual
+ * languages:
  *
  *  - **AsChild (passive, tree-map tile)** —
  *    `renderDisabledIndicator(disabled)` returns a small, muted
@@ -10,21 +11,31 @@
  *    (monochrome on every system, no colour-emoji surprise), sized
  *    at ~0.9em of the title font, and painted in a desaturated
  *    grey so it reads as a quiet "this card is parked" badge at a
- *    glance without competing with the title text. The §17.121i
- *    follow-up: a pill-shaped read-only switch was visually
- *    confusing on small tiles (the bottom of the pill clipped
- *    against the 3vh title row's `overflow: hidden` because of the
- *    1.5px border + line-height baseline mismatch) — the glyph has
- *    no decorative box of its own so it always fits the row.
+ *    glance without competing with the title text.
  *  - **AsParent (interactive, focused panel)** —
  *    `renderDisabledSwitch(host, nodeId, disabled)` returns a
- *    `<button role="switch">` that toggles between OFF (outlined,
- *    knob left) and ON (warm gold, knob right). Sits at the same
- *    left-of-title position as the AsChild indicator. Sized
- *    tightly (1em tall) so the pill fits cleanly inside the 3vh
- *    title row's line-box at every kiosk viewport. Click
- *    dispatches `value-node-disabled-change` (bubbles + composed);
- *    `main.ts` routes through `EditNodeService.editFields`.
+ *    `<button role="switch">` whose semantic mirrors "is this node
+ *    enabled?" — `aria-checked` reflects `!disabled` (§17.122a
+ *    polarity flip from the §17.121i original where checked meant
+ *    "is disabled"). The new visual pairs colour + glyph + knob
+ *    position so the state reads unambiguously at a glance:
+ *
+ *      DISABLED (aria-checked="false"):
+ *        - red pill (rgb(220, 38, 38))
+ *        - knob on the LEFT
+ *        - "×" (U+00D7) glyph inside the knob, painted red
+ *
+ *      ENABLED  (aria-checked="true"):
+ *        - green pill (rgb(34, 197, 94))
+ *        - knob on the RIGHT
+ *        - "✓" (U+2713) glyph inside the knob, painted green
+ *
+ *    Sits at the same left-of-title position as the AsChild
+ *    indicator. Sized at 1em tall so the pill fits cleanly inside
+ *    the 3vh title row's line-box at every kiosk viewport. Click
+ *    dispatches `value-node-disabled-change` (bubbles + composed)
+ *    with the toggled `disabled` value; `main.ts` routes through
+ *    `EditNodeService.editFields`.
  */
 
 import { type TemplateResult, css, html, nothing } from "lit";
@@ -62,15 +73,21 @@ export const disabledToggleStyles = css`
     content: "\u29B8";
     font-weight: 700;
   }
-  /* SPEC §17.121i — write-side toggle switch. Sized at 1em tall
-     (was 1.1em pre-fix) so the pill fits comfortably inside the
-     3vh title row's line-box without the 1.5px border clipping
-     against the row's overflow: hidden. */
+  /* SPEC §17.121i / §17.122a — write-side toggle switch. The
+     pill represents "is this node enabled?" (aria-checked = !disabled).
+     Sized at 1em tall and 2em wide so the pill fits comfortably
+     inside the 3vh title row's line-box at every kiosk viewport
+     while leaving room for the knob to travel + a centred glyph.
+     DISABLED state: red pill, knob LEFT, "×" glyph inside knob.
+     ENABLED  state: green pill, knob RIGHT, "✓" glyph inside knob.
+     Knob has a solid light background so the glyph (coloured to
+     match the pill) reads with high contrast on either state. */
   .disabled-switch {
-    --dts-w: 1.8em;
+    --dts-w: 2em;
     --dts-h: 1em;
-    --dts-gold: rgb(245, 158, 11);
-    --dts-off: color-mix(in srgb, currentColor 40%, transparent);
+    --dts-red: rgb(220, 38, 38);
+    --dts-green: rgb(34, 197, 94);
+    --dts-knob-bg: rgb(245, 245, 245);
     display: inline-flex;
     align-items: center;
     box-sizing: border-box;
@@ -78,8 +95,8 @@ export const disabledToggleStyles = css`
     width: var(--dts-w);
     height: var(--dts-h);
     border-radius: calc(var(--dts-h) / 2);
-    border: 1.5px solid var(--dts-off);
-    background: transparent;
+    border: none;
+    background: var(--dts-red);
     padding: 0;
     margin-right: 0.4em;
     vertical-align: middle;
@@ -87,25 +104,46 @@ export const disabledToggleStyles = css`
     user-select: none;
     flex: 0 0 auto;
     cursor: pointer;
+    transition: background 160ms ease;
   }
   .disabled-switch[aria-checked="true"] {
-    background: var(--dts-gold);
-    border-color: var(--dts-gold);
+    background: var(--dts-green);
   }
   .disabled-switch .knob {
     position: absolute;
     top: 50%;
     left: 0.12em;
-    width: calc(var(--dts-h) - 0.36em);
-    height: calc(var(--dts-h) - 0.36em);
+    width: calc(var(--dts-h) - 0.24em);
+    height: calc(var(--dts-h) - 0.24em);
     border-radius: 50%;
-    background: var(--dts-off);
+    background: var(--dts-knob-bg);
+    color: var(--dts-red);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7em;
+    font-weight: 900;
+    line-height: 1;
     transform: translateY(-50%);
-    transition: left 160ms ease, background 160ms ease;
+    transition: left 160ms ease, color 160ms ease;
   }
   .disabled-switch[aria-checked="true"] .knob {
-    left: calc(100% - var(--dts-h) + 0.18em);
-    background: rgb(245, 245, 245);
+    left: calc(100% - var(--dts-h) + 0.12em);
+    color: var(--dts-green);
+  }
+  /* CSS-escaped Unicode glyphs. The JS template literal needs the
+     backslash escaped (double-backslash in the source) so that the
+     resulting CSS sees a single backslash followed by the codepoint:
+     U+00D7 MULTIPLICATION SIGN (×) and U+2713 CHECK MARK (✓).
+     Without the double-backslash, "\\0..." and "\\2..." would be
+     invalid ECMAScript escape sequences that silently collapse the
+     template's cooked string to undefined (per the ES2018 template-
+     literal-revision spec amendment). */
+  .disabled-switch .knob::before {
+    content: "\\00d7";
+  }
+  .disabled-switch[aria-checked="true"] .knob::before {
+    content: "\\2713";
   }
 `;
 
@@ -144,8 +182,8 @@ export function renderDisabledSwitch(
     class="disabled-switch"
     type="button"
     role="switch"
-    aria-checked=${disabled ? "true" : "false"}
-    aria-label="Toggle disabled"
+    aria-checked=${disabled ? "false" : "true"}
+    aria-label="Toggle enabled"
     data-testid="disabled-switch"
     data-node-id=${nodeId}
     @click=${onClick}

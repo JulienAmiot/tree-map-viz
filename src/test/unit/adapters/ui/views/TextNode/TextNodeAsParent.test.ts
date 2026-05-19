@@ -32,18 +32,18 @@ describe("<text-node-as-parent>", () => {
     expect(subtitle?.textContent?.trim()).toBe("");
   });
 
-  it("\u00a717.121i \u2014 renders a `.disabled-switch` toggle button as the FIRST child of the title row, reflecting vm.disabled via aria-checked", async () => {
+  it("\u00a717.121i / \u00a717.122a \u2014 renders a `.disabled-switch` toggle button as the FIRST child of the title row, with aria-checked = !disabled (checked means ENABLED, knob right; unchecked means DISABLED, knob left)", async () => {
     const active = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith(); });
     const activeTitle = active.shadowRoot?.querySelector('[data-testid="title"]');
     const activeSwitch = activeTitle?.firstElementChild as HTMLButtonElement | null;
     expect(activeSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
     expect(activeSwitch?.getAttribute("role")).toBe("switch");
-    expect(activeSwitch?.getAttribute("aria-checked")).toBe("false");
+    expect(activeSwitch?.getAttribute("aria-checked")).toBe("true");
     const off = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith({ disabled: true }); });
     const offTitle = off.shadowRoot?.querySelector('[data-testid="title"]');
     const offSwitch = offTitle?.firstElementChild as HTMLButtonElement | null;
     expect(offSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
-    expect(offSwitch?.getAttribute("aria-checked")).toBe("true");
+    expect(offSwitch?.getAttribute("aria-checked")).toBe("false");
   });
 
   it("\u00a717.121i \u2014 click on the switch flips the boolean and dispatches a bubbling, composed VALUE_NODE_DISABLED_CHANGE_EVENT", async () => {

@@ -54,7 +54,7 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(asChild.shadowRoot?.querySelector('[data-testid="disabled-indicator"]')).toBeNull();
   });
 
-  it("\u00a717.121i \u2014 a disabled VM surfaces the gold pill ONLY in the AsChild role (`.disabled-indicator` prepended to the title); the AsParent role keeps the same switch toggled to aria-checked=true (no strike, no value-area dim)", async () => {
+  it("\u00a717.121i / \u00a717.122a \u2014 a disabled VM surfaces the forbidden-sign glyph in the AsChild role (`.disabled-indicator` prepended to the title); the AsParent role keeps the same switch but its aria-checked flips to false (knob LEFT, red pill, cross glyph)", async () => {
     const vm = { ...computedVm({ kind: "numeric", value: 42, unit: "EUR" }), disabled: true };
     const asChild = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = vm;
@@ -70,7 +70,7 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     const parentSwitch = asParent.shadowRoot
       ?.querySelector('[data-testid="title"]')
       ?.firstElementChild as HTMLButtonElement | null;
-    expect(parentSwitch?.getAttribute("aria-checked")).toBe("true");
+    expect(parentSwitch?.getAttribute("aria-checked")).toBe("false");
     expect(asParent.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });
 
@@ -192,7 +192,7 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
 });
 
 describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
-  it("\u00a717.121i \u2014 a disabled VM surfaces the gold pill at the left of the title (AsChild: `.disabled-indicator`, AsParent: `.disabled-switch` aria-checked=true); mirror of the ComputedCard role-gating rule", async () => {
+  it("\u00a717.121i / \u00a717.122a \u2014 a disabled VM surfaces the forbidden-sign glyph at the left of the title (AsChild: `.disabled-indicator`, AsParent: `.disabled-switch` with aria-checked=false \u2014 knob LEFT, red pill, cross glyph); mirror of the ComputedCard role-gating rule", async () => {
     const vm = { ...cbsnVm({ kind: "numeric", value: 42, unit: "EUR" }), disabled: true };
     const asChild = await mountLitElement<ComputedBusinessScoreCard>("computed-business-score-card", (e) => {
       e.vm = vm;
@@ -209,7 +209,7 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
       ?.querySelector('[data-testid="title"]')
       ?.firstElementChild as HTMLButtonElement | null;
     expect(parentSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
-    expect(parentSwitch?.getAttribute("aria-checked")).toBe("true");
+    expect(parentSwitch?.getAttribute("aria-checked")).toBe("false");
     expect(asParent.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });
 
