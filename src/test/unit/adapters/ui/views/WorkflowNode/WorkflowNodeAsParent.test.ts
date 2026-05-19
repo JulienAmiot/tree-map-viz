@@ -26,7 +26,7 @@ const STATUSES = [
   { id: "plan", label: "PLAN", color: "rgb(161, 161, 170)" },
   { id: "do", label: "DO", color: "rgb(59, 130, 246)" },
   { id: "check", label: "CHECK", color: "rgb(34, 197, 94)" },
-  { id: "act", label: "ACT", color: "rgb(239, 68, 68)" },
+  { id: "act", label: "ACT", color: "rgb(217, 119, 6)" },
 ] as const;
 
 function vmWith(opts: Partial<WorkflowNodeViewModel> = {}): WorkflowNodeViewModel {

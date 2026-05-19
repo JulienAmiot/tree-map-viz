@@ -99,7 +99,7 @@ const STATUSES = [
   WorkflowStatus.of("plan", "PLAN", "rgb(161, 161, 170)"),
   WorkflowStatus.of("do", "DO", "rgb(59, 130, 246)"),
   WorkflowStatus.of("check", "CHECK", "rgb(34, 197, 94)"),
-  WorkflowStatus.of("act", "ACT", "rgb(239, 68, 68)"),
+  WorkflowStatus.of("act", "ACT", "rgb(217, 119, 6)"),
 ];
 
 describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)", () => {
@@ -200,7 +200,7 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
         { id: "plan", label: "PLAN", color: "rgb(161, 161, 170)" },
         { id: "do", label: "DO", color: "rgb(59, 130, 246)" },
         { id: "check", label: "CHECK", color: "rgb(34, 197, 94)" },
-        { id: "act", label: "ACT", color: "rgb(239, 68, 68)" },
+        { id: "act", label: "ACT", color: "rgb(217, 119, 6)" },
       ]);
     });
 
