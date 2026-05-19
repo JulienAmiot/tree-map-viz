@@ -164,13 +164,13 @@ describe("jsonCodecV4 (§17.106a + §17.106b — v4-native encode + decode)", ()
       expect([...rt.cards.keys()].sort()).toEqual([...original.cards.keys()].sort());
     });
 
-    it("Tree from showcaseSeedV4 (§17.109) round-trips byte-exact: encode(decode(json)) === json + sales-lost.disabled survives", () => {
+    it("Tree from showcaseSeed (§17.122 — Data Platform Obeya) round-trips byte-exact: encode(decode(json)) === json + slo-legacy-etl.disabled survives", () => {
       const original = buildShowcaseTree(clock, NOW);
       const json = codec.encode(original);
       const decoded = codec.decode(json);
       expect(decoded.nodes().map((n) => n.id)).toEqual(original.nodes().map((n) => n.id));
       expect([...decoded.cards.keys()].sort()).toEqual([...original.cards.keys()].sort());
-      expect((decoded.findById("sales-lost") as BusinessScoreNode<number>).disabled).toBe(true);
+      expect((decoded.findById("slo-legacy-etl") as BusinessScoreNode<number>).disabled).toBe(true);
       expect(codec.encode(decoded)).toBe(json);
     });
   });
