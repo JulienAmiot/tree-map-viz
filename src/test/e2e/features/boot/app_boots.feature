@@ -7,12 +7,13 @@ Feature: App boots and renders the focused tree
 
   @HE-???? @priority:high
   Scenario: Default seed renders the showcase board's root title
-    # SPEC §17.21 — a fresh kiosk now lands on the showcase tree
-    # (Quarterly OKRs root + 5 children mixing TextNodes / BSCs /
-    # computed branches). The minimal "Root" seed is gone; tests that
+    # SPEC §17.122 — a fresh kiosk lands on the Data Platform Obeya
+    # showcase tree (root + six panels: reliability / ingestion /
+    # infra-cost / products / team-health / workflow) covering every
+    # shipped node kind. The minimal "Root" seed is gone; tests that
     # still want it inject a custom seed factory.
     When I open the kiosk in test mode with empty storage
-    Then the focused title is "Quarterly OKRs"
+    Then the focused title is "Data Platform Obeya"
 
   @HE-???? @priority:medium
   Scenario: Test bridge seeds a tree and reload renders its root
