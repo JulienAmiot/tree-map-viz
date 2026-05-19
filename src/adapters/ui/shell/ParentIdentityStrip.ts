@@ -16,7 +16,7 @@
  *   it dispatches a bubbling + composed `focus-close-to-parent` CustomEvent
  *   `{ parentId }` that the composition root maps to the same
  *   `nav.focusByUuid + router.push + refresh` triple the breadcrumb uses
- *   (SPEC §11.3). At root focus (`parentId === ""`) the button is omitted
+ *   (SPEC §9). At root focus (`parentId === ""`) the button is omitted
  *   — there's no parent to close back to. The button does NOT replay the
  *   `encap--drill` animation: that's a drill-*in* cue; an `encap--leave`
  *   inverse is deferred per §17.20, so today the navigation commits

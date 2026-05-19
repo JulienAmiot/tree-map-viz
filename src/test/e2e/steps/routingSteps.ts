@@ -1,6 +1,6 @@
 /**
  * Step definitions for the §17.35 routing features
- * (SPEC §11.3 + §17.11):
+ * (SPEC §9 + §17.11):
  *  - `routing/deep_link.feature`
  *  - `routing/focus_to_url.feature`
  *  - `routing/unknown_uuid_fallback.feature`
