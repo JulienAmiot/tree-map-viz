@@ -20,10 +20,10 @@
  *   - No description.
  */
 
-import { LitElement, css, html, nothing } from "lit";
+import { LitElement, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
-import { disabledToggleStyles, renderDisabledToggleFor } from "../disabledToggle.js";
+import { disabledToggleStyles, renderDisabledSwitch } from "../disabledToggle.js";
 import {
   InlineTitleEditController,
   type InlineTitleEditTarget,
@@ -56,11 +56,6 @@ export class PictureNodeAsParent extends LitElement {
     pictureBodyStyles,
     titleInlineEditStyles,
     disabledToggleStyles,
-    css`
-      :host {
-        --subtitle-row-height: 2vh;
-      }
-    `,
   ];
 
   render() {
@@ -68,10 +63,10 @@ export class PictureNodeAsParent extends LitElement {
       return nothing;
     }
     return html`
-      ${this.titleEditor.renderTitle("PictureNode")}
-      <div class="subtitle" data-testid="subtitle">
-        ${renderDisabledToggleFor(this, this.vm.id, this.vm.disabled ?? false)}
-      </div>
+      ${this.titleEditor.renderTitle(
+        "PictureNode",
+        renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false),
+      )}
       ${renderPictureValueArea(
         this.vm.imageUrl,
         this.vm.title,

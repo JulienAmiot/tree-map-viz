@@ -117,23 +117,23 @@ export function renderStaticTitle(args: {
   target: InlineTitleEditTarget | null;
   viewKind: string;
   /**
-   * SPEC §17.121g — when true, the `<h2>` carries a `data-disabled`
-   * attribute the shared `tileLayoutStyles` rule paints with a
-   * strike-through; omit / false to render the title untouched.
+   * SPEC §17.121i — optional inline template rendered as the first
+   * child of the `<h2>`, before the title text. Used by AsChild
+   * views to surface the `renderDisabledIndicator` gold pill at
+   * the left of the title when `vm.disabled` is true; defaults to
+   * `nothing` so callers that don't need a prefix get the legacy
+   * "just title text" rendering.
    */
-  disabled?: boolean;
+  prefix?: TemplateResult | typeof nothing;
 }): TemplateResult | typeof nothing {
-  const { target, viewKind, disabled } = args;
+  const { target, viewKind, prefix } = args;
   if (!target) return nothing;
   return html`<h2
     class="title"
     data-testid="title"
     data-view-kind=${viewKind}
     data-id=${target.nodeId}
-    ?data-disabled=${disabled ?? false}
-  >
-    ${target.title}
-  </h2>`;
+  >${prefix ?? nothing}${target.title}</h2>`;
 }
 
 /**
@@ -154,8 +154,18 @@ export function renderInlineEditableTitle(args: {
   onStart: () => void;
   onKeydown: (e: KeyboardEvent) => void;
   onBlur: (e: FocusEvent) => void;
+  /**
+   * SPEC §17.121i — optional inline template rendered as the first
+   * child of the static (non-editing) `<h1>`, before the title
+   * text. Used by AsParent views to surface the
+   * `renderDisabledSwitch` toggle at the left of the title row.
+   * Hidden in edit mode so the `<input.title-edit>` has the full
+   * row width; the operator can finish editing the title and the
+   * switch reappears in the next render.
+   */
+  prefix?: TemplateResult | typeof nothing;
 }): TemplateResult | typeof nothing {
-  const { target, isEditing, viewKind, onStart, onKeydown, onBlur } = args;
+  const { target, isEditing, viewKind, onStart, onKeydown, onBlur, prefix } = args;
   if (!target) return nothing;
   if (isEditing) {
     return html`<h1
@@ -184,9 +194,7 @@ export function renderInlineEditableTitle(args: {
     tabindex="0"
     title="Click to edit title"
     @click=${onStart}
-  >
-    ${target.title}
-  </h1>`;
+  >${prefix ?? nothing}${target.title}</h1>`;
 }
 
 /**
@@ -345,7 +353,10 @@ export class InlineTitleEditController implements ReactiveController {
    * tag so the rendered `<h1>` keeps the per-strand
    * `data-view-kind` attribute that unit tests rely on.
    */
-  renderTitle(viewKind: string): TemplateResult | typeof nothing {
+  renderTitle(
+    viewKind: string,
+    prefix: TemplateResult | typeof nothing = nothing,
+  ): TemplateResult | typeof nothing {
     return renderInlineEditableTitle({
       target: this.host.getInlineTitleEditTarget(),
       isEditing: this.isEditing,
@@ -353,6 +364,7 @@ export class InlineTitleEditController implements ReactiveController {
       onStart: this.start,
       onKeydown: this.handleKey,
       onBlur: this.handleBlur,
+      prefix,
     });
   }
 

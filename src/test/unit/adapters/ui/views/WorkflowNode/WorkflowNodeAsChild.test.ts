@@ -117,14 +117,14 @@ describe("<workflow-node-as-child> (§17.117)", () => {
     ).toBeNull();
   });
 
-  it("\u00a717.121g \u2014 a disabled VM paints data-disabled on .title + .value-area so the shared tileLayoutStyles rule strikes the title + dims the body in the tree-map", async () => {
+  it("\u00a717.121i \u2014 a disabled VM prepends a `.disabled-indicator` pill at the LEFT of the title; an enabled VM emits nothing (no strike, no value-area dim)", async () => {
     const enabled = await mountLitElement<WorkflowNodeAsChild>(
       "workflow-node-as-child",
       (e) => { e.vm = vmWith(); },
     );
     expect(
-      enabled.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled"),
-    ).toBe(false);
+      enabled.shadowRoot?.querySelector('[data-testid="disabled-indicator"]'),
+    ).toBeNull();
     expect(
       enabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled"),
     ).toBe(false);
@@ -132,12 +132,11 @@ describe("<workflow-node-as-child> (§17.117)", () => {
       "workflow-node-as-child",
       (e) => { e.vm = vmWith({ disabled: true }); },
     );
-    expect(
-      disabled.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled"),
-    ).toBe(true);
+    const title = disabled.shadowRoot?.querySelector('[data-testid="title"]');
+    expect(title?.firstElementChild?.getAttribute("data-testid")).toBe("disabled-indicator");
     expect(
       disabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled"),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("renders the orphan-id muted-grey fallback when the mapper could not resolve the statusId (§17.117 — surfaces the uppercased id so the operator can repair it)", async () => {

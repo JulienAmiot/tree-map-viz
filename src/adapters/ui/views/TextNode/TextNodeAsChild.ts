@@ -22,6 +22,10 @@ import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../markdown/markdownToHtml.js";
+import {
+  disabledToggleStyles,
+  renderDisabledIndicator,
+} from "../disabledToggle.js";
 import type { TextNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../ageFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
@@ -39,7 +43,7 @@ export class TextNodeAsChild extends LitElement {
    */
   private resizeObserver: ResizeObserver | null = null;
 
-  static styles = [tileLayoutStyles, textBodyStyles];
+  static readonly styles = [tileLayoutStyles, textBodyStyles, disabledToggleStyles];
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -81,10 +85,7 @@ export class TextNodeAsChild extends LitElement {
         data-testid="title"
         data-view-kind="TextNode"
         data-id=${this.vm.id}
-        ?data-disabled=${disabled}
-      >
-        ${this.vm.title}
-      </h2>
+      >${renderDisabledIndicator(disabled)}${this.vm.title}</h2>
       ${value.dateIso
         ? html`<time
             class="timestamp"
@@ -94,7 +95,7 @@ export class TextNodeAsChild extends LitElement {
             >${dateLabel}</time
           >`
         : html``}
-      <div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>
+      <div class="value-area" data-testid="value-row">
         <div
           class=${empty ? "md-body empty" : "md-body"}
           data-testid="value"

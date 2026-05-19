@@ -107,9 +107,8 @@ export function renderPictureValueArea(
   alt: string,
   hasError: boolean,
   onError: (e: Event) => void,
-  disabled = false,
 ): TemplateResult {
-  return html`<div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>
+  return html`<div class="value-area" data-testid="value-row">
     ${hasError
       ? renderWarningFill("image-load-failed", "Image failed to load")
       : html`<img

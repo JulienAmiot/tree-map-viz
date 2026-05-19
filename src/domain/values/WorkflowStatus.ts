@@ -89,7 +89,7 @@ export const DEFAULT_WORKFLOW_STATUSES: readonly WorkflowStatus[] =
     WorkflowStatus.of("plan", "PLAN", "rgb(161, 161, 170)"),
     WorkflowStatus.of("do", "DO", "rgb(59, 130, 246)"),
     WorkflowStatus.of("check", "CHECK", "rgb(34, 197, 94)"),
-    WorkflowStatus.of("act", "ACT", "rgb(217, 119, 6)"),
+    WorkflowStatus.of("act", "ACT", "rgb(245, 158, 11)"),
   ]);
 
 /**

@@ -11,6 +11,10 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
+import {
+  disabledToggleStyles,
+  renderDisabledIndicator,
+} from "../disabledToggle.js";
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../ageFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
@@ -29,6 +33,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
 
   static readonly styles = [
     tileLayoutStyles,
+    disabledToggleStyles,
     css`
       /* SPEC §17.116 -- Σ prefix in the title row when the value
          branch is "computedMean". Same rule shape as the asParent
@@ -57,8 +62,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
         data-testid="title"
         data-view-kind="BusinessScoreCardNode"
         data-id=${this.vm.id}
-        ?data-disabled=${disabled}
-      >${showBadge
+      >${renderDisabledIndicator(disabled)}${showBadge
         ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value">Σ</span>`
         : nothing}${this.vm.title}</h2>
       ${dateIso
@@ -70,7 +74,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
             >${formatAge(dateIso)}</time
           >`
         : html``}
-      <div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>
+      <div class="value-area" data-testid="value-row">
         <div class="value-row">
           ${renderValueTemplate(this.vm)}
           ${renderTrendArrow(this.vm)}

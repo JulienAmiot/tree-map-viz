@@ -51,7 +51,7 @@ import type { WorkflowNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../ageFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import { fitMarkdownBodyToTile, textBodyStyles } from "../TextNode/textBody.js";
-import { disabledToggleStyles, renderDisabledToggleFor } from "../disabledToggle.js";
+import { disabledToggleStyles, renderDisabledSwitch } from "../disabledToggle.js";
 import {
   WORKFLOW_STATUS_CHANGE_EVENT,
   renderStatusBadgePicker,
@@ -159,7 +159,10 @@ export class WorkflowNodeAsParent extends LitElement {
     const bodyClass = empty ? "md-body empty is-editable" : "md-body is-editable";
     const bodyContent = empty ? "" : unsafeHTML(renderMarkdownToHtml(value.text));
     return html`
-      ${this.titleEditor.renderTitle("WorkflowNode")}
+      ${this.titleEditor.renderTitle(
+        "WorkflowNode",
+        renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false),
+      )}
       <div class="subtitle" data-testid="subtitle">
         ${renderStatusBadgePicker(
           this.vm.id,
@@ -167,7 +170,6 @@ export class WorkflowNodeAsParent extends LitElement {
           this.vm.availableStatuses,
           this.dispatchStatusChange,
         )}
-        ${renderDisabledToggleFor(this, this.vm.id, this.vm.disabled ?? false)}
       </div>
       ${value.dateIso && !this.editingValue
         ? html`<time
