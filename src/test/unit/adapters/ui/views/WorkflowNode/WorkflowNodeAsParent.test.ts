@@ -56,7 +56,7 @@ describe("<workflow-node-as-parent> (§17.117)", () => {
     expect(badge?.getAttribute("data-status-id")).toBe("do");
   });
 
-  it(":host { position: static } so the bottom-left badge + bottom-right timestamp escape one layer outward to <parent-identity-strip> (§17.30 playbook)", () => {
+  it(":host { position: static } so the bottom-right timestamp escapes one layer outward to <parent-identity-strip> (§17.30 playbook); badge font-size matches the AsChild role (§17.121e)", () => {
     const cssText = (
       WorkflowNodeAsParent.styles as readonly { cssText?: string }[]
     )
@@ -67,12 +67,19 @@ describe("<workflow-node-as-parent> (§17.117)", () => {
     // string contains both rules (the cascade resolves to `static`
     // because the per-view rule is later in the concatenated styles
     // list) — defensive against a future refactor that drops the
-    // override.
+    // override. SPEC §17.121e — the override stays in place for the
+    // timestamp's outer-corner escape but the badge no longer
+    // depends on it (the badge now lives inside the in-flow
+    // `.subtitle` slot directly under the title).
     expect(cssText).toMatch(/:host\s*\{[\s\S]*?position:\s*static/);
     // §17.117 — the parent-strip badge size must match the child
     // role's; pin the 1.15vh literal so a future tweak that scales
     // one role asymmetrically fails fast at test-time.
     expect(cssText).toMatch(/\.status-badge\s*\{[\s\S]*?font-size:\s*1\.15vh/);
+    // §17.121e — both roles opt into the same `2vh` subtitle slot
+    // so the badge sits at the same vertical position relative to
+    // the title across AsChild + AsParent.
+    expect(cssText).toMatch(/--subtitle-row-height:\s*2vh/);
   });
 
   it("dispatches INLINE_EDIT_TITLE_EVENT when the operator commits an edited title (Enter / blur with a trimmed non-empty change)", async () => {

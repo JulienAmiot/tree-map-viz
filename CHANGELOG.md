@@ -16,6 +16,45 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Added an optional `.subtitle` slot directly under the tile
+  title for cards that surface a domain property at a glance**
+  (§17.121e). Two card kinds opt into the new slot:
+  - `WorkflowNode` (AsChild + AsParent) — the status badge moves
+    out of its pre-§17.121e absolute bottom-left corner and into
+    the centered subtitle row directly under the title. Operator
+    eye-path now reads "title → status → value → date" top-to-
+    bottom instead of having to scan the four corners of the
+    tile. The badge keeps its coloured border + text styling
+    (transparent background, `--status-color` from the
+    mapper-baked `vm.status.color`) and remains presentational
+    (pointer-events: none) — status edits still go through the
+    Edit-node modal. The AsParent role keeps its
+    `:host { position: static }` override for the timestamp's
+    outer-corner escape; the badge no longer depends on it.
+  - `ComputedNode` + `ComputedBusinessScoreNode` (both roles) —
+    the active computation kind is surfaced as the subtitle
+    content. **AsChild** renders a static `<span class="kind-
+    label">` with a short noun-phrase descriptor ("Sum",
+    "Average", "Weighted average", …); the §17.116-followup-2
+    retirement of the kind-label is reversed in §17.121e
+    (operator now sees the strategy under the title on every
+    tile, including non-computable warning-fill ones — "we tried
+    to SUM but couldn't" rather than a bare warning).
+    **AsParent** renders the strategy `<select>` (the existing
+    one-tap kind swap) inside the subtitle slot instead of the
+    pre-§17.121e absolute top-left corner — the in-flow
+    placement reads as part of the tile's identity row and no
+    longer crowds the title on narrow panels.
+
+  The slot itself is declared in `tileLayoutStyles` and opt-in
+  per view via a `--subtitle-row-height` CSS custom property on
+  `:host` (defaults to `0vh`, so every non-opted-in tile —
+  TextNode, BSC, StrictRange, Picture, URL — stays pixel-
+  identical to the pre-§17.121e rendering). The shared
+  `.value-area` height formula reads the var and subtracts it
+  from the body region, so the value figure shrinks by exactly
+  the slot's height when the slot is in use.
+
 - **Promoted the Add-Child modal's Cancel + Confirm row to a
   full-width panel-level footer** (§17.121d). Pre-§17.121d the
   Cancel + Confirm buttons were emitted inside `renderFormPane`,

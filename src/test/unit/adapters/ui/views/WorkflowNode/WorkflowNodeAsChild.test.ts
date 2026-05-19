@@ -71,18 +71,20 @@ describe("<workflow-node-as-child> (§17.117)", () => {
       /--status-color:\s*rgb\(59,\s*130,\s*246\)/,
     );
 
-    // §17.117 — the badge CSS pins the visual contract: positioned in
-    // the bottom-left corner (mirror of the timestamp), transparent
-    // background, coloured border + text driven by --status-color,
-    // pointer-events disabled. Pinning the literals catches a future
-    // tweak that breaks any one of the four invariants.
+    // §17.117 + §17.121e — the badge CSS pins the visual contract:
+    // transparent background, coloured border + text driven by
+    // --status-color, pointer-events disabled. The §17.121e refresh
+    // dropped the pre-§17.121e bottom-left absolute-positioning pins
+    // (bottom: 0.2rem / left: 0.35rem) — the badge now lives inside
+    // the shared `.subtitle` slot, so positioning is delegated to
+    // the slot's centered flex layout rather than pinned per badge.
+    // Pinning the surviving literals catches a future tweak that
+    // breaks any of the colour / interactivity invariants.
     const cssText = (
       WorkflowNodeAsChild.styles as readonly { cssText?: string }[]
     )
       .map((s) => String(s.cssText ?? s))
       .join("\n");
-    expect(cssText).toMatch(/\.status-badge\s*\{[\s\S]*?bottom:\s*0\.2rem/);
-    expect(cssText).toMatch(/\.status-badge\s*\{[\s\S]*?left:\s*0\.35rem/);
     expect(cssText).toMatch(/\.status-badge\s*\{[\s\S]*?background:\s*transparent/);
     expect(cssText).toMatch(
       /\.status-badge\s*\{[\s\S]*?border:\s*1\.5px\s+solid\s+var\(--status-color/,
@@ -91,6 +93,14 @@ describe("<workflow-node-as-child> (§17.117)", () => {
       /\.status-badge\s*\{[\s\S]*?color:\s*var\(--status-color/,
     );
     expect(cssText).toMatch(/\.status-badge\s*\{[\s\S]*?pointer-events:\s*none/);
+    // §17.121e — the badge sits inside the shared `.subtitle` row
+    // directly under the title. Asserting the DOM nesting catches a
+    // future refactor that drops the subtitle wrapper.
+    const subtitle = el.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="subtitle"]',
+    );
+    expect(subtitle).not.toBeNull();
+    expect(subtitle?.contains(badge!)).toBe(true);
   });
 
   it("omits the status badge when the mapper produced an empty label (defensive fallback; never throws)", async () => {

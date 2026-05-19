@@ -94,14 +94,45 @@ export const COMPUTATION_KIND_CHANGE_EVENT = "computation-kind-change";
 export type ComputationKindChangeDetail = { readonly nodeId: string; readonly newKind: ComputationKindName };
 
 /**
- * SPEC §17.104 / §17.116-followup — inline strategy picker dispatched
- * from the focused-panel Computed* tile (`viewRole === "asParent"`).
- * One-tap swap without opening `<edit-node-modal>` — the picker fires
- * the `computation-kind-change` event with `{ nodeId, newKind }`,
- * already wired in `main.ts` to `EditNodeService.editFields` via the
- * `computedKindFor` discriminator. The shared `COMPUTATION_KIND_LABELS`
- * map from `AddChildModal.ts` keeps the friendly labels identical to
- * the modal's strategy dropdown (operator sees the same labels in
+ * SPEC §17.121e — short labels for the active computation kind,
+ * rendered as the `.subtitle` row's static text on the AsChild
+ * Computed* tile. Kept separate from the verbose
+ * `COMPUTATION_KIND_LABELS` map in `AddChildModal.ts` (which carries
+ * the dropdown-menu descriptors like "Sum (Σ children)") because a
+ * tile subtitle must read at a glance — a single noun phrase that
+ * fits the cqi-clamped row. The picker's `<option>` text still uses
+ * the verbose map so the operator sees the same labels in the
+ * AddChildModal kind list, the EditNode modal strategy field, and
+ * the parent-tile strategy picker dropdown.
+ */
+const COMPUTATION_KIND_SHORT_LABELS: Readonly<Record<ComputationKindName, string>> = {
+  SUM: "Sum",
+  AVERAGE: "Average",
+  MIN: "Min",
+  MAX: "Max",
+  WEIGHTED_AVERAGE: "Weighted average",
+  COUNT: "Count",
+};
+
+/**
+ * SPEC §17.104 / §17.116-followup / §17.121e — strategy picker
+ * dispatched from the focused-panel Computed* tile
+ * (`viewRole === "asParent"`). One-tap swap without opening
+ * `<edit-node-modal>` — the picker fires the
+ * `computation-kind-change` event with `{ nodeId, newKind }`, already
+ * wired in `main.ts` to `EditNodeService.editFields` via the
+ * `computedKindFor` discriminator.
+ *
+ * SPEC §17.121e — the picker now lives inside the shared `.subtitle`
+ * slot (declared in `tileLayoutStyles`) directly under the title.
+ * Pre-§17.121e it was absolutely positioned at the tile's top-left
+ * corner (an awkward visual location that crowded the title row on
+ * narrow panels); centering it under the title aligns it with the
+ * AsChild static kind-label and matches the §17.121e generic "one
+ * property under the title" contract operators get on the
+ * WorkflowNode tile too. The shared `COMPUTATION_KIND_LABELS` map
+ * from `AddChildModal.ts` keeps the friendly option labels identical
+ * to the modal's strategy dropdown (operator sees the same labels in
  * both surfaces).
  */
 function renderStrategyPicker(
@@ -128,7 +159,54 @@ function renderStrategyPicker(
   </div>`;
 }
 
+/**
+ * SPEC §17.121e — static kind label rendered in the `.subtitle` slot
+ * on the AsChild Computed* tile (no inline editing on child tiles,
+ * mirror of the AsChild WorkflowNode's read-only status badge). The
+ * `data-testid="kind-label"` hook is the same testid the
+ * pre-§17.116c kind-label rule carried; the §17.116-followup-2
+ * retirement removed the rule + the consumer, the §17.121e refresh
+ * re-introduces both with a clearer semantic — "subtitle slot
+ * content" rather than "computation-kind ticker".
+ */
+function renderKindLabel(currentKind: ComputationKindName): TemplateResult {
+  return html`<span class="kind-label" data-testid="kind-label"
+    >${COMPUTATION_KIND_SHORT_LABELS[currentKind] ?? currentKind}</span
+  >`;
+}
+
+/**
+ * SPEC §17.121e — wrap the kind-label / strategy-picker in the
+ * shared `.subtitle` row. Centralising the wrapper here keeps both
+ * Computed card classes consistent (a single `data-testid="subtitle"`
+ * hook for e2e + unit tests) and matches the WorkflowNode views'
+ * subtitle pattern.
+ */
+function renderSubtitle(
+  vmId: string,
+  currentKind: ComputationKindName,
+  viewRole: NodeRole,
+  onChange: (next: ComputationKindName) => void,
+): TemplateResult {
+  const content =
+    viewRole === "asParent"
+      ? renderStrategyPicker(vmId, currentKind, onChange)
+      : renderKindLabel(currentKind);
+  return html`<div class="subtitle" data-testid="subtitle">${content}</div>`;
+}
+
 const sharedStyles = css`
+  /* SPEC §17.121e — both Computed cards opt into the shared
+     .subtitle slot from tileLayoutStyles. The 2vh row reserves
+     space directly under the title for the active computation kind
+     (AsChild: a static span.kind-label; AsParent: the
+     select.strategy-picker that fires computation-kind-change).
+     The shared .value-area height formula reads this var and
+     subtracts it from the body region, so the value figure shrinks
+     by exactly the slot we add. */
+  :host {
+    --subtitle-row-height: 2vh;
+  }
   /* SPEC §17.116 — Σ prefix in the title row. Sized at ~0.85em of
      the title's font-size so it reads as a glyph attached to the
      title text rather than a separate element; muted opacity keeps
@@ -143,22 +221,40 @@ const sharedStyles = css`
      absolute .timestamp (declared on tileLayoutStyles) anchors to
      the pane's edges, mirroring the v3 BSC asParent layout. */
   .metric-pane { position: relative; }
-  /* SPEC §17.104 / §17.116-followup — inline strategy picker on the
-     focused-panel tile. Pinned to the top-left so it never overlaps
-     the §17.116 corner timestamp (which lives bottom-right via
-     tileLayoutStyles). Sized at ~0.75rem to read as a tooling
-     affordance, not a primary value. */
+  /* SPEC §17.121e — kind-label sits centered inside the .subtitle
+     row on the AsChild tile. Reads as a quiet noun-phrase
+     descriptor ("Average", "Weighted average"); the .subtitle
+     row's font-size + muted colour come from the shared rule, so
+     this class only carries minor letter-spacing for a tasteful
+     "small caps"-ish label feel. */
+  .kind-label {
+    letter-spacing: 0.03em;
+    font-weight: 500;
+  }
+  /* SPEC §17.121e — strategy picker now lives inside the subtitle
+     slot. Pre-§17.121e it was absolutely positioned at the tile's
+     top-left corner; the in-flow placement under the title aligns
+     it with the AsChild kind-label and matches the WorkflowNode
+     subtitle pattern. The select inherits text colour + size from
+     the subtitle row; the box chrome (background, border, padding)
+     is minimal so it reads as a quiet affordance rather than a
+     heavy form control. */
   .strategy-picker {
-    position: absolute;
-    top: 0.4rem;
-    left: 0.4rem;
-    z-index: 2;
+    display: inline-flex;
+    align-items: center;
   }
   .strategy-picker select {
     font: inherit;
-    font-size: 0.75rem;
-    padding: 0.1rem 0.2rem;
+    /* Match the subtitle row's 1.4vh body font-size; the select
+       sits centered in the 2vh row with breathing room. */
+    font-size: 1.4vh;
+    line-height: 1;
+    padding: 0 0.3rem;
     border-radius: 0.25rem;
+    background: transparent;
+    color: inherit;
+    border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    cursor: pointer;
   }
 `;
 
@@ -370,12 +466,9 @@ export class ComputedCard extends LitElement {
     if (!this.vm) return html``;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
-    const showPicker = this.viewRole === "asParent";
     return html`
-      ${showPicker
-        ? renderStrategyPicker(this.vm.id, this.vm.computationKind, this.dispatchKindChange)
-        : nothing}
       ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedNode", showBadge)}
+      ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       ${canCompute
         ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>)
         : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
@@ -410,12 +503,9 @@ export class ComputedBusinessScoreCard extends LitElement {
     const { dateIso, dateColor, objective } = this.vm;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
-    const showPicker = this.viewRole === "asParent";
     return html`
-      ${showPicker
-        ? renderStrategyPicker(this.vm.id, this.vm.computationKind, this.dispatchKindChange)
-        : nothing}
       ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedBusinessScoreNode", showBadge)}
+      ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       <div class="metric-pane" data-testid="metric-pane">
         ${canCompute ? renderTimestamp(dateIso, dateColor) : nothing}
         ${canCompute

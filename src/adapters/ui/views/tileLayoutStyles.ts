@@ -146,6 +146,37 @@ export const tileLayoutStyles = css`
     white-space: nowrap;
     pointer-events: none;
   }
+  /* SPEC §17.121e — optional subtitle slot directly under the title.
+     A per-view that wants to surface one of the node's properties in
+     a compact strip below the title (e.g. the WorkflowNode's status
+     badge, the Computed* card's active computation kind) sets
+     --subtitle-row-height on its :host (typically 2vh) and emits a
+     div.subtitle between the title and the value-area. The default
+     0vh keeps every legacy tile (TextNode, BSC, StrictRange,
+     Picture, URL) pixel-identical to the pre-§17.121e rendering —
+     the rule only takes effect when a per-view opts into the slot.
+
+     Centered single-line flex row; overflow hides + ellipsis so a
+     long property string degrades gracefully. The font-size is
+     vh-relative (1.4vh) so it stays in proportion with the title
+     across every kiosk viewport. */
+  .subtitle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--subtitle-row-height, 0vh);
+    line-height: 1;
+    font-size: 1.4vh;
+    color: color-mix(in srgb, currentColor 80%, transparent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* §17.121e — let the badge / select rendered inside the slot
+       be tappable when the per-view wants it to be (the Computed*
+       asParent variant nests a <select> here); the slot itself
+       carries no pointer behaviour. */
+    pointer-events: auto;
+  }
   .value-area {
     display: flex;
     /* SPEC 17.40 -- column flex so the .value and the new .target-row
@@ -159,8 +190,12 @@ export const tileLayoutStyles = css`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    /* Fill the rest of the tile below the title row. */
-    height: calc(100% - 3vh);
+    /* Fill the rest of the tile below the title row. SPEC §17.121e —
+       the formula now also subtracts the optional .subtitle row's
+       height; the var defaults to 0vh so a tile that does NOT opt
+       into the §17.121e slot still resolves to the legacy
+       calc(100% - 3vh) body height. */
+    height: calc(100% - 3vh - var(--subtitle-row-height, 0vh));
     text-align: center;
     overflow: hidden;
     /* Avoid a single very long word forcing horizontal overflow. */

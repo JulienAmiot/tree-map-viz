@@ -35,7 +35,7 @@ function cbsnVm(
 }
 
 describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
-  it("\u00a717.116 — \u03a3 prefixes the title; numeric value renders without inline unit; unit appears in a .unit-below block (\u00a717.116-followup-2 retires the kind-label)", async () => {
+  it("\u00a717.116 + \u00a717.121e \u2014 \u03a3 prefixes the title; numeric value renders without inline unit; unit appears in a .unit-below block; AsChild kind-label sits in the shared `.subtitle` slot directly under the title", async () => {
     const el = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" }, "WEIGHTED_AVERAGE");
     });
@@ -50,14 +50,22 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(sr.querySelector('[data-testid="value"]')?.textContent?.trim()).toBe("42");
     // Unit sits in its own block-level sibling under the value.
     expect(sr.querySelector('[data-testid="unit"]')?.textContent?.trim()).toBe("EUR");
-    // SPEC §17.116-followup-2 — the static kind-label sibling is retired (was a
-    // §17.116c addition replacing the §17.104 inline dropdown). Neither variant
-    // renders on the tile any more.
-    expect(sr.querySelector('[data-testid="kind-label"]')).toBeNull();
+    // SPEC §17.121e — the kind-label is back (the §17.116-followup-2
+    // retirement was reversed in §17.121e), now living inside the
+    // shared `.subtitle` slot directly under the title. AsChild role
+    // shows a static `<span>` with the short noun-phrase descriptor
+    // ("Weighted average") rather than a `<select>` (the picker is
+    // AsParent-only).
+    const subtitle = sr.querySelector<HTMLElement>('[data-testid="subtitle"]');
+    expect(subtitle).not.toBeNull();
+    const kindLabel = sr.querySelector<HTMLElement>('[data-testid="kind-label"]');
+    expect(kindLabel?.textContent?.trim()).toBe("Weighted average");
+    expect(subtitle?.contains(kindLabel!)).toBe(true);
+    expect(sr.querySelector('[data-testid="strategy-picker"]')).toBeNull();
     expect(sr.querySelector('[data-testid="kind-dropdown"]')).toBeNull();
   });
 
-  it("\u00a717.116 — empty branch renders a full-tile .warning-fill (no value/computed-badge spans)", async () => {
+  it("\u00a717.116 + \u00a717.121e \u2014 empty branch renders a full-tile .warning-fill (no value/computed-badge spans); the `.subtitle` row still surfaces the active kind so the operator sees what strategy failed", async () => {
     const el = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = computedVm({ kind: "empty", reason: "SUM produced a non-finite result" });
     });
@@ -70,10 +78,13 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(sr.querySelector('[data-testid="value"]')).toBeNull();
     expect(sr.querySelector('[data-testid="computed-badge"]')).toBeNull();
     expect(sr.querySelector('[data-testid="unit"]')).toBeNull();
-    // Title still renders as the tile's identity. SPEC §17.116-followup-2
-    // retired the kind-label entirely.
     expect(sr.querySelector('[data-testid="title"]')).not.toBeNull();
-    expect(sr.querySelector('[data-testid="kind-label"]')).toBeNull();
+    // SPEC §17.121e — the `.subtitle` slot is rendered on every
+    // branch (numeric AND warning-fill) so the operator still sees
+    // the active computation kind on a non-computable tile. The
+    // computedVm helper defaults to "SUM" when no kind is passed.
+    expect(sr.querySelector('[data-testid="subtitle"]')).not.toBeNull();
+    expect(sr.querySelector('[data-testid="kind-label"]')?.textContent?.trim()).toBe("Sum");
   });
 
   it("\u00a717.116 — childrenCount n>0 ALSO renders the .warning-fill (cannot compute = warning regardless of n)", async () => {
@@ -142,7 +153,7 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
 });
 
 describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
-  it("\u00a717.116 — full surface: \u03a3 title prefix, value (no inline unit, no trailing zero), unit-below, target row, age timestamp, metric-pane wrapper (\u00a717.116-followup-2 retires the kind-label)", async () => {
+  it("\u00a717.116 + \u00a717.121e \u2014 full surface: \u03a3 title prefix, AsChild kind-label in the `.subtitle` slot under the title, value (no inline unit, no trailing zero), unit-below, target row, age timestamp, metric-pane wrapper", async () => {
     const el = await mountLitElement<ComputedBusinessScoreCard>(
       "computed-business-score-card", (e) => { e.vm = cbsnVm({ kind: "numeric", value: 75, unit: "%" }); },
     );
@@ -163,14 +174,16 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     const pane = sr.querySelector('[data-testid="metric-pane"]');
     expect(pane).not.toBeNull();
     expect(pane?.contains(time!)).toBe(true);
-    // SPEC §17.116-followup-2 — neither the inline kind-dropdown
-    // (pre-§17.116c) nor the static kind-label (§17.116c → followup-2)
-    // surfaces on the CBSN tile any more.
-    expect(sr.querySelector('[data-testid="kind-label"]')).toBeNull();
+    // SPEC §17.121e — the kind-label is back, now living inside the
+    // shared `.subtitle` slot directly under the title (mirror of
+    // the ComputedCard layout). The cbsnVm helper defaults to
+    // "AVERAGE" when no kind is passed; the short label reads "Average".
+    expect(sr.querySelector('[data-testid="subtitle"]')).not.toBeNull();
+    expect(sr.querySelector('[data-testid="kind-label"]')?.textContent?.trim()).toBe("Average");
     expect(sr.querySelector('[data-testid="kind-dropdown"]')).toBeNull();
   });
 
-  it("\u00a717.116 — CBSN childrenCount (any n) and empty branches all render the .warning-fill (no value, no timestamp, no target row)", async () => {
+  it("\u00a717.116 + \u00a717.121e \u2014 CBSN childrenCount (any n) and empty branches all render the .warning-fill (no value, no timestamp, no target row); the `.subtitle` row still surfaces the active kind so the operator sees which strategy failed", async () => {
     for (const value of [
       { kind: "childrenCount", n: 3 } as const,
       { kind: "childrenCount", n: 0 } as const,
@@ -186,10 +199,12 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
       expect(sr.querySelector('[data-testid="value-date"]')).toBeNull();
       expect(sr.querySelector('[data-testid="target-row"]')).toBeNull();
       expect(sr.querySelector('[data-testid="computed-badge"]')).toBeNull();
-      // Title survives across all non-numeric branches; the
-      // kind-label was retired entirely in §17.116-followup-2.
       expect(sr.querySelector('[data-testid="title"]')).not.toBeNull();
-      expect(sr.querySelector('[data-testid="kind-label"]')).toBeNull();
+      // SPEC §17.121e — the `.subtitle` slot is rendered on every
+      // branch (numeric AND warning-fill) so the operator still sees
+      // the active computation kind on a non-computable tile.
+      expect(sr.querySelector('[data-testid="subtitle"]')).not.toBeNull();
+      expect(sr.querySelector('[data-testid="kind-label"]')?.textContent?.trim()).toBe("Average");
     }
   });
 

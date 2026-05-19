@@ -1,6 +1,6 @@
 /**
  * Shared status-badge CSS + render helper for the WorkflowNode views
- * (SPEC §17.117).
+ * (SPEC §17.117, §17.121e refresh).
  *
  * Both `<workflow-node-as-parent>` and `<workflow-node-as-child>`
  * render a single small pill carrying the board-resolved status
@@ -17,33 +17,34 @@
  *     "label button" without behaving as a button (no click target,
  *     no pointer-events). Editing the status happens through the
  *     Edit-node modal; the badge itself is presentational only.
- *   - Sized in `vh` units to match the bottom-right timestamp's
- *     visual weight (the two corner glyphs read as a paired set).
- *   - Positioned absolutely at the tile's bottom-left — the mirror
- *     of the timestamp's bottom-right — so the value-area in the
- *     middle of the tile is not crowded by either corner. The
- *     0.2 rem / 0.35 rem offsets match the host padding in
- *     `tileLayoutStyles` (§17.46) so the badge hugs the inner padded
- *     edge rather than floating in the padding gap.
+ *   - Sized in `vh` units (1.15vh) to read at a similar visual
+ *     weight as the corner timestamp.
+ *   - **§17.121e — lives inside the shared `.subtitle` slot**
+ *     (defined in `tileLayoutStyles`), a centered row directly
+ *     under the title. Pre-§17.121e the badge was absolutely
+ *     positioned at the tile's bottom-left corner (mirror of the
+ *     bottom-right timestamp); operator feedback was that an
+ *     "in-flow" property strip right under the title reads more
+ *     naturally — the eye scans "title → property → value" top-
+ *     to-bottom — and frees the bottom-left corner for future
+ *     overlays. The §17.121e move drops `position: absolute` +
+ *     the `bottom` / `left` offsets and lets the parent
+ *     `.subtitle` row place the badge centered under the title.
+ *     Visual parity across the AsParent / AsChild roles is now
+ *     a consequence of both views opting into the same shared
+ *     subtitle slot rather than a side-effect of the AsParent's
+ *     `:host { position: static }` containing-block trick (that
+ *     override stays in place for the timestamp's outer-corner
+ *     escape, but the badge no longer depends on it).
  *   - `pointer-events: none` because the badge is a status indicator,
  *     not an interactive control; the surrounding tile's click /
  *     drill / inline-edit affordances stay reachable through it.
- *
- * For the AsParent role the `:host { position: static }` override in
- * `WorkflowNodeAsParent` cascades the badge's containing-block
- * resolution out to the `<parent-identity-strip>` (same mechanism the
- * §17.30 timestamp uses) so the parent-strip badge sits at the
- * focused panel's outer bottom-left corner with the same offsets a
- * child tile uses — visual parity across roles.
  */
 
 import { css, html, type TemplateResult } from "lit";
 
 export const statusBadgeStyles = css`
   .status-badge {
-    position: absolute;
-    bottom: 0.2rem;
-    left: 0.35rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -54,8 +55,6 @@ export const statusBadgeStyles = css`
     border: 1.5px solid var(--status-color, currentColor);
     color: var(--status-color, currentColor);
     border-radius: 0.4rem;
-    /* Visual weight matches the bottom-right timestamp (§17.46:
-       1.15vh) so the two corner glyphs read as a balanced pair. */
     font-size: 1.15vh;
     font-weight: 700;
     letter-spacing: 0.04em;

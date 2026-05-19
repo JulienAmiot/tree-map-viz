@@ -1,22 +1,25 @@
 /**
  * `<workflow-node-as-parent>` — large parent-strip rendering for
- * `WorkflowNode` (SPEC §17.117).
+ * `WorkflowNode` (SPEC §17.117, §17.121e refresh).
  *
  * Mirrors `<text-node-as-parent>` end-to-end (bright off-white title,
  * markdown body with shrink-to-fit, click-to-edit title + value,
  * INLINE_EDIT_* dispatched events for the title + value mutations
  * the composition root routes back to `EditNodeService.editFields`
- * / `appendValue`) and adds a single new element: the §17.117 status
- * badge in the bottom-left corner of the focused panel.
+ * / `appendValue`) and adds the §17.117 status badge.
  *
- * The badge follows the §17.30 timestamp playbook — the per-view's
- * `:host { position: static }` override lets the absolutely-positioned
- * badge escape one positioned-ancestor layer outward so its
- * containing block resolves to the `<parent-identity-strip>` wrapper,
- * landing the parent-role badge at the focused-panel's outer bottom-
- * left corner with the same 0.2rem / 0.35rem offsets a child tile
- * uses. The shared `tileLayoutStyles` `container-type: size` is
- * preserved (it does NOT require `position: relative`).
+ * SPEC §17.121e — the badge sits inside the shared `.subtitle` slot
+ * directly under the title (was a bottom-left absolutely-positioned
+ * corner pre-§17.121e). The slot is declared by `tileLayoutStyles`
+ * and opted into via `--subtitle-row-height: 2vh` on `:host` below.
+ * Both AsChild + AsParent opt into the same `2vh` so the badge sits
+ * at the same vertical position relative to the title across the
+ * two roles — visual parity is now a direct consequence of opting
+ * into the shared slot rather than a side-effect of an absolute-
+ * positioning escape trick. The `:host { position: static }` override
+ * stays in place for the timestamp's outer-corner escape (the
+ * timestamp still rides the §17.30 playbook), but the badge no
+ * longer depends on it.
  *
  * The status itself is NOT inline-editable from the parent strip —
  * status mutations go through the Edit-node modal (§17.117 — the
@@ -74,6 +77,15 @@ export class WorkflowNodeAsParent extends LitElement {
     css`
       :host {
         position: static;
+        /* SPEC §17.121e — opt into the shared .subtitle slot from
+           tileLayoutStyles. The 2vh row reserves space for the
+           status badge directly under the title (was bottom-left
+           absolute corner pre-§17.121e); the shared .value-area
+           height formula reads this var and subtracts it from the
+           body region. AsChild + AsParent both opt into the same
+           2vh so the badge sits at the same vertical position
+           relative to the title across the two roles. */
+        --subtitle-row-height: 2vh;
       }
       .md-body.is-editable {
         cursor: text;
@@ -141,6 +153,9 @@ export class WorkflowNodeAsParent extends LitElement {
     const bodyContent = empty ? "" : unsafeHTML(renderMarkdownToHtml(value.text));
     return html`
       ${this.titleEditor.renderTitle("WorkflowNode")}
+      <div class="subtitle" data-testid="subtitle">
+        ${renderStatusBadge(status)}
+      </div>
       ${value.dateIso && !this.editingValue
         ? html`<time
             class="timestamp"
@@ -165,7 +180,6 @@ export class WorkflowNodeAsParent extends LitElement {
               ${bodyContent}
             </div>`}
       </div>
-      ${renderStatusBadge(status)}
     `;
   }
 
