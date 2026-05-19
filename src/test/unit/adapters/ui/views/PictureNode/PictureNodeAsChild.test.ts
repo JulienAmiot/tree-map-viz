@@ -30,6 +30,15 @@ function vmWith(opts: Partial<PictureNodeViewModel> = {}): PictureNodeViewModel 
  * affordance — that's all parent-role surface.
  */
 describe("<picture-node-as-child>", () => {
+  it("\u00a717.121g \u2014 a disabled VM paints data-disabled on .title + .value-area so the shared tileLayoutStyles rule strikes + dims the picture tile in the tree-map", async () => {
+    const enabled = await mountLitElement<PictureNodeAsChild>("picture-node-as-child", (e) => { e.vm = vmWith(); });
+    expect(enabled.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(false);
+    expect(enabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
+    const off = await mountLitElement<PictureNodeAsChild>("picture-node-as-child", (e) => { e.vm = vmWith({ disabled: true }); });
+    expect(off.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(true);
+    expect(off.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(true);
+  });
+
   it("renders the title with the PictureNode view-kind tag", async () => {
     const el = await mountLitElement<PictureNodeAsChild>(
       "picture-node-as-child",

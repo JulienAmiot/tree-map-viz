@@ -16,6 +16,21 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **Disabled-node visibility in the tree-map (§17.121g, read-side)**.
+  The v5 round-7 `ValueNode<T>.disabled` flag (§17.99a) was a
+  domain-only concept until now — every node carried it, no view
+  read it. The new strand surfaces it on every value VM (TextNode,
+  WorkflowNode, BSC, ComputedNode, ComputedBusinessScoreNode,
+  PictureNode, URLNode) and the AsChild tree-map tile paints a
+  strike-through title + dimmed value-area when the node is parked.
+  The AsParent (focused-panel) tile intentionally stays at full
+  opacity so the operator can still read + edit the disabled node.
+  Implemented as a shared `[data-disabled]` attribute selector in
+  `tileLayoutStyles.ts` so adding the visual rule to a future kind
+  is a one-line `?data-disabled=${vm.disabled}` template change.
+  The §17.121h follow-on strand adds the inline operator-facing
+  write affordance (an editable pill on the focused panel).
+
 - **Inline status editing on the focused WorkflowNode tile**
   (§17.121f). The §17.121e subtitle slot's read-only status badge
   on `<workflow-node-as-parent>` becomes an editable `<select

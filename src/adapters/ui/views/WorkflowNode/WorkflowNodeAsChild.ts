@@ -90,10 +90,12 @@ export class WorkflowNodeAsChild extends LitElement {
     const dateLabel = value.dateIso ? formatAge(value.dateIso) : "";
     const empty = value.text.length === 0;
     const dateStyle = value.dateColor ? `--age-color: ${value.dateColor}` : "";
+    const disabled = this.vm.disabled ?? false;
     return html`
       ${renderStaticTitle({
         target: { nodeId: this.vm.id, title: this.vm.title },
         viewKind: "WorkflowNode",
+        disabled,
       })}
       <div class="subtitle" data-testid="subtitle">
         ${renderStatusBadge(status)}
@@ -107,7 +109,7 @@ export class WorkflowNodeAsChild extends LitElement {
             >${dateLabel}</time
           >`
         : html``}
-      <div class="value-area" data-testid="value-row">
+      <div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>
         <div
           class=${empty ? "md-body empty" : "md-body"}
           data-testid="value"

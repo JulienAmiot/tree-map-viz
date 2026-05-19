@@ -50,12 +50,14 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
     const dateIso = timestampForValue(this.vm);
     const dateColor = this.vm.dateColor;
     const showBadge = this.vm.value.kind === "computedMean";
+    const disabled = this.vm.disabled ?? false;
     return html`
       <h2
         class="title"
         data-testid="title"
         data-view-kind="BusinessScoreCardNode"
         data-id=${this.vm.id}
+        ?data-disabled=${disabled}
       >${showBadge
         ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value">Σ</span>`
         : nothing}${this.vm.title}</h2>
@@ -68,7 +70,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
             >${formatAge(dateIso)}</time
           >`
         : html``}
-      <div class="value-area" data-testid="value-row">
+      <div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>
         <div class="value-row">
           ${renderValueTemplate(this.vm)}
           ${renderTrendArrow(this.vm)}

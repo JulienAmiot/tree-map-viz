@@ -343,8 +343,9 @@ function renderTitleWithBadge(
   vmTitle: string,
   viewKind: string,
   showBadge: boolean,
+  disabled = false,
 ): TemplateResult {
-  return html`<h2 class="title" data-testid="title" data-view-kind=${viewKind} data-id=${vmId}
+  return html`<h2 class="title" data-testid="title" data-view-kind=${viewKind} data-id=${vmId} ?data-disabled=${disabled}
     >${showBadge
       ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>`
       : nothing}${vmTitle}</h2>`;
@@ -366,9 +367,10 @@ function valueCharCountStyle(text: string): string {
 
 function renderNumericValueArea(
   value: Extract<ComputedValueViewModel, { kind: "numeric" }>,
+  disabled = false,
 ): TemplateResult {
   const text = formatValue(value.value);
-  return html`<div class="value-area" data-testid="value-row">
+  return html`<div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>
     <div class="value-row">
       <span
         class="value"
@@ -385,9 +387,10 @@ function renderNumericValueArea(
 function renderNumericValueAreaWithObjective(
   value: Extract<ComputedValueViewModel, { kind: "numeric" }>,
   objective: BusinessScoreCardObjectiveViewModel,
+  disabled = false,
 ): TemplateResult {
   const text = formatValue(value.value);
-  return html`<div class="value-area" data-testid="value-row">
+  return html`<div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>
     <div class="value-row">
       <span
         class="value"
@@ -466,12 +469,16 @@ export class ComputedCard extends LitElement {
     if (!this.vm) return html``;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
+    // SPEC §17.121g — strike + dim only paint in the tree-map (AsChild)
+    // role; the focused-panel (AsParent) keeps full opacity so the
+    // operator can still read + edit the parked node.
+    const disabled = (this.vm.disabled ?? false) && this.viewRole === "asChild";
     return html`
-      ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedNode", showBadge)}
+      ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedNode", showBadge, disabled)}
       ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       ${canCompute
-        ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>)
-        : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
+        ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>, disabled)
+        : html`<div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>${renderWarningFill(this.vm.value)}</div>`}
     `;
   }
 }
@@ -503,8 +510,10 @@ export class ComputedBusinessScoreCard extends LitElement {
     const { dateIso, dateColor, objective } = this.vm;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
+    // SPEC §17.121g — AsChild-only strike + dim; mirror of `ComputedCard`.
+    const disabled = (this.vm.disabled ?? false) && this.viewRole === "asChild";
     return html`
-      ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedBusinessScoreNode", showBadge)}
+      ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedBusinessScoreNode", showBadge, disabled)}
       ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       <div class="metric-pane" data-testid="metric-pane">
         ${canCompute ? renderTimestamp(dateIso, dateColor) : nothing}
@@ -512,8 +521,9 @@ export class ComputedBusinessScoreCard extends LitElement {
           ? renderNumericValueAreaWithObjective(
               this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>,
               objective,
+              disabled,
             )
-          : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
+          : html`<div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>${renderWarningFill(this.vm.value)}</div>`}
       </div>
     `;
   }

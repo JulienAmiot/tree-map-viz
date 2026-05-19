@@ -51,16 +51,19 @@ export class PictureNodeAsChild extends LitElement {
     if (!this.vm) {
       return nothing;
     }
+    const disabled = this.vm.disabled ?? false;
     return html`
       ${renderStaticTitle({
         target: { nodeId: this.vm.id, title: this.vm.title },
         viewKind: "PictureNode",
+        disabled,
       })}
       ${renderPictureValueArea(
         this.vm.imageUrl,
         this.vm.title,
         this.imageError.hasError,
         this.imageError.handleError,
+        disabled,
       )}
     `;
   }

@@ -26,6 +26,15 @@ function vmWith(opts: Partial<TextNodeViewModel> = {}): TextNodeViewModel {
 }
 
 describe("<text-node-as-child>", () => {
+  it("\u00a717.121g \u2014 vm.disabled toggles a data-disabled attribute on .title + .value-area so the shared tileLayoutStyles rule strikes + dims the tile", async () => {
+    const enabled = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => { e.vm = vmWith(); });
+    expect(enabled.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(false);
+    expect(enabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
+    const off = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => { e.vm = vmWith({ disabled: true }); });
+    expect(off.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(true);
+    expect(off.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(true);
+  });
+
   it("renders Title + the latest text value (uniform with AsParent, \u00a75 + \u00a717.14)", async () => {
     const el = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => {
       e.vm = vmWith();

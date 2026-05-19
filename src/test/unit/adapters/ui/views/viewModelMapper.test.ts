@@ -603,8 +603,9 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       if (vm.kind !== "URLNode") throw new Error();
       expect("description" in vm).toBe(false);
       expect("imageUrl" in vm).toBe(false);
-      // The VM exposes exactly the four URL-leaf fields and nothing else.
-      expect(Object.keys(vm).sort()).toEqual(["id", "kind", "title", "url"]);
+      // The VM exposes exactly the five URL-leaf fields and nothing else
+      // (§17.121g added `disabled` to every value VM).
+      expect(Object.keys(vm).sort()).toEqual(["disabled", "id", "kind", "title", "url"]);
     });
 
     it("ignores `now` and `cards` (no timestamp / no objective / no unit baked into a URL VM)", () => {
@@ -653,6 +654,49 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
       // other despite their structural similarity.
       expect(urlSlot.vm.url).toBe("https://example.com/docs");
       expect(picSlot.vm.imageUrl).toBe("https://example.com/cat.jpg");
+    });
+  });
+
+  describe("\u00a717.121g \u2014 disabled flag plumbed into every value VM", () => {
+    it("defaults to false on freshly-built nodes of every kind (TextNode / WorkflowNode / BSC / ComputedNode / ComputedBSC / PictureNode / URLNode)", () => {
+      const text = buildText("t");
+      const wf = buildWorkflow("w");
+      const bsc = buildBSC("b");
+      const cn = new ComputedNode<number>("cn", "Sum", w(), "", clock, ComputationKind.SUM);
+      const cbsn = new ComputedBusinessScoreNode<number>(
+        "cbsn", "Score", w(), "", clock, lenient(),
+        { objective: obj(), initialKind: ComputationKind.AVERAGE, unit: "" },
+      );
+      const pic = new PictureNode("p", "Pic", w(), "https://example.com/x.jpg");
+      const url = new URLNode("u", "U", w(), "https://example.com/u");
+      for (const n of [text, wf, bsc, cn, cbsn, pic, url]) {
+        const vm = mapNodeToViewModel(n);
+        expect(vm.disabled).toBe(false);
+      }
+    });
+
+    it("surfaces the domain ValueNode.disabled flag verbatim (true when the node has been parked; the strike+dim AsChild paints from here)", () => {
+      const text = buildText("t");
+      text.setDisabled(true);
+      const wf = buildWorkflow("w");
+      wf.setDisabled(true);
+      const bsc = buildBSC("b");
+      bsc.setDisabled(true);
+      const cn = new ComputedNode<number>("cn", "Sum", w(), "", clock, ComputationKind.SUM);
+      cn.setDisabled(true);
+      const cbsn = new ComputedBusinessScoreNode<number>(
+        "cbsn", "Score", w(), "", clock, lenient(),
+        { objective: obj(), initialKind: ComputationKind.AVERAGE, unit: "" },
+      );
+      cbsn.setDisabled(true);
+      const pic = new PictureNode("p", "Pic", w(), "https://example.com/x.jpg");
+      pic.setDisabled(true);
+      const url = new URLNode("u", "U", w(), "https://example.com/u");
+      url.setDisabled(true);
+      for (const n of [text, wf, bsc, cn, cbsn, pic, url]) {
+        const vm = mapNodeToViewModel(n);
+        expect(vm.disabled).toBe(true);
+      }
     });
   });
 });

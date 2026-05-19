@@ -167,6 +167,7 @@ function mapTextNode(
     kind: "TextNode",
     id: node.id,
     title: node.title,
+    disabled: node.disabled,
     value: {
       text: latest?.value ?? "",
       dateIso,
@@ -211,6 +212,7 @@ function mapWorkflowNode(
     kind: "WorkflowNode",
     id: node.id,
     title: node.title,
+    disabled: node.disabled,
     value: {
       text: latest?.value ?? "",
       dateIso,
@@ -232,6 +234,7 @@ function mapBSCNode(
     kind: "BusinessScoreCardNode",
     id: node.id,
     title: node.title,
+    disabled: node.disabled,
     description: node.getDescription(),
     value,
     dateIso,
@@ -436,6 +439,7 @@ function mapComputedNode(node: ComputedNode<number>): ComputedNodeViewModel {
     kind: "ComputedNode",
     id: node.id,
     title: node.title,
+    disabled: node.disabled,
     value: computedValueVM(node, ""),
     computationKind: node.computationKind.name as ComputationKindName,
     availableKinds: AVAILABLE_KIND_NAMES,
@@ -454,6 +458,7 @@ function mapComputedBusinessScoreNode(
     kind: "ComputedBusinessScoreNode",
     id: node.id,
     title: node.title,
+    disabled: node.disabled,
     description: node.getDescription(),
     value,
     computationKind: node.computationKind.name as ComputationKindName,
@@ -482,6 +487,7 @@ function mapPictureNode(node: PictureNode): PictureNodeViewModel {
     kind: "PictureNode",
     id: node.id,
     title: node.title,
+    disabled: node.disabled,
     imageUrl: node.imageUrl,
   };
 }
@@ -507,6 +513,7 @@ function mapURLNode(node: URLNode): URLNodeViewModel {
     kind: "URLNode",
     id: node.id,
     title: node.title,
+    disabled: node.disabled,
     url: node.url,
   };
 }

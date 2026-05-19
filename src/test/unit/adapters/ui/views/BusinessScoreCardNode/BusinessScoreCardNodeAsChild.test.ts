@@ -47,6 +47,22 @@ function makeVm(
 }
 
 describe("<business-score-card-as-child>", () => {
+  it("\u00a717.121g \u2014 a disabled VM paints data-disabled on .title + .value-area so the shared tileLayoutStyles rule strikes + dims the BSC tile in the tree-map", async () => {
+    const enabledVm = makeVm({ kind: "recordedValue", value: 50, unit: "%", dateIso: "2026-04-23T18:25:43.511Z" });
+    const enabled = await mountLitElement<BusinessScoreCardNodeAsChild>(
+      "business-score-card-as-child",
+      (e) => { e.vm = enabledVm; },
+    );
+    expect(enabled.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(false);
+    expect(enabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
+    const off = await mountLitElement<BusinessScoreCardNodeAsChild>(
+      "business-score-card-as-child",
+      (e) => { e.vm = { ...enabledVm, disabled: true }; },
+    );
+    expect(off.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(true);
+    expect(off.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(true);
+  });
+
   it("\u00a717.116 — renders the \u03a3 prefix in the title row for the computedMean branch (same role-uniform rule as AsParent), the bare numeric value with no trailing zero, and the unit in a .unit-below sibling", async () => {
     const vm = makeVm({ kind: "computedMean", mean: 50, unit: "%" });
     const el = await mountLitElement<BusinessScoreCardNodeAsChild>(

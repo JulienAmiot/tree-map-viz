@@ -116,14 +116,21 @@ export interface InlineTitleEditTarget {
 export function renderStaticTitle(args: {
   target: InlineTitleEditTarget | null;
   viewKind: string;
+  /**
+   * SPEC §17.121g — when true, the `<h2>` carries a `data-disabled`
+   * attribute the shared `tileLayoutStyles` rule paints with a
+   * strike-through; omit / false to render the title untouched.
+   */
+  disabled?: boolean;
 }): TemplateResult | typeof nothing {
-  const { target, viewKind } = args;
+  const { target, viewKind, disabled } = args;
   if (!target) return nothing;
   return html`<h2
     class="title"
     data-testid="title"
     data-view-kind=${viewKind}
     data-id=${target.nodeId}
+    ?data-disabled=${disabled ?? false}
   >
     ${target.title}
   </h2>`;
