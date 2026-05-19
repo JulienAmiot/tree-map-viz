@@ -44,17 +44,11 @@
 import { css, html, type TemplateResult } from "lit";
 
 /**
- * SPEC §17.121f — event name + payload shape for the focused-panel
- * WorkflowNode status picker. Mirrors the §17.104
- * `computation-kind-change` event the Computed* strategy picker
- * fires: a `change` on the inline `<select>` bubbles + composes
- * a `{ nodeId, newStatusId }` detail up to the composition root,
- * which routes it to `EditNodeService.editFields` with
- * `{ kind: "Workflow", statusId: newStatusId }`. The selected id is
- * forwarded verbatim — the service's `setStatusId` is the only
- * trim + non-empty guard, and the board's referential check is
- * intentionally lazy (an unknown id falls back to the muted-grey
- * orphan badge at next render rather than rejecting the swap).
+ * SPEC §17.121f — event name + payload for the focused-panel
+ * WorkflowNode status picker (mirror of the §17.104
+ * `computation-kind-change`). A `change` on the inline `<select>`
+ * bubbles + composes `{ nodeId, newStatusId }` up to `main.ts`,
+ * which routes to `EditNodeService.editFields`.
  */
 export const WORKFLOW_STATUS_CHANGE_EVENT = "workflow-status-change";
 export type WorkflowStatusChangeDetail = {
@@ -84,17 +78,11 @@ export const statusBadgeStyles = css`
     user-select: none;
     font-variant-numeric: tabular-nums;
   }
-  /* SPEC §17.121f — interactive variant rendered on the AsParent
-     workflow tile only. Visually mirrors the read-only .status-badge
-     (transparent background, coloured border + text driven by
-     --status-color, rounded pill, same vh-scaled font) so the
-     operator's eye-path stays consistent across roles; the only
-     deltas are (a) pointer-events: auto so the native <select>
-     receives clicks, (b) cursor: pointer so the affordance reads
-     as tappable, and (c) a slim chevron after the label provided
-     by the UA's native select chrome (kept by NOT zeroing out
-     -webkit-appearance / appearance — operator-feedback-light, no
-     custom popup component to maintain). */
+  /* SPEC §17.121f — interactive variant rendered AsParent only.
+     Visually mirrors .status-badge (transparent background, coloured
+     border + text via --status-color, same vh-scaled font); adds
+     pointer-events: auto + cursor: pointer + the UA's native select
+     chevron (no -webkit-appearance reset). */
   .status-badge-picker {
     display: inline-flex;
     align-items: center;
@@ -154,22 +142,10 @@ export function renderStatusBadge(
 }
 
 /**
- * SPEC §17.121f — render the inline-edit `<select>` variant used on
- * the focused-panel WorkflowNode tile. The native `<select>` is
- * styled (via `.status-badge-picker`) to read as the same coloured
- * pill the read-only badge renders; the active option text comes
- * from the resolved-status VM so the picker's visible label matches
- * the badge's pre-§17.121f rendering at idle.
- *
- * The fallback policy mirrors `renderStatusBadge`: an empty
- * `availableStatuses` list collapses the picker back to the
- * read-only badge so unit fixtures + board-less paths degrade
- * gracefully rather than blowing up with an empty dropdown.
- *
- * The dispatched event (`workflow-status-change`) bubbles + composes
- * so the composition root can register a single listener on the
- * top-level `<tree-map-screen>` element (mirror of the §17.110
- * `computation-kind-change` wiring).
+ * SPEC §17.121f — focused-panel inline-edit `<select>` variant.
+ * Empty `availableStatuses` degrades to the read-only badge; the
+ * dispatched `workflow-status-change` bubbles + composes for the
+ * single screen-level listener in `main.ts`.
  */
 export function renderStatusBadgePicker(
   nodeId: string,

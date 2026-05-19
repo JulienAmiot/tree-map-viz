@@ -298,18 +298,11 @@ async function main(): Promise<void> {
     })();
   });
 
-  // SPEC §17.121f — `<workflow-node-as-parent>` dispatches this event
-  // on the inline status `<select>` change (mirror of the §17.110
-  // `computation-kind-change` wiring). The handler routes to
-  // `EditNodeService.editFields` with `{ kind: "Workflow", statusId }`;
-  // the service is atomic + rolled-back on persist failure, so a
-  // failing write restores the previous status alongside the next
-  // refresh's re-paint (the picker re-resolves against the unchanged
-  // VM and lands back at the prior option). The picker is only
-  // rendered on WorkflowNode parents, so the `inferV4Kind` discriminator
-  // is guaranteed to return `"Workflow"` on the happy path — the
-  // defensive null check keeps the handler robust against a stale
-  // build that fires the event from an unexpected source.
+  // SPEC §17.121f — mirror of the §17.110 `computation-kind-change`
+  // wiring; routes the inline status-picker change to
+  // `EditNodeService.editFields({ kind: "Workflow", statusId })`.
+  // Defensive kind-check survives a stale build firing the event
+  // from an unexpected source.
   screen.addEventListener("workflow-status-change", (e) => {
     void (async () => {
       const detail = (e as CustomEvent<WorkflowStatusChangeDetail>).detail;

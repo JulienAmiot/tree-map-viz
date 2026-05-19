@@ -199,14 +199,9 @@ function mapWorkflowNode(
         label: node.statusId.toUpperCase(),
         color: ORPHAN_STATUS_COLOR,
       };
-  // SPEC §17.121f — bake the focused board's FULL status table into
-  // the VM so the AsParent inline picker (mirror of the Computed*
-  // strategy picker) can render an `<option>` per entry without
-  // re-reaching into the board collection at render time. Flattened
-  // to plain `{ id, label, color }` so the view layer stays free of
-  // domain imports. Empty when the caller did not pass
-  // `options.workflowStatuses` (the inline picker then degrades to
-  // the read-only badge fallback).
+  // SPEC §17.121f — flatten the board's status table for the
+  // AsParent inline picker (`<option>` per entry); empty when the
+  // caller did not pass `options.workflowStatuses`.
   const availableStatuses = statuses.map((s) => ({
     id: s.id,
     label: s.label,

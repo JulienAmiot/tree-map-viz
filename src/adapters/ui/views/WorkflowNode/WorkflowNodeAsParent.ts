@@ -23,19 +23,10 @@
  *
  * SPEC §17.121f — the parent-strip status is now INLINE EDITABLE.
  * The subtitle slot renders a `<select class="status-badge-picker">`
- * (mirror of the §17.104 Computed* strategy picker) whose options
- * come from `vm.availableStatuses` (baked by the §17.121f mapper
- * from `Board.workflowStatuses`). A change on the picker dispatches
- * a `workflow-status-change` event with `{ nodeId, newStatusId }`;
- * the composition root in `main.ts` routes the event to
- * `EditNodeService.editFields({ kind: "Workflow", statusId })`,
- * atomic + persister-rolled-back like every other inline-edit
- * surface. The AsChild role keeps the read-only badge — child
- * tiles never expose inline editors (the operator drills into
- * the parent to edit). The §17.117 "status mutations go through
- * the Edit-node modal" hedge is superseded: the modal still works,
- * but the picker is now the primary affordance on the focused
- * panel.
+ * (mirror of the §17.104 Computed* strategy picker); a change fires
+ * `workflow-status-change` which `main.ts` routes to
+ * `EditNodeService.editFields({ kind: "Workflow", statusId })`. The
+ * AsChild role keeps the read-only badge.
  */
 
 import { LitElement, css, html, nothing } from "lit";
