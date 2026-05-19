@@ -39,8 +39,10 @@ Canonical diagram: `examples/classDiagramMermaid.v2.mermaid`.
 ### Composition + capability interfaces
 
 - `TreeNode<T>` — abstract base. Owns: `id: UUID`, `identity: NodeIdentity`, `weight: Weight`, `parent`, `children`. Exposes `currentValue(): T`.
-- `TextNode` — concrete sibling of `BusinessScoreCardNode`. Composes a `TextCard` (a string-typed history aggregate, parallel to `BusinessScoreCard`); extends `TreeNode<string>` and implements **`Historizable<string>`** (added in §17.14 — every node, including text nodes, now carries a `TimestampedValue` history; the displayed "value" is the latest entry's `.value`). Still **does NOT implement `ContributesToParent<T>` or `HasObjective<T>`** → excluded from parent computation by the type system, not by a flag. Per §17.15, the **current value IS the description for a text card** — the underlying `NodeIdentity.description` is always empty for `TextNode` (and the modal omits the field), so the same string is never collected/displayed twice.
-- `BusinessScoreCardNode<T>` — concrete sibling. Composes `BusinessScoreCard<T>`. Implements `Historizable<T>`, `HasObjective<T>`, `ContributesToParent<T>`. Carries `computed: boolean` and `eligibleForParentComputation: boolean`.
+- `TextNode` — concrete sibling of `BusinessScoreNode`. Composes a `TextCard` (a string-typed history aggregate, parallel to `BusinessScoreCard`); extends `TreeNode<string>` and implements **`Historizable<string>`** (added in §17.14 — every node, including text nodes, now carries a `TimestampedValue` history; the displayed "value" is the latest entry's `.value`). Still **does NOT implement `ContributesToParent<T>` or `HasObjective<T>`** → excluded from parent computation by the type system, not by a flag. Per §17.15, the **current value IS the description for a text card** — the underlying `NodeIdentity.description` is always empty for `TextNode` (and the modal omits the field), so the same string is never collected/displayed twice.
+- `BusinessScoreNode<T>` — concrete sibling (renamed from `BusinessScoreCardNode<T>` in §17.76; the v4 taxonomy is fleshed out further in §17.72–§17.79 and round 7 in §17.94). Composes `BusinessScoreCard<T>`. Implements `Historizable<T>`, `HasObjective<T>`, `ContributesToParent<T>`. Carries `computed: boolean` and `eligibleForParentComputation: boolean`.
+
+> **Round-7 successors (§17.94, as-built §17.95–§17.122+)**: `computed: boolean` and `eligibleForParentComputation: boolean` were retired in favour of (a) a polymorphic split into `ComputedNode<T>` / `ComputedBusinessScoreNode<T>` for derived values, and (b) a `disabled: boolean` field on `ValueNode<T>` for "park this node out of aggregation". The `ContributesToParent<T>` capability collapsed into the `disabled` field + a `Computation<T>` strategy hierarchy resolved by `ComputationKind` (`SUM | AVERAGE | MIN | MAX | WEIGHTED_AVERAGE | COUNT`). The text above describes the v3 model that §3's wire format still mirrors; the v4 / round-7 model is the live one in code today. A full §3 rewrite to the round-7 taxonomy is tracked as a separate strand.
 
 ### Value objects (no primitives)
 
@@ -140,8 +142,8 @@ The two roles differ in **size / typography / density**, **not** in which fields
 
 | Node kind | `computed` | Fields rendered (both roles) |
 |---|---|---|
-| `BusinessScoreCardNode<T>` | `true`  | `Title` + computed value (with `Unit` at 1/3 of the value's font-size) + `Σ` badge + **most-recent-child** date in the **bottom-right corner** (§17.18) |
-| `BusinessScoreCardNode<T>` | `false` | `Title` + latest `TimestampedValue.value` (with `Unit` at 1/3 size) + its `asOf` in the **bottom-right corner** (§17.18) |
+| `BusinessScoreNode<T>` | `true`  | `Title` + computed value (with `Unit` at 1/3 of the value's font-size) + `Σ` badge + **most-recent-child** date in the **bottom-right corner** (§17.18) |
+| `BusinessScoreNode<T>` | `false` | `Title` + latest `TimestampedValue.value` (with `Unit` at 1/3 size) + its `asOf` in the **bottom-right corner** (§17.18) |
 | `TextNode` | n/a | `Title` + latest `TimestampedValue<string>.value` (full text, fills the tile) + its `asOf` in the **bottom-right corner** (§17.18) |
 
 A small "Σ" badge marks computed values so users can distinguish derived from recorded.
@@ -210,7 +212,7 @@ Triggered by activating the "+" tile. Never drills.
 
 - **Export**: serialize the current board (or all boards — TBD) to a `.json` file the user can download.
 - **Import**: file picker → parse → validate → replace (or merge — TBD) the current board collection.
-- Both actions live behind the burger menu in the drawer.
+- Both actions live behind the burger menu on the permanent top bar (§17.43; the auto-hidden drawer it used to live in was retired).
 
 ### Auto-save
 
@@ -232,21 +234,24 @@ Hash-based, no router library:
 
 > **As-built (Phase 4)**: implemented by `HashRouter` against a `Router` port (`parse / build / current / push / replace / onChange` with unsubscribe). Strict regex `^#/b/([^/]+)/n/([^/]+)$`; non-matching shapes return `null`. See §17.4.
 
-## 10. Out of scope (this iteration)
+## 10. Out of scope (still deferred)
 
-- **Edit** existing nodes — defer.
-- **Delete** existing nodes — defer.
-- **History sparkline** on tiles — defer.
-- **Objective summary** (target/initial/target-date) on tiles — defer (not in §5 field rules).
+- ~~**Edit** existing nodes — defer.~~ **Delivered** in §17.28 (pencil + inline edit); inline number stepper §17.51; child-tile weight popover §17.52; per-kind edit modal §17.50.
+- **Delete** existing nodes — still deferred.
+- **History sparkline** on tiles — still deferred.
+- ~~**Objective summary** (target/initial/target-date) on tiles — defer.~~ **Delivered** in §17.40 (BSC objective row + gradient value colour + deadline-risk warning glyph; further refined in §17.44).
 
 ## 11. Existing implementation pointers
 
-(For continuity with whatever path is chosen — see §13 Open decisions.)
+Today's load-bearing entry points (post §17.94 round 7, post §17.112 v3 sweep). The §13 "Open decisions" they used to defer to are all closed; see §17 for the migration history.
 
-- `src/domain/treemapSquarify.ts` — squarified layout algorithm. Framework-agnostic; **stays as-is** regardless of view-layer choice.
-- `src/domain/Node.ts`, `src/domain/BusinessScoreCard.ts`, `src/domain/treeQueries.ts` — current domain model; needs realignment to Option B.
-- `src/application/TreeNavigationService.ts`, `src/application/ports/TreeNavigationPort.ts` — navigation use-case + port; survives both view-layer paths.
-- `src/adapters/ui/TreeGraphScreen.tsx`, `NodeCard.tsx`, `useTreemapLayout.ts` — current React UI. **Will be rewritten as Lit Web Components** (per §13.1). React, `react-dom`, `@testing-library/react`, and `@vitejs/plugin-react` are removed; replaced by `lit` and `@open-wc/testing-helpers` (or equivalent). `useTreemapLayout` becomes a `ResizeObserver`-driven controller inside the Lit shell; the squarify algorithm itself is unchanged.
+- `src/main.ts` — the only composition root (§14.5). Constructs the Lit shell, wires it to `BoardCollectionService` + `TreeNavigationService` + `AddChildService` + `EditNodeService` + `ImportExportService` over `LocalStorageBoardCollectionRepository` + `HashRouter` + `createJsonCodec`.
+- `src/domain/treemapSquarify.ts` — squarified layout algorithm (Bruls/Huizing/van Wijk). Framework-agnostic; unchanged across every rename / redesign.
+- `src/domain/nodes/` — round-7 taxonomy: `Node` (abstract) → `ValueNode<T>` (abstract, owns `disabled`) → `HistorizableValueNode<T>` → `RangedValueNode<T>` → `BusinessScoreNode<T>` / `StrictRangeNode<T>`, plus `TextNode`, `ComputedNode<T>`, `ComputedBusinessScoreNode<T>`, `WorkflowNode`, `PictureNode`, `URLNode`, `EmptyHistoryError`. The v3 `TreeNode<T>` / `BusinessScoreCardNode<T>` files are gone.
+- `src/domain/Tree.ts` — root container (§17.79). Owns the node graph and exposes `findById`, `nodes()`, etc.
+- `src/application/TreeNavigationService.ts`, `src/application/ports/TreeNavigationPort.ts` — navigation use-case + port. Now consumes the round-7 `Tree`.
+- `src/adapters/ui/shell/TreeMapScreen.ts`, `ParentIdentityStrip.ts`, `ChildrenGrid.ts`, `Breadcrumb.ts`, `BurgerMenu.ts` — the Lit shell (§17.64 rename from `TreeGraphScreen.ts`). Drawer retired in §17.43; the top bar is permanent.
+- `src/adapters/ui/views/` — per-kind / per-role Lit views with `NodeView` dispatcher + `nodeViewRegistry`. Folders: `TextNode/`, `BusinessScoreCardNode/` (folder name retained for migration friendliness; renders `BusinessScoreNode<T>`), `ComputedNode/`, `WorkflowNode/`, `PictureNode/`, `URLNode/`, `plus/`, plus shared helpers (`tileLayoutStyles`, `disabledToggle`, `inlineTitleEdit`, `dateAgeColor`, `numberFormat`, `ageFormat`, `warningFill`, `qrGenerator`, `inlineEditEvents`, `childWeight/*`).
 
 ## 12. Test plan (LOCKED)
 
@@ -264,16 +269,22 @@ Test files **do not live next to the implementation**. Every `+ .test.ts` marker
 ```
 src/
   domain/
-    values/                 Title, Description, Weight, Unit, NodeIdentity,
-                            TimestampedValue, Objective                + .test.ts each
-    capabilities/           Historizable, HasObjective, ContributesToParent,
-                            capabilityGuards                            + .test.ts
-    nodes/                  TreeNode, TextNode, BusinessScoreCardNode,
-                            BusinessScoreCard                           + .test.ts each
-    aggregation/computedValue.ts                                        + .test.ts
-    capacity/childrenCapacity.ts                                        + .test.ts
-    treeQueries.ts                                                      + .test.ts
-    treemapSquarify.ts                                                  + .test.ts
+    values/                 Description, Weight, Unit, NodeIdentity, Objective,
+                            TimestampedValue, Timestamp, Range, Direction,
+                            Comparator                                + .test.ts each
+    capabilities/           Historizable, HasObjective, Clock,
+                            capabilityGuards                          + .test.ts
+    nodes/                  Node, ValueNode, HistorizableValueNode,
+                            RangedValueNode, BusinessScoreNode,
+                            StrictRangeNode, TextNode, ComputedNode,
+                            ComputedBusinessScoreNode, WorkflowNode,
+                            PictureNode, URLNode, EmptyHistoryError    + .test.ts each
+    aggregation/computedValue.ts + objectiveProgress/*                + .test.ts
+    capacity/childrenCapacity.ts                                       + .test.ts
+    computation/            Computation strategy hierarchy + registry  + .test.ts
+    treeQueries.ts                                                     + .test.ts
+    treemapSquarify.ts                                                 + .test.ts
+    Tree.ts                                                            + .test.ts
     index.ts
 
   application/
@@ -281,10 +292,12 @@ src/
       TreeNavigationPort.ts
       BoardCollectionRepository.ts                       + contract test
       Router.ts
-      ImportExportFile.ts
+      TreeCodec.ts
+      IdGenerator.ts
     TreeNavigationService.ts                             + .test.ts
     BoardCollectionService.ts                            + .test.ts
     AddChildService.ts                                   + .test.ts
+    EditNodeService.ts                                   + .test.ts
     ImportExportService.ts                               + .test.ts
     index.ts
 
@@ -293,6 +306,9 @@ src/
       jsonCodec.ts                                       + .test.ts
       LocalStorageBoardCollectionRepository.ts           + .test.ts
     routing/HashRouter.ts                                + .test.ts
+    system/
+      SystemClock.ts                                     + .test.ts
+      RandomUuidGenerator.ts                             + .test.ts
     ui/
       controllers/
         TreemapController.ts                             + .test.ts
@@ -300,26 +316,42 @@ src/
       views/
         NodeView.ts                                      + .test.ts
         nodeViewRegistry.ts                              + .test.ts
-        TextNode/{TextNodeAsParent,TextNodeAsChild}.ts   + .test.ts each
-        BusinessScoreCardNode/{AsParent,AsChild}.ts      + .test.ts each
+        viewModelMapper.ts                               + .test.ts
+        TextNode/{TextNodeAsParent,TextNodeAsChild,textBody}.ts            + .test.ts
+        BusinessScoreCardNode/{AsParent,AsChild,valueTemplate}.ts          + .test.ts
+        ComputedNode/ComputedCards.ts                                      + .test.ts
+        WorkflowNode/{AsParent,AsChild,statusBadge}.ts                     + .test.ts
+        PictureNode/{AsParent,AsChild,pictureBody,imageErrorController}.ts + .test.ts
+        URLNode/{AsParent,AsChild,urlBody,qrGenerator,qrGenController}.ts  + .test.ts
         plus/PlusTile.ts                                 + .test.ts
+        childWeight/{WeightEditButton,WeightEditPopover,weightEditEvents}.ts + .test.ts
+        tileLayoutStyles.ts disabledToggle.ts dateAgeColor.ts
+        numberFormat.ts ageFormat.ts warningFill.ts inlineTitleEdit.ts
+        inlineEditEvents.ts inlineEditHelpers.ts
       shell/
-        TreeGraphScreen.ts                               + .test.ts
+        TreeMapScreen.ts                                 + .test.ts
         ParentIdentityStrip.ts                           + .test.ts
         ChildrenGrid.ts                                  + .test.ts
-        Drawer.ts                                        + .test.ts
         Breadcrumb.ts                                    + .test.ts
         BurgerMenu.ts                                    + .test.ts
+        (no Drawer — retired in §17.43; top bar is permanent)
+      modal/
         AddChildModal.ts                                 + .test.ts
+        EditNodeModal.ts                                 + .test.ts
+        BoardSettingsModal.ts                            + .test.ts
+        BoardsPanelModal.ts                              + .test.ts
+        VersionMismatchBanner.ts                         + .test.ts
+        AboutModal.ts                                    + .test.ts
       animations/drillTransitions.test.ts
-    testBridge.ts                                        (gated by ?test=1; see §14)
-    sampleData.ts
+    showcaseSeed.ts                                       + .test.ts
+    testBridge.ts                                         (gated by ?test=1; see §14)
 
   test/
     setup.ts                  (jsdom + jest-dom + ResizeObserver mock + matchMedia mock)
     fixtures/
       treesFixtures.ts
       domFixtures.ts
+      litElementFixture.ts
     unit/                     Vitest unit tests; mirrors the implementation tree below.
       domain/...              <Foo>.test.ts at the same relative path as src/domain/<Foo>.ts
       application/...         <Foo>.test.ts at the same relative path as src/application/<Foo>.ts
@@ -327,19 +359,22 @@ src/
     e2e/                      Playwright + playwright-bdd; never imports src/{domain,application,adapters} or src/main.ts.
       playwright.config.ts
       features/
+        boot/app_boots.feature
         layout/{treemap_n_plus_one,treemap_min_tile_clamp,orientation_reflow}.feature
-        views/{business_score_card_views,text_node_views,plus_tile,computed_aggregation_view}.feature
-        shell/{drawer,breadcrumb,burger_menu}.feature
+        views/{business_score_card_views,text_node_views,text_node_markdown,
+                plus_tile,computed_aggregation_view,tile_layout,drill,
+                bsc_objective_progress,child_weight_edit}.feature
+        shell/{breadcrumb,burger_menu,board_settings,close_to_parent,edit_node}.feature
         modal/{add_child_modal,empty_field_placeholders}.feature
         persistence/{load_save,import_export,board_collection}.feature
         routing/{deep_link,focus_to_url,unknown_uuid_fallback}.feature
       steps/
         layoutSteps.ts viewSteps.ts shellSteps.ts modalSteps.ts
-        persistenceSteps.ts routingSteps.ts
+        persistenceSteps.ts routingSteps.ts bootSteps.ts
       fixtures/
         trees/{orgTree,twelveChildren,zeroEligible}.json
       pageObjects/
-        TreeGraphPage.ts DrawerPage.ts ModalPage.ts
+        TreeMapPage.ts ModalPage.ts
   main.ts
 ```
 
@@ -347,9 +382,9 @@ src/
 
 **Domain — value objects** — `Title` (non-empty trimmed, ≤120 chars, equality by value); `Description` (≤280 chars, empty allowed); `Weight` (>0, `Weight.default()` = 1, rejects NaN/∞/≤0); `Unit` (non-empty, `Unit.percent()`); `NodeIdentity` (Title+Description); `TimestampedValue<T>` (rejects invalid Date, `compareByDate`, `isAfter`); `Objective<T>` (initialValue/targetValue/targetDate, equality).
 
-**Domain — capabilities & guards** — `capabilityGuards`: `implementsContributesToParent` true for `BusinessScoreCardNode`, false for `TextNode`; same for `Historizable`, `HasObjective`.
+**Domain — capabilities & guards** — `capabilityGuards`: `implementsContributesToParent` true for `BusinessScoreNode`, false for `TextNode`; same for `Historizable`, `HasObjective`.
 
-**Domain — nodes** — `TreeNode` (id/identity/weight/parent/children, attach/detach maintains parent pointer, `currentValue` abstract); `TextNode` (does **not** satisfy `ContributesToParent` at type level — compile-time assertion file; `currentValue()` throws `NotValuedError`); `BusinessScoreCardNode` (composes `BusinessScoreCard`; `history`, `objective`, `isEligible`, `contribution`, `currentValue`; `EmptyHistoryError` on empty history); `BusinessScoreCard` (`addRecorded(tv)` keeps list sorted; `history()` returns immutable copy).
+**Domain — nodes** — `TreeNode` (id/identity/weight/parent/children, attach/detach maintains parent pointer, `currentValue` abstract); `TextNode` (does **not** satisfy `ContributesToParent` at type level — compile-time assertion file; `currentValue()` throws `NotValuedError`); `BusinessScoreNode` (composes `BusinessScoreCard`; `history`, `objective`, `isEligible`, `contribution`, `currentValue`; `EmptyHistoryError` on empty history); `BusinessScoreCard` (`addRecorded(tv)` keeps list sorted; `history()` returns immutable copy).
 
 **Domain — aggregation & capacity** — `computedValue` (all branches: weighted mean over `ContributesToParent` AND eligible; skip `TextNode` and ineligible; `computed === false` → parent's own latest value; zero eligible with `computed === true` → returns `{ kind: "childrenCount", n }` for the renderer per §13.2). `childrenCapacity` (`MAX_CHILDREN = 12`, `canAddChild`, `shouldRenderPlusTile`).
 
@@ -369,16 +404,24 @@ src/
 
 | `.feature` file | Headline scenarios |
 |---|---|
+| `boot/app_boots.feature` | fresh boot seeds the showcase board; root title matches the showcase root; every kind in the showcase reaches the DOM. |
 | `views/computed_aggregation_view.feature` | computed parent renders weighted mean + `Σ` badge; 3 ineligible children → `3 children` plain text, no `Unit`, no `Σ`; 0 children → only "+" tile, value area empty; `computed=false` → own latest value + date, no `Σ`. |
 | `views/text_node_views.feature` | Title + Description, both roles; no value, no `Σ`. |
+| `views/text_node_markdown.feature` | Markdown in a `TextNode` value renders; tile-adaptive font sizing (§17.27). |
 | `views/business_score_card_views.feature` | full (role × `computed`) matrix; `Σ` badge presence. |
+| `views/bsc_objective_progress.feature` | objective row + gradient value colour + deadline-risk warning glyph (§17.40 / §17.44). |
+| `views/child_weight_edit.feature` | long-press / corner-icon weight popover, slider drag, commit-on-release (§17.52). |
+| `views/tile_layout.feature` | tile typography invariants from §17.14 / §17.17 / §17.46 (title row, value clamp, timestamp). |
+| `views/drill.feature` | FLIP-style morph from tile to parent strip (§17.32); `prefers-reduced-motion` skips animation. |
 | `views/plus_tile.feature` | exactly one `[data-testid="plus-tile"]`; dashed border; centered "+"; no title/value/date; opens modal; never drills. |
 | `layout/treemap_n_plus_one.feature` | outline over n ∈ {0,1,11,12}: tile counts {1,2,12,12}; "+" hidden iff n=12. |
 | `layout/treemap_min_tile_clamp.feature` | weights `[100,1,1,1]` in 1920×1080: smallest tile ≥ 1/12 of children area; coverage = viewport ±1px; square-ratio of large tiles within threshold. |
 | `layout/orientation_reflow.feature` | `ResizeObserver` fires on aspect change; tile rectangles recompute; identity strip stays at top. |
-| `shell/drawer.feature` | handle visible at rest; tap reveals; swipe-out hides; contains board name, breadcrumb, burger. |
 | `shell/breadcrumb.feature` | `Root › … › Parent › Focus`; truncates from **left**; tap navigates; URL updates. |
-| `shell/burger_menu.feature` | Import / Export / Boards entries; closes on outside tap. |
+| `shell/burger_menu.feature` | Import / Export / Boards / Settings entries; closes on outside tap. |
+| `shell/board_settings.feature` | board settings modal opens from the burger; rename + delete + colour pick persist (§17.31). |
+| `shell/close_to_parent.feature` | the X on the focused strip pops one level (§17.23). |
+| `shell/edit_node.feature` | pencil opens inline / modal edit; commit persists; cancel reverts (§17.28 / §17.50 / §17.51). |
 | `modal/add_child_modal.feature` | opens from "+", semi-transparent backdrop; type selector; per-type form; confirm appends → persists → closes; cancel never persists; never drills. |
 | `modal/empty_field_placeholders.feature` | every empty field has placeholder starting with `e.g.` or recognisable mock; no `<label>` siblings; placeholder vanishes on input. |
 | `persistence/load_save.feature` | empty `localStorage` seeds an empty collection with one default board; mutations write through; navigation does not. |
@@ -387,6 +430,8 @@ src/
 | `routing/deep_link.feature` | `#/b/<id>/n/<uuid>` focuses the right node when present. |
 | `routing/focus_to_url.feature` | drilling, going back, breadcrumb-tapping all `pushState` correctly; browser back restores prior focus. |
 | `routing/unknown_uuid_fallback.feature` | unknown UUID → board root with `replaceState`. |
+
+> **Drawer scenarios retired**: `shell/drawer.feature` was deleted in §17.43 when `<app-drawer>` retired in favour of the permanent top bar. The top-bar invariants are now covered by `shell/breadcrumb` and `shell/burger_menu`.
 
 ### 12.4 Tagging convention in `.feature` files
 
@@ -418,7 +463,7 @@ Every **scenario** carries (after first XRay round-trip; placeholder before):
 | **7** | Lit shell + layout + controllers. | `layout/*.feature` + `shell/*.feature` green. |
 | **8** | Add-child modal. | `modal/*.feature` green. |
 | **9** | CSS animations + a11y polish. | `animations/drillTransitions.test.ts` green; manual a11y pass. |
-| **10** | Persistence + routing wiring under `<tree-graph-screen>`. | `persistence/*.feature` + `routing/*.feature` green. |
+| **10** | Persistence + routing wiring under `<tree-map-screen>`. | `persistence/*.feature` + `routing/*.feature` green. |
 | **11** | Manual smoke on the kiosk hardware. | Out of automated test scope. |
 
 ## 13. Open decisions
@@ -439,7 +484,7 @@ The view layer is rewritten as Lit Web Components. Rationale:
 - Keep: Vitest, jsdom, `@testing-library/jest-dom` (matchers work against any DOM).
 - Vite stays (no plugin needed for Lit; TS handles decorators with `experimentalDecorators` + `useDefineForClassFields: false`, or with the standard 2022 decorators if `lit` ≥ 3 is used).
 - `treemapSquarify.ts`, `treeQueries.ts`, the Option B domain classes, and `TreeNavigationService` are **framework-free** and stay as plain TS.
-- `useTreemapLayout` becomes `TreemapController` — a Lit `ReactiveController` wrapping a `ResizeObserver`, owned by the `<tree-graph-screen>` shell.
+- `useTreemapLayout` becomes `TreemapController` — a Lit `ReactiveController` wrapping a `ResizeObserver`, owned by the `<tree-map-screen>` shell.
 
 ### 13.2. Follow-ups — DECIDED
 
@@ -554,36 +599,38 @@ The only inter-issue link type used is **`Blocks`** (built-in Jira link).
 - Every Development Task and Task `blocks` `HE-2571` — except Task B (see below).
 - Inter-task `blocks` edges mirror §12.5 phase order so Jira's blocker graph reads as the dependency graph.
 
-### 15.4 Development Tasks (10) — to create
+### 15.4 Issues (16) + `blocks` edges — consolidated
 
-| # | Title | Maps to phase | Inter-task `blocks` edges (outgoing) |
-|---|---|---|---|
-| DT-1 | Domain model — Option B | 0–1 | DT-2, DT-3 |
-| DT-2 | JSON codec + sample data alignment | 2 | DT-4 |
-| DT-3 | Application services | 3 | DT-5, DT-7 |
-| DT-4 | Persistence + Routing adapters | 4 | DT-6 |
-| DT-5 | Lit views (per-kind, per-role) | 6 | DT-6 |
-| DT-6 | Lit shell + layout | 7 | DT-8 |
-| DT-7 | Add-child modal | 8 | — |
-| DT-8 | Animations + a11y polish | 9 | — |
-| DT-9 | BDD harness (Playwright + `playwright-bdd` + `testBridge`) | 5 | DT-6, DT-7, DT-8, DT-10 |
-| DT-10 | XRay import pipeline (`bin/xray-import` + CI hook) | 5 | (Task B) |
+One table consolidating the original §15.4 (Development Tasks), §15.5 (Tasks), and §15.6 (Test Plans) "to create" plans with the keys actually created in HE on 2026-04-26 (formerly §15.9). The "Maps to phase" column tracks §12.5; the "Outgoing `blocks` edges" column tracks the dependency wire-up.
 
-### 15.5 Tasks (2) — to create
+| # | Key | Summary | Maps to phase | Outgoing `blocks` edges |
+|---|---|---|---|---|
+| DT-1 | `HE-2578` | TGV / DT-1 — Domain model (Option B) | 0–1 | DT-2, DT-3, HE-2571 |
+| DT-2 | `HE-2575` | TGV / DT-2 — JSON codec + sample data alignment | 2 | DT-4, HE-2571 |
+| DT-3 | `HE-2574` | TGV / DT-3 — Application services | 3 | DT-5, DT-7, HE-2571 |
+| DT-4 | `HE-2588` | TGV / DT-4 — Persistence + Routing adapters | 4 | DT-6, HE-2571 |
+| DT-5 | `HE-2582` | TGV / DT-5 — Lit views (per-kind, per-role) | 6 | DT-6, HE-2571 |
+| DT-6 | `HE-2583` | TGV / DT-6 — Lit shell + layout | 7 | DT-8, HE-2571 |
+| DT-7 | `HE-2576` | TGV / DT-7 — Add-child modal | 8 | HE-2571 |
+| DT-8 | `HE-2584` | TGV / DT-8 — Animations + a11y polish | 9 | HE-2571 |
+| DT-9 | `HE-2579` | TGV / DT-9 — BDD harness (Playwright + playwright-bdd + testBridge) | 5 | DT-6, DT-7, DT-8, DT-10, HE-2571 |
+| DT-10 | `HE-2581` | TGV / DT-10 — XRay import pipeline (bin/xray-import + CI hook) | 5 | Task B, HE-2571 |
+| Task A | `HE-2586` | TGV / Task A — Generate XRay Cloud API credentials in Jira admin | — (ops) | Task B, HE-2571 |
+| Task B | `HE-2589` | TGV / Task B — First XRay import dry-run + sanity-check Test issues in HE | — (ops) | — *(intentionally does NOT block `HE-2571`; kiosk ships even if XRay lags)* |
+| TP-A | `HE-2577` | TGV / TP-A — Phase 6 (Lit views) — `views/business_score_card_views`, `views/text_node_views`, `views/plus_tile`, `views/computed_aggregation_view` | 6 | — |
+| TP-B | `HE-2587` | TGV / TP-B — Phase 7 (Lit shell + Layout) — `layout/treemap_n_plus_one`, `layout/treemap_min_tile_clamp`, `layout/orientation_reflow`, `shell/breadcrumb`, `shell/burger_menu` *(`shell/drawer` retired in §17.43)* | 7 | — |
+| TP-C | `HE-2580` | TGV / TP-C — Phase 8 (Modal) — `modal/add_child_modal`, `modal/empty_field_placeholders` | 8 | — |
+| TP-D | `HE-2585` | TGV / TP-D — Phase 9–10 (Persistence + Routing) — `persistence/load_save`, `persistence/import_export`, `persistence/board_collection`, `routing/deep_link`, `routing/focus_to_url`, `routing/unknown_uuid_fallback` | 9–10 | — |
 
-| # | Title | Notes |
-|---|---|---|
-| Task A | Generate XRay Cloud API credentials in Jira admin | One-time; produces `XRAY_CLIENT_ID` + `XRAY_CLIENT_SECRET`; `blocks` Task B. |
-| Task B | First XRay import dry-run + sanity-check Test issues in HE | Blocked by DT-10 and Task A. **Does NOT block `HE-2571`** — the kiosk ships even if XRay traceability lags. |
+`blocks` edge totals: 25 — 11 → `HE-2571` (every Dev Task + Task A), 13 inter-Dev-Task edges per the table, 1 Task-to-Task edge (Task A → Task B). Verified post-creation: `HE-2571.issuelinks` shows exactly 11 incoming "is blocked by" edges from `HE-2574, HE-2575, HE-2576, HE-2578, HE-2579, HE-2581, HE-2582, HE-2583, HE-2584, HE-2586, HE-2588`.
 
-### 15.6 Test Plans (4) — to create
+### 15.5 (retired — see §15.4)
 
-| # | Title | Test Sets (one per `.feature` file) |
-|---|---|---|
-| TP-A | TGV — Phase 6 (Lit views) | `views/business_score_card_views`, `views/text_node_views`, `views/plus_tile`, `views/computed_aggregation_view` |
-| TP-B | TGV — Phase 7 (Lit shell + Layout) | `layout/treemap_n_plus_one`, `layout/treemap_min_tile_clamp`, `layout/orientation_reflow`, `shell/drawer`, `shell/breadcrumb`, `shell/burger_menu` |
-| TP-C | TGV — Phase 8 (Modal) | `modal/add_child_modal`, `modal/empty_field_placeholders` |
-| TP-D | TGV — Phase 9–10 (Persistence + Routing) | `persistence/load_save`, `persistence/import_export`, `persistence/board_collection`, `routing/deep_link`, `routing/focus_to_url`, `routing/unknown_uuid_fallback` |
+The original "Tasks (2) — to create" table merged into §15.4 on this cleanup pass. Cross-references that pointed at "§15.5" (e.g. the §15.9 prose, the §17.x historical phase notes) still resolve here because the section number is preserved as a redirect.
+
+### 15.6 (retired — see §15.4)
+
+The original "Test Plans (4) — to create" table merged into §15.4 on this cleanup pass. Cross-references that pointed at "§15.6" (e.g. the §17.x historical phase notes) still resolve here because the section number is preserved as a redirect.
 
 ### 15.7 XRay import workflow
 
@@ -609,9 +656,9 @@ Before creating any issue via the Atlassian MCP, the next session **must**:
 - `inwardIssue = blocker, outwardIssue = blocked` for `createIssueLink` — confirmed from the tool descriptor; this is workspace-wide, not project-scoped.
 - Issue type IDs (e.g. `Development Task = 11497`) **are workspace-scoped** in Jira Cloud — same numeric IDs apply to HE if the same custom issue type is reused. But which types are *enabled* for HE's issue type scheme is project-scoped and must be re-verified.
 
-### 15.9 Created issues — key map (HE, 2026-04-26)
+### 15.9 Audit trail — HE creation batch (2026-04-26)
 
-Re-inspection in HE on 2026-04-26 confirmed all required issue types, the `Blocks` link type ID, and the minimal required-field set (only `summary` beyond auto-set `project` / `issuetype` / `reporter`). All 16 issues + 25 `Blocks` edges below were then created in a single batch.
+Re-inspection in HE on 2026-04-26 confirmed all required issue types, the `Blocks` link type ID, and the minimal required-field set (only `summary` beyond auto-set `project` / `issuetype` / `reporter`). All 16 issues + 25 `Blocks` edges were then created in a single batch. **The keys themselves and the `blocks` edge wiring are consolidated in §15.4.** This subsection retains only the audit-and-IDs material that doesn't fit a per-issue row.
 
 **Issue type IDs (project HE, observed):**
 
@@ -627,54 +674,7 @@ Re-inspection in HE on 2026-04-26 confirmed all required issue types, the `Block
 
 **Link type ID:** `Blocks = 10000` (confirmed identical to HOV; workspace-scoped).
 
-**Issues created (Development Tasks — parent epic `HE-2570`):**
-
-| Code | Key | Summary |
-|---|---|---|
-| DT-1 | `HE-2578` | TGV / DT-1 — Domain model (Option B) |
-| DT-2 | `HE-2575` | TGV / DT-2 — JSON codec + sample data alignment |
-| DT-3 | `HE-2574` | TGV / DT-3 — Application services |
-| DT-4 | `HE-2588` | TGV / DT-4 — Persistence + Routing adapters |
-| DT-5 | `HE-2582` | TGV / DT-5 — Lit views (per-kind, per-role) |
-| DT-6 | `HE-2583` | TGV / DT-6 — Lit shell + layout |
-| DT-7 | `HE-2576` | TGV / DT-7 — Add-child modal |
-| DT-8 | `HE-2584` | TGV / DT-8 — Animations + a11y polish |
-| DT-9 | `HE-2579` | TGV / DT-9 — BDD harness (Playwright + playwright-bdd + testBridge) |
-| DT-10 | `HE-2581` | TGV / DT-10 — XRay import pipeline (bin/xray-import + CI hook) |
-
-**Issues created (Tasks — parent epic `HE-2570`):**
-
-| Code | Key | Summary |
-|---|---|---|
-| Task A | `HE-2586` | TGV / Task A — Generate XRay Cloud API credentials in Jira admin |
-| Task B | `HE-2589` | TGV / Task B — First XRay import dry-run + sanity-check Test issues in HE |
-
-**Issues created (Test Plans — no parent):**
-
-| Code | Key | Summary |
-|---|---|---|
-| TP-A | `HE-2577` | TGV / TP-A — Phase 6 (Lit views) |
-| TP-B | `HE-2587` | TGV / TP-B — Phase 7 (Lit shell + Layout) |
-| TP-C | `HE-2580` | TGV / TP-C — Phase 8 (Modal) |
-| TP-D | `HE-2585` | TGV / TP-D — Phase 9–10 (Persistence + Routing) |
-
 **Common fields applied:** `labels = ["tgv"]` on every issue; Dev Tasks + Tasks set `customfield_10014` (Epic Link) to `HE-2570`; `parent` echoes back as `HE-2570` for Dev Tasks + Tasks.
-
-**`Blocks` edges wired (25 total):**
-
-- 11 → `HE-2571`: every Dev Task (10) + Task A. Task B intentionally excluded per §15.5.
-- 13 inter-Dev-Task edges per §15.4 table:
-  - DT-1 → DT-2, DT-3
-  - DT-2 → DT-4
-  - DT-3 → DT-5, DT-7
-  - DT-4 → DT-6
-  - DT-5 → DT-6
-  - DT-6 → DT-8
-  - DT-9 → DT-6, DT-7, DT-8, DT-10
-  - DT-10 → Task B
-- 1 Task-to-Task edge per §15.5: Task A → Task B.
-
-Verified post-creation: `HE-2571.issuelinks` shows exactly 11 incoming "is blocked by" edges from `HE-2574, HE-2575, HE-2576, HE-2578, HE-2579, HE-2581, HE-2582, HE-2583, HE-2584, HE-2586, HE-2588`.
 
 **JQL filters for review:**
 
@@ -720,15 +720,24 @@ npm rm react react-dom @types/react @types/react-dom \
     "preview": "vite preview --port 4173",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage && node bin/dedupe-lcov.mjs",
+    "check:version-bump": "node bin/check-version-bump.mjs",
     "test:e2e": "bddgen -c src/test/e2e/playwright.config.ts && playwright test -c src/test/e2e/playwright.config.ts",
     "test:e2e:headed": "bddgen -c src/test/e2e/playwright.config.ts && playwright test -c src/test/e2e/playwright.config.ts --headed",
     "lint": "tsc --noEmit",
-    "lint:rules": "eslint ."
+    "lint:rules": "eslint .",
+    "sonar:up": "docker compose -f docker-compose.sonar.yml up -d",
+    "sonar:down": "docker compose -f docker-compose.sonar.yml down",
+    "sonar:logs": "docker compose -f docker-compose.sonar.yml logs -f sonarqube",
+    "sonar:status": "docker compose -f docker-compose.sonar.yml ps",
+    "sonar:scan": "npm run test:coverage && dotenv -e .env.sonar -- sonar-scanner",
+    "sonar:gate": "npm run test:coverage && dotenv -e .env.sonar -- sonar-scanner -Dsonar.qualitygate.wait=true",
+    "prepare": "husky"
   }
 }
 ```
 
-`lint` is the type-check (binding); `lint:rules` runs the ESLint architectural rules from §16.7. CI must run both.
+`lint` is the type-check (binding); `lint:rules` runs the ESLint architectural rules from §16.7; CI must run both. `sonar:up` / `sonar:gate` are the local SonarQube quality-gate workflow added in §17.53 (branch-per-feature contract — only merge after `sonar:gate` is green). `check:version-bump` enforces the §17.82+ envelope-snapshot guard. `prepare` (husky) installs the pre-commit hook.
 
 ### 16.6 `playwright.config.ts` shape
 
@@ -4171,15 +4180,15 @@ The Sonar gate on §17.94 measures **`new_lines ≈ 0`** because `examples/*.{md
 
 When resuming this conversation:
 
-0. **If `docs/RESUMING_17_53.md` exists at the repo root, read it FIRST.** It is a temporary session-state checkpoint pinning volatile bits (current branch, what's uncommitted on the working tree, why the agent could not auto-commit) that this SPEC does not capture. Delete the file after the §17.53 strand merges into `master`.
-1. **Read §17 (Implementation log) first** — it is the source of truth for as-built status (which phases have landed, on which commits, and any decisions taken during implementation that §1–§16 did not pin down). Then re-read this file end-to-end. Decisions §13.1, §13.2, §13.3, §14, §15, §16 are locked.
-2. **Re-read** `examples/classDiagramMermaid.v2.mermaid`, `examples/test.json`, `examples/test-before.html`, `examples/test-after.html`.
-3. **Run `git status` and `git log --oneline`** — confirm `HEAD` matches the latest commit recorded in §17.0. Phases 0–10 are fully landed (incl. all §17.13 → §17.44 refinements; see the §17.0 status table for one-liners). Post-Phase-10 polish §17.45 split the focused-panel BSC body into a horizontal flex-row with `.metric-pane` (left, holds value + target row + bottom-right timestamp) and `.description` (right, the metric's definition); without a description the metric-pane fills the body. A `bodyEntering` `@state` flag arms a one-frame "morph end-state" layout (metric-pane 100 %, description 0 %) on every `vm.id` swap; one frame later it flips to false and `flex-basis 320ms ease` transitions on both panes resolve to the final 50 / 50 split — so a child WITH a description promoted to the parent role transitions smoothly into the new layout. Reduced-motion (`prefers-reduced-motion: reduce` OR `test-no-anim` sentinel) holds `bodyEntering` at false from the start. The pre-§17.45 `:host { position: static }` override is retired in favour of `position: relative` on the metric-pane (now the timestamp's containing block). Post-Phase-10 polish §17.46 ships three coupled visual contracts: (1) tile typography refresh — host padding `0.4 / 0.6 rem → 0.2 / 0.35 rem`, timestamp `1.4 vh → 1.15 vh`, value coefficient `36 cqmin / 20 rem → 42 cqmin / 22 rem` (target row + trend arrow rescale in lock-step at the 0.2 × / 0.4 × ratios); (2) landscape grid template — `<tree-graph-screen>`'s `.layout` switches to a `25fr 75fr` column split when the viewport is landscape, putting the parent strip on the LEFT 25 % rail (portrait keeps the pre-§17.46 `22fr 78fr` row stack); (3) container-query vertical body split — the BSC parent's body flips `flex-direction` from row to column under `@container (orientation: portrait)` so the metric-pane lands on TOP 50 % and the description on BOTTOM 50 % when the per-view's host is taller than wide (the LEFT-rail case). The §17.45 entering animation carries over unchanged because flex-basis transitions apply along whichever axis is the main axis. Post-Phase-10 polish §17.47 aligns the close-X + edit-pencil buttons flush with the title row (clamp `1.5rem / 3vh / 2.25rem` square; top: `calc(1px + 0.2rem)`) and retires the strip's right-side gutter end-to-end: the `.strip.has-close, .strip.has-edit { padding-right; --strip-gutter-right }` rules are deleted, the modifier classes stay on the wrapper as semantic markers, and the BSC parent's §17.39 negative `margin-right` escape disappears with no replacement (the metric-pane fills the strip's full inner width by default; the centered value lands at the strip's true center without any escape gymnastics). Post-Phase-10 polish §17.48 turns three CSS-only dials on the §17.45 entering animation to make the description's appearance smoother: `ease` flips to `cubic-bezier(0.22, 1, 0.36, 1)` (ease-out-quart) on the metric-pane shrink + the description grow + the new transform glide; the description's `opacity` is staggered (originally `240 ms ease-out 80 ms`, see §17.49 update) so it fades in once the column is `~70 %` wide (no line-break wobble during the fade); a `transform` glide (originally `translateX(8 %)` / `translateY(8 %)` per axis, see §17.49 update) gives the description a directional slide-in cue. Post-Phase-10 polish §17.49 fixes the §17.48 slide that operator-tested as "still abrupt": the `8 %` literals collapsed to `~0 px` peak offset because `%` in `translate*` resolves against the element's own animating width and that width was itself transitioning from `0`. §17.49 swaps the percentage literals for container-query length units — `transform: translateX(50cqw)` in row flex and `translateY(50cqh)` in column flex (= half the per-view's host width / height, the description's own final dimension; `cqw` / `cqh` resolve against the host's `container-type: size` and are independent of the element's animating own-width). The slide and fade durations also decouple from the layout settle: `transform 560 ms`, `opacity 480 ms ease-out 80 ms` (was `320 ms` / `240 ms`); `flex-basis 320 ms` is unchanged so the §17.45 `DRILL_SETTLE_MS` contract holds. The description now visibly slides in from outside the host's right edge (row flex) or bottom edge (column flex), clipped by the host's `overflow: hidden`, with ~240 ms of trailing slide + fade past the layout settle. The description rest-state `transform: translateX(0)` becomes `translate(0, 0)` for axis-agnostic interpolation. Post-Phase-10 polish §17.50 ships three coupled refinements on the focused-panel edit affordances: (1) `<edit-node-modal>` drops the `field-title` input end-to-end (state, render, payload, seed, can-confirm) — the inline title editor on the focused-panel strip is the sole rename path; `EditNodePayload.title` was already optional, so `EditNodeService.editFields` skips the field through its existing `if (payload.title !== undefined)` guard with no domain change. (2) `<parent-identity-strip>` publishes a `--strip-gutter-right` CSS custom property on the `.has-close` / `.has-edit` modifiers (default `0px`, one-button calc with one clamp + the right offset, two-button calc with two clamps + the 0.25 rem inter-button gap); both per-view parent roles' `.title-edit` rule subtracts it from `max-width` via `calc(100% - var(--strip-gutter-right, 0px))` so the inline title-edit input stops short of the absolute close-X / edit-pencil buttons (static title text keeps `text-overflow: ellipsis` — the §17.47 padding-right retirement holds; the var is for INTERACTIVE inputs only). (3) The BSC parent's inline value-edit swaps from `<span class="value">` (inline, inherits the §17.46 `42cqmin` display font-size — which made the `<input>`'s intrinsic min-content width balloon past the metric-pane) to a `<div class="value-edit-wrapper">` block-level flex container with a sane `clamp(1.5rem, 5vh, 4rem)` editor font-size, `align-self: stretch`, and an inner `<input>` constrained to `max-width: 100%; min-width: 0` so it always fits inside the metric-pane regardless of description-present / orientation. Static rendering of the giant figure is unchanged. Post-Phase-10 polish §17.51 follows operator feedback on the inline value-edit on the kiosk — *"the buttons to increase/decrease value of a field should be bigger"*. The native browser spinners on `<input type="number">` (~12 px on Chromium, ~16 px on Firefox, hidden entirely on most mobile / kiosk browsers) are suppressed via `::-webkit-(inner|outer)-spin-button { -webkit-appearance: none }` + `appearance: textfield`, and replaced by two custom `[−]` / `[+]` buttons flanking the input at `clamp(1.5rem, 4vh, 2.5rem)` square (≥ 24 px touch target on the smallest kiosk, scaling with viewport height). Press-and-hold contract: tap = step once; hold 200 ms – 1.5 s = repeat at 200 ms cadence; hold > 1.5 s = accelerate to 50 ms cadence (drives 1 → 100 in ~5 s of held press). The chained `setTimeout` re-arms itself with the cadence appropriate to the elapsed press time read from `performance.now() - valueStepStart`, so the slow-to-fast transition happens automatically with no second timer. Step amount is fixed at 1; stepping does NOT auto-commit (Enter fires `inline-edit-value` exactly once with the accumulated value, preserving the §17.32 history-row snapshot semantics). Defensive paths: empty input seeds at 0 before stepping (so the first tap produces "1"); float arithmetic rounded to 4 decimals (so a long press over a fractional value doesn't surface as "0.30000000000000004"); the input is re-focused after each step (so the next Enter / Escape commits / cancels via `handleValueKey` instead of re-firing the button); each button swallows `mousedown` (so the input keeps focus during the press and the §17.28 commit-on-blur path doesn't fire on every step). `setPointerCapture` covers finger-drift tolerance; `disconnectedCallback` clears the timer on teardown. Scope is intentionally narrow: `<edit-node-modal>`'s number fields keep their native spinners (the modal already exposes the weight slider as the primary affordance; future expansion if operator demand surfaces). Post-Phase-10 polish §17.52 ships an inline weight-edit affordance for child tiles per operator request — *"I would also like to edit the weight of a node directly when it's a child, maybe through a button + slider."*. Pre-§17.52 every weight tweak required six steps (drill into parent → pencil → slider → confirm → close → drill back); §17.52 collapses the high-frequency rebalancing path to one gesture. Two triggers open the same popover: an always-visible dumbbell icon at the tile's bottom-LEFT corner (mirror of the §17.18 timestamp) and a 500 ms long-press anywhere on the tile body (hidden gesture for power users). The popover renders a horizontal `<input type="range">` (`min=0.5`, `max=10`, `step=0.5` — mirrors `Weight.of`) seeded at the tile's current weight, plus a live numeric label that updates on the native `input` event. **Commit-on-release contract** — same family as §17.51's "stepping does NOT auto-commit": only the native `change` event (thumb release) dispatches `inline-edit-weight`; the composition root applies `EditNodeService.editFields(node, { kind, weight })` and refreshes. Cancel paths (Escape, tap-outside detected via document-level capture-phase `pointerdown` + `composedPath` walk) close without committing. Post-commit treemap reflow animates via a CSS `transition: top/left/width/height 320ms ease` on `.tile` (matches `DRILL_SETTLE_MS`). Long-press is implemented at the `<children-grid>` level via per-`pointerId` timers + a 16-px drift tolerance; on fire a `firedLongPress` flag on the tile wrapper's dataset suppresses the trailing click so the operator doesn't simultaneously open the popover AND drill. New Lit components: `<weight-edit-button>` (inline-SVG dumbbell silhouette in `currentColor`, `clamp(0.85rem, 5cqmin, 1.6rem)` square; click handler `stopPropagation`s + walks up to find the `data-testid="child"` tile wrapper for the anchorRect) + `<weight-edit-popover>` (fixed-position panel anchored to a frozen `DOMRect` snapshot — auto-flips above/below depending on viewport edge proximity, horizontally clamped into the viewport; native range slider with boosted `::-webkit-slider-thumb` at 1.4 rem ≈ 22 px). Each tile wrapper publishes `data-weight=${slot.weight}` for e2e diagnostics. Parent-node weight stays modal-only (no enclosing tile to anchor a popover against). The pre-§17.52 `.tile > * { width: 100%; height: 100% }` fill rule is tightened to `.tile > node-view + .tile > plus-tile` so the corner button auto-sizes. Post-Phase-10 polish §17.52-polish ships three same-day operator-facing follow-ups: (a) the §17.51 stepper buttons flip from rounded square (`border-radius: 6px`) to circle (`50%`) per *"the + and − button when we edit the value of a parent node should be circles"*; (b) the §17.52 dumbbell SVG (5 `<rect>`s) is replaced with a cast-iron weight (stroked U-handle path + filled trapezoidal body path) per *"the weight icon should look like a cast iron weight with handle"*; (c) the `<weight-edit-popover>` positioning math swaps from "centered horizontally below the tile" to "panel BOTTOM-LEFT corner pinned to tile bottom-left corner" (insets `bottom: 3 px`, `left: 6 px` mirror the icon's own offsets), AND `<tree-graph-screen>`'s `handleWeightEditOpen` gains a same-`nodeId` toggle short-circuit so a second tap on the same icon closes the popover (different `nodeId` mid-edit still re-targets) per *"the slider should be located relatively to the child tile, bottom left like the weight icon (should disappear once you've interacted with the icon again or after changing the value, like current behavior)"*. **+5 net unit tests** (809 total, was 804); 0 net e2e (still 116). Bundle: 237.26 → 242.16 KB / 64.05 → 65.99 KB gzip; module count unchanged at 89. Post-Phase-10 polish §17.53 lands the local SonarQube quality gate + the branch-per-feature workflow per operator request *"install a local SonarQube server that is checking the commit before you're merging it to the main branch, in the future ensure you're creating a new branch per feature"*. New artefacts: `docker-compose.sonar.yml` (SonarQube Community Edition 25.1 + PostgreSQL 16, named volumes, `127.0.0.1:9000` localhost-only bind), `sonar-project.properties` (project key `tree-graph-viz`, `src/` as both sources + tests with e2e features / examples / dist / coverage / bin excluded, `coverage/lcov.info` wired as JS + TS coverage source), `.env.sonar.example` (SONAR_HOST_URL + SONAR_TOKEN template; `.env.sonar` git-ignored), `.husky/pre-push` (gates pushes to `refs/heads/master` only, feature branches pass through unimpeded). New devDeps: `@vitest/coverage-v8 ^3.0.2`, `husky ^9.1.7`, `sonarqube-scanner ^4.3.6`, `dotenv-cli ^11.0.0`. New npm scripts: `test:coverage`, `sonar:up`/`down`/`logs`/`status`, `sonar:scan` (no gate wait), `sonar:gate` (`-Dsonar.qualitygate.wait=true`, exits non-zero on Quality Gate FAILED), `prepare` (auto-runs husky on `npm install`). Quality Gate: default *Sonar Way* (0 bugs / 0 vulnerabilities on new code, A maintainability, 80 % coverage on new code, 3 % duplication). Dual gate: manual `npm run sonar:gate` is the primary ceremony before `git push origin master`; the husky `pre-push` hook is the safety net (only fires on master pushes). **0 unit / e2e / bundle delta** (infra only — production build unchanged; coverage instrumentation only fires under `--coverage`). Branch-per-feature workflow adopted: every operator-requested change starts on `feature/<spec-section>-<short-name>` off master and merges only after a green gate. §17.53 itself ships on `feature/17.53-sonarqube-local-gate`. Next strand is Phase 11 — manual kiosk smoke (operator-driven). The working tree should be clean (or hold only docs/test-fixture WIP) on master; feature-branch working trees may carry the in-flight feature's diff.
-4. **Sanity check the build**: `npm test` (expect **809** tests across **52** files per §17.52-polish — unchanged at §17.53; the §17.53 strand is infra and adds no production code), `npm run lint`, `npm run lint:rules`, `npm run build` (expect bundle at `242.16 KB / 65.99 KB gzip` per §17.52-polish — §17.53 doesn't touch the production bundle; module count unchanged at 89), `npm run test:e2e` (expect **116** scenarios per §17.52 — unchanged at §17.53), and (if Docker Desktop is running and `.env.sonar` is populated) `npm run sonar:gate` (expect Quality Gate PASSED on `master`; if it fails, the issues are listed at http://localhost:9000/dashboard?id=tree-map-viz). All five should be green before starting new work. **Important**: `npm run preview` (which `test:e2e` spawns) serves `dist/`, so a stale `dist/` after a `git pull` will silently make every e2e scenario fail. Always run `npm run build` after pulling. The first `npm run test:e2e` after a clone also needs `npx playwright install chromium`. The first `npm run sonar:gate` after a clone also needs the §17.53 first-run boot sequence (Docker Desktop install, `npm run sonar:up`, token generation at http://localhost:9000, populate `.env.sonar`).
-5. **Verify Atlassian MCP is online** — list `C:\Users\amiot\.cursor\projects\<workspace-id>\mcps\` (the `<workspace-id>` derives from whichever folder is opened as the Cursor workspace; for `c:\Cursor` it is `c-Cursor`, for `c:\Cursor\tree-graph-viz` it is something like `d-…-tree-graph-viz`) and confirm an `atlassian`-like descriptor folder exists alongside `plugin-datadog-datadog`. If not, the user has not yet completed the OAuth flow after the Cursor restart that picked up `.cursor/mcp.json` (which is committed in the repo and also mirrored to global + workspace-root paths per §17.8). Strand A — 16 issues + 25 `Blocks` edges — is already created per §15.9.
-6. **Pick up the next strand** (per §17.53, every new strand starts on a `feature/<spec-section>-<short-name>` branch off master; merge to master only after `npm run sonar:gate` passes):
-   - **Phase 10 (persistence/routing wiring)**: real consumers for `burger-menu-action` — Import / Export / Boards. Currently the composition root logs a placeholder; replacing that with `<input type="file">` + `ImportExportService.importJson`, `URL.createObjectURL` + `ImportExportService.exportJson`, and a boards panel against `BoardCollectionService.{rename,switchTo,createBoard}` is the §17.7 follow-up. Also wires the `routing/*.feature` set (deep-link / focus-to-url / unknown-uuid-fallback). Phase 9 already pushes `tile-drill` through the router, so the URL contract for drilling is in place.
-   - **Phase 5 leftovers (separate strand)**: Task A (`HE-2586`) + Task B (`HE-2589`) — XRay credential provisioning + first XRay import dry-run. Needs `XRAY_CLIENT_ID` + `XRAY_CLIENT_SECRET` in env (§16.8). The script half (DT-10 / `HE-2581`) shipped at §17.8.
-   - **Phase 9 polish (deferred from §17.20, partly addressed by §17.32)**: §17.32 lands the kinetic morph-from-tile animation — the tapped tile literally translates + scales into the parent-identity-strip's geometry — so the "kinetic zoom-from-tile drill animation" deferred bullet is now complete. Still deferred: an `encap--leave` class for the breadcrumb-tap inverse animation (currently the close-to-parent / breadcrumb path commits without a visual transition); keyboard-drill support if SPEC §1 ever lifts the "no keyboard" assumption.
-   - **Breadcrumb truncation refinement** (deferred from §17.11): pixel-perfect head-keep + tail-keep + middle-`…` (`Root › … › Parent › Focus`). The current CSS-mask + `flex-end` approach satisfies the spec contract but isn't the literal sketch in §4.
-7. XRay import script and credentials are tracked under the Phase 5 (DT-10/Task A/Task B) strand above; not blocking for any further coding work.
+0. **If a `docs/RESUMING_*.md` checkpoint exists at the repo root, read it FIRST.** It is a temporary session-state checkpoint pinning volatile bits (current branch, uncommitted working-tree state, why the agent stopped). Delete the checkpoint once consumed.
+1. **Read §17 (Implementation log) first** — the as-built source of truth. The §17.0 status table holds the per-strand one-liners; the dedicated §17.x subsections drill in. §1–§16 are the binding spec but they trail §17 by one or two strands; cross-check with code when in doubt.
+2. **Re-read the live diagrams + fixtures**: `examples/classDiagramMermaid.v5.{md,mermaid}` (current model, round 7 per §17.94), `examples/showcase.json` (default seed), `examples/test.json` (legacy fixture).
+3. **Run `git status` and `git log --oneline`** — confirm `HEAD` matches the latest commit recorded in §17.0. Phases 0–10 are fully landed; post-Phase-10 polish (§17.36+) and the v4 / v5 round-7 retirement (§17.57 → §17.122+) ship as feature branches per §17.53.
+4. **Sanity-check the build**: `npm run lint` (= `tsc --noEmit`), `npm run lint:rules` (ESLint per-layer rules from §16.7), `npm test`, `npm run build`, `npm run test:e2e` (needs `npx playwright install chromium` on first run). All four green before starting new work. **Important**: `npm run preview` (which `test:e2e` spawns) serves `dist/`, so a stale `dist/` after a `git pull` will silently fail every e2e scenario — always rebuild after pulling. The exact expected counts move with each strand; read them from the latest §17.x row, not from this protocol.
+5. **(Optional) Run the local Sonar gate** if Docker Desktop is up and `.env.sonar` is populated: `npm run sonar:gate` (expect Quality Gate PASSED on `master`; failures listed at <http://localhost:9000/dashboard?id=tree-map-viz>). First-run boot sequence is in §17.53.
+6. **Verify Atlassian MCP is online** (only when picking up a Jira / XRay strand): list `<workspace-id>/mcps/` and confirm an `atlassian`-like descriptor folder exists alongside the others. If not, complete the OAuth flow against `.cursor/mcp.json`. Strand A — 16 issues + 25 `Blocks` edges — is already created (see §15.4 / §15.9).
+7. **Pick up the next strand** (per §17.53, every new strand starts on a `feature/<spec-section>-<short-name>` branch off master; merge to master only after `npm run sonar:gate` passes):
+   - **Phase 11 — manual kiosk smoke** (§12.5). Operator-driven; walk through every burger action, every modal, every tile-drill on the target hardware.
+   - **§10 deferrals still open**: Delete existing nodes; richer Objective summaries on tiles; further breadcrumb-truncation refinement (deferred from §17.11).
+   - **Phase 5 leftovers**: Task A (`HE-2586`) + Task B (`HE-2589`) — XRay credential provisioning + first XRay import dry-run. Needs `XRAY_CLIENT_ID` + `XRAY_CLIENT_SECRET` in env (§16.8). Script half (`HE-2581`) shipped at §17.8.
+   - **Future §3 rewrite**: §3 still describes the v3 model; the round-7 taxonomy is documented in §17.94 and lives in code today. Worth a single dedicated strand once the surface stabilises.
