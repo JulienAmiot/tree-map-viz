@@ -1,0 +1,123 @@
+---
+description: Sonar-driven development loop — inspect rules up front, slice into feature branches, fix gate issues autonomously, then ask the operator for review before merging
+alwaysApply: true
+---
+
+# Sonar-driven development loop
+
+Every non-trivial development MUST be wrapped in a Sonar-driven loop. The local
+`tgv-sonarqube` container at `http://localhost:9000` (project key
+`tree-map-viz`) is the enforced source of truth for code-quality, security,
+duplication, complexity, coverage, and the operator-added `new_lines > 300`
+small-commits gate. The pre-push hook on `master` already gates pushes on
+the quality gate; this rule covers everything that happens **before** the
+hook fires.
+
+## 1. Before writing code — inspect the Sonar rules
+
+Before starting any non-trivial development, **inspect what Sonar will
+enforce** so the work is shaped from the start to clear the gate in one pass
+rather than ping-ponging back to fix violations:
+
+- Read `sonar-project.properties` for the project's local config:
+  - Excluded sources / tests / duplication patterns
+  - Quality-gate conditions (especially `new_lines > 300`)
+  - Per-rule overrides + the version-history block at the bottom
+- If a Sonar instance is up (`docker ps --filter "name=sonar"`), browse the
+  active rules for the `ts` / `css` / `json` quality profiles via
+  `http://localhost:9000/profiles` or query the Web API
+  (`/api/qualityprofiles/search`, `/api/rules/search`).
+- Read `.cursor/rules/sonar-new-lines-300-ceiling.mdc` — it captures the
+  small-commits discipline that drives feature-branch slicing.
+
+Use what you learn to **slice the development into feature branches**:
+
+- One coherent strand per branch (`feature/<short-kebab-name>`); each
+  branch's net delta against `origin/master` SHOULD stay under 300 new
+  lines (the local `new_lines > 300` gate). Common slicing axes:
+  - **Per strand** — one node kind, one modal, one shell affordance
+  - **Per layer** — domain + tests → application + tests → adapters + tests
+  - **Refactor vs feature** — ship the feature, then ship the follow-up
+    Sonar clean-up / SPEC documentation as a separate strand
+- Surface the slice plan up front. If more than one slicing axis is
+  plausible, ASK the operator via `AskQuestion` rather than picking
+  silently.
+
+## 2. While writing code — keep the gate in mind
+
+- Watch the running `git diff --stat origin/master..HEAD` line count. As
+  soon as a strand approaches 250 net new lines, stop and re-slice
+  (extract a follow-up branch / commit boundary) rather than blow past
+  300 and need a version bump.
+- Match the existing patterns Sonar already accepts: read neighbouring
+  files, mirror their structure (immutability, exhaustive switches, no
+  TODO comments, no commented-out code, function length, cognitive
+  complexity, duplicated string literals, …). Sonar's
+  `typescript:S*` rules are mostly self-evident once a peer file
+  passes them.
+- Cover new code with unit tests in the same commit. The gate
+  enforces `new_code_coverage` and `new_duplicated_lines_density`; a
+  shipped untested path is a hard-fail rather than a soft signal.
+
+## 3. After writing code — run the gate yourself, fix, repeat
+
+When the strand is functionally done, **inspect the code with Sonar before
+asking for review**. The loop is:
+
+```
+while true:
+  npm run sonar:gate   # coverage → scan → wait for QG verdict
+  if gate == PASSED: break
+  read the failed conditions on http://localhost:9000/dashboard?id=tree-map-viz
+  fix the issues in code (NOT by bumping the projectVersion silently)
+  amend / add a follow-up commit
+```
+
+- `npm run sonar:gate` runs `test:coverage` then
+  `sonar-scanner -Dsonar.qualitygate.wait=true`; exit code 0 == gate
+  passed. The local dashboard breakdown is at
+  `http://localhost:9000/dashboard?id=tree-map-viz`.
+- If Sonar is down (`docker ps` shows the container missing or
+  unhealthy), run `npm run sonar:up` and wait for the health check.
+- Fix **every** non-passing condition in code yourself before
+  surfacing the strand to the operator. The operator's bar is "gate is
+  green when you call for review", not "gate is green-ish but here's a
+  list of caveats".
+- A `sonar.projectVersion` bump is the **last resort**, governed by
+  `sonar-new-lines-300-ceiling.mdc`. If you bump, announce it in the
+  same turn with the actual `new_lines` number and the trade-off.
+
+## 4. Before merging — ask the operator for review
+
+Once the gate is green, **STOP and ask the operator** for a code review
+before merging the feature branch into `master` and pushing. Do NOT
+auto-merge / auto-push on a green gate. The flow is:
+
+1. Summarise what landed on the feature branch (files touched, gate result,
+   testing surface, any operator-visible behaviour change).
+2. Surface the dashboard link
+   (`http://localhost:9000/dashboard?id=tree-map-viz`) so the operator can
+   eyeball the new-code panel.
+3. Wait for an explicit "merge it" / "push it" from the operator before
+   running `git merge` / `git push`.
+
+If the operator asks for changes, loop back to step 3 (run the gate
+again after the fixes). Only push to `origin/master` after an explicit
+"go ahead".
+
+## Anti-patterns
+
+- **Skipping step 1.** Writing the whole strand first, then discovering
+  at gate-time that it's 1 200 new lines and three rules complaining.
+  Re-slicing after the fact is much more expensive than slicing up front.
+- **Skipping step 3.** "Pushing and hoping the pre-push hook says green"
+  is operator-time-wasting if the gate fails: the operator now has to
+  wait for both the local gate AND the loop you should have done
+  yourself. Run `sonar:gate` BEFORE asking for review.
+- **Skipping step 4.** Merging a green-gate branch without a review
+  bypasses the operator's "is this the right change?" check (gate
+  measures "is this code well-formed?", not "is this what we wanted?").
+- **Silent `projectVersion` bumps.** See
+  `sonar-new-lines-300-ceiling.mdc` for the full rationale; the short
+  version is "the bump shifts the leak window, it doesn't fix the
+  code".
