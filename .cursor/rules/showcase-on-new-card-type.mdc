@@ -1,0 +1,62 @@
+---
+description: Regenerate the showcase tree whenever a new card / node kind lands
+alwaysApply: true
+---
+
+# Showcase regeneration on every new card kind
+
+`src/adapters/showcaseSeed.ts` is the **single fresh-kiosk seed**: it must
+demo every visible card kind on one focused view. Whenever a strand adds a
+new node kind (e.g. `WorkflowNode`, `PictureNode`, `URLNode`, future
+`...Node`), the showcase MUST be regenerated as part of the same strand,
+otherwise the new kind has no first-class demo surface and the operator
+cannot see it on a fresh boot.
+
+## Mandatory regeneration scope
+
+Whenever a new kind lands, redo the showcase end-to-end:
+
+1. **Theme**: a 6-panel **Obeya for a Data Platform Team**. Six top-level
+   panels under the root; the panel set stays stable across regenerations
+   so e2e fixtures keep resolving against the same panel slugs:
+   `reliability`, `ingestion`, `infra-cost`, `products`, `team-health`,
+   `workflow`.
+2. **Combine cards** — every existing node kind must appear at least
+   once across the six panels. Distribute the new kind into the panel
+   that best matches its semantics; resist adding a seventh panel.
+3. **Vary children per panel** — child counts must span the realistic
+   operator range (3, 4, and 5 children represented across panels). Do
+   not make every panel the same size.
+4. **Vary values** — for the historisable kinds (`BusinessScoreNode`,
+   `ComputedBusinessScoreNode`, `TextNode`, `WorkflowNode`), the value
+   distribution must include:
+   - at least one node with a multi-point history,
+   - at least one node above objective and one below,
+   - at least one node with a single point (no history),
+   - at least one node with `setDisabled(true)`,
+   - every `WorkflowStatus` (`plan`, `do`, `check`, `act`) used at least
+     once on a `WorkflowNode`.
+5. **Update unit + e2e tests in the same commit**:
+   - `src/test/unit/adapters/showcaseSeed.test.ts` — assert the new
+     panel set, the kind-coverage matrix, the disabled flag, the
+     historised samples, and the four PDCA statuses.
+   - `src/test/e2e/features/boot/app_boots.feature` — keep the root
+     title scenario in sync with the new root title.
+   - Any other e2e features that resolve against showcase IDs (grep for
+     the panel slugs above before merging).
+6. **Stable IDs**: the root stays `showcase-root` and the six panel ids
+   stay stable (`reliability`, `ingestion`, `infra-cost`, `products`,
+   `team-health`, `workflow`). Children under each panel may evolve to
+   accommodate the new kind, but the panel-level slugs MUST NOT churn.
+
+## Trigger checklist
+
+Trigger this rule whenever ANY of the following is true:
+
+- A new file lands under `src/domain/nodes/*Node.ts`.
+- A new `kind` literal is added to the view-model union, the wire
+  encoder, or `inferV4Kind`.
+- A new `BusinessScoreCard`-derived subclass is introduced.
+
+If you are touching such a file, regenerate the showcase in the same
+strand. Do not defer it as a follow-up.
