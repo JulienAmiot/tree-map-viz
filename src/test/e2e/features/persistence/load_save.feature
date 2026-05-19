@@ -36,7 +36,7 @@ Feature: Mutations survive a kiosk reload (§17.35)
 
   @HE-???? @priority:high
   Scenario: Drilling state (URL focus) survives reload
-    # SPEC §11.3: the URL hash is the source of truth for focus.
+    # SPEC §9: the URL hash is the source of truth for focus.
     # Reload preserves the hash; the bootup path re-seats the
     # navigation service from it.
     When I dismiss animations via the test bridge

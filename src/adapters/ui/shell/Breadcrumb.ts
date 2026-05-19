@@ -10,7 +10,7 @@
  *  - dispatches a bubbling + composed `breadcrumb-navigate`
  *    `CustomEvent<{ nodeId }>` when a non-current segment is tapped. The
  *    composition root listens and calls `router.push({ … focusNodeUuid })`
- *    so the URL hash + focus state stay in sync (SPEC §11.3).
+ *    so the URL hash + focus state stay in sync (SPEC §9).
  *  - the last segment (the focus itself) is rendered as a non-button
  *    `<span>` — taps on the focus are a no-op by design.
  *

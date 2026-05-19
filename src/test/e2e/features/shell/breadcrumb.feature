@@ -7,7 +7,7 @@ Feature: Breadcrumb shows the focus path and navigates on tap
   `aria-current="page"`. Tapping any ancestor segment focuses that
   node — the URL hash is the source of truth, so
   `walkPath(boardTree, focusedId)` reflects the new focus on the
-  very next refresh (SPEC §11.3).
+  very next refresh (SPEC §9).
 
   Background:
     When I open the kiosk in test mode with empty storage

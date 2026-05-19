@@ -80,7 +80,7 @@ export class BusinessScoreNode<T> extends RangedValueNode<T> {
    *     to `node instanceof ComputedBusinessScoreNode` — same observable
    *     behaviour on every live data shape, polymorphic resolution.
    *   - The `unit` band-aid still stays (retires when cards are wired
-   *     into the read path; defers to §17.99d / Phase C extension).
+   *     into the read path — a future strand; no §17.x slot reserved).
    */
   constructor(
     id: string,

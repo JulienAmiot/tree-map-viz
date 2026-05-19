@@ -62,7 +62,7 @@
  *
  * Events bubble up unchanged:
  *   - `breadcrumb-navigate` `{ nodeId }` — composition root pushes the
- *     hash route + flips focus (SPEC §11.3).
+ *     hash route + flips focus (SPEC §9).
  *   - `burger-menu-action` `{ action }` — composition root dispatches to
  *     the relevant service (Import / Export / Boards) — wiring lands in
  *     Phase 10 (Persistence + Routing) per SPEC §15.4 + §17.3.

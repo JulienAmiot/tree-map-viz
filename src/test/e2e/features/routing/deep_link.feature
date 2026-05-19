@@ -1,7 +1,7 @@
 @HE-2587 @component:routing @phase:10
 Feature: Deep-linking via the URL hash (§17.35)
 
-  SPEC §11.3 + §17.11: the hash router (`HashRouter`) treats the URL
+  SPEC §9 + §17.11: the hash router (`HashRouter`) treats the URL
   hash `#/b/<boardId>/n/<focusNodeUuid>` as the source of truth for
   which node is focused. On boot, the composition root reads the
   current hash and seeds the navigation service from it; on every
