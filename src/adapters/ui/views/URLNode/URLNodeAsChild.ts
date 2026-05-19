@@ -41,6 +41,10 @@
 import { LitElement, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
+import {
+  disabledToggleStyles,
+  renderDisabledIndicator,
+} from "../disabledToggle.js";
 import { renderStaticTitle } from "../inlineTitleEdit.js";
 import type { URLNodeViewModel } from "../NodeViewModel.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
@@ -53,7 +57,7 @@ export class URLNodeAsChild extends LitElement {
   @property({ attribute: false })
   vm: URLNodeViewModel | null = null;
 
-  static readonly styles = [tileLayoutStyles, urlBodyStyles];
+  static readonly styles = [tileLayoutStyles, urlBodyStyles, disabledToggleStyles];
 
   private readonly qr = new QRGenController(this);
 
@@ -70,9 +74,9 @@ export class URLNodeAsChild extends LitElement {
       ${renderStaticTitle({
         target: { nodeId: this.vm.id, title: this.vm.title },
         viewKind: "URLNode",
-        disabled,
+        prefix: renderDisabledIndicator(disabled),
       })}
-      ${renderURLValueArea(this.qr.dataUrl, this.vm.title, this.qr.hasError, disabled)}
+      ${renderURLValueArea(this.qr.dataUrl, this.vm.title, this.qr.hasError)}
     `;
   }
 }

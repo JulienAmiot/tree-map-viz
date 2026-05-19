@@ -27,7 +27,7 @@ const STATUSES = [
   { id: "plan", label: "PLAN", color: "rgb(161, 161, 170)" },
   { id: "do", label: "DO", color: "rgb(59, 130, 246)" },
   { id: "check", label: "CHECK", color: "rgb(34, 197, 94)" },
-  { id: "act", label: "ACT", color: "rgb(217, 119, 6)" },
+  { id: "act", label: "ACT", color: "rgb(245, 158, 11)" },
 ] as const;
 
 function vmWith(opts: Partial<WorkflowNodeViewModel> = {}): WorkflowNodeViewModel {
@@ -51,20 +51,24 @@ function vmWith(opts: Partial<WorkflowNodeViewModel> = {}): WorkflowNodeViewMode
 }
 
 describe("<workflow-node-as-parent> (§17.117 / §17.121f)", () => {
-  it("\u00a717.121h \u2014 subtitle hosts BOTH the status picker AND the disabled-toggle; toggle click dispatches VALUE_NODE_DISABLED_CHANGE_EVENT", async () => {
+  it("\u00a717.121i \u2014 the disabled-switch lives at the LEFT of the title (not in the subtitle); subtitle keeps the status picker; click dispatches VALUE_NODE_DISABLED_CHANGE_EVENT", async () => {
     const el = await mountLitElement<WorkflowNodeAsParent>(
       "workflow-node-as-parent",
       (e) => { e.vm = vmWith({ id: "wf-7" }); },
     );
+    const titleSwitch = el.shadowRoot
+      ?.querySelector('[data-testid="title"]')
+      ?.firstElementChild as HTMLButtonElement | null;
+    expect(titleSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
+    expect(titleSwitch?.getAttribute("role")).toBe("switch");
     const subtitle = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="subtitle"]');
-    expect(subtitle).not.toBeNull();
     expect(subtitle?.querySelector('[data-testid="status-badge-picker"]')).not.toBeNull();
-    expect(subtitle?.querySelector('[data-testid="disabled-toggle"]')).not.toBeNull();
+    expect(subtitle?.querySelector('[data-testid="disabled-switch"]')).toBeNull();
     const received: ValueNodeDisabledChangeDetail[] = [];
     el.addEventListener(VALUE_NODE_DISABLED_CHANGE_EVENT, (ev) => {
       received.push((ev as CustomEvent<ValueNodeDisabledChangeDetail>).detail);
     });
-    el.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-toggle"]')?.click();
+    titleSwitch?.click();
     expect(received).toEqual([{ nodeId: "wf-7", disabled: true }]);
   });
 

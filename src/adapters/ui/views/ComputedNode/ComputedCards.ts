@@ -86,7 +86,11 @@ import type {
   TrendArrowDirection,
 } from "../NodeViewModel.js";
 import { formatAge } from "../ageFormat.js";
-import { disabledToggleStyles, renderDisabledToggleFor } from "../disabledToggle.js";
+import {
+  disabledToggleStyles,
+  renderDisabledIndicator,
+  renderDisabledSwitch,
+} from "../disabledToggle.js";
 import { formatValue } from "../numberFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 
@@ -188,13 +192,12 @@ function renderSubtitle(
   currentKind: ComputationKindName,
   viewRole: NodeRole,
   onChange: (next: ComputationKindName) => void,
-  trailing: TemplateResult | typeof nothing = nothing,
 ): TemplateResult {
   const content =
     viewRole === "asParent"
       ? renderStrategyPicker(vmId, currentKind, onChange)
       : renderKindLabel(currentKind);
-  return html`<div class="subtitle" data-testid="subtitle">${content}${trailing}</div>`;
+  return html`<div class="subtitle" data-testid="subtitle">${content}</div>`;
 }
 
 const sharedStyles = css`
@@ -345,10 +348,10 @@ function renderTitleWithBadge(
   vmTitle: string,
   viewKind: string,
   showBadge: boolean,
-  disabled = false,
+  titlePrefix: TemplateResult | typeof nothing = nothing,
 ): TemplateResult {
-  return html`<h2 class="title" data-testid="title" data-view-kind=${viewKind} data-id=${vmId} ?data-disabled=${disabled}
-    >${showBadge
+  return html`<h2 class="title" data-testid="title" data-view-kind=${viewKind} data-id=${vmId}
+    >${titlePrefix}${showBadge
       ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>`
       : nothing}${vmTitle}</h2>`;
 }
@@ -369,10 +372,9 @@ function valueCharCountStyle(text: string): string {
 
 function renderNumericValueArea(
   value: Extract<ComputedValueViewModel, { kind: "numeric" }>,
-  disabled = false,
 ): TemplateResult {
   const text = formatValue(value.value);
-  return html`<div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>
+  return html`<div class="value-area" data-testid="value-row">
     <div class="value-row">
       <span
         class="value"
@@ -389,10 +391,9 @@ function renderNumericValueArea(
 function renderNumericValueAreaWithObjective(
   value: Extract<ComputedValueViewModel, { kind: "numeric" }>,
   objective: BusinessScoreCardObjectiveViewModel,
-  disabled = false,
 ): TemplateResult {
   const text = formatValue(value.value);
-  return html`<div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>
+  return html`<div class="value-area" data-testid="value-row">
     <div class="value-row">
       <span
         class="value"
@@ -471,21 +472,23 @@ export class ComputedCard extends LitElement {
     if (!this.vm) return html``;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
-    // SPEC §17.121g — strike + dim only paint in the tree-map (AsChild)
-    // role; the focused-panel (AsParent) keeps full opacity so the
+    // SPEC §17.121i — `vm.disabled` lights up the left-of-title gold
+    // affordance: a static indicator pill on AsChild (read-only),
+    // an interactive `<button role="switch">` on AsParent (toggles
+    // via the shared `value-node-disabled-change` event). The focused
+    // panel keeps full opacity / no strike on the value-area so the
     // operator can still read + edit the parked node.
-    const disabled = (this.vm.disabled ?? false) && this.viewRole === "asChild";
-    // SPEC §17.121h — toggle pill AsParent-only, threaded through the
-    // shared `renderSubtitle` so it sits next to the strategy picker.
-    const togglePill = this.viewRole === "asParent"
-      ? renderDisabledToggleFor(this, this.vm.id, this.vm.disabled ?? false)
-      : nothing;
+    const vmDisabled = this.vm.disabled ?? false;
+    const titlePrefix =
+      this.viewRole === "asParent"
+        ? renderDisabledSwitch(this, this.vm.id, vmDisabled)
+        : renderDisabledIndicator(vmDisabled);
     return html`
-      ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedNode", showBadge, disabled)}
-      ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange, togglePill)}
+      ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedNode", showBadge, titlePrefix)}
+      ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       ${canCompute
-        ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>, disabled)
-        : html`<div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>${renderWarningFill(this.vm.value)}</div>`}
+        ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>)
+        : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
     `;
   }
 }
@@ -517,24 +520,24 @@ export class ComputedBusinessScoreCard extends LitElement {
     const { dateIso, dateColor, objective } = this.vm;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
-    // SPEC §17.121g — AsChild-only strike + dim; mirror of `ComputedCard`.
-    const disabled = (this.vm.disabled ?? false) && this.viewRole === "asChild";
-    // SPEC §17.121h — AsParent-only toggle pill; mirror of `ComputedCard`.
-    const togglePill = this.viewRole === "asParent"
-      ? renderDisabledToggleFor(this, this.vm.id, this.vm.disabled ?? false)
-      : nothing;
+    // SPEC §17.121i — mirror of `ComputedCard`: left-of-title gold
+    // indicator on AsChild, interactive switch on AsParent.
+    const vmDisabled = this.vm.disabled ?? false;
+    const titlePrefix =
+      this.viewRole === "asParent"
+        ? renderDisabledSwitch(this, this.vm.id, vmDisabled)
+        : renderDisabledIndicator(vmDisabled);
     return html`
-      ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedBusinessScoreNode", showBadge, disabled)}
-      ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange, togglePill)}
+      ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedBusinessScoreNode", showBadge, titlePrefix)}
+      ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       <div class="metric-pane" data-testid="metric-pane">
         ${canCompute ? renderTimestamp(dateIso, dateColor) : nothing}
         ${canCompute
           ? renderNumericValueAreaWithObjective(
               this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>,
               objective,
-              disabled,
             )
-          : html`<div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>${renderWarningFill(this.vm.value)}</div>`}
+          : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
       </div>
     `;
   }

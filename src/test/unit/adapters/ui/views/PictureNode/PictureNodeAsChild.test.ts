@@ -30,13 +30,14 @@ function vmWith(opts: Partial<PictureNodeViewModel> = {}): PictureNodeViewModel 
  * affordance — that's all parent-role surface.
  */
 describe("<picture-node-as-child>", () => {
-  it("\u00a717.121g \u2014 a disabled VM paints data-disabled on .title + .value-area so the shared tileLayoutStyles rule strikes + dims the picture tile in the tree-map", async () => {
+  it("\u00a717.121i \u2014 a disabled VM prepends a `.disabled-indicator` pill at the LEFT of the title; an enabled VM emits nothing (no strike, no value-area dim)", async () => {
     const enabled = await mountLitElement<PictureNodeAsChild>("picture-node-as-child", (e) => { e.vm = vmWith(); });
-    expect(enabled.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(false);
+    expect(enabled.shadowRoot?.querySelector('[data-testid="disabled-indicator"]')).toBeNull();
     expect(enabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
     const off = await mountLitElement<PictureNodeAsChild>("picture-node-as-child", (e) => { e.vm = vmWith({ disabled: true }); });
-    expect(off.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(true);
-    expect(off.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(true);
+    const title = off.shadowRoot?.querySelector('[data-testid="title"]');
+    expect(title?.firstElementChild?.getAttribute("data-testid")).toBe("disabled-indicator");
+    expect(off.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });
 
   it("renders the title with the PictureNode view-kind tag", async () => {

@@ -47,20 +47,21 @@ function makeVm(
 }
 
 describe("<business-score-card-as-child>", () => {
-  it("\u00a717.121g \u2014 a disabled VM paints data-disabled on .title + .value-area so the shared tileLayoutStyles rule strikes + dims the BSC tile in the tree-map", async () => {
+  it("\u00a717.121i \u2014 a disabled VM prepends a `.disabled-indicator` pill at the LEFT of the title; an enabled VM emits nothing (no strike, no value-area dim)", async () => {
     const enabledVm = makeVm({ kind: "recordedValue", value: 50, unit: "%", dateIso: "2026-04-23T18:25:43.511Z" });
     const enabled = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
       (e) => { e.vm = enabledVm; },
     );
-    expect(enabled.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(false);
+    expect(enabled.shadowRoot?.querySelector('[data-testid="disabled-indicator"]')).toBeNull();
     expect(enabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
     const off = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
       (e) => { e.vm = { ...enabledVm, disabled: true }; },
     );
-    expect(off.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(true);
-    expect(off.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(true);
+    const title = off.shadowRoot?.querySelector('[data-testid="title"]');
+    expect(title?.firstElementChild?.getAttribute("data-testid")).toBe("disabled-indicator");
+    expect(off.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });
 
   it("\u00a717.116 — renders the \u03a3 prefix in the title row for the computedMean branch (same role-uniform rule as AsParent), the bare numeric value with no trailing zero, and the unit in a .unit-below sibling", async () => {

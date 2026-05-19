@@ -566,23 +566,14 @@ export const tileLayoutStyles = css`
     content: "\u26A0\uFE0E";
     font-feature-settings: normal;
   }
-  /* SPEC §17.121g — visual signal that a node is excluded from
-     parent aggregation (the v5 round-7 §17.99a ValueNode.disabled
-     flag). Applied via a data-disabled attribute on the .title +
-     .value-area emitted by each AsChild view; the AsParent (focused-
-     panel) tile intentionally does NOT carry these attributes — the
-     focused panel stays at full opacity so the operator can still
-     read + edit the parked node, and the §17.121h follow-on strand
-     adds the inline operator-facing write affordance on the parent
-     subtitle slot. Strike + dim are independent rules so a future
-     refresh that wants only one (e.g. dim without strike on
-     PictureNode where strike is meaningless on a thumbnail title
-     bar) can drop one selector without touching the other. */
-  .title[data-disabled] {
-    text-decoration: line-through;
-    text-decoration-thickness: 0.1em;
-  }
-  .value-area[data-disabled] {
-    opacity: 0.4;
-  }
+  /* SPEC §17.121i — the §17.121g strike-through + value-area dim
+     are retired on operator feedback ("remove the striken style
+     and keep opacity to 1; show the disabled state as a small
+     pill at the left of the title instead"). The visual signal
+     now lives in a real DOM element (the .disabled-indicator
+     pill from disabledToggle.ts) prepended to the title row by
+     each AsChild view, with the matching .disabled-switch (an
+     interactive button role=switch) rendered at the same
+     position by each AsParent view. Both share the warm-gold
+     visual language with the §17.121f ACT status pill. */
 `;

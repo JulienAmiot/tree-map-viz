@@ -159,9 +159,8 @@ export function renderURLValueArea(
   qrDataUrl: string | null,
   alt: string,
   hasError: boolean,
-  disabled = false,
 ): TemplateResult {
-  return html`<div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>
+  return html`<div class="value-area" data-testid="value-row">
     ${renderURLBody(qrDataUrl, alt, hasError)}
   </div>`;
 }

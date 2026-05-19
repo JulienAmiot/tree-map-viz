@@ -25,32 +25,33 @@ function vmWith(opts: Partial<TextNodeViewModel> = {}): TextNodeViewModel {
 }
 
 describe("<text-node-as-parent>", () => {
-  it("\u00a717.121h \u2014 renders the disabled-toggle pill in .subtitle reflecting vm.disabled (Active/Disabled label + aria-pressed + data-disabled attr)", async () => {
+  it("\u00a717.121i \u2014 renders a `.disabled-switch` toggle button as the FIRST child of the title row, reflecting vm.disabled via aria-checked", async () => {
     const active = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith(); });
-    const activePill = active.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-toggle"]');
-    expect(activePill?.hasAttribute("data-disabled")).toBe(false);
-    expect(activePill?.textContent?.trim()).toBe("Active");
-    expect(activePill?.getAttribute("aria-pressed")).toBe("false");
+    const activeTitle = active.shadowRoot?.querySelector('[data-testid="title"]');
+    const activeSwitch = activeTitle?.firstElementChild as HTMLButtonElement | null;
+    expect(activeSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
+    expect(activeSwitch?.getAttribute("role")).toBe("switch");
+    expect(activeSwitch?.getAttribute("aria-checked")).toBe("false");
     const off = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith({ disabled: true }); });
-    const offPill = off.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-toggle"]');
-    expect(offPill?.hasAttribute("data-disabled")).toBe(true);
-    expect(offPill?.textContent?.trim()).toBe("Disabled");
-    expect(offPill?.getAttribute("aria-pressed")).toBe("true");
+    const offTitle = off.shadowRoot?.querySelector('[data-testid="title"]');
+    const offSwitch = offTitle?.firstElementChild as HTMLButtonElement | null;
+    expect(offSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
+    expect(offSwitch?.getAttribute("aria-checked")).toBe("true");
   });
 
-  it("\u00a717.121h \u2014 click flips the boolean and dispatches a bubbling, composed VALUE_NODE_DISABLED_CHANGE_EVENT", async () => {
+  it("\u00a717.121i \u2014 click on the switch flips the boolean and dispatches a bubbling, composed VALUE_NODE_DISABLED_CHANGE_EVENT", async () => {
     const el = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith({ id: "node-x" }); });
     const received: ValueNodeDisabledChangeDetail[] = [];
     el.addEventListener(VALUE_NODE_DISABLED_CHANGE_EVENT, (ev) => {
       received.push((ev as CustomEvent<ValueNodeDisabledChangeDetail>).detail);
     });
-    el.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-toggle"]')?.click();
+    el.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]')?.click();
     expect(received).toEqual([{ nodeId: "node-x", disabled: true }]);
     const off = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith({ id: "node-y", disabled: true }); });
     off.addEventListener(VALUE_NODE_DISABLED_CHANGE_EVENT, (ev) => {
       received.push((ev as CustomEvent<ValueNodeDisabledChangeDetail>).detail);
     });
-    off.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-toggle"]')?.click();
+    off.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]')?.click();
     expect(received).toEqual([{ nodeId: "node-x", disabled: true }, { nodeId: "node-y", disabled: false }]);
   });
 

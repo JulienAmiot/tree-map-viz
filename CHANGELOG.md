@@ -16,6 +16,27 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **Disabled state surfaces as a left-of-title gold pill on every tile, with an interactive toggle on the focused panel (§17.121i)**.
+  Operator-requested refresh of §17.121g + §17.121h. On the
+  tree-map (AsChild) tile a node's `disabled` flag now shows up as
+  a compact gold pill rendered at the LEFT of the title (mirrors
+  the §17.121f ACT status pill colour); when enabled, nothing
+  renders. The §17.121g strike-through + value-area dim are
+  retired so the operator can keep reading the tile content
+  untouched. On the focused panel (AsParent) the §17.121h
+  "Active / Disabled" subtitle pill is replaced with a real
+  `<button role="switch">` toggle button positioned at the SAME
+  left-of-title slot — sliding knob, `aria-checked` driven by the
+  current state, click flips the boolean through the existing
+  `value-node-disabled-change` → `EditNodeService.editFields`
+  pipeline. Visual parity across the read + write roles is now a
+  direct consequence of using one shared `disabledToggleStyles`
+  rule for both surfaces. The `ACT` workflow status colour also
+  shifts from amber-600 (`rgb(217, 119, 6)`) to amber-500
+  (`rgb(245, 158, 11)`) — a warmer, more yellow gold that reads
+  unambiguously distinct from "alert red" on every kiosk display
+  the operator tested.
+
 - **Inline enable/disable toggle pill on the focused panel (§17.121h, write-side)**.
   Closes the loop on §17.121g: every focused-panel (AsParent) tile
   now hosts a single tap-to-toggle pill in the shared `.subtitle`

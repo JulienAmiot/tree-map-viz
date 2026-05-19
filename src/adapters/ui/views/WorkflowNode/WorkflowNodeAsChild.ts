@@ -30,6 +30,10 @@ import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../markdown/markdownToHtml.js";
+import {
+  disabledToggleStyles,
+  renderDisabledIndicator,
+} from "../disabledToggle.js";
 import { renderStaticTitle } from "../inlineTitleEdit.js";
 import type { WorkflowNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../ageFormat.js";
@@ -48,6 +52,7 @@ export class WorkflowNodeAsChild extends LitElement {
     tileLayoutStyles,
     textBodyStyles,
     statusBadgeStyles,
+    disabledToggleStyles,
     css`
       /* SPEC §17.121e — opt into the shared .subtitle slot from
          tileLayoutStyles. The 2vh row reserves space for the status
@@ -95,7 +100,7 @@ export class WorkflowNodeAsChild extends LitElement {
       ${renderStaticTitle({
         target: { nodeId: this.vm.id, title: this.vm.title },
         viewKind: "WorkflowNode",
-        disabled,
+        prefix: renderDisabledIndicator(disabled),
       })}
       <div class="subtitle" data-testid="subtitle">
         ${renderStatusBadge(status)}
@@ -109,7 +114,7 @@ export class WorkflowNodeAsChild extends LitElement {
             >${dateLabel}</time
           >`
         : html``}
-      <div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>
+      <div class="value-area" data-testid="value-row">
         <div
           class=${empty ? "md-body empty" : "md-body"}
           data-testid="value"

@@ -27,6 +27,10 @@
 import { LitElement, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
+import {
+  disabledToggleStyles,
+  renderDisabledIndicator,
+} from "../disabledToggle.js";
 import { renderStaticTitle } from "../inlineTitleEdit.js";
 import type { PictureNodeViewModel } from "../NodeViewModel.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
@@ -39,7 +43,7 @@ export class PictureNodeAsChild extends LitElement {
   @property({ attribute: false })
   vm: PictureNodeViewModel | null = null;
 
-  static readonly styles = [tileLayoutStyles, pictureBodyStyles];
+  static readonly styles = [tileLayoutStyles, pictureBodyStyles, disabledToggleStyles];
 
   private readonly imageError = new ImageErrorController(this);
 
@@ -56,14 +60,13 @@ export class PictureNodeAsChild extends LitElement {
       ${renderStaticTitle({
         target: { nodeId: this.vm.id, title: this.vm.title },
         viewKind: "PictureNode",
-        disabled,
+        prefix: renderDisabledIndicator(disabled),
       })}
       ${renderPictureValueArea(
         this.vm.imageUrl,
         this.vm.title,
         this.imageError.hasError,
         this.imageError.handleError,
-        disabled,
       )}
     `;
   }

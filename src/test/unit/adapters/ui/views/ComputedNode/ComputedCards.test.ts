@@ -35,32 +35,42 @@ function cbsnVm(
 }
 
 describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
-  it("\u00a717.121h \u2014 the enable/disable toggle pill renders ONLY in the AsParent role (AsChild tree-map tiles never surface the write affordance)", async () => {
+  it("\u00a717.121i \u2014 the enable/disable switch renders ONLY in the AsParent role (AsChild tree-map tiles never surface the write affordance) and lives at the LEFT of the title", async () => {
     const asParent = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" });
       e.viewRole = "asParent";
     });
-    expect(asParent.shadowRoot?.querySelector('[data-testid="disabled-toggle"]')).not.toBeNull();
+    const parentSwitch = asParent.shadowRoot
+      ?.querySelector('[data-testid="title"]')
+      ?.firstElementChild as HTMLButtonElement | null;
+    expect(parentSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
+    expect(parentSwitch?.getAttribute("role")).toBe("switch");
     const asChild = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" });
       e.viewRole = "asChild";
     });
-    expect(asChild.shadowRoot?.querySelector('[data-testid="disabled-toggle"]')).toBeNull();
+    expect(asChild.shadowRoot?.querySelector('[data-testid="disabled-switch"]')).toBeNull();
+    // Enabled VM => no AsChild indicator either.
+    expect(asChild.shadowRoot?.querySelector('[data-testid="disabled-indicator"]')).toBeNull();
   });
 
-  it("\u00a717.121g \u2014 a disabled VM strikes + dims ONLY in the AsChild role; the AsParent (focused-panel) role keeps full opacity so the operator can still read + edit the parked node", async () => {
+  it("\u00a717.121i \u2014 a disabled VM surfaces the gold pill ONLY in the AsChild role (`.disabled-indicator` prepended to the title); the AsParent role keeps the same switch toggled to aria-checked=true (no strike, no value-area dim)", async () => {
     const vm = { ...computedVm({ kind: "numeric", value: 42, unit: "EUR" }), disabled: true };
     const asChild = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = vm;
       e.viewRole = "asChild";
     });
-    expect(asChild.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(true);
-    expect(asChild.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(true);
+    const childTitle = asChild.shadowRoot?.querySelector('[data-testid="title"]');
+    expect(childTitle?.firstElementChild?.getAttribute("data-testid")).toBe("disabled-indicator");
+    expect(asChild.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
     const asParent = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = vm;
       e.viewRole = "asParent";
     });
-    expect(asParent.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(false);
+    const parentSwitch = asParent.shadowRoot
+      ?.querySelector('[data-testid="title"]')
+      ?.firstElementChild as HTMLButtonElement | null;
+    expect(parentSwitch?.getAttribute("aria-checked")).toBe("true");
     expect(asParent.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });
 
@@ -182,19 +192,24 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
 });
 
 describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
-  it("\u00a717.121g \u2014 a disabled VM strikes + dims ONLY in the AsChild role; mirror of the ComputedCard role-gating rule", async () => {
+  it("\u00a717.121i \u2014 a disabled VM surfaces the gold pill at the left of the title (AsChild: `.disabled-indicator`, AsParent: `.disabled-switch` aria-checked=true); mirror of the ComputedCard role-gating rule", async () => {
     const vm = { ...cbsnVm({ kind: "numeric", value: 42, unit: "EUR" }), disabled: true };
     const asChild = await mountLitElement<ComputedBusinessScoreCard>("computed-business-score-card", (e) => {
       e.vm = vm;
       e.viewRole = "asChild";
     });
-    expect(asChild.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(true);
-    expect(asChild.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(true);
+    const childTitle = asChild.shadowRoot?.querySelector('[data-testid="title"]');
+    expect(childTitle?.firstElementChild?.getAttribute("data-testid")).toBe("disabled-indicator");
+    expect(asChild.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
     const asParent = await mountLitElement<ComputedBusinessScoreCard>("computed-business-score-card", (e) => {
       e.vm = vm;
       e.viewRole = "asParent";
     });
-    expect(asParent.shadowRoot?.querySelector('[data-testid="title"]')?.hasAttribute("data-disabled")).toBe(false);
+    const parentSwitch = asParent.shadowRoot
+      ?.querySelector('[data-testid="title"]')
+      ?.firstElementChild as HTMLButtonElement | null;
+    expect(parentSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
+    expect(parentSwitch?.getAttribute("aria-checked")).toBe("true");
     expect(asParent.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });
 
