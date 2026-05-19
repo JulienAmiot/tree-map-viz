@@ -22,9 +22,10 @@
  *     per the §17.120 contract, and the QR code renders it.
  */
 
-import { LitElement, html, nothing } from "lit";
+import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
+import { disabledToggleStyles, renderDisabledToggleFor } from "../disabledToggle.js";
 import {
   InlineTitleEditController,
   type InlineTitleEditTarget,
@@ -56,6 +57,12 @@ export class URLNodeAsParent extends LitElement {
     tileLayoutStyles,
     urlBodyStyles,
     titleInlineEditStyles,
+    disabledToggleStyles,
+    css`
+      :host {
+        --subtitle-row-height: 2vh;
+      }
+    `,
   ];
 
   render() {
@@ -64,6 +71,9 @@ export class URLNodeAsParent extends LitElement {
     }
     return html`
       ${this.titleEditor.renderTitle("URLNode")}
+      <div class="subtitle" data-testid="subtitle">
+        ${renderDisabledToggleFor(this, this.vm.id, this.vm.disabled ?? false)}
+      </div>
       ${renderURLValueArea(this.qr.dataUrl, this.vm.title, this.qr.hasError)}
     `;
   }

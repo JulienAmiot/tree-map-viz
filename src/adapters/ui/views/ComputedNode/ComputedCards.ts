@@ -86,6 +86,7 @@ import type {
   TrendArrowDirection,
 } from "../NodeViewModel.js";
 import { formatAge } from "../ageFormat.js";
+import { disabledToggleStyles, renderDisabledToggleFor } from "../disabledToggle.js";
 import { formatValue } from "../numberFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 
@@ -187,12 +188,13 @@ function renderSubtitle(
   currentKind: ComputationKindName,
   viewRole: NodeRole,
   onChange: (next: ComputationKindName) => void,
+  trailing: TemplateResult | typeof nothing = nothing,
 ): TemplateResult {
   const content =
     viewRole === "asParent"
       ? renderStrategyPicker(vmId, currentKind, onChange)
       : renderKindLabel(currentKind);
-  return html`<div class="subtitle" data-testid="subtitle">${content}</div>`;
+  return html`<div class="subtitle" data-testid="subtitle">${content}${trailing}</div>`;
 }
 
 const sharedStyles = css`
@@ -452,7 +454,7 @@ export class ComputedCard extends LitElement {
   @property({ attribute: "view-role", reflect: true })
   viewRole: NodeRole = "asChild";
 
-  static readonly styles = [tileLayoutStyles, sharedStyles];
+  static readonly styles = [tileLayoutStyles, sharedStyles, disabledToggleStyles];
 
   private readonly dispatchKindChange = (newKind: ComputationKindName): void => {
     if (!this.vm) return;
@@ -473,9 +475,14 @@ export class ComputedCard extends LitElement {
     // role; the focused-panel (AsParent) keeps full opacity so the
     // operator can still read + edit the parked node.
     const disabled = (this.vm.disabled ?? false) && this.viewRole === "asChild";
+    // SPEC §17.121h — toggle pill AsParent-only, threaded through the
+    // shared `renderSubtitle` so it sits next to the strategy picker.
+    const togglePill = this.viewRole === "asParent"
+      ? renderDisabledToggleFor(this, this.vm.id, this.vm.disabled ?? false)
+      : nothing;
     return html`
       ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedNode", showBadge, disabled)}
-      ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
+      ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange, togglePill)}
       ${canCompute
         ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>, disabled)
         : html`<div class="value-area" data-testid="value-row" ?data-disabled=${disabled}>${renderWarningFill(this.vm.value)}</div>`}
@@ -492,7 +499,7 @@ export class ComputedBusinessScoreCard extends LitElement {
   @property({ attribute: "view-role", reflect: true })
   viewRole: NodeRole = "asChild";
 
-  static readonly styles = [tileLayoutStyles, sharedStyles, cbsnHostStyles];
+  static readonly styles = [tileLayoutStyles, sharedStyles, cbsnHostStyles, disabledToggleStyles];
 
   private readonly dispatchKindChange = (newKind: ComputationKindName): void => {
     if (!this.vm) return;
@@ -512,9 +519,13 @@ export class ComputedBusinessScoreCard extends LitElement {
     const canCompute = this.vm.value.kind === "numeric";
     // SPEC §17.121g — AsChild-only strike + dim; mirror of `ComputedCard`.
     const disabled = (this.vm.disabled ?? false) && this.viewRole === "asChild";
+    // SPEC §17.121h — AsParent-only toggle pill; mirror of `ComputedCard`.
+    const togglePill = this.viewRole === "asParent"
+      ? renderDisabledToggleFor(this, this.vm.id, this.vm.disabled ?? false)
+      : nothing;
     return html`
       ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedBusinessScoreNode", showBadge, disabled)}
-      ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
+      ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange, togglePill)}
       <div class="metric-pane" data-testid="metric-pane">
         ${canCompute ? renderTimestamp(dateIso, dateColor) : nothing}
         ${canCompute

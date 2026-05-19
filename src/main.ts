@@ -86,6 +86,7 @@ import type {
 import "./adapters/ui/shell/TreeMapScreen.js";
 import type { TreeMapScreen } from "./adapters/ui/shell/TreeMapScreen.js";
 import type { ComputationKindChangeDetail } from "./adapters/ui/views/ComputedNode/ComputedCards.js";
+import { VALUE_NODE_DISABLED_CHANGE_EVENT, type ValueNodeDisabledChangeDetail } from "./adapters/ui/views/disabledToggle.js";
 import type { WorkflowStatusChangeDetail } from "./adapters/ui/views/WorkflowNode/statusBadge.js";
 import type { InlineEditWeightDetail } from "./adapters/ui/views/childWeight/weightEditEvents.js";
 import type { InlineEditTitleDetail } from "./adapters/ui/views/inlineEditEvents.js";
@@ -313,6 +314,25 @@ async function main(): Promise<void> {
       await editNodeSvc.editFields(node, {
         kind,
         statusId: detail.newStatusId,
+      } as EditNodePayload);
+      refresh();
+    })();
+  });
+
+  // SPEC §17.121h — mirror of the §17.121f wiring; routes the toggle
+  // pill change to `EditNodeService.editFields({ kind, disabled })`.
+  // `setDisabled` applies uniformly across every value-node kind
+  // (§17.99a); the kind tag only satisfies the payload shape.
+  screen.addEventListener(VALUE_NODE_DISABLED_CHANGE_EVENT, (e) => {
+    void (async () => {
+      const detail = (e as CustomEvent<ValueNodeDisabledChangeDetail>).detail;
+      const node = current().findById(detail.nodeId);
+      if (!node) return;
+      const kind = inferV4Kind(node);
+      if (!kind) return;
+      await editNodeSvc.editFields(node, {
+        kind,
+        disabled: detail.disabled,
       } as EditNodePayload);
       refresh();
     })();

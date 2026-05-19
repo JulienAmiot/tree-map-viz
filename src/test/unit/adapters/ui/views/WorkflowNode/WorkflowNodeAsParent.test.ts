@@ -9,6 +9,7 @@ import {
   type InlineEditValueDetail,
 } from "../../../../../../adapters/ui/views/inlineEditEvents.js";
 import type { WorkflowNodeViewModel } from "../../../../../../adapters/ui/views/NodeViewModel.js";
+import { VALUE_NODE_DISABLED_CHANGE_EVENT, type ValueNodeDisabledChangeDetail } from "../../../../../../adapters/ui/views/disabledToggle.js";
 import {
   WORKFLOW_STATUS_CHANGE_EVENT,
   type WorkflowStatusChangeDetail,
@@ -50,6 +51,23 @@ function vmWith(opts: Partial<WorkflowNodeViewModel> = {}): WorkflowNodeViewMode
 }
 
 describe("<workflow-node-as-parent> (§17.117 / §17.121f)", () => {
+  it("\u00a717.121h \u2014 subtitle hosts BOTH the status picker AND the disabled-toggle; toggle click dispatches VALUE_NODE_DISABLED_CHANGE_EVENT", async () => {
+    const el = await mountLitElement<WorkflowNodeAsParent>(
+      "workflow-node-as-parent",
+      (e) => { e.vm = vmWith({ id: "wf-7" }); },
+    );
+    const subtitle = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="subtitle"]');
+    expect(subtitle).not.toBeNull();
+    expect(subtitle?.querySelector('[data-testid="status-badge-picker"]')).not.toBeNull();
+    expect(subtitle?.querySelector('[data-testid="disabled-toggle"]')).not.toBeNull();
+    const received: ValueNodeDisabledChangeDetail[] = [];
+    el.addEventListener(VALUE_NODE_DISABLED_CHANGE_EVENT, (ev) => {
+      received.push((ev as CustomEvent<ValueNodeDisabledChangeDetail>).detail);
+    });
+    el.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-toggle"]')?.click();
+    expect(received).toEqual([{ nodeId: "wf-7", disabled: true }]);
+  });
+
   it("renders Title + markdown value + inline status picker with the parent-role data-view-kind hook (§17.121f swaps the static badge for an editable <select>)", async () => {
     const el = await mountLitElement<WorkflowNodeAsParent>(
       "workflow-node-as-parent",
