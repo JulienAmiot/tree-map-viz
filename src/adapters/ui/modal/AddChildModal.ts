@@ -551,7 +551,15 @@ export class AddChildModal extends LitElement {
        narrow viewports without overflowing the panel. */
     .panel {
       display: grid;
-      grid-template-rows: auto 1fr;
+      /* §17.121d — three rows: header (auto) / body (1fr, the kind list
+         + form pane sit side-by-side here) / footer (auto, the actions
+         row). Pre-§17.121d the actions were rendered inside the right-
+         pane and only spanned the form-pane column, which made the
+         affordance feel like a per-form sub-control rather than the
+         modal's primary commit / abort path. Promoting it to a full-
+         width panel-level footer matches the operator's other modals
+         and the §17.29 close-X chrome convention. */
+      grid-template-rows: auto 1fr auto;
       grid-template-columns: minmax(8rem, 20%) 1fr;
       gap: 1rem 1.25rem;
       /* Reserve top-padding for the §17.29 close-X corner button so
@@ -750,10 +758,19 @@ export class AddChildModal extends LitElement {
       accent-color: currentColor;
     }
     .actions {
+      /* §17.121d — panel-level footer row spanning both columns.
+         Sits below the kind-list + form-pane grid body and above
+         the panel's bottom padding. A subtle top border separates
+         the commit / abort affordance from the form area without
+         dropping the operator into a visually heavy chrome bar. */
+      grid-column: 1 / -1;
+      grid-row: 3;
       display: flex;
       justify-content: flex-end;
       gap: 0.6rem;
-      margin-top: 0.5rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid
+        color-mix(in srgb, currentColor 14%, transparent);
     }
     .btn {
       padding: 0.55rem 1.1rem;
@@ -851,6 +868,25 @@ export class AddChildModal extends LitElement {
         </header>
         ${this.renderKindList()}
         <div class="form-pane">${this.renderFormPane()}</div>
+        <footer class="actions" data-testid="modal-actions">
+          <button
+            class="btn"
+            type="button"
+            data-testid="modal-cancel"
+            @click=${this.cancel}
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn--primary"
+            type="button"
+            data-testid="modal-confirm"
+            ?disabled=${!this.canConfirm()}
+            @click=${this.confirm}
+          >
+            Confirm
+          </button>
+        </footer>
       </div>
     `;
   }
@@ -894,43 +930,20 @@ export class AddChildModal extends LitElement {
 
   /**
    * Right-pane content. The body switches between an empty-state hint
-   * (no kind chosen) and the type-specific form, but the actions row
-   * (Cancel + Confirm) is rendered in both cases so the operator can
-   * always back out — `<add-child-cancel>` doesn't need a kind picked
-   * to fire, and pre-§17.25 the Cancel button was always available
-   * (the form root rendered before the kind was chosen). Confirm is
-   * disabled until `canConfirm()` returns true; with no kind chosen
-   * that's never, so the gate is preserved.
+   * (no kind chosen) and the type-specific form. Pre-§17.121d this
+   * method also emitted the Cancel + Confirm actions row, but the
+   * actions are now rendered at the panel level in {@link render} so
+   * they sit in a full-width modal footer (matching the operator's
+   * other modals) rather than inside the form-pane column. The Confirm
+   * button's `disabled` state is still wired to {@link canConfirm} so
+   * the no-kind-chosen gate is preserved.
    */
   private renderFormPane() {
-    const body =
-      this.chosenKind === null
-        ? html`<p class="form-empty" data-testid="form-empty">
-            Pick a card type on the left to start.
-          </p>`
-        : this.renderForm();
-    return html`
-      ${body}
-      <div class="actions" data-testid="modal-actions">
-        <button
-          class="btn"
-          type="button"
-          data-testid="modal-cancel"
-          @click=${this.cancel}
-        >
-          Cancel
-        </button>
-        <button
-          class="btn btn--primary"
-          type="button"
-          data-testid="modal-confirm"
-          ?disabled=${!this.canConfirm()}
-          @click=${this.confirm}
-        >
-          Confirm
-        </button>
-      </div>
-    `;
+    return this.chosenKind === null
+      ? html`<p class="form-empty" data-testid="form-empty">
+          Pick a card type on the left to start.
+        </p>`
+      : this.renderForm();
   }
 
   private renderForm() {

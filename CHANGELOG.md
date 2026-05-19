@@ -14,6 +14,25 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **Promoted the Add-Child modal's Cancel + Confirm row to a
+  full-width panel-level footer** (§17.121d). Pre-§17.121d the
+  Cancel + Confirm buttons were emitted inside `renderFormPane`,
+  so they sat inside the right-pane column of the modal's two-
+  column grid — visually they looked like a per-form sub-control
+  rather than the modal's primary commit / abort affordance. The
+  panel grid grew a third `auto` row, the actions row was lifted
+  into a semantic `<footer class="actions">` at the panel level
+  spanning both columns, and the row carries a subtle top
+  border for visual separation from the form area. All testids
+  (`modal-actions` / `modal-cancel` / `modal-confirm`) are
+  preserved at their pre-refactor selectors, so every unit
+  test, e2e scenario, and page-object helper that queries
+  through them continues to work without touch-ups. Matches the
+  full-width footer convention used by the operator's other
+  modals and the §17.29 close-X chrome corner.
+
 ### Added
 
 - **E2E coverage for the Workflow + Picture + URL Add-Child
