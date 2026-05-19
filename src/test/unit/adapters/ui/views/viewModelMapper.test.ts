@@ -190,6 +190,25 @@ describe("viewModelMapperV4 (§17.91 — Phase B.3: v4-aware view-model mapper)"
         value: { text: "", dateIso: "", dateColor: "" },
       });
     });
+
+    it("\u00a717.121f \u2014 bakes the focused board's full status table into availableStatuses so the AsParent inline picker can render an <option> per entry", () => {
+      const vm = mapNodeToViewModel(buildWorkflow("w", { statusId: "do" }), {
+        workflowStatuses: STATUSES,
+      });
+      if (vm.kind !== "WorkflowNode") throw new Error("expected WorkflowNode");
+      expect(vm.availableStatuses).toEqual([
+        { id: "plan", label: "PLAN", color: "rgb(161, 161, 170)" },
+        { id: "do", label: "DO", color: "rgb(59, 130, 246)" },
+        { id: "check", label: "CHECK", color: "rgb(34, 197, 94)" },
+        { id: "act", label: "ACT", color: "rgb(239, 68, 68)" },
+      ]);
+    });
+
+    it("\u00a717.121f \u2014 missing options.workflowStatuses collapses availableStatuses to an empty list (the inline picker falls back to the read-only badge)", () => {
+      const vm = mapNodeToViewModel(buildWorkflow("w", { statusId: "plan" }));
+      if (vm.kind !== "WorkflowNode") throw new Error("expected WorkflowNode");
+      expect(vm.availableStatuses).toEqual([]);
+    });
   });
 
   describe("mapNodeToViewModel — BusinessScoreNode branch", () => {

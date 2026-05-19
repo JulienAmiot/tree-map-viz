@@ -119,6 +119,22 @@ export type TextNodeViewModel = {
  * which status to add back. Same defensive pattern the mapper uses
  * for empty-history TextNodes (§17.15) — never throw, always paint.
  */
+/**
+ * SPEC §17.117 / §17.121f — view-model shape for `WorkflowNode` tiles.
+ *
+ * `status` carries the BOARD-resolved snapshot of the node's currently
+ * pinned status (id + display label + colour, baked at map-time from
+ * the focused board's `Board.workflowStatuses` table).
+ * `availableStatuses` carries the board's FULL status table in the
+ * same shape — the focused-panel inline-edit picker (§17.121f, mirror
+ * of the Computed* §17.104 strategy picker) renders one `<option>`
+ * per entry so the operator can swap the active status without
+ * opening the Edit-node modal. The list is non-empty in practice
+ * (`Board.workflowStatuses` defaults to a built-in canonical 3-row
+ * set), but the field is intentionally optional so unit fixtures
+ * + the board-less stub paths can stay terse — a missing or empty
+ * list collapses the inline picker back to the read-only badge.
+ */
 export type WorkflowNodeViewModel = {
   readonly kind: "WorkflowNode";
   readonly id: string;
@@ -133,6 +149,11 @@ export type WorkflowNodeViewModel = {
     readonly label: string;
     readonly color: string;
   };
+  readonly availableStatuses?: readonly {
+    readonly id: string;
+    readonly label: string;
+    readonly color: string;
+  }[];
 };
 
 /**
