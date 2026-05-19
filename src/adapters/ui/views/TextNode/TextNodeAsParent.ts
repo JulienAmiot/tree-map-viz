@@ -224,6 +224,7 @@ export class TextNodeAsParent extends LitElement {
     const empty = value.text.length === 0;
     return html`
       ${this.renderTitle()}
+      <div class="subtitle" data-testid="subtitle"></div>
       ${value.dateIso && this.editingField !== "value"
         ? html`<time
             class="timestamp"

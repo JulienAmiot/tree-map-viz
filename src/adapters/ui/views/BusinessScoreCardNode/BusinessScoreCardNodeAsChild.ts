@@ -65,6 +65,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
       >${renderDisabledIndicator(disabled)}${showBadge
         ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value">Σ</span>`
         : nothing}${this.vm.title}</h2>
+      <div class="subtitle" data-testid="subtitle"></div>
       ${dateIso
         ? html`<time
             class="timestamp"

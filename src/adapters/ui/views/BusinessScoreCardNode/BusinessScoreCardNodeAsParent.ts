@@ -831,6 +831,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
     const hasDescription = description.length > 0;
     return html`
       ${this.renderTitle()}
+      <div class="subtitle" data-testid="subtitle"></div>
       <div
         class="body"
         data-has-description=${hasDescription ? "true" : "false"}

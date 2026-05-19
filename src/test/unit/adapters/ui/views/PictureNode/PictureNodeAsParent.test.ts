@@ -32,6 +32,16 @@ function vmWith(opts: Partial<PictureNodeViewModel> = {}): PictureNodeViewModel 
  * this view.
  */
 describe("<picture-node-as-parent>", () => {
+  it("\u00a717.121j \u2014 reserves the shared `.subtitle` slot (empty) so the image area aligns with the rest of the focused-panel rotation", async () => {
+    const el = await mountLitElement<PictureNodeAsParent>(
+      "picture-node-as-parent",
+      (e) => { e.vm = vmWith(); },
+    );
+    const subtitle = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="subtitle"]');
+    expect(subtitle).not.toBeNull();
+    expect(subtitle?.textContent?.trim()).toBe("");
+  });
+
   it("renders title + image with object-fit: cover (same body contract as the child role)", async () => {
     const el = await mountLitElement<PictureNodeAsParent>(
       "picture-node-as-parent",

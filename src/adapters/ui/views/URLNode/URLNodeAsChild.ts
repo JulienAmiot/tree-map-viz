@@ -76,6 +76,7 @@ export class URLNodeAsChild extends LitElement {
         viewKind: "URLNode",
         prefix: renderDisabledIndicator(disabled),
       })}
+      <div class="subtitle" data-testid="subtitle"></div>
       ${renderURLValueArea(this.qr.dataUrl, this.vm.title, this.qr.hasError)}
     `;
   }

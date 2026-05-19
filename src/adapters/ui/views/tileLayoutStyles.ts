@@ -146,15 +146,21 @@ export const tileLayoutStyles = css`
     white-space: nowrap;
     pointer-events: none;
   }
-  /* SPEC §17.121e — optional subtitle slot directly under the title.
-     A per-view that wants to surface one of the node's properties in
-     a compact strip below the title (e.g. the WorkflowNode's status
-     badge, the Computed* card's active computation kind) sets
-     --subtitle-row-height on its :host (typically 2vh) and emits a
-     div.subtitle between the title and the value-area. The default
-     0vh keeps every legacy tile (TextNode, BSC, StrictRange,
-     Picture, URL) pixel-identical to the pre-§17.121e rendering —
-     the rule only takes effect when a per-view opts into the slot.
+  /* SPEC §17.121e — subtitle slot directly under the title, used by
+     per-views to surface one of the node's properties in a compact
+     strip below the title (WorkflowNode's status badge, Computed*
+     card's active computation kind). SPEC §17.121j — the slot is
+     now UNIVERSAL across every tile (operator's requirement: "take
+     into account the subtitle space of a card, even if you don't
+     display anything there, to keep the alignment of the content of
+     the cards consistent"). The default --subtitle-row-height is
+     2vh so a view that emits only an empty .subtitle div still
+     reserves the row; views that don't need the slot for content
+     still keep it for vertical alignment of the value-area across
+     the entire kiosk wall. A per-view can override the variable
+     on :host if a kind needs a taller / shorter slot, but no view
+     should set it back to 0 — the alignment contract holds the
+     constant 2vh row across the board.
 
      Centered single-line flex row; overflow hides + ellipsis so a
      long property string degrades gracefully. The font-size is
@@ -168,7 +174,7 @@ export const tileLayoutStyles = css`
        host multiple pills side-by-side (status / strategy picker +
        enable/disable toggle). Single-child subtitles unaffected. */
     gap: 0.5em;
-    height: var(--subtitle-row-height, 0vh);
+    height: var(--subtitle-row-height, 2vh);
     line-height: 1;
     font-size: 1.4vh;
     color: color-mix(in srgb, currentColor 80%, transparent);
@@ -195,11 +201,12 @@ export const tileLayoutStyles = css`
     align-items: center;
     justify-content: center;
     /* Fill the rest of the tile below the title row. SPEC §17.121e —
-       the formula now also subtracts the optional .subtitle row's
-       height; the var defaults to 0vh so a tile that does NOT opt
-       into the §17.121e slot still resolves to the legacy
-       calc(100% - 3vh) body height. */
-    height: calc(100% - 3vh - var(--subtitle-row-height, 0vh));
+       the formula subtracts the .subtitle row's height. SPEC §17.121j
+       — the var defaults to 2vh (was 0vh) so the slot is now
+       universally reserved across every kiosk tile, keeping the
+       value-area's top edge aligned at the same y-offset whether or
+       not the per-view fills the subtitle with content. */
+    height: calc(100% - 3vh - var(--subtitle-row-height, 2vh));
     text-align: center;
     overflow: hidden;
     /* Avoid a single very long word forcing horizontal overflow. */

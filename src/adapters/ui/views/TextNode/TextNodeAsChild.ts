@@ -86,6 +86,7 @@ export class TextNodeAsChild extends LitElement {
         data-view-kind="TextNode"
         data-id=${this.vm.id}
       >${renderDisabledIndicator(disabled)}${this.vm.title}</h2>
+      <div class="subtitle" data-testid="subtitle"></div>
       ${value.dateIso
         ? html`<time
             class="timestamp"
