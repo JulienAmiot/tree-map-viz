@@ -520,3 +520,80 @@ describe("<computed-card> + <computed-business-score-card> inline title editing 
     expect(title?.getAttribute("data-view-kind")).toBe("ComputedBusinessScoreNode");
   });
 });
+
+/**
+ * SPEC §17.126 — inline `(unit)` chip edit on the focused-panel
+ * Computed card classes. Mirror of the §17.28 / §17.124 click-to-
+ * edit affordance. AsChild grid tiles keep the chip read-only so
+ * the click-to-drill gesture in the grid stays intact; AsParent
+ * focused-panel tiles render the chip with click-to-edit + an
+ * inline `<input class="unit-chip-edit">`.
+ */
+describe("<computed-card> + <computed-business-score-card> inline unit-chip edit (§17.126)", () => {
+  it("AsParent CBSN: clicking the (unit) chip swaps it for an input pre-filled with the unit", async () => {
+    const el = await mountLitElement<ComputedBusinessScoreCard>(
+      "computed-business-score-card",
+      (e) => {
+        e.vm = cbsnVm({ kind: "numeric", value: 75, unit: "%" });
+        e.viewRole = "asParent";
+      },
+    );
+    el.shadowRoot?.querySelector<HTMLElement>('[data-testid="unit-chip"]')?.click();
+    await el.updateComplete;
+    const input = el.shadowRoot?.querySelector<HTMLInputElement>(
+      '[data-testid="unit-chip-edit"]',
+    );
+    expect(input).not.toBeNull();
+    expect(input?.value).toBe("%");
+  });
+
+  it("AsParent CBSN: Enter on the unit input dispatches inline-edit-unit with the trimmed value + CBSN id", async () => {
+    const el = await mountLitElement<ComputedBusinessScoreCard>(
+      "computed-business-score-card",
+      (e) => {
+        e.vm = cbsnVm({ kind: "numeric", value: 75, unit: "%" });
+        e.viewRole = "asParent";
+      },
+    );
+    el.shadowRoot?.querySelector<HTMLElement>('[data-testid="unit-chip"]')?.click();
+    await el.updateComplete;
+    const input = el.shadowRoot?.querySelector<HTMLInputElement>(
+      '[data-testid="unit-chip-edit"]',
+    )!;
+    const handler = vi.fn();
+    el.addEventListener("inline-edit-unit", handler);
+    input.value = "  pts  ";
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(handler).toHaveBeenCalledTimes(1);
+    const ev = handler.mock.calls[0]![0] as CustomEvent<{ nodeId: string; unit: string }>;
+    expect(ev.detail).toEqual({ nodeId: "cbsn-1", unit: "pts" });
+    expect(ev.bubbles).toBe(true);
+    expect(ev.composed).toBe(true);
+  });
+
+  it("AsChild: the chip stays static (read-only) on both Computed card classes — no click-to-edit affordance", async () => {
+    const cc = await mountLitElement<ComputedCard>("computed-card", (e) => {
+      e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" }, "SUM");
+      e.viewRole = "asChild";
+    });
+    const ccChip = cc.shadowRoot?.querySelector<HTMLElement>('[data-testid="unit-chip"]');
+    expect(ccChip).not.toBeNull();
+    expect(ccChip?.classList.contains("is-editable")).toBe(false);
+    ccChip?.click();
+    await cc.updateComplete;
+    expect(cc.shadowRoot?.querySelector('[data-testid="unit-chip-edit"]')).toBeNull();
+
+    const cbsc = await mountLitElement<ComputedBusinessScoreCard>(
+      "computed-business-score-card",
+      (e) => {
+        e.vm = cbsnVm({ kind: "numeric", value: 75, unit: "%" });
+        e.viewRole = "asChild";
+      },
+    );
+    const cbscChip = cbsc.shadowRoot?.querySelector<HTMLElement>('[data-testid="unit-chip"]');
+    expect(cbscChip?.classList.contains("is-editable")).toBe(false);
+    cbscChip?.click();
+    await cbsc.updateComplete;
+    expect(cbsc.shadowRoot?.querySelector('[data-testid="unit-chip-edit"]')).toBeNull();
+  });
+});

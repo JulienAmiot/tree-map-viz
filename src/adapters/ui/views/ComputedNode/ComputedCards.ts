@@ -117,6 +117,8 @@ import {
 import { formatValue } from "../numberFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import {
+  InlineUnitEditController,
+  type InlineUnitEditTarget,
   renderUnitChip,
   unitChipStyles,
   unitFromComputedValue,
@@ -411,11 +413,11 @@ function renderInlineTitlePrefix(
   vmId: string,
   vmDisabled: boolean,
   showBadge: boolean,
-  unit: string,
+  unitSlot: TemplateResult | typeof nothing,
 ): TemplateResult {
   return html`${renderDisabledSwitch(host, vmId, vmDisabled)}${showBadge
     ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>`
-    : nothing}${renderUnitChip(unit)}`;
+    : nothing}${unitSlot}`;
 }
 
 /**
@@ -434,7 +436,9 @@ type ComputedTitleSlotArgs = {
   readonly viewRole: NodeRole;
   readonly vmDisabled: boolean;
   readonly showBadge: boolean;
-  readonly unit: string;
+  /** SPEC §17.126 — pre-rendered chip; caller picks the variant
+   *  per role (editable on AsParent, static on AsChild). */
+  readonly unitSlot: TemplateResult | typeof nothing;
 };
 
 /**
@@ -450,17 +454,17 @@ type ComputedTitleSlotArgs = {
  * numeric span).
  */
 function renderComputedTitleSlot(args: ComputedTitleSlotArgs): TemplateResult | typeof nothing {
-  const { host, titleEditor, vmId, vmTitle, viewKind, viewRole, vmDisabled, showBadge, unit } = args;
+  const { host, titleEditor, vmId, vmTitle, viewKind, viewRole, vmDisabled, showBadge, unitSlot } = args;
   if (viewRole === "asParent") {
     return titleEditor.renderTitle(
       viewKind,
-      renderInlineTitlePrefix(host, vmId, vmDisabled, showBadge, unit),
+      renderInlineTitlePrefix(host, vmId, vmDisabled, showBadge, unitSlot),
     );
   }
   return renderTitleWithBadge(
     vmId, vmTitle, viewKind, showBadge,
     renderDisabledIndicator(vmDisabled),
-    renderUnitChip(unit),
+    unitSlot,
   );
 }
 
@@ -604,9 +608,20 @@ export class ComputedCard extends LitElement {
    */
   private readonly titleEditor = new InlineTitleEditController(this);
 
+  /** SPEC §17.126 — inline unit editor. On a plain `Computed*` node
+   *  (no business-score card) the persister write at the screen
+   *  level no-ops at the kind guard; the chip still renders. */
+  private readonly unitEditor = new InlineUnitEditController(this);
+
   /** SPEC §17.124 — host contract for {@link InlineTitleEditController}. */
   getInlineTitleEditTarget(): InlineTitleEditTarget | null {
     return this.vm ? { nodeId: this.vm.id, title: this.vm.title } : null;
+  }
+
+  /** SPEC §17.126 — host contract for {@link InlineUnitEditController}. */
+  getInlineUnitEditTarget(): InlineUnitEditTarget | null {
+    if (!this.vm) return null;
+    return { nodeId: this.vm.id, unit: unitFromComputedValue(this.vm.value) };
   }
 
   private readonly dispatchKindChange = (newKind: ComputationKindName): void => {
@@ -619,6 +634,9 @@ export class ComputedCard extends LitElement {
     const canCompute = this.vm.value.kind === "numeric";
     const vmDisabled = this.vm.disabled ?? false;
     const unit = unitFromComputedValue(this.vm.value);
+    const unitSlot = this.viewRole === "asParent"
+      ? this.unitEditor.renderChip()
+      : renderUnitChip(unit);
     return html`
       ${renderComputedTitleSlot({
         host: this,
@@ -629,7 +647,7 @@ export class ComputedCard extends LitElement {
         viewRole: this.viewRole,
         vmDisabled,
         showBadge,
-        unit,
+        unitSlot,
       })}
       ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       ${canCompute
@@ -660,9 +678,18 @@ export class ComputedBusinessScoreCard extends LitElement {
   /** SPEC §17.124 — see `ComputedCard.titleEditor`. */
   private readonly titleEditor = new InlineTitleEditController(this);
 
+  /** SPEC §17.126 — see `ComputedCard.unitEditor`. */
+  private readonly unitEditor = new InlineUnitEditController(this);
+
   /** SPEC §17.124 — see `ComputedCard.getInlineTitleEditTarget`. */
   getInlineTitleEditTarget(): InlineTitleEditTarget | null {
     return this.vm ? { nodeId: this.vm.id, title: this.vm.title } : null;
+  }
+
+  /** SPEC §17.126 — see `ComputedCard.getInlineUnitEditTarget`. */
+  getInlineUnitEditTarget(): InlineUnitEditTarget | null {
+    if (!this.vm) return null;
+    return { nodeId: this.vm.id, unit: unitFromComputedValue(this.vm.value) };
   }
 
   private readonly dispatchKindChange = (newKind: ComputationKindName): void => {
@@ -676,6 +703,9 @@ export class ComputedBusinessScoreCard extends LitElement {
     const canCompute = this.vm.value.kind === "numeric";
     const vmDisabled = this.vm.disabled ?? false;
     const unit = unitFromComputedValue(this.vm.value);
+    const unitSlot = this.viewRole === "asParent"
+      ? this.unitEditor.renderChip()
+      : renderUnitChip(unit);
     return html`
       ${renderComputedTitleSlot({
         host: this,
@@ -686,7 +716,7 @@ export class ComputedBusinessScoreCard extends LitElement {
         viewRole: this.viewRole,
         vmDisabled,
         showBadge,
-        unit,
+        unitSlot,
       })}
       ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       <div class="metric-pane" data-testid="metric-pane">
