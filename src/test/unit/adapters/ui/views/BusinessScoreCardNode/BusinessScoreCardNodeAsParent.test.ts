@@ -105,10 +105,14 @@ describe("<business-score-card-as-parent>", () => {
 
     // SPEC §17.116 — the `computedMean` branch's title is prefixed by
     // a Σ glyph (the pre-§17.116 inline chip moved to the title row).
-    // The bare title text is still "Revenue" — strip the Σ + the
-    // surrounding whitespace from the textContent before asserting.
+    // SPEC §17.125 — the unit also rides the title row as a `(unit)`
+    // chip; strip both Σ and `(%)` from the textContent to read the
+    // bare title text "Revenue".
     expect(
-      el.shadowRoot?.querySelector('[data-testid="title"]')?.textContent?.replace(/\u03a3/g, "").trim(),
+      el.shadowRoot
+        ?.querySelector('[data-testid="title"]')
+        ?.textContent?.replace(/\u03a3|\(%\)/g, "")
+        .trim(),
     ).toBe("Revenue");
     expect(
       el.shadowRoot?.querySelector('[data-testid="title"] [data-testid="computed-badge"]')?.textContent?.trim(),
@@ -148,7 +152,7 @@ describe("<business-score-card-as-parent>", () => {
     expect(el.shadowRoot?.querySelector('[data-testid="description"]')).toBeNull();
   });
 
-  it("\u00a717.116 — renders the computed mean (max 2 decimals, trailing zeros stripped) with the \u03a3 badge in the title and the unit in a .unit-below sibling (no timestamp when no children-derived date)", async () => {
+  it("\u00a717.125 — renders the computed mean (max 2 decimals, trailing zeros stripped) with the \u03a3 badge in the title and the (unit) chip in the title prefix (no timestamp when no children-derived date)", async () => {
     const vm = makeVm({ kind: "computedMean", mean: 87.42, unit: "%" });
     const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
       "business-score-card-as-parent",
@@ -165,8 +169,10 @@ describe("<business-score-card-as-parent>", () => {
     expect(value?.getAttribute("data-value-kind")).toBe("computedMean");
     // §17.116: Σ moved to the title prefix (still present, different parent).
     expect(badge).not.toBeNull();
-    // §17.116: unit lives in a block sibling under the value-area.
-    expect(el.shadowRoot?.querySelector('[data-testid="unit"]')?.textContent?.trim()).toBe("%");
+    // §17.125: unit now reads as a parenthesised chip in the title prefix.
+    const chip = el.shadowRoot?.querySelector('[data-testid="unit-chip"]');
+    expect(chip?.textContent?.trim()).toBe("(%)");
+    expect(el.shadowRoot?.querySelector(".unit-below")).toBeNull();
     // §17.18 — when no children date is available (`vm.dateIso === ""`),
     // the corner timestamp is omitted. With a derived date present the
     // mapper sets `vm.dateIso` and the timestamp would render — covered
@@ -194,7 +200,7 @@ describe("<business-score-card-as-parent>", () => {
     expect(date?.getAttribute("style") ?? "").toMatch(/--age-color:\s*rgb\(/);
   });
 
-  it("\u00a717.116 — the unit renders in a block-level .unit-below sibling under the value-area (not inline inside the .value span)", async () => {
+  it("\u00a717.125 — the unit reads as the (unit) chip in the title prefix; the value span carries only the bare number with no inline .unit and no .unit-below sibling", async () => {
     const vm = makeVm({ kind: "recordedValue", value: 100, unit: "%", dateIso: "2026-04-23T18:25:43.511Z" });
     const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
       "business-score-card-as-parent",
@@ -208,10 +214,14 @@ describe("<business-score-card-as-parent>", () => {
     // §17.116: no inline .unit child inside the value span anymore.
     expect(value?.querySelector(".unit")).toBeNull();
     expect(value?.textContent?.trim()).toBe("100");
-    const unitBelow = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="unit"]');
-    expect(unitBelow).not.toBeNull();
-    expect(unitBelow?.classList.contains("unit-below")).toBe(true);
-    expect(unitBelow?.textContent?.trim()).toBe("%");
+    // §17.125: the unit chip rides the title row; the .unit-below
+    // block sibling is retired.
+    const title = el.shadowRoot?.querySelector('[data-testid="title"]');
+    const chip = title?.querySelector<HTMLElement>('[data-testid="unit-chip"]');
+    expect(chip).not.toBeNull();
+    expect(chip?.classList.contains("unit-chip")).toBe(true);
+    expect(chip?.textContent?.trim()).toBe("(%)");
+    expect(el.shadowRoot?.querySelector(".unit-below")).toBeNull();
   });
 
   it("renders value + corner timestamp (no Σ) for kind=recordedValue with age-coloured date (\u00a717.18)", async () => {
@@ -232,9 +242,12 @@ describe("<business-score-card-as-parent>", () => {
     const date = el.shadowRoot?.querySelector<HTMLElement>(
       '[data-testid="value-date"]',
     );
-    // §17.116: value is the bare number; unit lives in .unit-below.
+    // §17.125: value is the bare number; the unit reads as the
+    // (unit) chip in the title prefix.
     expect(value?.textContent?.trim()).toBe("100");
-    expect(el.shadowRoot?.querySelector('[data-testid="unit"]')?.textContent?.trim()).toBe("%");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="unit-chip"]')?.textContent?.trim(),
+    ).toBe("(%)");
     expect(value?.getAttribute("data-value-kind")).toBe("recordedValue");
     expect(date?.getAttribute("datetime")).toBe("2026-04-23T18:25:43.511Z");
     // §17.116: visible label is the age, not a locale calendar date.

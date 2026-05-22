@@ -123,21 +123,6 @@ export function renderValueTemplate(
 }
 
 /**
- * SPEC §17.116 — the unit moves out of the inline `.value` run into
- * its own `.unit-below` block sibling under it. Renders `nothing`
- * when the value branch has no unit to surface (childrenCount, or
- * a value branch with empty unit string).
- */
-export function renderUnitBelow(
-  vm: BusinessScoreCardNodeViewModel,
-): TemplateResult | typeof nothing {
-  const value = vm.value;
-  if (value.kind === "childrenCount") return nothing;
-  if (!value.unit) return nothing;
-  return html`<span class="unit-below" data-testid="unit">${value.unit}</span>`;
-}
-
-/**
  * SPEC §17.40 + §17.44 — render the target row that sits under
  * `.value` inside `.value-area`.
  *

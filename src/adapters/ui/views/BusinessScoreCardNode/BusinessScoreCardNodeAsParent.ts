@@ -104,9 +104,13 @@ import { formatAge } from "../ageFormat.js";
 import { formatValue } from "../numberFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import {
+  renderUnitChip,
+  unitChipStyles,
+  unitFromBscValue,
+} from "../unitChip.js";
+import {
   renderTargetRow,
   renderTrendArrow,
-  renderUnitBelow,
   renderValueTemplate,
   timestampForValue,
 } from "./valueTemplate.js";
@@ -167,6 +171,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
   static styles = [
     tileLayoutStyles,
     disabledToggleStyles,
+    unitChipStyles,
     css`
       /* SPEC 17.45 -- the per-view's host stacks title + body
          vertically. The body row holds the metric-pane (left) and the
@@ -854,7 +859,6 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
                 ? renderTrendArrow(this.vm)
                 : nothing}
             </div>
-            ${this.editingField !== "value" ? renderUnitBelow(this.vm) : nothing}
             ${this.editingField !== "value"
               ? renderTargetRow(this.vm)
               : nothing}
@@ -896,6 +900,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
         />
       </h1>`;
     }
+    const unit = unitFromBscValue(this.vm.value);
     return html`<h1
       class="title is-editable"
       data-testid="title"
@@ -907,7 +912,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
       @click=${this.startTitleEdit}
     >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}${showBadge
       ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value">Σ</span>`
-      : nothing}${this.vm.title}</h1>`;
+      : nothing}${renderUnitChip(unit)}${this.vm.title}</h1>`;
   }
 
   /**

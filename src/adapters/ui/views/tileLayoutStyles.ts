@@ -306,33 +306,14 @@ export const tileLayoutStyles = css`
   .value.empty::before {
     content: "";
   }
-  /* SPEC §17.116 — the inline ".value .unit" rule retired in §17.116d
-     once every view (Computed* in §17.116c, BSC + TextNode in
-     §17.116d) moved to the .unit-below block sibling. */
-  /* SPEC §17.116 — the unit moves out of the inline .value run into
-     its own block sibling under it (consumed by Computed* tiles in
-     §17.116c, BSC + TextNode tiles in §17.116d). Same ~1/3 ratio
-     against the value's cqmin-driven font-size — the unit-below's
-     clamp(0.6rem, 14cqmin, 5rem) vs the value's clamp(1.5rem,
-     42cqmin, 22rem) gives 14/42 = 1/3 in the unbounded middle of
-     the two envelopes — so the visual proportion the pre-§17.116
-     ".value .unit" rule produced is preserved. The block placement
-     lets the operator scan "title → value → unit → timestamp"
-     top-to-bottom on the tile instead of "title → value-with-
-     inline-unit → timestamp" which forced the row to choose
-     between wrapping (ugly) and truncating the unit (worse). */
-  .unit-below {
-    display: block;
-    margin-top: 0.15em;
-    font-weight: 500;
-    font-size: clamp(0.6rem, 14cqmin, 5rem);
-    line-height: 1.1;
-    color: color-mix(in srgb, currentColor 75%, transparent);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
+  /* SPEC §17.125 — the .unit-below block sibling under the value
+     retired (was a §17.116c / §17.116d artefact). The unit now
+     surfaces as a parenthesised chip at the head of the title
+     row via the shared unitChipStyles rule on the .unit-chip
+     element. The scan order on the tile becomes
+     "title(unit) → value → timestamp", one row shorter than the
+     §17.116d layout. See src/adapters/ui/views/unitChip.ts for
+     the helper + styles consumed by BSC + CBSN views. */
   /* SPEC §17.116 — the computation-kind label rule retired in
      §17.116-followup-2 on operator feedback ("remove the
      computation text line in a child and a parent"). The pre-

@@ -16,6 +16,20 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Unit reads as a `(unit)` chip on the BSC + CBSN tile title (§17.125)**.
+  The unit moves from the under-the-value `.unit-below` block to a
+  subtle parenthesised chip immediately to the left of the title
+  text on every BSC + CBSN tile (both child + focused-panel roles).
+  Frees the under-value space for the target row + timestamp and
+  anchors the unit to the metric's identity — operators read "Revenue
+  (USD)" / "On-time delivery (%)" the same way they write it. The
+  chip is hidden automatically while the title is being inline-edited
+  (same prefix-disappears-during-edit behaviour as the Σ badge and
+  the enable/disable switch).
+- **Sonar `projectVersion` bump `0.2.79 → 0.2.80` rides the §17.125
+  strand**. Same `PREVIOUS_VERSION` pattern as §17.124's 0.2.78 →
+  0.2.79 — every new strand on top of a prior strand-attached bump
+  must also bump again to actually reset the leak window.
 - **Sonar `projectVersion` bump `0.2.78 → 0.2.79` rides the §17.124 strand**.
   Lesson captured from the §17.122-leakwindow-2 0.2.78 reset: a
   bump-only commit does NOT establish a new

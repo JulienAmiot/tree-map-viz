@@ -74,7 +74,7 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(asParent.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });
 
-  it("\u00a717.116 + \u00a717.121e \u2014 \u03a3 prefixes the title; numeric value renders without inline unit; unit appears in a .unit-below block; AsChild kind-label sits in the shared `.subtitle` slot directly under the title", async () => {
+  it("\u00a717.125 \u2014 \u03a3 prefixes the title; numeric value renders without inline unit; (unit) chip rides the title row; no .unit-below block; AsChild kind-label sits in the shared `.subtitle` slot directly under the title", async () => {
     const el = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" }, "WEIGHTED_AVERAGE");
     });
@@ -83,12 +83,17 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(title?.getAttribute("data-view-kind")).toBe("ComputedNode");
     // SPEC §17.116 — Σ is now a prefix INSIDE the title row, not a chip next to the value.
     expect(title?.querySelector('[data-testid="computed-badge"]')?.textContent).toBe("\u03a3");
-    expect(title?.textContent?.trim()).toBe("\u03a3Total revenue");
+    // §17.125: the unit reads as a parenthesised chip in the title
+    // row immediately after the Σ badge. Strip Σ + (EUR) to read the
+    // bare title text.
+    const chip = title?.querySelector('[data-testid="unit-chip"]');
+    expect(chip?.textContent?.trim()).toBe("(EUR)");
+    expect(title?.textContent?.replace(/\u03a3|\(EUR\)/g, "").trim()).toBe("Total revenue");
     // Value text is the bare number with max 2 decimals (no trailing zero, no inline unit).
     expect(sr.querySelector('[data-testid="value"]')?.getAttribute("data-value-kind")).toBe("numeric");
     expect(sr.querySelector('[data-testid="value"]')?.textContent?.trim()).toBe("42");
-    // Unit sits in its own block-level sibling under the value.
-    expect(sr.querySelector('[data-testid="unit"]')?.textContent?.trim()).toBe("EUR");
+    // §17.125: the .unit-below block sibling under the value is retired.
+    expect(sr.querySelector(".unit-below")).toBeNull();
     // SPEC §17.121e — the kind-label is back (the §17.116-followup-2
     // retirement was reversed in §17.121e), now living inside the
     // shared `.subtitle` slot directly under the title. AsChild role
@@ -116,7 +121,9 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(warning?.getAttribute("aria-label")).toBe("Cannot compute value");
     expect(sr.querySelector('[data-testid="value"]')).toBeNull();
     expect(sr.querySelector('[data-testid="computed-badge"]')).toBeNull();
-    expect(sr.querySelector('[data-testid="unit"]')).toBeNull();
+    // §17.125: warning-fill branches have no unit, so the title's
+    // unit chip is also absent (renderUnitChip returns nothing).
+    expect(sr.querySelector('[data-testid="unit-chip"]')).toBeNull();
     expect(sr.querySelector('[data-testid="title"]')).not.toBeNull();
     // SPEC §17.121e — the `.subtitle` slot is rendered on every
     // branch (numeric AND warning-fill) so the operator still sees
@@ -213,7 +220,7 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(asParent.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });
 
-  it("\u00a717.116 + \u00a717.121e \u2014 full surface: \u03a3 title prefix, AsChild kind-label in the `.subtitle` slot under the title, value (no inline unit, no trailing zero), unit-below, target row, age timestamp, metric-pane wrapper", async () => {
+  it("\u00a717.125 \u2014 CBSN full surface: \u03a3 title prefix, (unit) chip in the title row, AsChild kind-label in the `.subtitle` slot, value (no inline unit, no trailing zero), no .unit-below, target row, age timestamp, metric-pane wrapper", async () => {
     const el = await mountLitElement<ComputedBusinessScoreCard>(
       "computed-business-score-card", (e) => { e.vm = cbsnVm({ kind: "numeric", value: 75, unit: "%" }); },
     );
@@ -221,9 +228,11 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     const title = sr.querySelector('[data-testid="title"]');
     expect(title?.getAttribute("data-view-kind")).toBe("ComputedBusinessScoreNode");
     expect(title?.querySelector('[data-testid="computed-badge"]')?.textContent).toBe("\u03a3");
-    expect(title?.textContent?.trim()).toBe("\u03a3Avg score");
+    const chip = title?.querySelector('[data-testid="unit-chip"]');
+    expect(chip?.textContent?.trim()).toBe("(%)");
+    expect(title?.textContent?.replace(/\u03a3|\(%\)/g, "").trim()).toBe("Avg score");
     expect(sr.querySelector('[data-testid="value"]')?.textContent?.trim()).toBe("75");
-    expect(sr.querySelector('[data-testid="unit"]')?.textContent?.trim()).toBe("%");
+    expect(sr.querySelector(".unit-below")).toBeNull();
     const time = sr.querySelector<HTMLTimeElement>('[data-testid="value-date"]');
     expect(time?.getAttribute("datetime")).toBe("2026-04-23T18:25:43.511Z");
     expect(time?.getAttribute("style")).toContain("--age-color: rgb(255, 145, 50)");

@@ -116,6 +116,11 @@ import {
 } from "../inlineTitleEdit.js";
 import { formatValue } from "../numberFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
+import {
+  renderUnitChip,
+  unitChipStyles,
+  unitFromComputedValue,
+} from "../unitChip.js";
 
 /** SPEC §17.104 — custom event name + payload shape. Retained for the §17.116-followup modal wiring. */
 export const COMPUTATION_KIND_CHANGE_EVENT = "computation-kind-change";
@@ -344,12 +349,6 @@ const TREND_GLYPHS: Record<TrendArrowDirection, string> = {
   up: "\u2191", "up-right": "\u2197", right: "\u2192", "down-right": "\u2198", down: "\u2193",
 };
 
-function renderUnitBelow(unit: string): TemplateResult | typeof nothing {
-  return unit
-    ? html`<span class="unit-below" data-testid="unit">${unit}</span>`
-    : nothing;
-}
-
 function renderTargetUnit(unit: string): TemplateResult | typeof nothing {
   return unit ? html`&nbsp;${unit}` : nothing;
 }
@@ -386,11 +385,12 @@ function renderTitleWithBadge(
   viewKind: string,
   showBadge: boolean,
   titlePrefix: TemplateResult | typeof nothing = nothing,
+  unitSlot: TemplateResult | typeof nothing = nothing,
 ): TemplateResult {
   return html`<h2 class="title" data-testid="title" data-view-kind=${viewKind} data-id=${vmId}
     >${titlePrefix}${showBadge
       ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>`
-      : nothing}${vmTitle}</h2>`;
+      : nothing}${unitSlot}${vmTitle}</h2>`;
 }
 
 /**
@@ -411,10 +411,11 @@ function renderInlineTitlePrefix(
   vmId: string,
   vmDisabled: boolean,
   showBadge: boolean,
+  unit: string,
 ): TemplateResult {
   return html`${renderDisabledSwitch(host, vmId, vmDisabled)}${showBadge
     ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>`
-    : nothing}`;
+    : nothing}${renderUnitChip(unit)}`;
 }
 
 /**
@@ -433,6 +434,7 @@ type ComputedTitleSlotArgs = {
   readonly viewRole: NodeRole;
   readonly vmDisabled: boolean;
   readonly showBadge: boolean;
+  readonly unit: string;
 };
 
 /**
@@ -448,14 +450,18 @@ type ComputedTitleSlotArgs = {
  * numeric span).
  */
 function renderComputedTitleSlot(args: ComputedTitleSlotArgs): TemplateResult | typeof nothing {
-  const { host, titleEditor, vmId, vmTitle, viewKind, viewRole, vmDisabled, showBadge } = args;
+  const { host, titleEditor, vmId, vmTitle, viewKind, viewRole, vmDisabled, showBadge, unit } = args;
   if (viewRole === "asParent") {
     return titleEditor.renderTitle(
       viewKind,
-      renderInlineTitlePrefix(host, vmId, vmDisabled, showBadge),
+      renderInlineTitlePrefix(host, vmId, vmDisabled, showBadge, unit),
     );
   }
-  return renderTitleWithBadge(vmId, vmTitle, viewKind, showBadge, renderDisabledIndicator(vmDisabled));
+  return renderTitleWithBadge(
+    vmId, vmTitle, viewKind, showBadge,
+    renderDisabledIndicator(vmDisabled),
+    renderUnitChip(unit),
+  );
 }
 
 /**
@@ -510,7 +516,6 @@ function renderNumericValueArea(
         >${text}</span
       >
     </div>
-    ${renderUnitBelow(value.unit)}
   </div>`;
 }
 
@@ -530,7 +535,6 @@ function renderNumericValueAreaWithObjective(
       >
       ${renderTrend(objective)}
     </div>
-    ${renderUnitBelow(value.unit)}
     ${renderObjectiveRow(objective)}
   </div>`;
 }
@@ -586,6 +590,7 @@ export class ComputedCard extends LitElement {
     sharedStyles,
     disabledToggleStyles,
     titleInlineEditStyles,
+    unitChipStyles,
   ];
 
   /**
@@ -613,6 +618,7 @@ export class ComputedCard extends LitElement {
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
     const vmDisabled = this.vm.disabled ?? false;
+    const unit = unitFromComputedValue(this.vm.value);
     return html`
       ${renderComputedTitleSlot({
         host: this,
@@ -623,6 +629,7 @@ export class ComputedCard extends LitElement {
         viewRole: this.viewRole,
         vmDisabled,
         showBadge,
+        unit,
       })}
       ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       ${canCompute
@@ -647,6 +654,7 @@ export class ComputedBusinessScoreCard extends LitElement {
     cbsnHostStyles,
     disabledToggleStyles,
     titleInlineEditStyles,
+    unitChipStyles,
   ];
 
   /** SPEC §17.124 — see `ComputedCard.titleEditor`. */
@@ -667,6 +675,7 @@ export class ComputedBusinessScoreCard extends LitElement {
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
     const vmDisabled = this.vm.disabled ?? false;
+    const unit = unitFromComputedValue(this.vm.value);
     return html`
       ${renderComputedTitleSlot({
         host: this,
@@ -677,6 +686,7 @@ export class ComputedBusinessScoreCard extends LitElement {
         viewRole: this.viewRole,
         vmDisabled,
         showBadge,
+        unit,
       })}
       ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       <div class="metric-pane" data-testid="metric-pane">

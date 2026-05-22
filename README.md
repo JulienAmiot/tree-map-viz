@@ -84,6 +84,11 @@ which preserves the audit trail of operator-recorded inputs.
 - **Inline title edit** — click the title on any focused-panel tile (every
   node kind, including Computed cards) to swap it for a one-line input;
   Enter or blur commits, Escape cancels.
+- **Unit chip on the title** — on every Business Score Card and Computed
+  Business Score Card tile, the unit reads as a subtle parenthesised chip
+  (e.g. `(USD)`, `(%)`) immediately to the left of the title text. Renders
+  on both the child tile and the focused-panel tile; collapses to nothing
+  when the value branch has no unit (children-count, warning-fill).
 - **Inline weight edit** — popover anchored to a child tile's weight icon,
   with a slider sized for touch. Commits write a new `Weight` value object
   through the same persistence path.
