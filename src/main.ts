@@ -89,8 +89,10 @@ import type { ComputationKindChangeDetail } from "./adapters/ui/views/ComputedNo
 import { VALUE_NODE_DISABLED_CHANGE_EVENT, type ValueNodeDisabledChangeDetail } from "./adapters/ui/views/disabledToggle.js";
 import type { WorkflowStatusChangeDetail } from "./adapters/ui/views/WorkflowNode/statusBadge.js";
 import type { InlineEditWeightDetail } from "./adapters/ui/views/childWeight/weightEditEvents.js";
-import type { InlineEditTitleDetail } from "./adapters/ui/views/inlineEditEvents.js";
-import type { InlineEditValueDetail } from "./adapters/ui/views/inlineEditEvents.js";
+import type {
+  InlineEditTitleDetail,
+  InlineEditValueDetail,
+} from "./adapters/ui/views/inlineEditEvents.js";
 import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
 import {
   AddChildService,
@@ -262,6 +264,23 @@ async function main(): Promise<void> {
       const node = current().findById(detail.nodeId);
       if (!node) return;
       await editNodeSvc.appendValue(node, detail.value, detail.asOf);
+      refresh();
+    })();
+  });
+
+  // SPEC §17.126 — inline `(unit)` chip edit. Mirror of §17.28 title.
+  screen.addEventListener("inline-edit-unit", (e) => {
+    void (async () => {
+      const detail = e.detail;
+      const node = current().findById(detail.nodeId);
+      if (!node) return;
+      const kind = inferV4Kind(node);
+      if (kind !== "BusinessScore" && kind !== "ComputedBusinessScore") return;
+      await editNodeSvc.editFields(
+        node,
+        { kind, unit: detail.unit } as EditNodePayload,
+        { cards: boards.getCurrentBoard().tree.cards },
+      );
       refresh();
     })();
   });

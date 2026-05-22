@@ -441,6 +441,100 @@ describe("<business-score-card-as-parent>", () => {
       expect(handler).not.toHaveBeenCalled();
     });
 
+    // -- SPEC §17.126 -- inline unit-chip edit -----------------------
+
+    describe("\u00a717.126 \u2014 inline unit-chip edit on the title prefix", () => {
+      async function openUnitEditor(): Promise<{
+        el: BusinessScoreCardNodeAsParent;
+        input: HTMLInputElement;
+      }> {
+        const el = await mountLitElement<BusinessScoreCardNodeAsParent>(
+          "business-score-card-as-parent",
+          (e) => { e.vm = recordedVm; },
+        );
+        el.shadowRoot
+          ?.querySelector<HTMLElement>('[data-testid="unit-chip"]')
+          ?.click();
+        await el.updateComplete;
+        const input = el.shadowRoot!.querySelector<HTMLInputElement>(
+          '[data-testid="unit-chip-edit"]',
+        )!;
+        return { el, input };
+      }
+
+      function pressKey(input: HTMLInputElement, key: string): void {
+        input.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      }
+
+      it("clicking the chip swaps it for an input pre-filled with the unit", async () => {
+        const { input } = await openUnitEditor();
+        expect(input).not.toBeNull();
+        expect(input.value).toBe("%");
+      });
+
+      it("clicking the chip does NOT enter title edit mode", async () => {
+        const { el } = await openUnitEditor();
+        expect(
+          el.shadowRoot?.querySelector('[data-testid="title-edit"]'),
+        ).toBeNull();
+      });
+
+      it("Enter dispatches inline-edit-unit with the trimmed new value", async () => {
+        const { el, input } = await openUnitEditor();
+        const handler = vi.fn();
+        el.addEventListener("inline-edit-unit", handler);
+        input.value = "  USD  ";
+        pressKey(input, "Enter");
+        expect(handler).toHaveBeenCalledTimes(1);
+        const ev = handler.mock.calls[0]![0] as CustomEvent<{
+          nodeId: string;
+          unit: string;
+        }>;
+        expect(ev.detail).toEqual({ nodeId: "bsc-1", unit: "USD" });
+      });
+
+      it("Enter on an unchanged unit does NOT dispatch", async () => {
+        const { el, input } = await openUnitEditor();
+        const handler = vi.fn();
+        el.addEventListener("inline-edit-unit", handler);
+        input.value = "%";
+        pressKey(input, "Enter");
+        expect(handler).not.toHaveBeenCalled();
+      });
+
+      it("Enter on a blank unit dispatches with an empty string", async () => {
+        const { el, input } = await openUnitEditor();
+        const handler = vi.fn();
+        el.addEventListener("inline-edit-unit", handler);
+        input.value = "   ";
+        pressKey(input, "Enter");
+        expect(handler).toHaveBeenCalledTimes(1);
+        const ev = handler.mock.calls[0]![0] as CustomEvent<{
+          nodeId: string;
+          unit: string;
+        }>;
+        expect(ev.detail.unit).toBe("");
+      });
+
+      it("Escape cancels edit without dispatching", async () => {
+        const { el, input } = await openUnitEditor();
+        const handler = vi.fn();
+        el.addEventListener("inline-edit-unit", handler);
+        input.value = "USD";
+        pressKey(input, "Escape");
+        await el.updateComplete;
+        expect(handler).not.toHaveBeenCalled();
+        expect(
+          el.shadowRoot?.querySelector('[data-testid="unit-chip-edit"]'),
+        ).toBeNull();
+        expect(
+          el.shadowRoot
+            ?.querySelector('[data-testid="unit-chip"]')
+            ?.textContent?.trim(),
+        ).toBe("(%)");
+      });
+    });
+
     // -- SPEC §17.51 -- inline value-edit ± stepper buttons ------------
 
     describe("\u00a717.51 \u2014 inline value-edit \u00b1 stepper buttons", () => {
