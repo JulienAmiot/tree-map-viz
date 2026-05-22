@@ -42,8 +42,20 @@
  * to drop into the title row unconditionally.
  */
 
-import { css, html, nothing, type TemplateResult } from "lit";
+import {
+  css,
+  html,
+  nothing,
+  type ReactiveController,
+  type ReactiveControllerHost,
+  type TemplateResult,
+} from "lit";
 
+import {
+  INLINE_EDIT_UNIT_EVENT,
+  type InlineEditUnitDetail,
+} from "./inlineEditEvents.js";
+import { focusAndSelectInline, inlineEditKey } from "./inlineEditHelpers.js";
 import type {
   BusinessScoreCardValueViewModel,
   ComputedValueViewModel,
@@ -109,4 +121,137 @@ export const unitChipStyles = css`
     white-space: nowrap;
     vertical-align: baseline;
   }
+  /* SPEC §17.126 — click-to-edit + inline input variants. */
+  .unit-chip.is-editable {
+    cursor: text;
+    border-radius: 3px;
+    padding: 0 0.1em;
+  }
+  .unit-chip.is-editable:hover,
+  .unit-chip.is-editable:focus-visible {
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    outline: none;
+  }
+  .unit-chip-edit {
+    box-sizing: border-box;
+    width: 6ch;
+    min-width: 4ch;
+    max-width: 12ch;
+    background: color-mix(in srgb, currentColor 8%, transparent);
+    color: inherit;
+    border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+    border-radius: 3px;
+    padding: 0 0.15em;
+    font: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: 1;
+    vertical-align: baseline;
+  }
+  .unit-chip-edit:focus {
+    outline: none;
+    border-color: color-mix(in srgb, currentColor 65%, transparent);
+    background: color-mix(in srgb, currentColor 16%, transparent);
+  }
 `;
+
+/** SPEC §17.126 — host contract for {@link InlineUnitEditController}
+ *  (parallel of §17.28's `InlineTitleEditHost` but for the chip). */
+export interface InlineUnitEditTarget {
+  readonly nodeId: string;
+  readonly unit: string;
+}
+
+export interface InlineUnitEditHost extends ReactiveControllerHost, EventTarget {
+  getInlineUnitEditTarget(): InlineUnitEditTarget | null;
+  readonly shadowRoot: ShadowRoot | null;
+}
+
+/** SPEC §17.126 — owns the inline-unit-edit lifecycle (click swaps to
+ *  input, Enter/blur commits via `INLINE_EDIT_UNIT_EVENT`, Escape
+ *  cancels). Empty strings ARE allowed (a metric can be unit-less). */
+export class InlineUnitEditController implements ReactiveController {
+  private readonly host: InlineUnitEditHost;
+  private isEditing = false;
+
+  constructor(host: InlineUnitEditHost) {
+    this.host = host;
+    host.addController(this);
+  }
+
+  hostUpdated(): void {
+    if (!this.isEditing) return;
+    const input = this.host.shadowRoot?.querySelector<HTMLInputElement>(
+      "input.unit-chip-edit",
+    );
+    focusAndSelectInline(input ?? null);
+  }
+
+  renderChip(): TemplateResult | typeof nothing {
+    const target = this.host.getInlineUnitEditTarget();
+    if (target === null) return nothing;
+    if (this.isEditing) {
+      return html`<input
+        class="unit-chip unit-chip-edit"
+        data-testid="unit-chip-edit"
+        type="text"
+        maxlength="20"
+        .value=${target.unit}
+        @keydown=${this.handleKey}
+        @blur=${this.handleBlur}
+        @click=${this.stopBubble}
+      />`;
+    }
+    if (!target.unit) return nothing;
+    return html`<span
+      class="unit-chip is-editable"
+      data-testid="unit-chip"
+      role="button"
+      tabindex="0"
+      title="Click to edit unit"
+      @click=${this.start}
+    >(${target.unit})</span>`;
+  }
+
+  private readonly stopBubble = (e: Event): void => e.stopPropagation();
+
+  private readonly start = (e: Event): void => {
+    e.stopPropagation();
+    this.isEditing = true;
+    this.host.requestUpdate();
+  };
+
+  private readonly handleKey = (e: KeyboardEvent): void => {
+    e.stopPropagation();
+    const intent = inlineEditKey(e, /* multiline */ false);
+    if (intent === "commit") {
+      e.preventDefault();
+      this.commit(e.currentTarget as HTMLInputElement);
+    } else if (intent === "cancel") {
+      e.preventDefault();
+      this.isEditing = false;
+      this.host.requestUpdate();
+    }
+  };
+
+  private readonly handleBlur = (e: FocusEvent): void => {
+    this.commit(e.target as HTMLInputElement | null);
+  };
+
+  private commit(input: HTMLInputElement | null): void {
+    if (!this.isEditing) return;
+    const target = this.host.getInlineUnitEditTarget();
+    this.isEditing = false;
+    this.host.requestUpdate();
+    if (target === null || input === null) return;
+    const next = input.value.trim();
+    if (next === target.unit) return;
+    this.host.dispatchEvent(
+      new CustomEvent<InlineEditUnitDetail>(INLINE_EDIT_UNIT_EVENT, {
+        bubbles: true,
+        composed: true,
+        detail: { nodeId: target.nodeId, unit: next },
+      }),
+    );
+  }
+}

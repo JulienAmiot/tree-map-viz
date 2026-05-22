@@ -30,6 +30,8 @@
 
 export const INLINE_EDIT_TITLE_EVENT = "inline-edit-title";
 export const INLINE_EDIT_VALUE_EVENT = "inline-edit-value";
+/** SPEC §17.126 — click-to-edit on the §17.125 `(unit)` chip. */
+export const INLINE_EDIT_UNIT_EVENT = "inline-edit-unit";
 
 /** Detail payload of {@link INLINE_EDIT_TITLE_EVENT}. */
 export type InlineEditTitleDetail = {
@@ -51,9 +53,17 @@ export type InlineEditValueDetail = {
   readonly asOf?: Date;
 };
 
+/** SPEC §17.126 — detail of {@link INLINE_EDIT_UNIT_EVENT}; empty
+ *  `unit` is allowed (a metric can be unit-less). */
+export type InlineEditUnitDetail = {
+  readonly nodeId: string;
+  readonly unit: string;
+};
+
 declare global {
   interface HTMLElementEventMap {
     "inline-edit-title": CustomEvent<InlineEditTitleDetail>;
     "inline-edit-value": CustomEvent<InlineEditValueDetail>;
+    "inline-edit-unit": CustomEvent<InlineEditUnitDetail>;
   }
 }

@@ -104,7 +104,8 @@ import { formatAge } from "../ageFormat.js";
 import { formatValue } from "../numberFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import {
-  renderUnitChip,
+  InlineUnitEditController,
+  type InlineUnitEditTarget,
   unitChipStyles,
   unitFromBscValue,
 } from "../unitChip.js";
@@ -167,6 +168,14 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
    * focus changes — `firstUpdated` only fires on the very first mount,
    * so the `vm.id` swap is the durable trigger). */
   private previousVmId: string | null = null;
+
+  /** SPEC §17.126 — inline unit-edit controller for the chip prefix. */
+  private readonly unitEditor = new InlineUnitEditController(this);
+
+  getInlineUnitEditTarget(): InlineUnitEditTarget | null {
+    if (!this.vm) return null;
+    return { nodeId: this.vm.id, unit: unitFromBscValue(this.vm.value) };
+  }
 
   static styles = [
     tileLayoutStyles,
@@ -900,7 +909,6 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
         />
       </h1>`;
     }
-    const unit = unitFromBscValue(this.vm.value);
     return html`<h1
       class="title is-editable"
       data-testid="title"
@@ -912,7 +920,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
       @click=${this.startTitleEdit}
     >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}${showBadge
       ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value">Σ</span>`
-      : nothing}${renderUnitChip(unit)}${this.vm.title}</h1>`;
+      : nothing}${this.unitEditor.renderChip()}${this.vm.title}</h1>`;
   }
 
   /**
