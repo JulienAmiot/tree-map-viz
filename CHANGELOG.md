@@ -14,6 +14,18 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **URL card focused-panel description is now a real clickable link (§17.123)**.
+  The URL text next to the QR code on the focused-panel
+  `<url-node-as-parent>` tile is now wrapped in an anchor that
+  opens the destination in a new tab (`target="_blank"
+  rel="noopener noreferrer"`). On a desktop kiosk the QR is
+  redundant if the operator already has the device in hand — a
+  tap on the URL string now opens the link directly. Underline
+  opacity bumps to full on `:hover` / `:focus-visible` so
+  keyboard users get the same affordance signal as mouse users.
+
 ### Added
 
 - **Disabled state surfaces as a left-of-title gold pill on every tile, with an interactive toggle on the focused panel (§17.121i)**.
