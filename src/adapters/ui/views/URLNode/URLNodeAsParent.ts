@@ -18,13 +18,21 @@
  *       * `.metric-pane` (LEFT) — hosts the QR value-area with the
  *         same `object-fit: contain` rule as the child role.
  *       * `.description` (RIGHT) — the URL itself rendered as a
- *         readable text aside. The §17.120 contract says "the URL
- *         IS the description for a URLNode" (one slot in the
- *         envelope, not two); §17.121j makes that contract visible
- *         on the focused panel by surfacing the URL string next to
- *         its QR encoding. The operator can sanity-check the
- *         encoded value at a glance without scanning the QR with
- *         their phone, and a long URL line-clamps gracefully so it
+ *         **clickable anchor** (`<a target="_blank"
+ *         rel="noopener noreferrer">`). Operator-requested upgrade
+ *         from the §17.121j read-only text aside: on a desktop
+ *         kiosk the QR code is overkill if the operator already
+ *         has the device in front of them — a tap on the URL
+ *         opens it directly in a new tab. The §17.120 contract
+ *         still holds ("the URL IS the description for a URLNode" —
+ *         one slot in the envelope, not two); §17.121j makes that
+ *         contract visible on the focused panel by surfacing the
+ *         URL string next to its QR encoding, and §17.123 makes
+ *         the same surface actionable. The `noopener noreferrer`
+ *         pair is the standard safety belt: prevents the opened
+ *         tab from reaching back into `window.opener`, and strips
+ *         the referrer header so the kiosk's internal route does
+ *         not leak. A long URL still line-clamps gracefully so it
  *         can't push past the panel height.
  *   - When `url` is empty (the VM mapper still emits a vm even for
  *     a zero-length URL slot) the `.description` aside is omitted
@@ -141,6 +149,33 @@ export class URLNodeAsParent extends LitElement {
         flex-shrink: 1;
         flex-basis: 50%;
       }
+      /* SPEC §17.123 — the URL text inside the description aside is
+         now a real anchor. Inherits the aside's muted italic so the
+         link reads as part of the same surface; the underline is
+         the only affordance contrast (operator-readable as "this
+         is clickable" against the rest of the body row). The
+         underline shifts from translucent to opaque on hover /
+         focus so a keyboard-only operator gets the same affordance
+         signal as a mouse user. The word-break: break-all rule on
+         the anchor repeats the aside's rule so the inline-block
+         anchor doesn't force a wider line than its parent. */
+      .description a {
+        color: inherit;
+        text-decoration: underline;
+        text-decoration-color: color-mix(
+          in srgb,
+          currentColor 40%,
+          transparent
+        );
+        text-underline-offset: 0.15em;
+        word-break: break-all;
+        cursor: pointer;
+      }
+      .description a:hover,
+      .description a:focus-visible {
+        text-decoration-color: currentColor;
+        outline: none;
+      }
       /* SPEC §17.121j — value-area override: with the metric-pane
          carrying its own column-flex layout, the shared
          tileLayoutStyles calc(100% - 3vh - subtitle) is no longer
@@ -195,7 +230,14 @@ export class URLNodeAsParent extends LitElement {
         </div>
         ${hasDescription
           ? html`<aside class="description" data-testid="description">
-              ${url}
+              <a
+                class="description-link"
+                data-testid="description-link"
+                href=${url}
+                target="_blank"
+                rel="noopener noreferrer"
+                >${url}</a
+              >
             </aside>`
           : nothing}
       </div>

@@ -304,6 +304,74 @@ describe("<url-node-as-parent>", () => {
       );
     });
 
+    it("§17.123 — renders the URL as a clickable <a target=\"_blank\" rel=\"noopener noreferrer\"> inside the description aside", async () => {
+      const el = await mountLitElement<URLNodeAsParent>(
+        "url-node-as-parent",
+        (e) => {
+          e.vm = vmWith({ url: "https://example.com/region/north-east" });
+        },
+      );
+      await waitForQRSettled(el);
+      const aside = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="description"]',
+      );
+      expect(aside).not.toBeNull();
+      const link = aside?.querySelector<HTMLAnchorElement>(
+        '[data-testid="description-link"]',
+      );
+      expect(link).not.toBeNull();
+      expect(link?.tagName).toBe("A");
+      expect(link?.getAttribute("href")).toBe(
+        "https://example.com/region/north-east",
+      );
+      expect(link?.getAttribute("target")).toBe("_blank");
+      expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
+      expect(link?.textContent?.trim()).toBe(
+        "https://example.com/region/north-east",
+      );
+    });
+
+    it("§17.123 — the description-link href tracks vm.url updates", async () => {
+      const el = await mountLitElement<URLNodeAsParent>(
+        "url-node-as-parent",
+        (e) => {
+          e.vm = vmWith({ url: "https://example.com/one" });
+        },
+      );
+      await waitForQRSettled(el);
+      el.vm = vmWith({ url: "https://example.com/two" });
+      await el.updateComplete;
+      const link = el.shadowRoot?.querySelector<HTMLAnchorElement>(
+        '[data-testid="description-link"]',
+      );
+      expect(link?.getAttribute("href")).toBe("https://example.com/two");
+      expect(link?.textContent?.trim()).toBe("https://example.com/two");
+    });
+
+    it("§17.123 — clicking the description-link does NOT enter inline title edit", async () => {
+      const el = await mountLitElement<URLNodeAsParent>(
+        "url-node-as-parent",
+        (e) => {
+          e.vm = vmWith({ url: "https://example.com/click-test" });
+        },
+      );
+      await waitForQRSettled(el);
+      const link = el.shadowRoot?.querySelector<HTMLAnchorElement>(
+        '[data-testid="description-link"]',
+      );
+      const titleHandler = vi.fn();
+      el.addEventListener("inline-edit-title", titleHandler);
+      // Prevent the browser default so the test runner doesn't try to
+      // open a new tab; the assertion is purely DOM-shape.
+      link?.addEventListener("click", (e) => e.preventDefault());
+      link?.click();
+      await el.updateComplete;
+      expect(titleHandler).not.toHaveBeenCalled();
+      expect(
+        el.shadowRoot?.querySelector('[data-testid="title-edit"]'),
+      ).toBeNull();
+    });
+
     it("omits the `.description` aside (and flags the body data-has-description=\"false\") when the URL is empty", async () => {
       const el = await mountLitElement<URLNodeAsParent>(
         "url-node-as-parent",
