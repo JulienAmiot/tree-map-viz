@@ -69,6 +69,24 @@
  * file in §17.116 because no inline kind-change gesture remains. The
  * symbols stay so the §17.116-followup edit-modal patch can hook into
  * the existing handler without churn.
+ *
+ * SPEC §17.124 — inline title editing on the focused panel.
+ * Operator-requested parity: every parent-strip tile across the kiosk
+ * (TextNode / BSC / Workflow / Picture / URL since §17.28 / §17.50)
+ * lets the operator click the title to inline-edit it; Computed* was
+ * the lone outlier carrying a static read-only title. §17.124 mounts
+ * the shared `InlineTitleEditController` on BOTH Computed card
+ * classes for `viewRole === "asParent"` only — AsChild tiles keep
+ * the static `renderTitleWithBadge` path so the click-to-drill
+ * gesture on the tree-map grid is preserved (a single-click on a
+ * child tile must continue to drill into focus, NOT enter edit
+ * mode). The Σ badge moves into the prefix slot of the controller's
+ * `renderTitle(viewKind, prefix)` call so the visual chain reads
+ * `[disabled-switch][Σ]Title` exactly as today; the only change is
+ * that the `<h2>` becomes an editable `<h1>` on the focused panel.
+ * The inline-edit input styling is scoped under
+ * `:host([view-role="asParent"])` so the AsChild role's 3vh title
+ * sizing inherited from `tileLayoutStyles` is left untouched.
  */
 
 import { LitElement, html, css, nothing, type TemplateResult } from "lit";
@@ -91,6 +109,11 @@ import {
   renderDisabledIndicator,
   renderDisabledSwitch,
 } from "../disabledToggle.js";
+import {
+  InlineTitleEditController,
+  type InlineTitleEditTarget,
+  titleInlineEditStyles,
+} from "../inlineTitleEdit.js";
 import { formatValue } from "../numberFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 
@@ -261,6 +284,20 @@ const sharedStyles = css`
     border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
     cursor: pointer;
   }
+  /* SPEC §17.124 — restore AsChild's pre-§17.124 title sizing /
+     colour. The shared titleInlineEditStyles block (mixed into the
+     Computed cards below) pins the title to 2.4vh / off-white for
+     focused-panel emphasis; on Computed* that block fires for
+     BOTH roles because the class is dual-role. The AsChild override
+     here rolls the font-size / colour back to the tile-level
+     defaults so the tree-map grid keeps its 3vh inherited sizing.
+     The .title-edit rules from titleInlineEditStyles stay inert on
+     AsChild (no .title-edit element renders) so no unscoped CSS
+     leaks. */
+  :host([view-role="asChild"]) .title {
+    font-size: 3vh;
+    color: inherit;
+  }
 `;
 
 /**
@@ -354,6 +391,95 @@ function renderTitleWithBadge(
     >${titlePrefix}${showBadge
       ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>`
       : nothing}${vmTitle}</h2>`;
+}
+
+/**
+ * SPEC §17.124 — title-prefix template for the inline-editable
+ * Computed* AsParent title. Composes the §17.121i disabled switch
+ * (left of title) AND the §17.116 Σ aggregation badge into the
+ * single `prefix` slot the {@link InlineTitleEditController}'s
+ * `renderTitle(viewKind, prefix)` API exposes. When the operator
+ * enters edit mode the controller hides the prefix automatically
+ * (renderInlineEditableTitle's `isEditing=true` branch emits the
+ * input with no prefix interpolation), so the disabled-switch and
+ * Σ glyph disappear during edit and reappear on commit/cancel —
+ * same behaviour every other §17.28-pattern AsParent card already
+ * exhibits.
+ */
+function renderInlineTitlePrefix(
+  host: HTMLElement,
+  vmId: string,
+  vmDisabled: boolean,
+  showBadge: boolean,
+): TemplateResult {
+  return html`${renderDisabledSwitch(host, vmId, vmDisabled)}${showBadge
+    ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>`
+    : nothing}`;
+}
+
+/**
+ * SPEC §17.124 — argument bundle for {@link renderComputedTitleSlot}.
+ * Pre-bundling all the per-render context into one object keeps the
+ * helper under Sonar's `typescript:S107` 7-parameter ceiling and
+ * makes the call sites in both card classes read as a small object
+ * literal rather than an 8-positional argument list.
+ */
+type ComputedTitleSlotArgs = {
+  readonly host: HTMLElement;
+  readonly titleEditor: InlineTitleEditController;
+  readonly vmId: string;
+  readonly vmTitle: string;
+  readonly viewKind: string;
+  readonly viewRole: NodeRole;
+  readonly vmDisabled: boolean;
+  readonly showBadge: boolean;
+};
+
+/**
+ * SPEC §17.124 — shared title-slot renderer for both Computed card
+ * classes. Both classes branch identically on `viewRole`: AsParent
+ * routes through the inline-edit controller (click-to-edit on the
+ * focused panel), AsChild keeps the static `renderTitleWithBadge`
+ * path so the tree-map grid's click-to-drill gesture is preserved.
+ * Extracting this helper removes the CPD-duplicated branch (the
+ * pre-refactor cards each carried a ~13-line ternary) and keeps
+ * the per-class render bodies focused on the value-area surface
+ * that genuinely differs (BSC objective + timestamp vs plain
+ * numeric span).
+ */
+function renderComputedTitleSlot(args: ComputedTitleSlotArgs): TemplateResult | typeof nothing {
+  const { host, titleEditor, vmId, vmTitle, viewKind, viewRole, vmDisabled, showBadge } = args;
+  if (viewRole === "asParent") {
+    return titleEditor.renderTitle(
+      viewKind,
+      renderInlineTitlePrefix(host, vmId, vmDisabled, showBadge),
+    );
+  }
+  return renderTitleWithBadge(vmId, vmTitle, viewKind, showBadge, renderDisabledIndicator(vmDisabled));
+}
+
+/**
+ * SPEC §17.104 / §17.116-followup — shared
+ * `computation-kind-change` dispatcher. Both Computed card classes
+ * fire the same bubbling+composed event with the host node's id +
+ * the operator-picked new kind; pre-refactor each class carried
+ * an identical instance arrow field. Hoisting the dispatch into a
+ * free function lets both classes share one definition (resolving
+ * a CPD block reported on 2026-05-22) while keeping the wiring
+ * identical from `main.ts`'s perspective.
+ */
+function dispatchComputationKindChange(
+  host: HTMLElement,
+  nodeId: string,
+  newKind: ComputationKindName,
+): void {
+  host.dispatchEvent(
+    new CustomEvent<ComputationKindChangeDetail>(COMPUTATION_KIND_CHANGE_EVENT, {
+      bubbles: true,
+      composed: true,
+      detail: { nodeId, newKind },
+    }),
+  );
 }
 
 /**
@@ -455,36 +581,49 @@ export class ComputedCard extends LitElement {
   @property({ attribute: "view-role", reflect: true })
   viewRole: NodeRole = "asChild";
 
-  static readonly styles = [tileLayoutStyles, sharedStyles, disabledToggleStyles];
+  static readonly styles = [
+    tileLayoutStyles,
+    sharedStyles,
+    disabledToggleStyles,
+    titleInlineEditStyles,
+  ];
+
+  /**
+   * SPEC §17.124 — inline title editor for the focused-panel role.
+   * Always installed (Lit ReactiveControllers must mount in the
+   * constructor / field init for `hostUpdated` to fire); the
+   * controller's `renderTitle()` is only invoked on the AsParent
+   * render branch via {@link renderComputedTitleSlot}, so AsChild
+   * tiles never see the editable `<h1>` or the click-to-edit
+   * handlers.
+   */
+  private readonly titleEditor = new InlineTitleEditController(this);
+
+  /** SPEC §17.124 — host contract for {@link InlineTitleEditController}. */
+  getInlineTitleEditTarget(): InlineTitleEditTarget | null {
+    return this.vm ? { nodeId: this.vm.id, title: this.vm.title } : null;
+  }
 
   private readonly dispatchKindChange = (newKind: ComputationKindName): void => {
-    if (!this.vm) return;
-    this.dispatchEvent(
-      new CustomEvent<ComputationKindChangeDetail>(COMPUTATION_KIND_CHANGE_EVENT, {
-        bubbles: true,
-        composed: true,
-        detail: { nodeId: this.vm.id, newKind },
-      }),
-    );
+    if (this.vm) dispatchComputationKindChange(this, this.vm.id, newKind);
   };
 
   render(): TemplateResult {
     if (!this.vm) return html``;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
-    // SPEC §17.121i — `vm.disabled` lights up the left-of-title gold
-    // affordance: a static indicator pill on AsChild (read-only),
-    // an interactive `<button role="switch">` on AsParent (toggles
-    // via the shared `value-node-disabled-change` event). The focused
-    // panel keeps full opacity / no strike on the value-area so the
-    // operator can still read + edit the parked node.
     const vmDisabled = this.vm.disabled ?? false;
-    const titlePrefix =
-      this.viewRole === "asParent"
-        ? renderDisabledSwitch(this, this.vm.id, vmDisabled)
-        : renderDisabledIndicator(vmDisabled);
     return html`
-      ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedNode", showBadge, titlePrefix)}
+      ${renderComputedTitleSlot({
+        host: this,
+        titleEditor: this.titleEditor,
+        vmId: this.vm.id,
+        vmTitle: this.vm.title,
+        viewKind: "ComputedNode",
+        viewRole: this.viewRole,
+        vmDisabled,
+        showBadge,
+      })}
       ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       ${canCompute
         ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>)
@@ -502,17 +641,24 @@ export class ComputedBusinessScoreCard extends LitElement {
   @property({ attribute: "view-role", reflect: true })
   viewRole: NodeRole = "asChild";
 
-  static readonly styles = [tileLayoutStyles, sharedStyles, cbsnHostStyles, disabledToggleStyles];
+  static readonly styles = [
+    tileLayoutStyles,
+    sharedStyles,
+    cbsnHostStyles,
+    disabledToggleStyles,
+    titleInlineEditStyles,
+  ];
+
+  /** SPEC §17.124 — see `ComputedCard.titleEditor`. */
+  private readonly titleEditor = new InlineTitleEditController(this);
+
+  /** SPEC §17.124 — see `ComputedCard.getInlineTitleEditTarget`. */
+  getInlineTitleEditTarget(): InlineTitleEditTarget | null {
+    return this.vm ? { nodeId: this.vm.id, title: this.vm.title } : null;
+  }
 
   private readonly dispatchKindChange = (newKind: ComputationKindName): void => {
-    if (!this.vm) return;
-    this.dispatchEvent(
-      new CustomEvent<ComputationKindChangeDetail>(COMPUTATION_KIND_CHANGE_EVENT, {
-        bubbles: true,
-        composed: true,
-        detail: { nodeId: this.vm.id, newKind },
-      }),
-    );
+    if (this.vm) dispatchComputationKindChange(this, this.vm.id, newKind);
   };
 
   render(): TemplateResult {
@@ -520,15 +666,18 @@ export class ComputedBusinessScoreCard extends LitElement {
     const { dateIso, dateColor, objective } = this.vm;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
-    // SPEC §17.121i — mirror of `ComputedCard`: left-of-title gold
-    // indicator on AsChild, interactive switch on AsParent.
     const vmDisabled = this.vm.disabled ?? false;
-    const titlePrefix =
-      this.viewRole === "asParent"
-        ? renderDisabledSwitch(this, this.vm.id, vmDisabled)
-        : renderDisabledIndicator(vmDisabled);
     return html`
-      ${renderTitleWithBadge(this.vm.id, this.vm.title, "ComputedBusinessScoreNode", showBadge, titlePrefix)}
+      ${renderComputedTitleSlot({
+        host: this,
+        titleEditor: this.titleEditor,
+        vmId: this.vm.id,
+        vmTitle: this.vm.title,
+        viewKind: "ComputedBusinessScoreNode",
+        viewRole: this.viewRole,
+        vmDisabled,
+        showBadge,
+      })}
       ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       <div class="metric-pane" data-testid="metric-pane">
         ${canCompute ? renderTimestamp(dateIso, dateColor) : nothing}

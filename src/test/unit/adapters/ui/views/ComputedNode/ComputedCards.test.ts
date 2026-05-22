@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import "../../../../../../adapters/ui/views/ComputedNode/ComputedCards.js";
 import {
@@ -401,5 +401,113 @@ describe("<computed-card> + <computed-business-score-card> inline strategy picke
     select.dispatchEvent(new Event("change", { bubbles: true }));
     await el.updateComplete;
     expect(received).toEqual([{ nodeId: "cbsn-1", newKind: "AVERAGE" }]);
+  });
+});
+
+/**
+ * SPEC §17.124 — inline title editing on the focused panel for both
+ * Computed card classes. Operator-requested parity: every parent-
+ * strip tile already lets the operator click the title to inline-
+ * edit; pre-§17.124 the Computed cards were the lone outliers with
+ * a static read-only title. The new behaviour mirrors the §17.28 /
+ * §17.50 pattern (click swaps to input, Enter/blur commits via
+ * `INLINE_EDIT_TITLE_EVENT`, Escape cancels). AsChild tiles keep
+ * the static title so the grid's click-to-drill gesture is
+ * preserved (single-click drills into focus, NOT edit).
+ */
+async function mountComputedAsParent(): Promise<ComputedCard> {
+  return mountLitElement<ComputedCard>("computed-card", (e) => {
+    e.vm = computedVm({ kind: "numeric", value: 42, unit: "" }, "SUM");
+    e.viewRole = "asParent";
+  });
+}
+
+async function enterTitleEdit(el: HTMLElement): Promise<HTMLInputElement> {
+  el.shadowRoot
+    ?.querySelector<HTMLElement>('[data-testid="title"]')
+    ?.click();
+  await (el as ComputedCard | ComputedBusinessScoreCard).updateComplete;
+  return el.shadowRoot!.querySelector<HTMLInputElement>(
+    '[data-testid="title-edit"]',
+  )!;
+}
+
+describe("<computed-card> + <computed-business-score-card> inline title editing (§17.124)", () => {
+  it("AsParent: clicking the title swaps it for an input pre-filled with the current title (<computed-card>)", async () => {
+    const el = await mountComputedAsParent();
+    const input = await enterTitleEdit(el);
+    expect(input).not.toBeNull();
+    expect(input.value).toBe("Total revenue");
+  });
+
+  it("AsParent: Enter on the title input dispatches inline-edit-title with the new value (<computed-card>)", async () => {
+    const el = await mountComputedAsParent();
+    const input = await enterTitleEdit(el);
+    const handler = vi.fn();
+    el.addEventListener("inline-edit-title", handler);
+    input.value = "Renamed total";
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(handler).toHaveBeenCalledTimes(1);
+    const ev = handler.mock.calls[0]![0] as CustomEvent<{ nodeId: string; title: string }>;
+    expect(ev.detail).toEqual({ nodeId: "c-1", title: "Renamed total" });
+    expect(ev.bubbles).toBe(true);
+    expect(ev.composed).toBe(true);
+  });
+
+  // Escape-cancels + blank-is-no-op are the InlineTitleEditController's
+  // own contract; they're already exhaustively covered on the
+  // TextNodeAsParent test surface (every §17.28-pattern view shares
+  // one controller). ComputedCards.test.ts asserts the §17.124-
+  // specific wiring only: click-swap, dispatch, role gate, prefix
+  // composition (Σ badge hidden while editing), CBSN parity.
+
+  it("AsChild: clicking the title does NOT enter inline edit on either Computed card class", async () => {
+    const cc = await mountLitElement<ComputedCard>("computed-card", (e) => {
+      e.vm = computedVm({ kind: "numeric", value: 42, unit: "" }, "SUM");
+      e.viewRole = "asChild";
+    });
+    cc.shadowRoot?.querySelector<HTMLElement>('[data-testid="title"]')?.click();
+    await cc.updateComplete;
+    expect(cc.shadowRoot?.querySelector('[data-testid="title-edit"]')).toBeNull();
+    const cbsc = await mountLitElement<ComputedBusinessScoreCard>(
+      "computed-business-score-card",
+      (e) => {
+        e.vm = cbsnVm({ kind: "numeric", value: 75, unit: "%" });
+        e.viewRole = "asChild";
+      },
+    );
+    cbsc.shadowRoot?.querySelector<HTMLElement>('[data-testid="title"]')?.click();
+    await cbsc.updateComplete;
+    expect(cbsc.shadowRoot?.querySelector('[data-testid="title-edit"]')).toBeNull();
+  });
+
+  it("AsParent: the Σ aggregation badge sits in the title prefix when not editing and disappears while the input is open (<computed-card>)", async () => {
+    const el = await mountComputedAsParent();
+    expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).not.toBeNull();
+    const input = await enterTitleEdit(el);
+    expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).toBeNull();
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).not.toBeNull();
+  });
+
+  it("AsParent: Enter on the CBSN title input dispatches inline-edit-title with the CBSN's id (<computed-business-score-card>)", async () => {
+    const el = await mountLitElement<ComputedBusinessScoreCard>(
+      "computed-business-score-card",
+      (e) => {
+        e.vm = cbsnVm({ kind: "numeric", value: 75, unit: "%" });
+        e.viewRole = "asParent";
+      },
+    );
+    const input = await enterTitleEdit(el);
+    expect(input.value).toBe("Avg score");
+    const handler = vi.fn();
+    el.addEventListener("inline-edit-title", handler);
+    input.value = "Health score";
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    const ev = handler.mock.calls[0]![0] as CustomEvent<{ nodeId: string; title: string }>;
+    expect(ev.detail).toEqual({ nodeId: "cbsn-1", title: "Health score" });
+    const title = el.shadowRoot?.querySelector('[data-testid="title"]');
+    expect(title?.getAttribute("data-view-kind")).toBe("ComputedBusinessScoreNode");
   });
 });

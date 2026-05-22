@@ -16,6 +16,27 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Sonar `projectVersion` bump `0.2.78 → 0.2.79` rides the §17.124 strand**.
+  Lesson captured from the §17.122-leakwindow-2 0.2.78 reset: a
+  bump-only commit does NOT establish a new
+  `PREVIOUS_VERSION` baseline for subsequent same-version scans,
+  so every new strand on top of a bump-only commit must also
+  bump the version again to actually reset the leak window. See
+  the `sonar-project.properties` version-history block for the
+  full rationale.
+- **Computed-card titles are now inline-editable on the focused panel (§17.124)**.
+  Closes the last parity gap in the inline-title-edit family
+  (§17.28 / §17.50 / §17.117 / §17.118 / §17.120). On the focused
+  panel both `<computed-card>` and `<computed-business-score-card>`
+  let the operator click the title to swap it for a one-line
+  input — Enter commits, Escape cancels, blur commits — same UX
+  as every other parent-strip tile. The §17.121i left-of-title
+  enable/disable switch and the §17.116 Σ aggregation badge stay
+  in place as a single prefix while the title is at rest and
+  disappear automatically while the input is open, so the visual
+  chain reads `[switch][Σ]Title` exactly as today. Tree-map
+  (AsChild) Computed tiles keep their static read-only title so
+  the click-to-drill gesture in the grid is preserved.
 - **URL card focused-panel description is now a real clickable link (§17.123)**.
   The URL text next to the QR code on the focused-panel
   `<url-node-as-parent>` tile is now wrapped in an anchor that

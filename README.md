@@ -81,6 +81,9 @@ which preserves the audit trail of operator-recorded inputs.
 - **Edit node** — modal flow from the parent strip's pencil icon; renames,
   edits the description, records a new value (with timestamp), and tunes the
   objective.
+- **Inline title edit** — click the title on any focused-panel tile (every
+  node kind, including Computed cards) to swap it for a one-line input;
+  Enter or blur commits, Escape cancels.
 - **Inline weight edit** — popover anchored to a child tile's weight icon,
   with a slider sized for touch. Commits write a new `Weight` value object
   through the same persistence path.
