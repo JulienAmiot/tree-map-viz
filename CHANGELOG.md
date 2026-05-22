@@ -16,6 +16,31 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **The unit chip is now inline-editable on the focused panel (§17.126)**.
+  Click the `(unit)` chip in the title row of a focused Business
+  Score Card or Computed Business Score Card to swap it for a one-
+  line input; Enter or blur commits, Escape cancels. Same click-
+  to-edit UX as the title, value, and weight inline editors. The
+  click on the chip stops at the chip itself, so editing the unit
+  does NOT also enter title edit. Empty units are accepted (a
+  metric can be unit-less — e.g. "raw count"). Tree-map (child)
+  tiles keep the chip read-only so the click-to-drill gesture in
+  the grid is preserved.
+- **Sonar `projectVersion` double bump `0.2.80 → 0.2.81 → 0.2.82`
+  rides the §17.126a + §17.126b by-element split**. The strand
+  was sliced on the operator's "split" call at the first gate
+  run (the unsliced strand reported `new_lines: 492 / 300`). An
+  initial source/test split was rejected because §17.126a alone
+  fell to `new_coverage: 52.6 %` (the tests for the new
+  controller lived in §17.126b); re-sliced by element so each
+  half ships source + matching tests + its own leak-window bump.
+  §17.126a (BSC AsParent + shared infra) bumps `0.2.80 → 0.2.81`;
+  §17.126b (Computed* wiring + docs) bumps `0.2.81 → 0.2.82` so
+  the leak window resets between the two master pushes — each
+  push is one Sonar analysis, and without the second bump the
+  §17.126b scan would re-see §17.126a's lines against the 0.2.80
+  baseline. Same `PREVIOUS_VERSION`-mode reasoning as §17.124 /
+  §17.125.
 - **Unit reads as a `(unit)` chip on the BSC + CBSN tile title (§17.125)**.
   The unit moves from the under-the-value `.unit-below` block to a
   subtle parenthesised chip immediately to the left of the title

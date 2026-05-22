@@ -89,6 +89,10 @@ which preserves the audit trail of operator-recorded inputs.
   (e.g. `(USD)`, `(%)`) immediately to the left of the title text. Renders
   on both the child tile and the focused-panel tile; collapses to nothing
   when the value branch has no unit (children-count, warning-fill).
+- **Inline unit edit** — on the focused panel, click the `(unit)` chip to
+  swap it for a one-line input; Enter or blur commits, Escape cancels.
+  Empty units are accepted (a metric can be unit-less). The grid-tile
+  chip stays read-only so the click-to-drill gesture is preserved.
 - **Inline weight edit** — popover anchored to a child tile's weight icon,
   with a slider sized for touch. Commits write a new `Weight` value object
   through the same persistence path.
