@@ -129,14 +129,18 @@ const TREND_ARROW_SLUGS = {
 } as const;
 // rendered as <ds-icon name=\${TREND_ARROW_SLUGS[direction]}></ds-icon>
 // (was a Unicode arrow + per-platform emoji-font fallback pre-§17.132).`,
-  "atoms-glyphs": `// §17.133 retired every Unicode CSS-pseudo glyph from the kiosk:
+  "atoms-glyphs": `// §17.133 + §17.134 retired every Unicode CSS-pseudo glyph + every
+// CSS-pseudo close-X bar pair from the kiosk:
 //   target       -> <ds-icon name="target">         (was U+25CE ::before)
 //   triangle-alert -> <ds-icon name="triangle-alert">(was U+26A0 ::before)
 //   ban          -> <ds-icon name="ban">            (was U+29B8 ::before)
-//   x            -> <ds-icon name="x">              (was U+00D7 ::before)
+//   x            -> <ds-icon name="x">              (was U+00D7 ::before +
+//                                                    .modal-close-x bars +
+//                                                    .close-x bars)
 //   check        -> <ds-icon name="check">          (was U+2713 ::before)
-// All five glyphs are now first-class Lucide entries above; L3b
-// will swap the close-X CSS-pseudo bars next.`,
+// All five glyphs are now first-class Lucide entries above. The
+// §17.24 chunky plus-tile cross + §17.116c value-stepper bars stay
+// CSS-only per the §17.131 operator-locked scope (hero affordances).`,
   "atoms-icons": `import { ICON_REGISTRY } from "../../atoms/icon/Icon.js";
 html\`<ds-icon name="scale"></ds-icon>\`;
 html\`<ds-icon name="check" label="Confirmed"></ds-icon>\`;
@@ -248,14 +252,16 @@ html\`<tree-map-screen
 // to TreeNavigationService + EditNodeService + BoardCollectionService.`,
 };
 
-/** §17.133 — the last 5 Unicode CSS-pseudo glyphs (bullseye, warning,
- * forbidden, times, check) migrated to the §17.131 `<ds-icon>` atom;
- * no Unicode glyph survives anywhere on the kiosk except inside
- * existing close-X CSS-pseudo bar pairs (the L3b follow-up). The
- * Atoms-tier `atoms-glyphs` cell now renders a single retirement
- * note (kept as a tombstone so a search for "U+25CE" / "U+29B8" in
- * the design system still lands the operator on a result that
- * explains where the glyph went). */
+/** §17.133 + §17.134 — the last 5 Unicode CSS-pseudo glyphs (bullseye,
+ * warning, forbidden, times, check) AND the close-X CSS-pseudo bar
+ * pairs on modal frames + parent-identity-strip migrated to the
+ * §17.131 `<ds-icon>` atom; the only CSS-only constructions left on
+ * the kiosk are the §17.24 chunky plus-tile cross + the §17.116c
+ * value-stepper bars (hero affordances kept per the §17.131
+ * operator-locked scope). The Atoms-tier `atoms-glyphs` cell now
+ * renders a single retirement tombstone (kept so a search for
+ * "U+25CE" / "U+29B8" in the design system still lands the operator
+ * on a result that explains where the glyph went). */
 const KIOSK_GLYPHS_RETIRED: readonly { name: string; codepoint: string }[] = [
   { name: "target", codepoint: "U+25CE" },
   { name: "triangle-alert", codepoint: "U+26A0" },

@@ -43,19 +43,26 @@ describe("modalFrameStyles (SPEC §17.29 — shared modal frame)", () => {
     expect(text).toMatch(/max-height:\s*calc\(100vh\s*-\s*4rem\)/);
   });
 
-  it("declares the close-X glyph (top-right corner, currentColor bars)", () => {
+  it("\u00a717.29 + \u00a717.134 \u2014 declares the close-X button (top-right corner, inline-flex centring for the `<ds-icon name=\"x\">` child)", () => {
     const text = modalFrameStyles.cssText;
     expect(text).toMatch(/\.modal-close-x\s*\{/);
-    // Pseudo-element bars rotated 45deg / -45deg form the X glyph.
-    expect(text).toMatch(/\.modal-close-x::before/);
-    expect(text).toMatch(/\.modal-close-x::after/);
-    expect(text).toMatch(/rotate\(45deg\)/);
-    expect(text).toMatch(/rotate\(-45deg\)/);
+    // \u00a717.134 -- the close-X glyph moved from a `::before` / `::after`
+    // bar pair to a `<ds-icon name="x">` Lucide SVG child. The button
+    // is now a flex centring host whose font-size drives the icon's
+    // 1em box. Pin the new chain + the ABSENCE of the pre-\u00a717.134
+    // pseudo-element bars so a regression that restores the system-
+    // font-independent bar pair surfaces immediately.
+    expect(text).toMatch(/\.modal-close-x\s*\{[\s\S]*?display:\s*inline-flex/);
+    expect(text).toMatch(/\.modal-close-x\s*\{[\s\S]*?font-size:\s*1\.1rem/);
+    expect(text).not.toMatch(/\.modal-close-x::before/);
+    expect(text).not.toMatch(/\.modal-close-x::after/);
+    expect(text).not.toMatch(/rotate\(45deg\)/);
+    expect(text).not.toMatch(/rotate\(-45deg\)/);
   });
 });
 
 describe("renderModalCloseX(onClose)", () => {
-  it("returns a button with the shared `modal-close-x` testid", async () => {
+  it("returns a button with the shared `modal-close-x` testid + a `<ds-icon name=\"x\">` child (\u00a717.134)", async () => {
     // Renders inside a host div so we can assert the resulting DOM.
     const host = document.createElement("div");
     document.body.appendChild(host);
@@ -68,6 +75,13 @@ describe("renderModalCloseX(onClose)", () => {
     expect(btn?.tagName).toBe("BUTTON");
     expect(btn?.getAttribute("aria-label")).toBe("Close modal");
     expect(btn?.getAttribute("title")).toBe("Close modal");
+    // \u00a717.134 -- the close-X glyph is a `<ds-icon name="x">` child
+    // (was a pair of `::before` / `::after` bars pre-\u00a717.134). The
+    // wrapping button keeps the same testid + aria-label so every
+    // pre-\u00a717.134 modal-cancel test path keeps working.
+    const icon = btn?.querySelector("ds-icon");
+    expect(icon).not.toBeNull();
+    expect(icon?.getAttribute("name")).toBe("x");
     host.remove();
   });
 

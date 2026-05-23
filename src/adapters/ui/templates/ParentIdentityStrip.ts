@@ -255,32 +255,25 @@ export class ParentIdentityStrip extends LitElement {
     .strip-action:active {
       background: color-mix(in srgb, currentColor 22%, transparent);
     }
-    /* SPEC 17.47 -- close-X sits at the strip's far right, flush with
-       the per-view's host padding-right (0.35rem) plus the strip's
-       own 1 px border so the button's right edge aligns with the
-       host's content-area right edge. The X cross-bars scale with
-       the button's font-size proxy via percentage widths so they
-       look proportional on every clamp-resolved size. */
+    /* SPEC 17.47 / 17.134 -- close-X sits at the strip's far right,
+       flush with the per-view host padding-right (0.35rem) plus the
+       strip own 1 px border so the button right edge aligns with the
+       host content-area right edge. Pre-17.134 the X was a pair of
+       ::before / ::after bars rotated 45 deg with width: 60% so the
+       cross-bars scaled with the button clamp; 17.134 retires the
+       two-bar idiom in favour of a real ds-icon name=x Lucide SVG
+       child. The font-size clamp below resolves to ~60 % of the
+       button height clamp so the SVG fills the same visual box the
+       pre-17.134 60%-wide bars carried, and the inline-flex
+       centring chain anchors the icon at the button geometric
+       centre. */
     .close-x {
       right: calc(1px + 0.35rem);
-    }
-    .close-x::before,
-    .close-x::after {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 60%;
-      height: 2px;
-      background: currentColor;
-      border-radius: 1px;
-      transform-origin: center;
-    }
-    .close-x::before {
-      transform: translate(-50%, -50%) rotate(45deg);
-    }
-    .close-x::after {
-      transform: translate(-50%, -50%) rotate(-45deg);
+      font-size: clamp(0.9rem, 1.8vh, 1.35rem);
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     /* SPEC 17.28 / 17.132 -- pencil button. Same touch-target footprint
        as the close-X sitting in a second slot to its left. The glyph is
@@ -344,7 +337,7 @@ export class ParentIdentityStrip extends LitElement {
             aria-label="Close — navigate to parent"
             title="Close — navigate to parent"
             @click=${this.handleCloseClick}
-          ></button>`
+          ><ds-icon name="x"></ds-icon></button>`
         : nothing}
     </header>`;
   }

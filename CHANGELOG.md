@@ -16,6 +16,27 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Close-X CSS-pseudo bar pairs migrated to the `<ds-icon>` Lucide
+  atom (§17.134, L3b — 4-strand migration COMPLETE)**. The two
+  remaining CSS-pseudo close-X constructions on the kiosk — the
+  `.modal-close-x` button on every shipping modal (About,
+  BoardsPanel, BoardSettings, AddChild, EditNode) AND the
+  `.close-x` close-to-parent button on the focused-panel parent
+  strip — now host a `<ds-icon name="x">` Lucide SVG child instead
+  of a pair of bars rotated 45° via `::before` / `::after`. The
+  button geometry, hit zone, hover / focus / active states, and
+  click-handler wiring are unchanged so every cancel / backdrop /
+  Escape path keeps working through the same `data-testid` chain.
+  The §17.24 chunky plus-tile cross (the "add child" affordance)
+  and the §17.116c value-stepper bars (the inline `+` / `-`
+  buttons on BSC AsParent) deliberately stay CSS-only — they are
+  hero affordances that communicate by their size and position
+  rather than reading as catalogue close icons, and the operator
+  locked that carve-out in the §17.131 scope. Every Unicode glyph
+  that the kiosk used to render is now a `<ds-icon>` from the
+  Lucide registry; the migration plan (L1 foundation → L2 inline
+  glyphs → L3a CSS-pseudo glyphs → L3b close-X pairs) is complete
+  end-to-end.
 - **CSS-pseudo glyphs migrated to the `<ds-icon>` Lucide atom (§17.133,
   L3a of 4-strand migration)**. The six remaining Unicode codepoints
   that rendered via CSS `::before { content: "\u…" }` rules on the
