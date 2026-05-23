@@ -133,7 +133,7 @@ Molecules tier and so genuinely belongs in `molecules/`.
 | **R2d** | Molecules — childWeight + plus | **done** (§17.128 R2d) — molecules tier feature-complete (minus `views/index.ts` barrel) |
 | **R3a** | Organisms — shell | **done** (§17.128 R3a) |
 | **R3b** | Organisms — BusinessScoreCardNode | **done** (§17.128 R3b) |
-| **R3c** | Organisms — ComputedNode | pending |
+| **R3c** | Organisms — ComputedNode | **done** (§17.128 R3c) |
 | **R3d** | Organisms — TextNode | pending |
 | **R3e** | Organisms — WorkflowNode | pending |
 | **R3f** | Organisms — PictureNode | pending |

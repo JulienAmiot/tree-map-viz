@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import "../../../../../../adapters/ui/views/ComputedNode/ComputedCards.js";
+import "../../../../../../adapters/ui/organisms/ComputedNode/ComputedCards.js";
 import {
   COMPUTATION_KIND_CHANGE_EVENT, type ComputationKindChangeDetail,
   type ComputedBusinessScoreCard, type ComputedCard,
-} from "../../../../../../adapters/ui/views/ComputedNode/ComputedCards.js";
+} from "../../../../../../adapters/ui/organisms/ComputedNode/ComputedCards.js";
 import type {
   BusinessScoreCardObjectiveViewModel, ComputationKindName,
   ComputedBusinessScoreNodeViewModel, ComputedNodeViewModel, ComputedValueViewModel,
