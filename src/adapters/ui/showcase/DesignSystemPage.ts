@@ -36,8 +36,8 @@ import "../shell/ParentIdentityStrip.js";
 import "../shell/ChildrenGrid.js";
 import "../shell/TreeMapScreen.js";
 import "../molecules/plus/PlusTile.js";
-import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
-import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
+import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
+import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import "../views/ComputedNode/ComputedCards.js";
 import "../views/TextNode/TextNodeAsParent.js";
 import "../views/TextNode/TextNodeAsChild.js";
@@ -115,7 +115,7 @@ const SNIPPETS: Record<string, string> = {
   --muted: #8b95a8;
   --accent: #5b8cff;
 }`,
-  "atoms-arrows": `// src/adapters/ui/views/BusinessScoreCardNode/valueTemplate.ts
+  "atoms-arrows": `// src/adapters/ui/organisms/BusinessScoreCardNode/valueTemplate.ts
 export const TREND_ARROW_GLYPHS = {
   "up-strong":   "\\u2191",
   "up-right":    "\\u2197",
@@ -170,8 +170,8 @@ html\`<focus-breadcrumb .path=\${path}></focus-breadcrumb>\`;
   "org-plus": `import "../molecules/plus/PlusTile.js";
 html\`<plus-tile parent-id=\${parentId}></plus-tile>\`;
 // Emits \`plus-tile-activate\` { parentId } on tap.`,
-  "org-bsc": `import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
-import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
+  "org-bsc": `import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
+import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 
 html\`<business-score-card-as-parent .vm=\${vm}></business-score-card-as-parent>\`;
 html\`<business-score-card-as-child  .vm=\${vm}></business-score-card-as-child>\`;

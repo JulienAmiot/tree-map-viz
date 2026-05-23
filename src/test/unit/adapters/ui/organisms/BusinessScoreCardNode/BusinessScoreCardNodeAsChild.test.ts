@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import "../../../../../../adapters/ui/views/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
-import type { BusinessScoreCardNodeAsChild } from "../../../../../../adapters/ui/views/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
+import "../../../../../../adapters/ui/organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
+import type { BusinessScoreCardNodeAsChild } from "../../../../../../adapters/ui/organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import type { BusinessScoreCardNodeViewModel } from "../../../../../../adapters/ui/molecules/NodeViewModel.js";
 import {
   cleanupLitFixtures,
