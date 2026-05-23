@@ -33,7 +33,7 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
-import { renderMarkdownToHtml } from "../../markdown/markdownToHtml.js";
+import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
 import {
   INLINE_EDIT_VALUE_EVENT,
   type InlineEditValueDetail,
