@@ -117,7 +117,7 @@ describe("<business-score-card-as-parent>", () => {
     // §17.132 -- Σ badge is now a `<ds-icon name="sigma">` Lucide SVG
     // wrapped in the same `<span data-testid="computed-badge">`.
     expect(
-      el.shadowRoot?.querySelector('[data-testid="title"] [data-testid="computed-badge"] ds-icon')?.getAttribute("name"),
+      el.shadowRoot?.querySelector('[data-testid="computed-badge"] ds-icon')?.getAttribute("name"),
     ).toBe("sigma");
     const desc = el.shadowRoot?.querySelector('[data-testid="description"]');
     expect(desc).not.toBeNull();
@@ -165,7 +165,7 @@ describe("<business-score-card-as-parent>", () => {
 
     const value = el.shadowRoot?.querySelector('[data-testid="value"]');
     const title = el.shadowRoot?.querySelector('[data-testid="title"]');
-    const badge = title?.querySelector('[data-testid="computed-badge"]');
+    const badge = el.shadowRoot?.querySelector('[data-testid="computed-badge"]');
     // §17.116: value text is the bare number, max 2 decimals, no inline unit.
     expect(value?.textContent?.trim()).toBe("87.42");
     expect(value?.getAttribute("data-value-kind")).toBe("computedMean");
@@ -218,8 +218,7 @@ describe("<business-score-card-as-parent>", () => {
     expect(value?.textContent?.trim()).toBe("100");
     // §17.125: the unit chip rides the title row; the .unit-below
     // block sibling is retired.
-    const title = el.shadowRoot?.querySelector('[data-testid="title"]');
-    const chip = title?.querySelector<HTMLElement>('[data-testid="unit-chip"]');
+    const chip = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="unit-chip"]');
     expect(chip).not.toBeNull();
     expect(chip?.classList.contains("unit-chip")).toBe(true);
     expect(chip?.textContent?.trim()).toBe("(%)");
@@ -255,7 +254,7 @@ describe("<business-score-card-as-parent>", () => {
     // §17.116: visible label is the age, not a locale calendar date.
     expect(date?.textContent ?? "").not.toMatch(/\d{4}/);
     // recordedValue branch shows NO Σ badge in the title.
-    expect(el.shadowRoot?.querySelector('[data-testid="title"] [data-testid="computed-badge"]')).toBeNull();
+    expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).toBeNull();
     expect(date?.classList.contains("timestamp")).toBe(true);
     // §17.18 — inline `--age-color` carries the lerped colour.
     expect(date?.getAttribute("style") ?? "").toMatch(/--age-color:\s*rgb\(/);
@@ -1190,23 +1189,26 @@ describe("<business-score-card-as-parent>", () => {
           e.vm = vm;
         },
       );
-      const pane = el.shadowRoot?.querySelector<HTMLElement>(
-        '[data-testid="metric-pane"]',
-      );
-      const date = pane?.querySelector<HTMLElement>(
+      // \u00a717.136 S1 -- the timestamp moved out of the metric-pane
+      // and into card-frame's footer-right slot. The contract pinned
+      // here flips from "INSIDE the metric-pane" to "INSIDE
+      // card-frame's footer-right slot": the timestamp must declare
+      // slot="footer-right", NOT live inside the metric-pane, and
+      // there must still be exactly ONE timestamp in the shadow
+      // root (regression guard against duplicate renders).
+      const date = el.shadowRoot?.querySelector<HTMLElement>(
         '[data-testid="value-date"]',
       );
       expect(date).not.toBeNull();
-      // Regression guard for the pre-\u00a717.45 layout where the
-      // timestamp was a direct child of the per-view's host: there
-      // must be exactly ONE [data-testid="value-date"] in the shadow
-      // root and it must live INSIDE the metric-pane (not as a host
-      // sibling).
+      expect(date?.getAttribute("slot")).toBe("footer-right");
+      const pane = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="metric-pane"]',
+      );
+      expect(pane?.querySelector('[data-testid="value-date"]')).toBeNull();
       const allDates = el.shadowRoot?.querySelectorAll(
         '[data-testid="value-date"]',
       );
       expect(allDates?.length).toBe(1);
-      expect(date).toBe(allDates?.[0]);
     });
 
     it("hosts the value-area INSIDE the metric-pane", async () => {
@@ -1365,21 +1367,16 @@ describe("<business-score-card-as-parent>", () => {
       // refactor that re-introduces the negative-margin escape on
       // the metric-pane fails fast.
       //
-      // \u00a717.50 -- the var name comes back, but ONLY on the
-      // .title-edit rule (interactive inline-edit input must not
-      // run behind the absolute close-X / edit-pencil buttons), so
-      // the negation flips to a structural form: the metric-pane
-      // rule body must NOT carry the var, but the title-edit rule
-      // MUST. Using `[^}]*` (not `[\s\S]*?`) keeps the negation
-      // search confined to the metric-pane's rule body so a
-      // .title-edit rule further down that legitimately consumes
-      // the var does not trip it.
-      expect(cssText).not.toMatch(
-        /\.metric-pane[^{]*\{[^}]*--strip-gutter-right/,
-      );
-      expect(cssText).toMatch(
-        /\.title-edit\s*\{[^}]*max-width:\s*calc\(\s*100%\s*-\s*var\(\s*--strip-gutter-right,\s*0px\s*\)\s*\)/,
-      );
+      // \u00a717.136 S1 -- the pre-\u00a717.136 `--strip-gutter-right`
+      // machinery is retired end-to-end on AsParent. The title now
+      // lives in card-frame's `title` slot, sibling to the
+      // `header-actions` slot in card-frame's title-row -- the grid
+      // layout keeps the title cell separate from the affordances,
+      // so the title-edit input no longer needs to escape any
+      // published gutter. Negation pins so a future refactor that
+      // reintroduces the gutter machinery on AsParent fails fast.
+      expect(cssText).not.toMatch(/--strip-gutter-right/);
+      expect(cssText).toMatch(/\.title-edit\s*\{[^}]*max-width:\s*100%/);
     });
   });
 

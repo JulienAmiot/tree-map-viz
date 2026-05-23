@@ -37,3 +37,6 @@ coverage/
 .commit-msg-*.tmp
 
 .git-commit-msg.txt
+
+# Transient commit-message files written by the S0a/S0b hygiene-fail workaround (\u00a717.136 S1 cleanup)
+.git-commit-msg.tmp
