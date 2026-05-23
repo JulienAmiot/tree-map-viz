@@ -187,6 +187,27 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     expect($(el, "ds-mol-badges")).toBeTruthy();
     expect($(el, "ds-mol-disabled")).toBeTruthy();
     expect($(el, "ds-mol-weight")).toBeTruthy();
+    expect($(el, "ds-mol-card-frame")).toBeTruthy();
+    // \u00a717.136 -- the Molecules tier surfaces the new
+    // <card-frame> primitive with every slot filled by a probe
+    // span (\u03A3 / (USD) / title / subtitle / close-X / body /
+    // weight / age) so the structural-only nature of the
+    // template is visible at a glance.
+    const cardFrameCell = $(el, "ds-mol-card-frame-cell");
+    const cardFrame = cardFrameCell.querySelector("card-frame");
+    expect(cardFrame).not.toBeNull();
+    for (const t of [
+      "ds-mol-card-frame-icons",
+      "ds-mol-card-frame-unit",
+      "ds-mol-card-frame-title",
+      "ds-mol-card-frame-subtitle",
+      "ds-mol-card-frame-actions",
+      "ds-mol-card-frame-body",
+      "ds-mol-card-frame-left",
+      "ds-mol-card-frame-right",
+    ]) {
+      expect(cardFrame?.querySelector(`[data-testid="${t}"]`)).not.toBeNull();
+    }
     const weightCell = $(el, "ds-mol-weight-cell");
     expect(weightCell.querySelector("weight-edit-button")).toBeTruthy();
     const popover = weightCell.querySelector("weight-edit-popover");
@@ -728,7 +749,7 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
         "atoms",
         ["atoms-colors", "atoms-arrows", "atoms-icons", "atoms-pdca"],
       ],
-      ["molecules", ["mol-units", "mol-badges", "mol-disabled", "mol-weight"]],
+      ["molecules", ["mol-units", "mol-badges", "mol-disabled", "mol-weight", "mol-card-frame"]],
       [
         "organisms",
         [
