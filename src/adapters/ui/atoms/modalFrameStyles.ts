@@ -15,10 +15,14 @@
  *       * `overflow: hidden` so the panel itself never scrolls — the
  *         per-modal `.form-pane` (or equivalent inner column) carries
  *         `overflow-y: auto` to scroll content that exceeds the cap.
- *   - The shared **close-X button** styling (`.modal-close-x`) — same
- *     CSS-pseudo-element glyph idiom as the §17.23 close-to-parent X
- *     and the §17.24 plus-tile cross. Inherits `currentColor`, sized
- *     in `rem` so it stays consistent across viewport sizes.
+ *   - The shared **close-X button** styling (`.modal-close-x`) — sized
+ *     in `rem` so it stays consistent across viewport sizes. SPEC
+ *     §17.134 swaps the pre-§17.134 `::before` / `::after` bar pair
+ *     for a `<ds-icon name="x">` Lucide SVG child mounted by
+ *     `renderModalCloseX()`; the §17.24 plus-tile cross and
+ *     §17.116c value-stepper bars deliberately keep the bar idiom
+ *     per the §17.131 operator-locked scope (they're hero
+ *     affordances rather than catalogue close buttons).
  *
  * What this module does NOT own:
  *   - Per-modal layout inside the panel (e.g. `<add-child-modal>`'s
@@ -77,6 +81,8 @@
  */
 
 import { css, html } from "lit";
+
+import "./icon/Icon.js";
 
 /**
  * Shared CSS for every modal in the app. Imported alongside the
@@ -142,12 +148,18 @@ export const modalFrameStyles = css`
     overflow: hidden;
     min-height: 0;
   }
-  /* §17.29 — close-X button sitting in the top-right corner of every
-     modal panel. Same glyph idiom as the §17.23 close-to-parent X:
-     a circular hit-target with two ::before / ::after bars rotated
-     45° to form the X. Inherits currentColor so theme changes Just
-     Work. The 2.25rem footprint matches SPEC §1 "no-keyboard,
-     finger-friendly" target size. */
+  /* SPEC 17.29 / 17.134 -- close-X button sitting in the top-right
+     corner of every modal panel. Pre-17.134 the glyph was a pair of
+     ::before / ::after bars rotated 45 deg to form the X (same
+     CSS-pseudo idiom as the 17.23 close-to-parent X and the 17.24
+     plus-tile cross); 17.134 retires the two-bar construction in
+     favour of a real ds-icon name=x Lucide SVG child mounted by
+     renderModalCloseX(). Inherits currentColor (via the icon
+     stroke=currentColor baked into Lucide) so theme changes Just
+     Work. The 2.25rem footprint matches SPEC 1 no-keyboard,
+     finger-friendly target size. The 1.1rem font-size below drives
+     the ds-icon 1em host box so the SVG fills the same visual
+     width the pre-17.134 1.1rem-wide bars carried. */
   .modal-close-x {
     position: absolute;
     top: clamp(0.4rem, 1vw, 0.85rem);
@@ -163,6 +175,11 @@ export const modalFrameStyles = css`
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    line-height: 1;
   }
   .modal-close-x:hover {
     background: color-mix(in srgb, currentColor 12%, transparent);
@@ -174,24 +191,6 @@ export const modalFrameStyles = css`
   }
   .modal-close-x:active {
     background: color-mix(in srgb, currentColor 22%, transparent);
-  }
-  .modal-close-x::before,
-  .modal-close-x::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 1.1rem;
-    height: 2px;
-    background: currentColor;
-    border-radius: 1px;
-    transform-origin: center;
-  }
-  .modal-close-x::before {
-    transform: translate(-50%, -50%) rotate(45deg);
-  }
-  .modal-close-x::after {
-    transform: translate(-50%, -50%) rotate(-45deg);
   }
 `;
 
@@ -216,5 +215,5 @@ export function renderModalCloseX(onClose: () => void) {
     aria-label="Close modal"
     title="Close modal"
     @click=${onClose}
-  ></button>`;
+  ><ds-icon name="x"></ds-icon></button>`;
 }
