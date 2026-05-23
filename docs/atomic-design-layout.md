@@ -136,7 +136,7 @@ Molecules tier and so genuinely belongs in `molecules/`.
 | **R3c** | Organisms — ComputedNode | **done** (§17.128 R3c) |
 | **R3d** | Organisms — TextNode | **done** (§17.128 R3d) |
 | **R3e** | Organisms — WorkflowNode | **done** (§17.128 R3e) |
-| **R3f** | Organisms — PictureNode | pending |
+| **R3f** | Organisms — PictureNode | **done** (§17.128 R3f) |
 | **R3g** | Organisms — URLNode | pending |
 | **R3h-1** | Organisms — modals (AddChild + EditNode) | pending |
 | **R3h-2** | Organisms — modals (About + BoardSettings + BoardsPanel) | pending |

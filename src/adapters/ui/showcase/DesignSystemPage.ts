@@ -43,8 +43,8 @@ import "../organisms/TextNode/TextNodeAsParent.js";
 import "../organisms/TextNode/TextNodeAsChild.js";
 import "../organisms/WorkflowNode/WorkflowNodeAsParent.js";
 import "../organisms/WorkflowNode/WorkflowNodeAsChild.js";
-import "../views/PictureNode/PictureNodeAsParent.js";
-import "../views/PictureNode/PictureNodeAsChild.js";
+import "../organisms/PictureNode/PictureNodeAsParent.js";
+import "../organisms/PictureNode/PictureNodeAsChild.js";
 import "../views/URLNode/URLNodeAsParent.js";
 import "../views/URLNode/URLNodeAsChild.js";
 import type { BreadcrumbSegment } from "../organisms/shell/Breadcrumb.js";
@@ -192,7 +192,7 @@ import "../organisms/WorkflowNode/WorkflowNodeAsChild.js";
 html\`<text-node-as-parent     .vm=\${textVm}></text-node-as-parent>\`;
 html\`<workflow-node-as-parent .vm=\${wfVm}></workflow-node-as-parent>\`;
 // wfVm.status + wfVm.availableStatuses drive the AsParent PDCA picker.`,
-  "org-picture": `import "../views/PictureNode/PictureNodeAsParent.js";
+  "org-picture": `import "../organisms/PictureNode/PictureNodeAsParent.js";
 import "../views/URLNode/URLNodeAsParent.js";
 
 html\`<picture-node-as-parent .vm=\${picVm}></picture-node-as-parent>\`;
