@@ -94,11 +94,11 @@ import {
   INLINE_EDIT_VALUE_EVENT,
   type InlineEditTitleDetail,
   type InlineEditValueDetail,
-} from "../inlineEditEvents.js";
+} from "../../molecules/inlineEditEvents.js";
 import {
   focusAndSelectInline,
   inlineEditKey,
-} from "../inlineEditHelpers.js";
+} from "../../molecules/inlineEditHelpers.js";
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { formatValue } from "../../atoms/numberFormat.js";

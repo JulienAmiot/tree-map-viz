@@ -92,7 +92,7 @@ import type { InlineEditWeightDetail } from "./adapters/ui/views/childWeight/wei
 import type {
   InlineEditTitleDetail,
   InlineEditValueDetail,
-} from "./adapters/ui/views/inlineEditEvents.js";
+} from "./adapters/ui/molecules/inlineEditEvents.js";
 import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
 import {
   AddChildService,

@@ -34,7 +34,7 @@ import {
   disabledToggleStyles,
   renderDisabledIndicator,
 } from "../../molecules/disabledToggle.js";
-import { renderStaticTitle } from "../inlineTitleEdit.js";
+import { renderStaticTitle } from "../../molecules/inlineTitleEdit.js";
 import type { WorkflowNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
