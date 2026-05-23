@@ -7,8 +7,9 @@
  * element just slots in. It is intentionally thin: a `data-testid` /
  * `data-focused-id` wrapper around `<node-view view-role="asParent">`.
  *
- * Importing `../views/index.js` is the side-effect import that registers
- * + freezes `nodeViewRegistry`; the strip never registers entries itself.
+ * Importing `../molecules/registerNodeViews.js` is the side-effect import
+ * that registers + freezes `nodeViewRegistry`; the strip never registers
+ * entries itself.
  *
  * §17.23 — close-to-parent affordance:
  *   When the focus has a parent (`parentId` is set), the strip overlays a
@@ -52,7 +53,7 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
-import "../views/index.js";
+import "../molecules/registerNodeViews.js";
 import type { NodeViewModel } from "../molecules/NodeViewModel.js";
 
 /** Event name used by the close-X button. */

@@ -312,7 +312,7 @@ export const tileLayoutStyles = css`
      row via the shared unitChipStyles rule on the .unit-chip
      element. The scan order on the tile becomes
      "title(unit) → value → timestamp", one row shorter than the
-     §17.116d layout. See src/adapters/ui/views/unitChip.ts for
+     §17.116d layout. See src/adapters/ui/molecules/unitChip.ts for
      the helper + styles consumed by BSC + CBSN views. */
   /* SPEC §17.116 — the computation-kind label rule retired in
      §17.116-followup-2 on operator feedback ("remove the

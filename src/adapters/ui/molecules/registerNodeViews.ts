@@ -1,5 +1,6 @@
 /**
- * Views barrel — single side-effect entry point for the view layer
+ * Node-views registration barrel — single side-effect entry point for the
+ * (kind, role) → custom-element wiring of the kiosk's tile renderer
  * (SPEC §5 — Dispatcher / OCP).
  *
  * Importing this module:
@@ -10,19 +11,25 @@
  *      cannot be violated by accident.
  *
  * Adding a new node kind:
- *   - drop a `views/<Kind>/{<Kind>AsParent,<Kind>AsChild}.ts` pair;
+ *   - drop an `organisms/<Kind>/{<Kind>AsParent,<Kind>AsChild}.ts` pair;
  *   - import them here and add the `nodeViewRegistry.register(...)` line;
  *   - the dispatcher (`<node-view>`) needs no edit — that's the point of
  *     the registry indirection.
  *
  * The "+" affordance (`PlusTile`) is intentionally **not** in the registry
- * (§5 final sentence). The shell decides whether to render it directly.
+ * (§5 final sentence). The templates / pages tier decides whether to
+ * render it directly.
+ *
+ * Migrated from the retired `views/index.ts` barrel in §17.128 (R5b) when
+ * the legacy `views/` directory was retired — the barrel lives next to
+ * the registry it freezes (`molecules/nodeViewRegistry.ts`) so the
+ * Open/Closed pivot point and the side-effect bootstrap stay co-located.
  */
 
 import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "../organisms/ComputedNode/ComputedCards.js";
-import "../molecules/NodeView.js";
+import "./NodeView.js";
 import "../organisms/PictureNode/PictureNodeAsChild.js";
 import "../organisms/PictureNode/PictureNodeAsParent.js";
 import "../organisms/TextNode/TextNodeAsChild.js";
@@ -31,9 +38,9 @@ import "../organisms/WorkflowNode/WorkflowNodeAsChild.js";
 import "../organisms/WorkflowNode/WorkflowNodeAsParent.js";
 import "../organisms/URLNode/URLNodeAsChild.js";
 import "../organisms/URLNode/URLNodeAsParent.js";
-import "../molecules/plus/PlusTile.js";
+import "./plus/PlusTile.js";
 
-import { nodeViewRegistry } from "../molecules/nodeViewRegistry.js";
+import { nodeViewRegistry } from "./nodeViewRegistry.js";
 
 if (!nodeViewRegistry.isFrozen()) {
   nodeViewRegistry.register("TextNode", {
@@ -91,8 +98,8 @@ export type {
   TextNodeViewModel,
   WorkflowNodeViewModel,
   URLNodeViewModel,
-} from "../molecules/NodeViewModel.js";
-export { nodeViewRegistry, NodeViewRegistryError } from "../molecules/nodeViewRegistry.js";
+} from "./NodeViewModel.js";
+export { nodeViewRegistry, NodeViewRegistryError } from "./nodeViewRegistry.js";
 export { COMPUTATION_KIND_CHANGE_EVENT, type ComputationKindChangeDetail } from "../organisms/ComputedNode/ComputedCards.js";
-export { PLUS_TILE_ACTIVATE_EVENT } from "../molecules/plus/PlusTile.js";
-export type { PlusTileActivateDetail } from "../molecules/plus/PlusTile.js";
+export { PLUS_TILE_ACTIVATE_EVENT } from "./plus/PlusTile.js";
+export type { PlusTileActivateDetail } from "./plus/PlusTile.js";

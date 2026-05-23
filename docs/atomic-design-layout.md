@@ -130,7 +130,7 @@ Molecules tier and so genuinely belongs in `molecules/`.
 | **R2a** | Molecules — render helpers | **done** (§17.128 R2a) |
 | **R2b** | Molecules — inline-edit helpers | **done** (§17.128 R2b) |
 | **R2c** | Molecules — NodeView + registry + mapper | **done** (§17.128 R2c) |
-| **R2d** | Molecules — childWeight + plus | **done** (§17.128 R2d) — molecules tier feature-complete (minus `views/index.ts` barrel) |
+| **R2d** | Molecules — childWeight + plus | **done** (§17.128 R2d) — molecules tier feature-complete (minus `views/index.ts` barrel, retired in R5b) |
 | **R3a** | Organisms — shell | **done** (§17.128 R3a) |
 | **R3b** | Organisms — BusinessScoreCardNode | **done** (§17.128 R3b) |
 | **R3c** | Organisms — ComputedNode | **done** (§17.128 R3c) |
@@ -142,7 +142,7 @@ Molecules tier and so genuinely belongs in `molecules/`.
 | **R3h-2** | Organisms — modals (AddChild + EditNode) | **done** (§17.128 R3h-2) — modals tier complete |
 | **R4**  | Templates — ChildrenGrid + ParentIdentityStrip | **done** (§17.128 R4) — templates tier complete |
 | **R5a** | Pages — TreeMapScreen | **done** (§17.128 R5a) — legacy `shell/` removed |
-| **R5b** | Pages — DesignSystemPage + sampleViewModels | pending |
+| **R5b** | Pages — DesignSystemPage + sampleViewModels + retire `views/` barrel | **done** (§17.128 R5b) — atomic-design refactor complete |
 
 ## 7. Test-file co-movement
 

@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import "../../../../../adapters/ui/showcase/DesignSystemPage.js";
+import "../../../../../../adapters/ui/pages/showcase/DesignSystemPage.js";
 import {
   DESIGN_SYSTEM_CLOSE_EVENT,
   type DesignSystemPage,
-} from "../../../../../adapters/ui/showcase/DesignSystemPage.js";
+} from "../../../../../../adapters/ui/pages/showcase/DesignSystemPage.js";
 import {
   cleanupLitFixtures,
   mountLitElement,
-} from "../../../../fixtures/litElementFixture.js";
+} from "../../../../../fixtures/litElementFixture.js";
 
 afterEach(cleanupLitFixtures);
 

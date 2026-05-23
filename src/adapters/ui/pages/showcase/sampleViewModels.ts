@@ -31,8 +31,8 @@ import type {
   TextNodeViewModel,
   URLNodeViewModel,
   WorkflowNodeViewModel,
-} from "../molecules/NodeViewModel.js";
-import type { BreadcrumbSegment } from "../organisms/shell/Breadcrumb.js";
+} from "../../molecules/NodeViewModel.js";
+import type { BreadcrumbSegment } from "../../organisms/shell/Breadcrumb.js";
 
 const ALL_COMPUTATION_KINDS = [
   "SUM",

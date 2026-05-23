@@ -49,8 +49,11 @@ import type {
  * contract = no view-layer changes when §17.93 cuts main.ts over
  * to the v4 read path.
  *
- * Lives at `src/adapters/ui/views/viewModelMapperV4.ts` next to the
- * v3 mapper; both coexist until Phase F deletes v3.
+ * Lives at `src/adapters/ui/molecules/viewModelMapper.ts` since the
+ * §17.128 R2c molecules-tier move (was `adapters/ui/views/
+ * viewModelMapperV4.ts` historically; renamed back to its v3-name
+ * `viewModelMapper.ts` after Phase F deleted v3). The v3/v4 dichotomy
+ * is no longer visible here.
  *
  * **Three structural deltas from v3**:
  *
