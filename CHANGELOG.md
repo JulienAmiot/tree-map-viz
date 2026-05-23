@@ -16,6 +16,28 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **CSS-pseudo glyphs migrated to the `<ds-icon>` Lucide atom (§17.133,
+  L3a of 4-strand migration)**. The six remaining Unicode codepoints
+  that rendered via CSS `::before { content: "\u…" }` rules on the
+  kiosk are now real `<ds-icon name="…">` Lucide SVG children inside
+  their existing wrapper elements: the bullseye on the BSC target row,
+  the deadline-risk warning on the BSC target row + the cannot-compute
+  warning-fill on Computed / Picture / URL tiles, the forbidden-sign
+  on the `.disabled-indicator` (AsChild role on every node kind), and
+  the `×` / `✓` glyphs on the `.disabled-switch` (AsParent role on
+  every node kind). The wrapper elements' `data-testid` + `role` +
+  `aria-label` + inline `color:` chains are unchanged so every
+  existing selector + the §17.44 yellow → orange → red deadline-risk
+  colour ramp keep working untouched — only the glyph source moves
+  from a system-font Unicode codepoint into a Lucide SVG. The
+  design-system showcase's kiosk-glyph grid is retired in favour of a
+  tombstone block that maps each retired codepoint (`U+25CE`,
+  `U+26A0`, `U+29B8`, `U+00D7`, `U+2713`) to its Lucide replacement
+  so an operator searching by codepoint still lands on a result. The
+  close-X CSS-pseudo bars on modal frames + the focused-panel
+  parent-strip will migrate next (§17.134 / L3b); the §17.24 chunky
+  plus-tile cross + §17.116c value-stepper bars deliberately stay
+  CSS-only per the §17.131 operator-locked scope.
 - **Inline-Lit glyphs migrated to the `<ds-icon>` Lucide atom (§17.132,
   L2 of 4-strand migration)**. The five BSC trend arrows (↑ ↗ → ↘ ↓ on
   `<business-score-card-as-parent>`, `<business-score-card-as-child>`,

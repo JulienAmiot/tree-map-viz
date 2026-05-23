@@ -129,13 +129,14 @@ const TREND_ARROW_SLUGS = {
 } as const;
 // rendered as <ds-icon name=\${TREND_ARROW_SLUGS[direction]}></ds-icon>
 // (was a Unicode arrow + per-platform emoji-font fallback pre-§17.132).`,
-  "atoms-glyphs": `// Remaining Unicode glyphs used by the kiosk's CSS-pseudo
-// constructions (the L3a migration strand will swap these to <ds-icon>):
-//   U+25CE  bullseye    -> .target-icon::before
-//   U+26A0  warning     -> .warning-icon::before + .warning-fill::before
-//   U+29B8  forbidden   -> .disabled-indicator::before
-//   U+00D7  times       -> .disabled-switch::before (off-state)
-//   U+2713  check       -> .disabled-switch[aria-checked=true]::before`,
+  "atoms-glyphs": `// §17.133 retired every Unicode CSS-pseudo glyph from the kiosk:
+//   target       -> <ds-icon name="target">         (was U+25CE ::before)
+//   triangle-alert -> <ds-icon name="triangle-alert">(was U+26A0 ::before)
+//   ban          -> <ds-icon name="ban">            (was U+29B8 ::before)
+//   x            -> <ds-icon name="x">              (was U+00D7 ::before)
+//   check        -> <ds-icon name="check">          (was U+2713 ::before)
+// All five glyphs are now first-class Lucide entries above; L3b
+// will swap the close-X CSS-pseudo bars next.`,
   "atoms-icons": `import { ICON_REGISTRY } from "../../atoms/icon/Icon.js";
 html\`<ds-icon name="scale"></ds-icon>\`;
 html\`<ds-icon name="check" label="Confirmed"></ds-icon>\`;
@@ -247,15 +248,20 @@ html\`<tree-map-screen
 // to TreeNavigationService + EditNodeService + BoardCollectionService.`,
 };
 
-/** Remaining Unicode glyphs in CSS-pseudo `content:` rules (the §17.132
- * L2 swap retired the sigma + scales + crayon entries; the L3a strand
- * will retire the rest by migrating the CSS pseudos to `<ds-icon>`). */
-const KIOSK_GLYPHS: readonly { glyph: string; codepoint: string; label: string }[] = [
-  { glyph: "\u25CE", codepoint: "U+25CE", label: "Bullseye — objective target row" },
-  { glyph: "\u26A0\uFE0E", codepoint: "U+26A0", label: "Warning — deadline-risk overlay" },
-  { glyph: "\u29B8", codepoint: "U+29B8", label: "Forbidden — disabled indicator" },
-  { glyph: "\u00D7", codepoint: "U+00D7", label: "Times — disabled-switch off" },
-  { glyph: "\u2713", codepoint: "U+2713", label: "Check — disabled-switch on" },
+/** §17.133 — the last 5 Unicode CSS-pseudo glyphs (bullseye, warning,
+ * forbidden, times, check) migrated to the §17.131 `<ds-icon>` atom;
+ * no Unicode glyph survives anywhere on the kiosk except inside
+ * existing close-X CSS-pseudo bar pairs (the L3b follow-up). The
+ * Atoms-tier `atoms-glyphs` cell now renders a single retirement
+ * note (kept as a tombstone so a search for "U+25CE" / "U+29B8" in
+ * the design system still lands the operator on a result that
+ * explains where the glyph went). */
+const KIOSK_GLYPHS_RETIRED: readonly { name: string; codepoint: string }[] = [
+  { name: "target", codepoint: "U+25CE" },
+  { name: "triangle-alert", codepoint: "U+26A0" },
+  { name: "ban", codepoint: "U+29B8" },
+  { name: "x", codepoint: "U+00D7" },
+  { name: "check", codepoint: "U+2713" },
 ] as const;
 
 @customElement("design-system-page")
@@ -881,19 +887,25 @@ export class DesignSystemPage extends LitElement {
       </div>
         `,
       )}
-      ${this.section("atoms-glyphs", "glyph bullseye warning sigma forbidden times check scales crayon weight edit pencil unicode codepoint kiosk", html`
-      <h2 data-testid="ds-atoms-glyphs">Kiosk Unicode glyphs</h2>
-      <div class="glyph-grid">
-        ${KIOSK_GLYPHS.map(
+      ${this.section("atoms-glyphs", "glyph bullseye warning sigma forbidden times check scales crayon weight edit pencil unicode codepoint kiosk retired migrated lucide", html`
+      <h2 data-testid="ds-atoms-glyphs">Kiosk Unicode glyphs &mdash; retired (&sect;17.133)</h2>
+      <p data-testid="ds-glyphs-retired-note" class="icon-note">
+        Every Unicode CSS-pseudo glyph that powered the kiosk pre-&sect;17.133
+        is now a <code>&lt;ds-icon&gt;</code> from the Lucide library
+        (see the next section). This tombstone block keeps the original
+        codepoints discoverable so a search for "U+25CE" or "U+29B8"
+        still lands the operator on a result that explains where the
+        glyph went.
+      </p>
+      <ul data-testid="ds-glyphs-retired-list" class="icon-note">
+        ${KIOSK_GLYPHS_RETIRED.map(
           (g) => html`
-            <div class="glyph-cell" data-testid=${`ds-glyph-${g.codepoint.toLowerCase()}`}>
-              <span class="big">${g.glyph}</span>
-              <span class="code">${g.codepoint}</span>
-              <span class="label">${g.label}</span>
-            </div>
+            <li data-testid=${`ds-glyph-retired-${g.codepoint.toLowerCase()}`}>
+              <code>${g.codepoint}</code> &rarr; <code>&lt;ds-icon name="${g.name}"&gt;</code>
+            </li>
           `,
         )}
-      </div>
+      </ul>
         `,
       )}
       ${this.section("atoms-icons", "icon library lucide ds-icon svg open source attribution license scale pencil crayon target triangle alert warning sigma ban forbidden check times x arrow trend plus", html`

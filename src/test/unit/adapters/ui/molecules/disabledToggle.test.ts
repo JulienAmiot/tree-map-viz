@@ -61,23 +61,30 @@ describe("disabledToggleStyles (§17.122b — outline + icon-aside)", () => {
     expect(css).toMatch(/\.disabled-switch\[aria-checked="true"\]\s+\.knob\s*\{[\s\S]*?left:\s*calc\(100% - var\(--dts-h\)/);
   });
 
-  it("glyph rides a `::before` pseudo on the BUTTON (not the knob) so it sits in the EMPTY half opposite the knob", () => {
+  it("\u00a717.133 \u2014 glyph rides a `<ds-icon class=\"disabled-switch__glyph\">` CHILD (no longer a `::before` pseudo) so it sits in the EMPTY half opposite the knob", () => {
     const css = disabledToggleStyles.cssText;
     // Default: glyph anchored at 72 % of the pill width (centre of the RIGHT half, knob is LEFT).
-    expect(css).toMatch(/\.disabled-switch::before\s*\{[\s\S]*?left:\s*72%/);
+    expect(css).toMatch(/\.disabled-switch__glyph\s*\{[\s\S]*?left:\s*72%/);
     // Checked: glyph anchored at 28 % of the pill width (centre of the LEFT half, knob is RIGHT).
-    expect(css).toMatch(/\.disabled-switch\[aria-checked="true"\]::before\s*\{[\s\S]*?left:\s*28%/);
+    expect(css).toMatch(/\.disabled-switch\[aria-checked="true"\]\s+\.disabled-switch__glyph\s*\{[\s\S]*?left:\s*28%/);
+    // \u00a717.133 -- the pre-\u00a717.133 ::before rules are gone.
+    expect(css).not.toMatch(/\.disabled-switch::before/);
+    expect(css).not.toMatch(/\.disabled-switch\[aria-checked="true"\]::before/);
   });
 
-  it("glyph content is \"\u00d7\" (U+00D7) by default and flips to \"\u2713\" (U+2713) when aria-checked=\"true\"", () => {
+  it("\u00a717.133 \u2014 the `.disabled-switch__glyph` icon's name flips between `x` (U+00D7-equivalent) and `check` (U+2713-equivalent) via `aria-checked` on the host button", () => {
+    // \u00a717.133 -- the glyph is now a real DOM child whose `name` attribute carries the
+    // direction; the CSS rule itself does not encode the codepoint any more.
+    // The render-side flip lives in renderDisabledSwitch() (covered by the
+    // \u00a717.122a/b view tests on TextNode, Computed*, BSC, Workflow); this style
+    // module owns the positioning + colour contract, asserted below.
     const css = disabledToggleStyles.cssText;
-    expect(css).toMatch(/\.disabled-switch::before\s*\{[\s\S]*?content:\s*"\\00d7"/);
-    expect(css).toMatch(/\.disabled-switch\[aria-checked="true"\]::before\s*\{[\s\S]*?content:\s*"\\2713"/);
+    expect(css).toMatch(/\.disabled-switch__glyph\s*\{[\s\S]*?width:\s*0\.7em[\s\S]*?height:\s*0\.7em/);
   });
 
   it("glyph colour matches the active state (red on disabled, green on enabled) — the only thing besides the border + knob that carries colour", () => {
     const css = disabledToggleStyles.cssText;
-    expect(css).toMatch(/\.disabled-switch::before\s*\{[\s\S]*?color:\s*var\(--dts-red\)/);
-    expect(css).toMatch(/\.disabled-switch\[aria-checked="true"\]::before\s*\{[\s\S]*?color:\s*var\(--dts-green\)/);
+    expect(css).toMatch(/\.disabled-switch__glyph\s*\{[\s\S]*?color:\s*var\(--dts-red\)/);
+    expect(css).toMatch(/\.disabled-switch\[aria-checked="true"\]\s+\.disabled-switch__glyph\s*\{[\s\S]*?color:\s*var\(--dts-green\)/);
   });
 });

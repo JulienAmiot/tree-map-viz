@@ -71,12 +71,35 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     for (const t of ["bg", "panel", "text", "muted", "accent"]) {
       expect($(el, `ds-token-${t}`)).toBeTruthy();
     }
-    // \u00a717.132 -- the scales + crayon Unicode glyphs were retired
-    // from the kiosk-glyphs grid when the L2 strand migrated the
-    // child-weight + focused-card-edit affordances to the §17.131
-    // `<ds-icon>` Lucide atom (those callsites no longer render a
-    // Unicode glyph at all). Pin their ABSENCE so a future regression
-    // can't silently restore the system-font dependency.
+    // \u00a717.132 + \u00a717.133 -- every Unicode CSS-pseudo glyph that
+    // used to render on the kiosk has now been migrated to the
+    // \u00a717.131 `<ds-icon>` Lucide atom. The `atoms-glyphs` section
+    // turns into a retirement tombstone block listing the old
+    // codepoints alongside their Lucide replacements (so a search
+    // for "U+25CE" / "U+29B8" in the design system still lands on a
+    // result). The five retired codepoints each surface as a
+    // `data-testid="ds-glyph-retired-<u+codepoint>"` `<li>`; the
+    // pre-\u00a717.133 `ds-glyph-<codepoint>` cell `<div>`s no longer
+    // exist anywhere on the page.
+    for (const codepoint of [
+      "u+25ce",
+      "u+26a0",
+      "u+29b8",
+      "u+00d7",
+      "u+2713",
+    ]) {
+      expect(
+        el.shadowRoot?.querySelector(`[data-testid="ds-glyph-${codepoint}"]`),
+      ).toBeNull();
+      expect(
+        el.shadowRoot?.querySelector(
+          `[data-testid="ds-glyph-retired-${codepoint}"]`,
+        ),
+      ).toBeTruthy();
+    }
+    // The \u00a717.132 scales + crayon entries that flipped to ABSENCE
+    // in the L2 strand stay absent (L2 retired them entirely, never
+    // added them to the L3a retirement tombstone).
     expect(
       el.shadowRoot?.querySelector('[data-testid="ds-glyph-u+2696"]'),
     ).toBeNull();

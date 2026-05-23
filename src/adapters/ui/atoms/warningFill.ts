@@ -28,11 +28,20 @@
 
 import { html, type TemplateResult } from "lit";
 
+import "./icon/Icon.js";
+
 /**
  * Renders the warning glyph. `reason` lands on `data-reason`,
  * `ariaLabel` on `aria-label`; both are required so callers
  * cannot accidentally emit a glyph without a structured failure
  * mode + a screen-reader-readable description.
+ *
+ * SPEC §17.133 — the inner glyph is the `<ds-icon name="triangle-alert">`
+ * Lucide SVG (was a CSS-pseudo `::before` rule with `content:
+ * "\u26A0\uFE0E"` on `.warning-fill` pre-§17.133). The wrapping
+ * `<div class="warning-fill">` is unchanged so every existing
+ * `data-testid="warning-fill"` selector + `data-reason=…`
+ * branching keeps working without a test rewrite.
  */
 export function renderWarningFill(
   reason: string,
@@ -44,5 +53,5 @@ export function renderWarningFill(
     data-reason=${reason}
     role="img"
     aria-label=${ariaLabel}
-  ></div>`;
+  ><ds-icon name="triangle-alert"></ds-icon></div>`;
 }

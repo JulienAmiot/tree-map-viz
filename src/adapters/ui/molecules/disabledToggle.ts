@@ -1,17 +1,19 @@
 /**
- * SPEC §17.121i / §17.122a — inline disable affordance for the
- * §17.99a `ValueNode.disabled` flag. Two surfaces, two visual
- * languages:
+ * SPEC §17.121i / §17.122a / §17.133 — inline disable affordance
+ * for the §17.99a `ValueNode.disabled` flag. Two surfaces, two
+ * visual languages:
  *
  *  - **AsChild (passive, tree-map tile)** —
  *    `renderDisabledIndicator(disabled)` returns a small, muted
- *    "forbidden sign" glyph (U+29B8 CIRCLED REVERSE SOLIDUS) ONLY
- *    when `disabled` is true, otherwise `nothing`. Sits at the
- *    left of the tree-map tile title. The glyph is text-style
- *    (monochrome on every system, no colour-emoji surprise), sized
- *    at ~0.9em of the title font, and painted in a desaturated
- *    grey so it reads as a quiet "this card is parked" badge at a
- *    glance without competing with the title text.
+ *    `<ds-icon name="ban">` Lucide SVG inside a `.disabled-indicator`
+ *    wrapper, ONLY when `disabled` is true, otherwise `nothing`.
+ *    Sits at the left of the tree-map tile title. The icon
+ *    inherits `currentColor` and reads as a calm "this card is
+ *    parked" badge at a glance without competing with the title
+ *    text. The §17.121i pre-§17.133 path used a CSS-pseudo
+ *    `content: "\u29B8"` on the same wrapper; §17.133 swaps it
+ *    for a real `<ds-icon>` child so the glyph stops depending on
+ *    the system symbol font.
  *  - **AsParent (interactive, focused panel)** —
  *    `renderDisabledSwitch(host, nodeId, disabled)` returns a
  *    `<button role="switch">` whose semantic mirrors "is this node
@@ -25,26 +27,28 @@
  *      DISABLED (aria-checked="false"):
  *        - red border (rgb(220, 38, 38))
  *        - red knob on the LEFT
- *        - red "×" (U+00D7) glyph centred in the RIGHT half
+ *        - red `<ds-icon name="x">` centred in the RIGHT half
  *
  *      ENABLED  (aria-checked="true"):
  *        - green border (rgb(34, 197, 94))
  *        - green knob on the RIGHT
- *        - green "✓" (U+2713) glyph centred in the LEFT half
+ *        - green `<ds-icon name="check">` centred in the LEFT half
  *
- *    The glyph rides a `::before` pseudo on the button itself, not
- *    on the knob, so it stays anchored to the empty half via
- *    percentage positioning and only changes content + colour +
- *    side via aria-checked. Sits at the same left-of-title
- *    position as the AsChild indicator. Sized at 1em tall so the
- *    pill fits cleanly inside the 3vh title row's line-box at
- *    every kiosk viewport. Click dispatches
- *    `value-node-disabled-change` (bubbles + composed) with the
- *    toggled `disabled` value; `main.ts` routes through
- *    `EditNodeService.editFields`.
+ *    SPEC §17.133 — the glyph used to ride a `::before` pseudo on
+ *    the button with `content: "\u00D7"` / `content: "\u2713"`; it
+ *    is now a real `<ds-icon class="disabled-switch__glyph">` child
+ *    whose `name` attribute flips on disabled state. The element
+ *    is still absolutely positioned (knob's empty half via the
+ *    72 % / 28 % percentage anchor) so the visual contract is
+ *    unchanged — only the glyph source moves from system font to
+ *    Lucide SVG. Click dispatches `value-node-disabled-change`
+ *    (bubbles + composed) with the toggled `disabled` value;
+ *    `main.ts` routes through `EditNodeService.editFields`.
  */
 
 import { type TemplateResult, css, html, nothing } from "lit";
+
+import "../atoms/icon/Icon.js";
 
 export const VALUE_NODE_DISABLED_CHANGE_EVENT = "value-node-disabled-change";
 export type ValueNodeDisabledChangeDetail = {
@@ -58,8 +62,16 @@ export const disabledToggleStyles = css`
      no background, no pseudo-element box that could clip against
      the 3vh title row. Muted grey so the indicator reads as a calm
      status badge rather than competing with the title text. */
+  /* SPEC 17.133 -- the 17.121i U+29B8 CIRCLED REVERSE SOLIDUS
+     glyph that used to ride a ::before pseudo on this span is
+     now a ds-icon name=ban Lucide SVG child, mounted by
+     renderDisabledIndicator(). The Lucide swap removes the
+     system-font dependency that drifted into the colour-emoji
+     red ring rendering on some Android fonts; monochrome
+     currentColor is now guaranteed across platforms. */
   .disabled-indicator {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     vertical-align: baseline;
     margin-right: 0.35em;
     font-size: 0.9em;
@@ -67,17 +79,6 @@ export const disabledToggleStyles = css`
     color: color-mix(in srgb, currentColor 38%, transparent);
     user-select: none;
     pointer-events: none;
-  }
-  .disabled-indicator::before {
-    /* U+29B8 CIRCLED REVERSE SOLIDUS — a text-style "no/blocked"
-       glyph (circle with a backslash through it), always
-       monochrome (no colour-emoji presentation), present in the
-       system symbol fonts every kiosk target ships (Segoe UI
-       Symbol, Apple Symbols, Noto Sans Symbols). Reads as a
-       forbidden sign at a glance without the colour-emoji "red
-       ring" the U+1F6AB / U+26D4 variants paint by default. */
-    content: "\u29B8";
-    font-weight: 700;
   }
   /* SPEC §17.121i / §17.122a / §17.122b — write-side toggle switch.
      The pill represents "is this node enabled?" (aria-checked =
@@ -149,38 +150,32 @@ export const disabledToggleStyles = css`
     left: calc(100% - var(--dts-h) + 0.24em);
     background: var(--dts-green);
   }
-  /* Glyph in the empty half. The two "left" percentages place the
-     glyph in the centre of the half opposite the knob:
-       - DISABLED → knob LEFT, glyph at ~72 % of width (RIGHT half).
-       - ENABLED  → knob RIGHT, glyph at ~28 % of width (LEFT half).
-     The translate(-50%, -50%) transform centres the glyph on that
-     anchor point so the spacing is symmetric on both ends.
-
-     CSS-escaped Unicode glyphs: the JS template literal needs the
-     backslash escaped (double-backslash in the source) so that the
-     resulting CSS sees a single backslash followed by the codepoint:
-     U+00D7 MULTIPLICATION SIGN (×) and U+2713 CHECK MARK (✓).
-     Without the double-backslash, "\\0..." and "\\2..." would be
-     invalid ECMAScript escape sequences that silently collapse the
-     template's cooked string to undefined (per the ES2018 template-
-     literal-revision spec amendment). */
-  .disabled-switch::before {
+  /* SPEC 17.133 -- glyph rides a real ds-icon child (was a
+     ::before pseudo pre-17.133). The element sits absolutely
+     positioned in the empty half opposite the knob:
+       - DISABLED -> knob LEFT, glyph at ~72 % of width (RIGHT half).
+       - ENABLED  -> knob RIGHT, glyph at ~28 % of width (LEFT half).
+     The translate(-50%, -50%) transform centres the icon on that
+     anchor point so the spacing is symmetric on both ends. The
+     Lucide swap removes the system-font dependency the pre-17.133
+     U+00D7 / U+2713 codepoints needed. The 0.7em sizing matches
+     the pre-17.133 ::before font-size; the ds-icon atom defaults
+     to a 1em host box so width/height drive the SVG rendered size
+     directly. */
+  .disabled-switch__glyph {
     position: absolute;
     top: 50%;
     left: 72%;
     transform: translate(-50%, -50%);
-    font-size: 0.7em;
-    font-weight: 900;
-    line-height: 1;
+    width: 0.7em;
+    height: 0.7em;
     color: var(--dts-red);
-    content: "\\00d7";
     pointer-events: none;
     transition: left 160ms ease, color 160ms ease;
   }
-  .disabled-switch[aria-checked="true"]::before {
+  .disabled-switch[aria-checked="true"] .disabled-switch__glyph {
     left: 28%;
     color: var(--dts-green);
-    content: "\\2713";
   }
 `;
 
@@ -193,7 +188,7 @@ export function renderDisabledIndicator(
     data-testid="disabled-indicator"
     aria-label="Disabled"
     role="img"
-  ></span>`;
+  ><ds-icon name="ban"></ds-icon></span>`;
 }
 
 export function renderDisabledSwitch(
@@ -226,5 +221,6 @@ export function renderDisabledSwitch(
     @click=${onClick}
   >
     <span class="knob" aria-hidden="true"></span>
+    <ds-icon class="disabled-switch__glyph" name=${disabled ? "x" : "check"}></ds-icon>
   </button>`;
 }
