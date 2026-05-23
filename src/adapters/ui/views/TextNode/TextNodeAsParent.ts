@@ -34,7 +34,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
-import { disabledToggleStyles, renderDisabledSwitch } from "../disabledToggle.js";
+import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
 import {
   INLINE_EDIT_TITLE_EVENT,
   INLINE_EDIT_VALUE_EVENT,

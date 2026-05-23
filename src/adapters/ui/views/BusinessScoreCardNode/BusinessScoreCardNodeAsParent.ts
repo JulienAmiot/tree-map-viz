@@ -88,7 +88,7 @@
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
-import { disabledToggleStyles, renderDisabledSwitch } from "../disabledToggle.js";
+import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
 import {
   INLINE_EDIT_TITLE_EVENT,
   INLINE_EDIT_VALUE_EVENT,
@@ -108,7 +108,7 @@ import {
   type InlineUnitEditTarget,
   unitChipStyles,
   unitFromBscValue,
-} from "../unitChip.js";
+} from "../../molecules/unitChip.js";
 import {
   renderTargetRow,
   renderTrendArrow,

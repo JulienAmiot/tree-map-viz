@@ -9,11 +9,11 @@ import {
   type InlineEditValueDetail,
 } from "../../../../../../adapters/ui/views/inlineEditEvents.js";
 import type { WorkflowNodeViewModel } from "../../../../../../adapters/ui/views/NodeViewModel.js";
-import { VALUE_NODE_DISABLED_CHANGE_EVENT, type ValueNodeDisabledChangeDetail } from "../../../../../../adapters/ui/views/disabledToggle.js";
+import { VALUE_NODE_DISABLED_CHANGE_EVENT, type ValueNodeDisabledChangeDetail } from "../../../../../../adapters/ui/molecules/disabledToggle.js";
 import {
   WORKFLOW_STATUS_CHANGE_EVENT,
   type WorkflowStatusChangeDetail,
-} from "../../../../../../adapters/ui/views/WorkflowNode/statusBadge.js";
+} from "../../../../../../adapters/ui/molecules/statusBadge.js";
 import {
   cleanupLitFixtures,
   mountLitElement,

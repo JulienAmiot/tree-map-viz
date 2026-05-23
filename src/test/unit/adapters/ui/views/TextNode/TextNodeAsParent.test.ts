@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import "../../../../../../adapters/ui/views/TextNode/TextNodeAsParent.js";
 import { TextNodeAsParent } from "../../../../../../adapters/ui/views/TextNode/TextNodeAsParent.js";
 import type { TextNodeViewModel } from "../../../../../../adapters/ui/views/NodeViewModel.js";
-import { VALUE_NODE_DISABLED_CHANGE_EVENT, type ValueNodeDisabledChangeDetail } from "../../../../../../adapters/ui/views/disabledToggle.js";
+import { VALUE_NODE_DISABLED_CHANGE_EVENT, type ValueNodeDisabledChangeDetail } from "../../../../../../adapters/ui/molecules/disabledToggle.js";
 import {
   cleanupLitFixtures,
   mountLitElement,

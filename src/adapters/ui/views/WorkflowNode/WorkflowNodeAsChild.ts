@@ -33,13 +33,13 @@ import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
-} from "../disabledToggle.js";
+} from "../../molecules/disabledToggle.js";
 import { renderStaticTitle } from "../inlineTitleEdit.js";
 import type { WorkflowNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 import { fitMarkdownBodyToTile, textBodyStyles } from "../TextNode/textBody.js";
-import { renderStatusBadge, statusBadgeStyles } from "./statusBadge.js";
+import { renderStatusBadge, statusBadgeStyles } from "../../molecules/statusBadge.js";
 
 @customElement("workflow-node-as-child")
 export class WorkflowNodeAsChild extends LitElement {

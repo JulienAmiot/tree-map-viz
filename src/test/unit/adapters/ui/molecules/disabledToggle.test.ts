@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { disabledToggleStyles } from "../../../../../adapters/ui/views/disabledToggle.js";
+import { disabledToggleStyles } from "../../../../../adapters/ui/molecules/disabledToggle.js";
 
 /**
  * §17.122a / §17.122b — the AsParent toggle switch pairs colour +

@@ -51,13 +51,13 @@ import type { WorkflowNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 import { fitMarkdownBodyToTile, textBodyStyles } from "../TextNode/textBody.js";
-import { disabledToggleStyles, renderDisabledSwitch } from "../disabledToggle.js";
+import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
 import {
   WORKFLOW_STATUS_CHANGE_EVENT,
   renderStatusBadgePicker,
   statusBadgeStyles,
   type WorkflowStatusChangeDetail,
-} from "./statusBadge.js";
+} from "../../molecules/statusBadge.js";
 
 @customElement("workflow-node-as-parent")
 export class WorkflowNodeAsParent extends LitElement {

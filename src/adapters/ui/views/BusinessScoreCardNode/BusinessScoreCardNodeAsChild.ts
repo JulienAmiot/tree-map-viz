@@ -14,7 +14,7 @@ import { customElement, property } from "lit/decorators.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
-} from "../disabledToggle.js";
+} from "../../molecules/disabledToggle.js";
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
@@ -22,7 +22,7 @@ import {
   renderUnitChip,
   unitChipStyles,
   unitFromBscValue,
-} from "../unitChip.js";
+} from "../../molecules/unitChip.js";
 import {
   renderTargetRow,
   renderTrendArrow,

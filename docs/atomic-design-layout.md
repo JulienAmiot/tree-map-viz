@@ -127,7 +127,7 @@ Molecules tier and so genuinely belongs in `molecules/`.
 | **R1a** | Atoms — format helpers | **done** (§17.128 R1a) |
 | **R1b** | Atoms — visual helpers | **done** (§17.128 R1b) |
 | **R1c** | Atoms — markdown helper | **done** (§17.128 R1c) — atoms tier complete |
-| **R2a** | Molecules — render helpers | pending |
+| **R2a** | Molecules — render helpers | **done** (§17.128 R2a) |
 | **R2b** | Molecules — inline-edit helpers | pending |
 | **R2c** | Molecules — NodeView + registry + mapper | pending |
 | **R2d** | Molecules — childWeight + plus | pending |

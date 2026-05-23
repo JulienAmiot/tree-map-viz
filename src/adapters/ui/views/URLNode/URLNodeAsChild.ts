@@ -44,7 +44,7 @@ import { customElement, property } from "lit/decorators.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
-} from "../disabledToggle.js";
+} from "../../molecules/disabledToggle.js";
 import { renderStaticTitle } from "../inlineTitleEdit.js";
 import type { URLNodeViewModel } from "../NodeViewModel.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
