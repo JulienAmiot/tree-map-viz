@@ -60,6 +60,21 @@ describe("<about-modal> (\u00a717.84)", () => {
     expect(rel).toMatch(/\bnoreferrer\b/);
   });
 
+  it("renders a safe Third-party licenses link to THIRD_PARTY_LICENSES.md on master (\u00a717.131)", async () => {
+    const el = await mountLitElement<AboutModal>("about-modal", (e) => {
+      e.open = true;
+    });
+    const link = fieldOf(el, "about-licenses-link") as HTMLAnchorElement;
+    expect(link.tagName).toBe("A");
+    expect(link.getAttribute("href")).toBe(
+      "https://github.com/JulienAmiot/tree-map-viz/blob/master/THIRD_PARTY_LICENSES.md",
+    );
+    expect(link.target).toBe("_blank");
+    const rel = link.getAttribute("rel") ?? "";
+    expect(rel).toMatch(/\bnoopener\b/);
+    expect(rel).toMatch(/\bnoreferrer\b/);
+  });
+
   it("Close / close-X / backdrop dispatch `about-cancel` (bubbles+composed)", async () => {
     const el = await mountLitElement<AboutModal>("about-modal", (e) => {
       e.open = true;

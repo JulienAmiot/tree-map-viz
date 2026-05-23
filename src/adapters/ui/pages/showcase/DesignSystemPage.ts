@@ -30,6 +30,7 @@ import {
   renderDisabledIndicator,
   renderDisabledSwitch,
 } from "../../molecules/disabledToggle.js";
+import { ICON_REGISTRY } from "../../atoms/icon/Icon.js";
 import "../../organisms/shell/BurgerMenu.js";
 import "../../organisms/shell/Breadcrumb.js";
 import "../../templates/ParentIdentityStrip.js";
@@ -132,6 +133,10 @@ export const TREND_ARROW_GLYPHS = {
 //   U+29B8  forbidden   -> disabled indicator
 //   U+00D7  times       -> disabled-switch off
 //   U+2713  check       -> disabled-switch on`,
+  "atoms-icons": `import { ICON_REGISTRY } from "../../atoms/icon/Icon.js";
+html\`<ds-icon name="scale"></ds-icon>\`;
+html\`<ds-icon name="check" label="Confirmed"></ds-icon>\`;
+html\`<ds-icon name="x" style="--ds-icon-stroke-width: 3"></ds-icon>\`;`,
   "atoms-pdca": `// src/domain/values/WorkflowStatus.ts
 export const DEFAULT_WORKFLOW_STATUSES = [
   { id: "plan",  label: "PLAN",  color: "rgb(161, 161, 170)" },
@@ -316,6 +321,12 @@ export class DesignSystemPage extends LitElement {
     .glyph-cell .big { font-size: 2rem; line-height: 1; color: var(--text, #e8ecf4); }
     .glyph-cell .label { font-size: 0.78rem; color: var(--muted, #8b95a8); text-align: center; }
     .glyph-cell .code { font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 0.7rem; color: var(--muted, #8b95a8); }
+    .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
+    .icon-cell { display: flex; flex-direction: column; align-items: center; gap: 0.45rem; padding: 0.85rem 0.5rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; }
+    .icon-cell ds-icon { font-size: 2rem; color: var(--text, #e8ecf4); }
+    .icon-cell .slug { font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 0.78rem; color: var(--muted, #8b95a8); }
+    .icon-note { margin: 0.85rem 0 0; padding: 0.75rem 0.95rem; background: color-mix(in srgb, currentColor 4%, transparent); border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; color: var(--muted, #8b95a8); font-size: 0.85rem; }
+    .icon-note a { color: var(--accent, #5b8cff); }
     .pdca-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
     .pdca-badge { padding: 0.18rem 0.75rem; border-radius: 999px; border: 1.5px solid currentColor; font-weight: 600; font-size: 0.82rem; letter-spacing: 0.04em; background: transparent; }
     .mol-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.85rem; }
@@ -883,6 +894,23 @@ export class DesignSystemPage extends LitElement {
           `,
         )}
       </div>
+        `,
+      )}
+      ${this.section("atoms-icons", "icon library lucide ds-icon svg open source attribution license scale pencil crayon target triangle alert warning sigma ban forbidden check times x arrow trend plus", html`
+      <h2 data-testid="ds-atoms-icons">Icon library &mdash; Lucide (&lt;ds-icon&gt;)</h2>
+      <div class="icon-grid">
+        ${Object.keys(ICON_REGISTRY).sort((a, b) => a.localeCompare(b)).map(
+          (slug) => html`
+            <div class="icon-cell" data-testid=${`ds-icon-cell-${slug}`}>
+              <ds-icon name=${slug}></ds-icon>
+              <span class="slug">${slug}</span>
+            </div>
+          `,
+        )}
+      </div>
+      <p class="icon-note">
+        Powered by <a href="https://lucide.dev" target="_blank" rel="noopener noreferrer">Lucide</a> (ISC + MIT) &mdash; see <code>THIRD_PARTY_LICENSES.md</code> + the About modal's <strong>Open-source notices</strong> row.
+      </p>
         `,
       )}
       ${this.section("atoms-pdca", "pdca workflow status plan do check act color badge", html`

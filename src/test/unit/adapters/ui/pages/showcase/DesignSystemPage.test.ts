@@ -56,7 +56,7 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     }
   });
 
-  it("Atoms tier renders four section headers + the 5 colour tokens", async () => {
+  it("Atoms tier renders five section headers + the 5 colour tokens", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",
       (e) => {
@@ -66,6 +66,7 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     expect($(el, "ds-atoms-colors")).toBeTruthy();
     expect($(el, "ds-atoms-arrows")).toBeTruthy();
     expect($(el, "ds-atoms-glyphs")).toBeTruthy();
+    expect($(el, "ds-atoms-icons")).toBeTruthy();
     expect($(el, "ds-atoms-pdca")).toBeTruthy();
     for (const t of ["bg", "panel", "text", "muted", "accent"]) {
       expect($(el, `ds-token-${t}`)).toBeTruthy();
@@ -77,6 +78,43 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     // can't silently drop them from the design system.
     expect($(el, "ds-glyph-u+2696")).toBeTruthy();
     expect($(el, "ds-glyph-u+1f58d")).toBeTruthy();
+  });
+
+  it("Atoms tier renders the Lucide icon-library section with every registered slug + a license attribution (\u00a717.131)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    expect($(el, "ds-atoms-icons")).toBeTruthy();
+    const required = [
+      "arrow-up",
+      "arrow-up-right",
+      "arrow-right",
+      "arrow-down-right",
+      "arrow-down",
+      "ban",
+      "check",
+      "pencil-line",
+      "plus",
+      "scale",
+      "sigma",
+      "target",
+      "triangle-alert",
+      "x",
+    ];
+    for (const slug of required) {
+      const cell = $(el, `ds-icon-cell-${slug}`);
+      expect(cell.querySelector("ds-icon")).toBeTruthy();
+      expect(cell.querySelector(".slug")?.textContent?.trim()).toBe(slug);
+    }
+    const section = $(el, "ds-section-atoms-icons");
+    const license = section.querySelector<HTMLAnchorElement>(
+      "a[href='https://lucide.dev']",
+    );
+    expect(license).toBeTruthy();
+    expect(license?.getAttribute("rel")).toMatch(/\bnoopener\b/);
   });
 
   it("Atoms tier renders all 5 trend arrows + the 4 PDCA badges (\u00a717.127 A2)", async () => {
@@ -657,7 +695,7 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     const tiersWithSections: ReadonlyArray<readonly [string, readonly string[]]> = [
       [
         "atoms",
-        ["atoms-colors", "atoms-arrows", "atoms-glyphs", "atoms-pdca"],
+        ["atoms-colors", "atoms-arrows", "atoms-glyphs", "atoms-icons", "atoms-pdca"],
       ],
       ["molecules", ["mol-units", "mol-badges", "mol-disabled", "mol-weight"]],
       [

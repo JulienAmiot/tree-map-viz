@@ -20,6 +20,12 @@ export const ABOUT_OPEN_DESIGN_SYSTEM_EVENT = "about-open-design-system";
 const REPO_URL = "https://github.com/JulienAmiot/tree-map-viz";
 /** §17.87 — operator-facing "What's new" link; back-filled per `package.json#version` entry, kept in sync via `.cursor/rules/keep-changelog-in-sync.mdc`. */
 const CHANGELOG_URL = `${REPO_URL}/blob/master/CHANGELOG.md`;
+/** §17.131 — third-party-license attribution surface for the Lucide icon
+ * library bundled by `<ds-icon>` + any future dependency that needs
+ * runtime attribution. Points at the canonical `THIRD_PARTY_LICENSES.md`
+ * mirror on master so the operator can read the full ISC + MIT texts
+ * without leaving the kiosk's About surface. */
+const LICENSES_URL = `${REPO_URL}/blob/master/THIRD_PARTY_LICENSES.md`;
 
 @customElement("about-modal")
 export class AboutModal extends LitElement {
@@ -64,6 +70,7 @@ export class AboutModal extends LitElement {
           <div class="row"><span class="label">Build date</span><span class="value" data-testid="about-build-date">${BUILD_DATE}</span></div>
           <div class="row"><span class="label">Repository</span><span class="value"><a href=${REPO_URL} target="_blank" rel="noopener noreferrer" data-testid="about-repo-link">${REPO_URL}</a></span></div>
           <div class="row"><span class="label">What's new</span><span class="value"><a href=${CHANGELOG_URL} target="_blank" rel="noopener noreferrer" data-testid="about-changelog-link">Changelog</a></span></div>
+          <div class="row"><span class="label">Open-source notices</span><span class="value"><a href=${LICENSES_URL} target="_blank" rel="noopener noreferrer" data-testid="about-licenses-link">Third-party licenses</a></span></div>
         </div>
         <div class="actions"><button type="button" class="btn" data-testid="about-open-design-system" @click=${this.openDesignSystem} style="margin-right:auto">Open design system…</button><button type="button" class="btn" data-testid="modal-cancel" @click=${this.cancel}>Close</button></div>
       </section>

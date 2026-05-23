@@ -16,6 +16,28 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **Lucide icon-library foundation — `<ds-icon>` atom + license attribution
+  (§17.131, L1 of 4-strand migration)**. Adds `lucide-static@1.16.0` as a
+  runtime dependency + a new atomic-design atom `<ds-icon>` at
+  `src/adapters/ui/atoms/icon/Icon.ts` backed by a frozen `ICON_REGISTRY`
+  of 14 Lucide slugs (`target`, `triangle-alert`, `sigma`, `ban`, `x`,
+  `check`, `scale`, `pencil-line`, `plus` + the 5 trend arrows
+  `arrow-up` / `arrow-up-right` / `arrow-right` / `arrow-down-right` /
+  `arrow-down`) imported via Vite's `?raw` query so only the registered
+  slugs ship in the bundle. Decorative by default (`aria-hidden`,
+  `role="presentation"`); set `label` to switch to
+  `role="img" aria-label=…`. The Atoms tier of the design-system
+  showcase grows an "Icon library — Lucide (`<ds-icon>`)" section
+  listing every registered slug + an attribution link to lucide.dev.
+  The About modal grows an **Open-source notices** row linking to
+  `THIRD_PARTY_LICENSES.md` (new file at the repo root, mirrors the
+  full Lucide ISC + Feather MIT texts verbatim). No callsite migration
+  in this strand — the existing §17.130 Unicode glyphs continue
+  rendering as-is; follow-up strands migrate inline-Lit glyphs (L2),
+  CSS-pseudo `content:` glyphs (L3a) and close-X buttons (L3b). The
+  §17.24 chunky plus-tile cross + the §17.116c value-stepper bars
+  are deliberately kept as CSS-only constructions per operator
+  decision (they're hero affordances, not catalogue icons).
 - **Design-system showcase, reachable from About (§17.127 strand A1)**.
   The About modal grows an "Open design system…" button that opens a
   new full-screen `<design-system-page>` overlay with a five-tier nav

@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "lit": "^3.3.2",
+    "lucide-static": "^1.16.0",
     "qrcode": "^1.5.4"
   }
 }

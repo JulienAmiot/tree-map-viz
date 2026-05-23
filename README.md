@@ -185,6 +185,7 @@ The Lit custom-element surface (each in its own shadow root, registered via
 | `<node-view>`                | Per-kind dispatcher (`text-node-*` / `bsc-*`)         |
 | `<plus-tile>`                | Synthetic "+ add child" tile                          |
 | `<weight-edit-popover>`      | Touch slider anchored to a child tile                 |
+| `<ds-icon>`                  | Lucide icon atom — `name` slug + `currentColor` SVG   |
 | `<add-child-modal>`          | New-child flow                                        |
 | `<edit-node-modal>`          | Rename / edit / record-value flow                     |
 | `<board-settings-modal>`     | Rename / delete the active board                      |
@@ -199,6 +200,7 @@ The Lit custom-element surface (each in its own shadow root, registered via
 | ------------------- | ---------------------------------------------- |
 | Language            | TypeScript (strict)                            |
 | UI                  | Lit 3 custom elements (no React, no framework) |
+| Iconography         | Lucide (`lucide-static`, ISC + MIT)            |
 | Build / dev server  | Vite 6                                         |
 | Unit tests          | Vitest + jsdom + `@open-wc/testing-helpers`    |
 | End-to-end tests    | playwright-bdd (Gherkin → Playwright)          |
