@@ -41,6 +41,14 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   showcase host silences the `value-node-disabled-change` event bubbled
   by the live switch so a click in the showcase doesn't reach
   `main.ts`'s screen listener.
+- **Design-system showcase — top-bar search filter (§17.127 strand P2)**.
+  The design-system page now has a search input next to its "Back to
+  kiosk" button. Typing filters every section in the current tier by
+  case-insensitive substring match against the section's keyword
+  haystack (heading + helper / glyph / event names). A clear `×`
+  button reveals when the query is non-empty; a per-tier empty-state
+  panel appears when no section matches. The query persists across
+  tier switches.
 - **Pages tier — live `<tree-map-screen>` (§17.127 strand A6)**.
   Closes out the §17.127 A-series sweep. The Pages tier mounts the
   kiosk's real outer page surface (`<tree-map-screen>`) inside the

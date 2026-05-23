@@ -17,7 +17,7 @@
  *     `domain/values/WorkflowStatus.ts#DEFAULT_WORKFLOW_STATUSES`.
  */
 
-import { LitElement, css, html, nothing } from "lit";
+import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
 import { renderUnitChip, unitChipStyles } from "../views/unitChip.js";
@@ -118,6 +118,12 @@ export class DesignSystemPage extends LitElement {
   @state()
   private currentTier: Tier = "atoms";
 
+  /** §17.127 P2 — top-bar search-filter query (case-insensitive
+   * substring match against each section's `data-search-text`).
+   * Persists across tier switches. */
+  @state()
+  private query = "";
+
   static readonly styles = [
     unitChipStyles,
     statusBadgeStyles,
@@ -128,6 +134,14 @@ export class DesignSystemPage extends LitElement {
     .topbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 1.25rem; padding: 0.85rem 1.25rem; background: color-mix(in srgb, currentColor 6%, var(--bg, #0c0f14)); border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
     .brand { color: var(--text, #e8ecf4); font-weight: 700; }
     .spacer { flex: 1; }
+    .search { position: relative; display: inline-flex; align-items: center; }
+    .search input { width: 16rem; padding: 0.4rem 1.85rem 0.4rem 0.7rem; background: color-mix(in srgb, currentColor 6%, transparent); color: inherit; border: 1px solid color-mix(in srgb, currentColor 28%, transparent); border-radius: 6px; font: inherit; }
+    .search input:focus { outline: 2px solid var(--accent, #5b8cff); outline-offset: -1px; }
+    .search input::-webkit-search-cancel-button { display: none; }
+    .search-clear { position: absolute; right: 0.25rem; width: 1.45rem; height: 1.45rem; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--muted, #8b95a8); border: 0; border-radius: 50%; cursor: pointer; font-size: 1rem; line-height: 1; }
+    .search-clear:hover { background: color-mix(in srgb, currentColor 18%, transparent); color: var(--text, #e8ecf4); }
+    .empty-state { padding: 2.25rem 1.25rem; margin-top: 0.85rem; background: color-mix(in srgb, currentColor 4%, transparent); border: 1px dashed color-mix(in srgb, currentColor 22%, transparent); border-radius: 10px; color: var(--muted, #8b95a8); text-align: center; }
+    .empty-state code { background: color-mix(in srgb, currentColor 10%, transparent); padding: 0.05rem 0.4rem; border-radius: 4px; color: var(--text, #e8ecf4); }
     .close-btn { padding: 0.45rem 0.95rem; background: transparent; color: inherit; border: 1px solid color-mix(in srgb, currentColor 35%, transparent); border-radius: 6px; cursor: pointer; font: inherit; }
     .close-btn:hover { background: color-mix(in srgb, currentColor 16%, transparent); }
     .shell { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 56px); }
@@ -221,6 +235,28 @@ export class DesignSystemPage extends LitElement {
       <header class="topbar">
         <span class="brand">Tree Map Viz — design system</span>
         <span class="spacer"></span>
+        <label class="search">
+          <input
+            type="search"
+            data-testid="ds-search"
+            placeholder="Filter this tier…"
+            aria-label="Filter sections in this tier"
+            .value=${this.query}
+            @input=${this.handleSearchInput}
+          />
+          ${this.query
+            ? html`<button
+                type="button"
+                class="search-clear"
+                data-testid="ds-search-clear"
+                aria-label="Clear filter"
+                title="Clear filter"
+                @click=${this.clearSearch}
+              >
+                ×
+              </button>`
+            : nothing}
+        </label>
         <button type="button" class="close-btn" data-testid="design-system-close" @click=${this.close}>
           Back to kiosk
         </button>
@@ -244,6 +280,10 @@ export class DesignSystemPage extends LitElement {
           <h1>${active.label}</h1>
           <p class="lead">${active.lead}</p>
           ${this.renderTierBody(active.id, active.label)}
+          <div class="empty-state" data-testid="ds-empty-state" hidden>
+            No section in <strong>${active.label}</strong> matches
+            "<code>${this.query}</code>".
+          </div>
         </main>
       </div>
     `;
@@ -271,28 +311,29 @@ export class DesignSystemPage extends LitElement {
    * the embedded page is fully inert with respect to `main.ts`.
    */
   private renderPages() {
-    return html`
-      <h2 data-testid="ds-pg-screen">
-        End-to-end kiosk screen (&lt;tree-map-screen&gt;)
-      </h2>
-      <div class="pg-cell" data-testid="ds-pg-screen-cell">
-        <div class="pg-stage">
-          <tree-map-screen
-            data-testid="ds-pg-screen-mount"
-            .boardName=${"Design system demo"}
-            .view=${sampleFocusedTreeView()}
-            .breadcrumbPath=${sampleBreadcrumbPath()}
-          ></tree-map-screen>
+    return this.section("pg-screen", "page tree map screen kiosk end-to-end full", html`
+        <h2 data-testid="ds-pg-screen">
+          End-to-end kiosk screen (&lt;tree-map-screen&gt;)
+        </h2>
+        <div class="pg-cell" data-testid="ds-pg-screen-cell">
+          <div class="pg-stage">
+            <tree-map-screen
+              data-testid="ds-pg-screen-mount"
+              .boardName=${"Design system demo"}
+              .view=${sampleFocusedTreeView()}
+              .breadcrumbPath=${sampleBreadcrumbPath()}
+            ></tree-map-screen>
+          </div>
+          <span class="caption">
+            The real kiosk page surface mounted with a synthesized
+            focused-tree view. Every bubbled UI event the screen
+            surfaces is silenced at the showcase host, so taps stay
+            inside the page and never reach
+            <code>main.ts</code>'s composition root.
+          </span>
         </div>
-        <span class="caption">
-          The real kiosk page surface mounted with a synthesized
-          focused-tree view. Every bubbled UI event the screen
-          surfaces is silenced at the showcase host, so taps stay
-          inside the page and never reach
-          <code>main.ts</code>'s composition root.
-        </span>
-      </div>
-    `;
+      `,
+    );
   }
 
   /**
@@ -307,36 +348,38 @@ export class DesignSystemPage extends LitElement {
   private renderTemplates() {
     const focusedVm = sampleBusinessScoreVMOnTrack();
     const slots = sampleChildSlots(focusedVm.id);
-    return html`
-      <h2 data-testid="ds-tpl-focused">
-        Focused panel template (parent strip + children grid)
-      </h2>
-      <div class="tpl-cell" data-testid="ds-tpl-focused-cell">
-        <div class="tpl-stage">
-          <parent-identity-strip
-            .vm=${focusedVm}
-            parent-id="ds-demo-grandparent"
-          ></parent-identity-strip>
-          <children-grid .slots=${slots}></children-grid>
+    return this.section("tpl-focused", "template focused panel parent strip children grid composition", html`
+        <h2 data-testid="ds-tpl-focused">
+          Focused panel template (parent strip + children grid)
+        </h2>
+        <div class="tpl-cell" data-testid="ds-tpl-focused-cell">
+          <div class="tpl-stage">
+            <parent-identity-strip
+              .vm=${focusedVm}
+              parent-id="ds-demo-grandparent"
+            ></parent-identity-strip>
+            <children-grid .slots=${slots}></children-grid>
+          </div>
+          <span class="caption">
+            Composition of <code>&lt;parent-identity-strip&gt;</code> on
+            top (focused VM in AsParent role + edit-pencil + close-X)
+            and <code>&lt;children-grid&gt;</code> below (squarified
+            treemap of 3 child slots + a trailing <code>+</code>
+            affordance). Bubbled <code>focus-close-to-parent</code> /
+            <code>edit-node-open</code> / <code>tile-drill</code> /
+            <code>weight-edit-open</code> are silenced at the showcase
+            host so taps don't escape to <code>main.ts</code>.
+          </span>
         </div>
-        <span class="caption">
-          Composition of <code>&lt;parent-identity-strip&gt;</code> on
-          top (focused VM in AsParent role + edit-pencil + close-X)
-          and <code>&lt;children-grid&gt;</code> below (squarified
-          treemap of 3 child slots + a trailing <code>+</code>
-          affordance). Bubbled <code>focus-close-to-parent</code> /
-          <code>edit-node-open</code> / <code>tile-drill</code> /
-          <code>weight-edit-open</code> are silenced at the showcase
-          host so taps don't escape to <code>main.ts</code>.
-        </span>
-      </div>
-    `;
+      `,
+    );
   }
 
   private renderOrganismsNodes() {
     const onTrack = sampleBusinessScoreVMOnTrack();
     const offTrack = sampleBusinessScoreVMOffTrack();
     return html`
+      ${this.section("org-bsc", "business score card bsc parent child trend objective on-track off-track", html`
       <h2 data-testid="ds-org-bsc">
         Business Score Card (&lt;business-score-card-as-parent / -as-child&gt;)
       </h2>
@@ -359,6 +402,9 @@ export class DesignSystemPage extends LitElement {
           glyph + <code>down-right</code> trend arrow (regressing).
         </span>
       </div>
+        `,
+      )}
+      ${this.section("org-computed", "computed card cbsn business score sum average weighted strategy kind aggregation", html`
       <h2 data-testid="ds-org-computed">
         Computed cards (&lt;computed-card&gt; + &lt;computed-business-score-card&gt;)
       </h2>
@@ -386,6 +432,9 @@ export class DesignSystemPage extends LitElement {
           objective row, trend arrow <code>right</code> (flat).
         </span>
       </div>
+        `,
+      )}
+      ${this.section("org-text", "text node workflow pdca status note retro postmortem", html`
       <h2 data-testid="ds-org-text">
         Text + Workflow cards (&lt;text-node-as-*&gt; / &lt;workflow-node-as-*&gt;)
       </h2>
@@ -426,6 +475,9 @@ export class DesignSystemPage extends LitElement {
           WorkflowNode AsChild \u2014 read-only badge in the subtitle slot.
         </span>
       </div>
+        `,
+      )}
+      ${this.section("org-picture", "picture image url qr code node child parent svg data anchor runbook", html`
       <h2 data-testid="ds-org-picture">
         Picture + URL cards (&lt;picture-node-as-*&gt; / &lt;url-node-as-*&gt;)
       </h2>
@@ -465,51 +517,61 @@ export class DesignSystemPage extends LitElement {
         </div>
         <span class="caption">URLNode AsChild \u2014 compact grid tile.</span>
       </div>
+        `,
+      )}
     `;
   }
 
   private renderOrganismsShell() {
     return html`
-      <h2 data-testid="ds-org-burger">Burger menu (&lt;burger-menu&gt;)</h2>
-      <div class="org-cell" data-testid="ds-org-burger-cell">
-        <div class="stage"><burger-menu></burger-menu></div>
-        <span class="caption">
-          Triple-bar trigger \u2192 popup with Import / Export / Boards /
-          Settings / About. Activating an item emits
-          <code>burger-menu-action</code> (silenced inside the showcase).
-        </span>
-      </div>
-      <h2 data-testid="ds-org-breadcrumb">Focus breadcrumb (&lt;focus-breadcrumb&gt;)</h2>
-      <div class="org-cell" data-testid="ds-org-breadcrumb-cell">
-        <div class="stage">
-          <focus-breadcrumb
-            .path=${DEMO_BREADCRUMB_PATH}
-          ></focus-breadcrumb>
-        </div>
-        <span class="caption">
-          Path from root \u2192 focused leaf. Tapping a non-current segment
-          emits <code>breadcrumb-navigate</code> (silenced inside the
-          showcase).
-        </span>
-      </div>
-      <h2 data-testid="ds-org-plus">Plus tile (&lt;plus-tile&gt;)</h2>
-      <div class="org-cell" data-testid="ds-org-plus-cell">
-        <div class="stage">
-          <div class="org-plus-stage">
-            <plus-tile parent-id="ds-demo-parent"></plus-tile>
+      ${this.section("org-burger", "burger menu navigation popup import export boards settings about", html`
+          <h2 data-testid="ds-org-burger">Burger menu (&lt;burger-menu&gt;)</h2>
+          <div class="org-cell" data-testid="ds-org-burger-cell">
+            <div class="stage"><burger-menu></burger-menu></div>
+            <span class="caption">
+              Triple-bar trigger \u2192 popup with Import / Export / Boards /
+              Settings / About. Activating an item emits
+              <code>burger-menu-action</code> (silenced inside the showcase).
+            </span>
           </div>
-        </div>
-        <span class="caption">
-          Dashed "add-child" affordance rendered by the children grid when
-          the focused parent has room. Emits <code>plus-tile-activate</code>
-          (silenced inside the showcase).
-        </span>
-      </div>
+        `,
+      )}
+      ${this.section("org-breadcrumb", "breadcrumb focus path navigation segment", html`
+          <h2 data-testid="ds-org-breadcrumb">Focus breadcrumb (&lt;focus-breadcrumb&gt;)</h2>
+          <div class="org-cell" data-testid="ds-org-breadcrumb-cell">
+            <div class="stage">
+              <focus-breadcrumb .path=${DEMO_BREADCRUMB_PATH}></focus-breadcrumb>
+            </div>
+            <span class="caption">
+              Path from root \u2192 focused leaf. Tapping a non-current
+              segment emits <code>breadcrumb-navigate</code> (silenced
+              inside the showcase).
+            </span>
+          </div>
+        `,
+      )}
+      ${this.section("org-plus", "plus tile add child affordance new", html`
+          <h2 data-testid="ds-org-plus">Plus tile (&lt;plus-tile&gt;)</h2>
+          <div class="org-cell" data-testid="ds-org-plus-cell">
+            <div class="stage">
+              <div class="org-plus-stage">
+                <plus-tile parent-id="ds-demo-parent"></plus-tile>
+              </div>
+            </div>
+            <span class="caption">
+              Dashed "add-child" affordance rendered by the children grid
+              when the focused parent has room. Emits
+              <code>plus-tile-activate</code> (silenced inside the showcase).
+            </span>
+          </div>
+        `,
+      )}
     `;
   }
 
   private renderMolecules() {
     return html`
+      ${this.section("mol-units", "unit chip renderUnitChip usd percent currency suffix", html`
       <h2 data-testid="ds-mol-units">Unit chip (renderUnitChip)</h2>
       <div class="mol-grid">
         <div class="mol-cell" data-testid="ds-mol-unit-usd">
@@ -529,6 +591,9 @@ export class DesignSystemPage extends LitElement {
           <span class="caption">renderUnitChip("") &rarr; nothing</span>
         </div>
       </div>
+        `,
+      )}
+      ${this.section("mol-badges", "status badge renderStatusBadge pdca workflow plan do check act", html`
       <h2 data-testid="ds-mol-badges">Status badge (renderStatusBadge)</h2>
       <div class="mol-grid">
         ${DEFAULT_WORKFLOW_STATUSES.map(
@@ -543,6 +608,9 @@ export class DesignSystemPage extends LitElement {
           `,
         )}
       </div>
+        `,
+      )}
+      ${this.section("mol-disabled", "disabled toggle indicator switch renderDisabledIndicator renderDisabledSwitch forbidden", html`
       <h2 data-testid="ds-mol-disabled">Disabled affordances (disabledToggle.ts)</h2>
       <div class="mol-grid">
         <div class="mol-cell" data-testid="ds-mol-disabled-indicator">
@@ -566,11 +634,14 @@ export class DesignSystemPage extends LitElement {
           <span class="caption">renderDisabledSwitch(\u2026, false)</span>
         </div>
       </div>
+        `,
+      )}
     `;
   }
 
   private renderAtoms() {
     return html`
+      ${this.section("atoms-colors", "color tokens swatch background bg panel text muted accent root css", html`
       <h2 data-testid="ds-atoms-colors">Colour tokens (src/index.css :root)</h2>
       <div class="swatch-grid">
         ${COLOR_TOKENS.map(
@@ -584,6 +655,9 @@ export class DesignSystemPage extends LitElement {
           `,
         )}
       </div>
+        `,
+      )}
+      ${this.section("atoms-arrows", "trend arrow up right flat down regression bsc value glyph", html`
       <h2 data-testid="ds-atoms-arrows">Trend arrows (BSC value row)</h2>
       <div class="glyph-grid">
         ${TREND_ARROWS.map(
@@ -595,6 +669,9 @@ export class DesignSystemPage extends LitElement {
           `,
         )}
       </div>
+        `,
+      )}
+      ${this.section("atoms-glyphs", "glyph bullseye warning sigma forbidden times check unicode codepoint kiosk", html`
       <h2 data-testid="ds-atoms-glyphs">Kiosk Unicode glyphs</h2>
       <div class="glyph-grid">
         ${KIOSK_GLYPHS.map(
@@ -607,6 +684,9 @@ export class DesignSystemPage extends LitElement {
           `,
         )}
       </div>
+        `,
+      )}
+      ${this.section("atoms-pdca", "pdca workflow status plan do check act color badge", html`
       <h2 data-testid="ds-atoms-pdca">PDCA workflow status colours</h2>
       <div class="pdca-row">
         ${DEFAULT_WORKFLOW_STATUSES.map(
@@ -620,11 +700,44 @@ export class DesignSystemPage extends LitElement {
           `,
         )}
       </div>
+        `,
+      )}
     `;
   }
 
   private selectTier(id: Tier): void {
     this.currentTier = id;
+  }
+
+  /** §17.127 P2 — wraps a `<h2>` + body pair in a filterable
+   * `<section>`. `searchText` is the lowercase keyword haystack
+   * the filter matches against. */
+  private section(id: string, searchText: string, body: TemplateResult): TemplateResult {
+    return html`<section data-testid="ds-section-${id}" data-section-id=${id} data-search-text=${searchText.toLowerCase()}>${body}</section>`;
+  }
+
+  private readonly handleSearchInput = (e: Event): void => {
+    this.query = (e.target as HTMLInputElement).value;
+  };
+
+  private readonly clearSearch = (): void => {
+    this.query = "";
+  };
+
+  /** §17.127 P2 — toggles each `<section>`'s `hidden` and the
+   * empty-state element based on `this.query`. */
+  override updated(): void {
+    if (!this.shadowRoot) return;
+    const q = this.query.trim().toLowerCase();
+    const sections = this.shadowRoot.querySelectorAll<HTMLElement>("section[data-search-text]");
+    let visibleCount = 0;
+    for (const s of sections) {
+      const match = q === "" || (s.dataset.searchText ?? "").includes(q);
+      s.hidden = !match;
+      if (match) visibleCount++;
+    }
+    const empty = this.shadowRoot.querySelector<HTMLElement>("[data-testid='ds-empty-state']");
+    if (empty) empty.hidden = q === "" || visibleCount > 0;
   }
 
   private readonly close = (): void => {
