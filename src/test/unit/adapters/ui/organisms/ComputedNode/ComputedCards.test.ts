@@ -40,10 +40,12 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
       e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" });
       e.viewRole = "asParent";
     });
+    // \u00a717.136 S3 -- the disabled switch moved out of the title's
+    // first-child slot into card-frame's `icons` slot. Look it up by
+    // data-testid; on AsParent it still exists, on AsChild it must
+    // not (the §17.121i role-gating contract is unchanged).
     const parentSwitch = asParent.shadowRoot
-      ?.querySelector('[data-testid="title"]')
-      ?.firstElementChild as HTMLButtonElement | null;
-    expect(parentSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
+      ?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]');
     expect(parentSwitch?.getAttribute("role")).toBe("switch");
     const asChild = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" });
@@ -67,9 +69,10 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
       e.vm = vm;
       e.viewRole = "asParent";
     });
+    // \u00a717.136 S3 -- switch lives in card-frame's `icons` slot now,
+    // not as a title firstElementChild. Same aria-checked contract.
     const parentSwitch = asParent.shadowRoot
-      ?.querySelector('[data-testid="title"]')
-      ?.firstElementChild as HTMLButtonElement | null;
+      ?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]');
     expect(parentSwitch?.getAttribute("aria-checked")).toBe("false");
     expect(asParent.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });
@@ -213,10 +216,10 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
       e.vm = vm;
       e.viewRole = "asParent";
     });
+    // \u00a717.136 S3 -- switch lives in card-frame's `icons` slot now,
+    // not as a title firstElementChild. Same aria-checked contract.
     const parentSwitch = asParent.shadowRoot
-      ?.querySelector('[data-testid="title"]')
-      ?.firstElementChild as HTMLButtonElement | null;
-    expect(parentSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
+      ?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]');
     expect(parentSwitch?.getAttribute("aria-checked")).toBe("false");
     expect(asParent.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });
@@ -495,11 +498,18 @@ describe("<computed-card> + <computed-business-score-card> inline title editing 
     expect(cbsc.shadowRoot?.querySelector('[data-testid="title-edit"]')).toBeNull();
   });
 
-  it("AsParent: the Σ aggregation badge sits in the title prefix when not editing and disappears while the input is open (<computed-card>)", async () => {
+  it("AsParent: the \u03a3 aggregation badge sits in the icons slot and stays visible while the title input is open (\u00a717.136 S3) (<computed-card>)", async () => {
+    // \u00a717.136 S3 -- pre-\u00a717.136 the badge was inside the title's
+    // prefix slot and the inline-edit input replaced the whole title's
+    // content, which hid the badge during edit. Card-frame's split
+    // layout puts the badge in the `icons` slot (sibling to `title`),
+    // so the badge stays visible regardless of edit state. The
+    // operator now sees the aggregation glyph + editing input
+    // simultaneously.
     const el = await mountComputedAsParent();
     expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).not.toBeNull();
     const input = await enterTitleEdit(el);
-    expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).toBeNull();
+    expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).not.toBeNull();
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     await el.updateComplete;
     expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"]')).not.toBeNull();

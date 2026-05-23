@@ -16,6 +16,18 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Computed AsParent migrated to `<card-frame>` (\u00a717.136, S3)**.
+  Both `<computed-card>` and `<computed-business-score-card>`
+  AsParent renders wrap every slot filler inside the unified
+  template: disabled switch + sigma badge in `icons`, editable unit
+  chip in `unit`, inline-editable title in `title`, strategy picker
+  in `subtitle`, value-area / metric-pane in `body`, CBSN timestamp
+  in `footer-right` (plain Computed AsParent has no timestamp).
+  AsChild rendering keeps its pre-\u00a717.136 flat layout until S4
+  migrates it. Behavioural follow-on: the sigma aggregation badge
+  now stays visible while the operator edits the title (was hidden
+  pre-\u00a717.136 because badge composed into the title's prefix slot,
+  which the editor dropped on edit).
 - **BSC AsChild migrated to `<card-frame>` (\u00a717.136, S2)**.
   The `<business-score-card-as-child>` per-view now wraps every
   slot filler inside the unified `<card-frame>` template:
