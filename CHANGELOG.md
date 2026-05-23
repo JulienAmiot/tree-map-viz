@@ -41,6 +41,16 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   showcase host silences the `value-node-disabled-change` event bubbled
   by the live switch so a click in the showcase doesn't reach
   `main.ts`'s screen listener.
+- **Organisms tier — shell half (§17.127 strand A4a)**. Three real
+  Lit elements now mount inside the Organisms tier of the showcase:
+  `<burger-menu>` (live trigger + popup), `<focus-breadcrumb>` (a
+  three-segment demo path Obeya → Reliability → Pager fatigue), and
+  `<plus-tile>` (the dashed "add child" affordance, sized to a 120px
+  square in-cell stage). The host's `SILENCED_BUBBLES` extends to
+  include `burger-menu-action`, `breadcrumb-navigate`, and
+  `plus-tile-activate` so showcase interactions never reach the live
+  app handlers. The node-tile half of the Organisms tier lands as
+  A4b.
 
 ### Changed
 

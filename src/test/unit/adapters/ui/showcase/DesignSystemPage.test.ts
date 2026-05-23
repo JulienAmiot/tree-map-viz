@@ -46,12 +46,12 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
         e.open = true;
       },
     );
-    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    ($(el, "ds-tier-templates") as HTMLButtonElement).click();
     await el.updateComplete;
-    expect($(el, "ds-tier-organisms").classList.contains("active")).toBe(true);
+    expect($(el, "ds-tier-templates").classList.contains("active")).toBe(true);
     expect($(el, "ds-tier-atoms").classList.contains("active")).toBe(false);
     expect($(el, "ds-placeholder").textContent?.trim()).toMatch(
-      /organisms tier/i,
+      /templates tier/i,
     );
   });
 
@@ -125,6 +125,82 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
         "[data-testid='disabled-switch']",
       ),
     ).toBeTruthy();
+  });
+
+  it("Organisms tier mounts the real burger / breadcrumb / plus elements (\u00a717.127 A4a)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect($(el, "ds-org-burger-cell").querySelector("burger-menu")).toBeTruthy();
+    const crumb = $(el, "ds-org-breadcrumb-cell").querySelector(
+      "focus-breadcrumb",
+    ) as { path?: ReadonlyArray<{ id: string; title: string }> } | null;
+    expect(crumb?.path?.length).toBe(3);
+    expect(crumb?.path?.[2].title).toBe("Pager fatigue");
+    const plus = $(el, "ds-org-plus-cell").querySelector(
+      "plus-tile",
+    ) as HTMLElement | null;
+    expect(plus?.getAttribute("parent-id")).toBe("ds-demo-parent");
+  });
+
+  it("Organisms tier silences burger / breadcrumb / plus events at the host (\u00a717.127 A4a)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const escaped: string[] = [];
+    const listener = (ev: Event) => escaped.push(ev.type);
+    for (const t of [
+      "burger-menu-action",
+      "breadcrumb-navigate",
+      "plus-tile-activate",
+    ]) {
+      document.addEventListener(t, listener);
+    }
+    el.shadowRoot
+      ?.querySelector("burger-menu")
+      ?.dispatchEvent(
+        new CustomEvent("burger-menu-action", {
+          bubbles: true,
+          composed: true,
+          detail: { action: "about" },
+        }),
+      );
+    el.shadowRoot
+      ?.querySelector("focus-breadcrumb")
+      ?.dispatchEvent(
+        new CustomEvent("breadcrumb-navigate", {
+          bubbles: true,
+          composed: true,
+          detail: { nodeId: "ds-root" },
+        }),
+      );
+    el.shadowRoot
+      ?.querySelector("plus-tile")
+      ?.dispatchEvent(
+        new CustomEvent("plus-tile-activate", {
+          bubbles: true,
+          composed: true,
+          detail: { parentId: "ds-demo-parent" },
+        }),
+      );
+    expect(escaped).toEqual([]);
+    for (const t of [
+      "burger-menu-action",
+      "breadcrumb-navigate",
+      "plus-tile-activate",
+    ]) {
+      document.removeEventListener(t, listener);
+    }
   });
 
   it("Molecules tier silences bubbled `value-node-disabled-change` at the host (\u00a717.127 A3)", async () => {
