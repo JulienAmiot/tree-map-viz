@@ -32,6 +32,8 @@ import {
 } from "../views/disabledToggle.js";
 import "../shell/BurgerMenu.js";
 import "../shell/Breadcrumb.js";
+import "../shell/ParentIdentityStrip.js";
+import "../shell/ChildrenGrid.js";
 import "../views/plus/PlusTile.js";
 import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
@@ -48,6 +50,7 @@ import type { BreadcrumbSegment } from "../shell/Breadcrumb.js";
 import {
   sampleBusinessScoreVMOffTrack,
   sampleBusinessScoreVMOnTrack,
+  sampleChildSlots,
   sampleComputedBSCVM,
   sampleComputedNodeVM,
   samplePictureNodeVM,
@@ -158,6 +161,11 @@ export class DesignSystemPage extends LitElement {
     .org-bsc-asparent business-score-card-as-parent { display: block; width: 100%; height: 100%; min-height: 220px; }
     .org-bsc-aschild { width: 280px; height: 200px; }
     .org-bsc-aschild business-score-card-as-child { display: block; width: 100%; height: 100%; }
+    .tpl-cell { display: flex; flex-direction: column; gap: 0.6rem; padding: 1rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; background: var(--panel, #151a22); margin-bottom: 0.85rem; }
+    .tpl-cell .caption { font-size: 0.78rem; color: var(--muted, #8b95a8); }
+    .tpl-stage { display: grid; grid-template-rows: 25% 1fr; width: 100%; height: 480px; gap: 0.5rem; }
+    .tpl-stage parent-identity-strip { display: block; width: 100%; height: 100%; }
+    .tpl-stage children-grid { display: block; width: 100%; height: 100%; }
   `,
   ];
 
@@ -173,6 +181,10 @@ export class DesignSystemPage extends LitElement {
     "inline-edit-unit",
     "computation-kind-change",
     "workflow-status-change",
+    "focus-close-to-parent",
+    "edit-node-open",
+    "tile-drill",
+    "weight-edit-open",
   ] as const;
 
   override connectedCallback(): void {
@@ -235,9 +247,48 @@ export class DesignSystemPage extends LitElement {
     if (id === "molecules") return this.renderMolecules();
     if (id === "organisms")
       return html`${this.renderOrganismsShell()}${this.renderOrganismsNodes()}`;
+    if (id === "templates") return this.renderTemplates();
     return html`<div class="placeholder" data-testid="ds-placeholder">
       ${label} tier — coming soon.
     </div>`;
+  }
+
+  /**
+   * §17.127 A5 — Templates tier composes the two shell elements that
+   * together make up the focused-panel layout (SPEC §4 / §12.1):
+   * `<parent-identity-strip>` on top (the focused VM in AsParent
+   * role) + `<children-grid>` below (the squarified treemap of
+   * children). All four bubbled events specific to this composition
+   * (`focus-close-to-parent`, `edit-node-open`, `tile-drill`,
+   * `weight-edit-open`) are silenced at the showcase host.
+   */
+  private renderTemplates() {
+    const focusedVm = sampleBusinessScoreVMOnTrack();
+    const slots = sampleChildSlots(focusedVm.id);
+    return html`
+      <h2 data-testid="ds-tpl-focused">
+        Focused panel template (parent strip + children grid)
+      </h2>
+      <div class="tpl-cell" data-testid="ds-tpl-focused-cell">
+        <div class="tpl-stage">
+          <parent-identity-strip
+            .vm=${focusedVm}
+            parent-id="ds-demo-grandparent"
+          ></parent-identity-strip>
+          <children-grid .slots=${slots}></children-grid>
+        </div>
+        <span class="caption">
+          Composition of <code>&lt;parent-identity-strip&gt;</code> on
+          top (focused VM in AsParent role + edit-pencil + close-X)
+          and <code>&lt;children-grid&gt;</code> below (squarified
+          treemap of 3 child slots + a trailing <code>+</code>
+          affordance). Bubbled <code>focus-close-to-parent</code> /
+          <code>edit-node-open</code> / <code>tile-drill</code> /
+          <code>weight-edit-open</code> are silenced at the showcase
+          host so taps don't escape to <code>main.ts</code>.
+        </span>
+      </div>
+    `;
   }
 
   private renderOrganismsNodes() {

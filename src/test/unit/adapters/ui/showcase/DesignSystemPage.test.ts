@@ -46,13 +46,11 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
         e.open = true;
       },
     );
-    ($(el, "ds-tier-templates") as HTMLButtonElement).click();
+    ($(el, "ds-tier-pages") as HTMLButtonElement).click();
     await el.updateComplete;
-    expect($(el, "ds-tier-templates").classList.contains("active")).toBe(true);
+    expect($(el, "ds-tier-pages").classList.contains("active")).toBe(true);
     expect($(el, "ds-tier-atoms").classList.contains("active")).toBe(false);
-    expect($(el, "ds-placeholder").textContent?.trim()).toMatch(
-      /templates tier/i,
-    );
+    expect($(el, "ds-placeholder").textContent?.trim()).toMatch(/pages tier/i);
   });
 
   it("Atoms tier renders four section headers + the 5 colour tokens", async () => {
@@ -416,6 +414,84 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     ]) {
       document.removeEventListener(t, listener);
     }
+  });
+
+  it("Templates tier composes parent-strip + children-grid with sample slots (\u00a717.127 A5)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-templates") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const cell = $(el, "ds-tpl-focused-cell");
+    const strip = cell.querySelector("parent-identity-strip") as {
+      vm?: { id: string } | null;
+      parentId?: string;
+    } | null;
+    expect(strip?.vm?.id).toBe("ds-bsc-on-track");
+    expect(strip?.parentId).toBe("ds-demo-grandparent");
+    const grid = cell.querySelector("children-grid") as {
+      slots?: ReadonlyArray<{ slot: string; weight: number }>;
+    } | null;
+    expect(grid?.slots?.length).toBe(4);
+    expect(grid?.slots?.[3].slot).toBe("plus");
+    expect(
+      el.shadowRoot?.querySelector("[data-testid='ds-placeholder']"),
+    ).toBeNull();
+  });
+
+  it("Templates tier silences the four shell-composition events at the host (\u00a717.127 A5)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-templates") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const escaped: string[] = [];
+    const listener = (ev: Event) => escaped.push(ev.type);
+    const events = [
+      "focus-close-to-parent",
+      "edit-node-open",
+      "tile-drill",
+      "weight-edit-open",
+    ] as const;
+    for (const t of events) document.addEventListener(t, listener);
+    const strip = el.shadowRoot?.querySelector("parent-identity-strip");
+    const grid = el.shadowRoot?.querySelector("children-grid");
+    strip?.dispatchEvent(
+      new CustomEvent("focus-close-to-parent", {
+        bubbles: true,
+        composed: true,
+        detail: { parentId: "ds-demo-grandparent" },
+      }),
+    );
+    strip?.dispatchEvent(
+      new CustomEvent("edit-node-open", {
+        bubbles: true,
+        composed: true,
+        detail: { nodeId: "ds-bsc-on-track" },
+      }),
+    );
+    grid?.dispatchEvent(
+      new CustomEvent("tile-drill", {
+        bubbles: true,
+        composed: true,
+        detail: { nodeId: "ds-text" },
+      }),
+    );
+    grid?.dispatchEvent(
+      new CustomEvent("weight-edit-open", {
+        bubbles: true,
+        composed: true,
+        detail: { nodeId: "ds-text", weight: 3 },
+      }),
+    );
+    expect(escaped).toEqual([]);
+    for (const t of events) document.removeEventListener(t, listener);
   });
 
   it("Molecules tier silences bubbled `value-node-disabled-change` at the host (\u00a717.127 A3)", async () => {
