@@ -41,6 +41,15 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   showcase host silences the `value-node-disabled-change` event bubbled
   by the live switch so a click in the showcase doesn't reach
   `main.ts`'s screen listener.
+- **Organisms tier — node half: BSC (§17.127 strand A4b-1)**. The
+  live `<business-score-card-as-parent>` and `<business-score-card-as-child>`
+  elements mount inside the Organisms tier with realistic VMs
+  sourced from a new `sampleViewModels.ts` helper: an "on-track"
+  AsParent (recordedValue above objective, trend arrow `up-right`)
+  and an "off-track" AsChild (computedMean below objective, warning
+  glyph + `down-right` arrow). Inline-edit affordances (title /
+  value / unit) stay inert because the showcase host silences the
+  matching bubbled events.
 - **Organisms tier — shell half (§17.127 strand A4a)**. Three real
   Lit elements now mount inside the Organisms tier of the showcase:
   `<burger-menu>` (live trigger + popup), `<focus-breadcrumb>` (a
