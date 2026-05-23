@@ -34,7 +34,7 @@ import "../organisms/shell/BurgerMenu.js";
 import "../organisms/shell/Breadcrumb.js";
 import "../templates/ParentIdentityStrip.js";
 import "../templates/ChildrenGrid.js";
-import "../shell/TreeMapScreen.js";
+import "../pages/TreeMapScreen.js";
 import "../molecules/plus/PlusTile.js";
 import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
@@ -209,7 +209,7 @@ html\`<parent-identity-strip
 <children-grid .slots=\${slots}></children-grid>\`;
 // slots: ChildSlotViewModel[]
 //   = ({ slot: "node", vm, weight } | { slot: "plus", parentId, weight })[]`,
-  "pg-screen": `import "../shell/TreeMapScreen.js";
+  "pg-screen": `import "../pages/TreeMapScreen.js";
 
 html\`<tree-map-screen
   .boardName=\${boardName}
