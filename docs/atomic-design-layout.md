@@ -125,7 +125,7 @@ Molecules tier and so genuinely belongs in `molecules/`.
 | --- | --- | --- |
 | **R0**  | This doc + empty `atoms/ molecules/ organisms/ templates/ pages/` | **done** (§17.128 R0) |
 | **R1a** | Atoms — format helpers | **done** (§17.128 R1a) |
-| **R1b** | Atoms — visual helpers | pending |
+| **R1b** | Atoms — visual helpers | **done** (§17.128 R1b) |
 | **R1c** | Atoms — markdown helper | pending |
 | **R2a** | Molecules — render helpers | pending |
 | **R2b** | Molecules — inline-edit helpers | pending |

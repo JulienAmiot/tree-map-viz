@@ -102,7 +102,7 @@ import {
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { formatValue } from "../../atoms/numberFormat.js";
-import { tileLayoutStyles } from "../tileLayoutStyles.js";
+import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 import {
   InlineUnitEditController,
   type InlineUnitEditTarget,

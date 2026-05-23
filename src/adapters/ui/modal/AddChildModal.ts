@@ -127,7 +127,7 @@ import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus
 import {
   modalFrameStyles,
   renderModalCloseX,
-} from "./modalFrameStyles.js";
+} from "../atoms/modalFrameStyles.js";
 
 export const ADD_CHILD_CONFIRM_EVENT = "add-child-confirm";
 export const ADD_CHILD_CANCEL_EVENT = "add-child-cancel";

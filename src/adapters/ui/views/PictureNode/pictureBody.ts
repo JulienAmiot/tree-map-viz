@@ -40,7 +40,7 @@
 
 import { type TemplateResult, css, html } from "lit";
 
-import { renderWarningFill } from "../warningFill.js";
+import { renderWarningFill } from "../../atoms/warningFill.js";
 
 /**
  * CSS scoped to the `PictureNode` views. Adds the `<img>` sizing rule

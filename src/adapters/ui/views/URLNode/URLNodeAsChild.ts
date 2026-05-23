@@ -47,7 +47,7 @@ import {
 } from "../disabledToggle.js";
 import { renderStaticTitle } from "../inlineTitleEdit.js";
 import type { URLNodeViewModel } from "../NodeViewModel.js";
-import { tileLayoutStyles } from "../tileLayoutStyles.js";
+import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 
 import { QRGenController } from "./qrGenController.js";
 import { renderURLValueArea, urlBodyStyles } from "./urlBody.js";
