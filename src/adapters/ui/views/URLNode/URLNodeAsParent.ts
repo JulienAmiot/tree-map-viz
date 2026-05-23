@@ -60,7 +60,7 @@ import {
   InlineTitleEditController,
   type InlineTitleEditTarget,
   titleInlineEditStyles,
-} from "../inlineTitleEdit.js";
+} from "../../molecules/inlineTitleEdit.js";
 import type { URLNodeViewModel } from "../NodeViewModel.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 

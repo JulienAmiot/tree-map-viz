@@ -37,16 +37,16 @@ import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
 import {
   INLINE_EDIT_VALUE_EVENT,
   type InlineEditValueDetail,
-} from "../inlineEditEvents.js";
+} from "../../molecules/inlineEditEvents.js";
 import {
   focusAndSelectInline,
   inlineEditKey,
-} from "../inlineEditHelpers.js";
+} from "../../molecules/inlineEditHelpers.js";
 import {
   InlineTitleEditController,
   type InlineTitleEditTarget,
   titleInlineEditStyles,
-} from "../inlineTitleEdit.js";
+} from "../../molecules/inlineTitleEdit.js";
 import type { WorkflowNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";

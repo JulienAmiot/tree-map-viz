@@ -31,7 +31,7 @@ import {
   disabledToggleStyles,
   renderDisabledIndicator,
 } from "../../molecules/disabledToggle.js";
-import { renderStaticTitle } from "../inlineTitleEdit.js";
+import { renderStaticTitle } from "../../molecules/inlineTitleEdit.js";
 import type { PictureNodeViewModel } from "../NodeViewModel.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 

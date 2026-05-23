@@ -54,8 +54,8 @@ import {
 import {
   INLINE_EDIT_UNIT_EVENT,
   type InlineEditUnitDetail,
-} from "../views/inlineEditEvents.js";
-import { focusAndSelectInline, inlineEditKey } from "../views/inlineEditHelpers.js";
+} from "./inlineEditEvents.js";
+import { focusAndSelectInline, inlineEditKey } from "./inlineEditHelpers.js";
 import type {
   BusinessScoreCardValueViewModel,
   ComputedValueViewModel,
