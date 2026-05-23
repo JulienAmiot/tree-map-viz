@@ -634,16 +634,76 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     expect(empty.querySelector("strong")?.textContent).toBe("Templates");
   });
 
-  it("sections without a snippet do NOT render the view-source button (\u00a717.127 P3a)", async () => {
+  it("every showcase section has a view-source button after P3b fill (\u00a717.127 P3b)", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",
       (e) => {
         e.open = true;
       },
     );
-    expect(
-      el.shadowRoot?.querySelector("[data-testid='ds-view-source-atoms-colors']"),
-    ).toBeNull();
+    const tiersWithSections: ReadonlyArray<readonly [string, readonly string[]]> = [
+      [
+        "atoms",
+        ["atoms-colors", "atoms-arrows", "atoms-glyphs", "atoms-pdca"],
+      ],
+      ["molecules", ["mol-units", "mol-badges", "mol-disabled"]],
+      [
+        "organisms",
+        [
+          "org-burger",
+          "org-breadcrumb",
+          "org-plus",
+          "org-bsc",
+          "org-computed",
+          "org-text",
+          "org-picture",
+        ],
+      ],
+      ["templates", ["tpl-focused"]],
+      ["pages", ["pg-screen"]],
+    ];
+    for (const [tier, ids] of tiersWithSections) {
+      ($(el, `ds-tier-${tier}`) as HTMLButtonElement).click();
+      await el.updateComplete;
+      for (const id of ids) {
+        expect(
+          el.shadowRoot?.querySelector(`[data-testid='ds-view-source-${id}']`),
+          `expected view-source button for ${id}`,
+        ).toBeTruthy();
+      }
+    }
+  });
+
+  it("opening a snippet from each tier surfaces tier-appropriate code (\u00a717.127 P3b)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    const cases: ReadonlyArray<{
+      tier: string;
+      id: string;
+      mustContain: string;
+    }> = [
+      { tier: "atoms", id: "atoms-arrows", mustContain: "TREND_ARROW_GLYPHS" },
+      { tier: "molecules", id: "mol-badges", mustContain: "renderStatusBadge" },
+      { tier: "organisms", id: "org-bsc", mustContain: "business-score-card-as-parent" },
+      { tier: "templates", id: "tpl-focused", mustContain: "parent-identity-strip" },
+      { tier: "pages", id: "pg-screen", mustContain: "tree-map-screen" },
+    ];
+    for (const { tier, id, mustContain } of cases) {
+      ($(el, `ds-tier-${tier}`) as HTMLButtonElement).click();
+      await el.updateComplete;
+      ($(el, `ds-view-source-${id}`) as HTMLButtonElement).click();
+      await el.updateComplete;
+      const code = $(el, "ds-snippet-code").textContent ?? "";
+      expect(code, `snippet for ${id} should contain "${mustContain}"`).toContain(
+        mustContain,
+      );
+      ($(el, "ds-snippet-close") as HTMLButtonElement).click();
+      await el.updateComplete;
+    }
   });
 
   it("the wired demo section (mol-units) renders the view-source button (\u00a717.127 P3a)", async () => {
