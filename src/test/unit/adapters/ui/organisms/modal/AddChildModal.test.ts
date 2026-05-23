@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import "../../../../../adapters/ui/modal/AddChildModal.js";
+import "../../../../../../adapters/ui/organisms/modal/AddChildModal.js";
 import {
   ADD_CHILD_CANCEL_EVENT,
   ADD_CHILD_CONFIRM_EVENT,
@@ -9,12 +9,12 @@ import {
   type AddChildConfirmDetail,
   type AddChildKind,
   type AddChildModal,
-} from "../../../../../adapters/ui/modal/AddChildModal.js";
-import { ComputationKind } from "../../../../../domain/computation/ComputationKind.js";
+} from "../../../../../../adapters/ui/organisms/modal/AddChildModal.js";
+import { ComputationKind } from "../../../../../../domain/computation/ComputationKind.js";
 import {
   cleanupLitFixtures,
   mountLitElement,
-} from "../../../../fixtures/litElementFixture.js";
+} from "../../../../../fixtures/litElementFixture.js";
 
 afterEach(cleanupLitFixtures);
 

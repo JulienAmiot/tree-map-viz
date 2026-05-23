@@ -120,14 +120,14 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
-import { ComputationKind } from "../../../domain/computation/ComputationKind.js";
-import type { WorkflowStatus } from "../../../domain/values/WorkflowStatus.js";
-import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
+import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
+import type { WorkflowStatus } from "../../../../domain/values/WorkflowStatus.js";
+import { DEFAULT_WORKFLOW_STATUSES } from "../../../../domain/values/WorkflowStatus.js";
 
 import {
   modalFrameStyles,
   renderModalCloseX,
-} from "../atoms/modalFrameStyles.js";
+} from "../../atoms/modalFrameStyles.js";
 
 export const ADD_CHILD_CONFIRM_EVENT = "add-child-confirm";
 export const ADD_CHILD_CANCEL_EVENT = "add-child-cancel";
