@@ -1,0 +1,5 @@
+Placeholder so git tracks the empty pages/ directory ahead of the
+§17.128 R5 strands. Real files land in R5a (TreeMapScreen) and R5b
+(DesignSystemPage + sampleViewModels, the latter under
+pages/showcase/). See docs/atomic-design-layout.md for the full
+classification.

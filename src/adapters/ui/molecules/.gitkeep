@@ -1,0 +1,6 @@
+Placeholder so git tracks the empty molecules/ directory ahead of
+the §17.128 R2 strands. Real files land in R2a (render helpers:
+unitChip, statusBadge, disabledToggle), R2b (inline-edit helpers),
+R2c (NodeView + nodeViewRegistry + viewModelMapper), R2d
+(childWeight + plus). See docs/atomic-design-layout.md for the full
+classification.

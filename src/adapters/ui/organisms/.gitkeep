@@ -1,0 +1,6 @@
+Placeholder so git tracks the empty organisms/ directory ahead of
+the §17.128 R3 strands. Real files land in R3a (shell organisms:
+BurgerMenu, Breadcrumb), R3b–R3g (one strand per node kind: BSC,
+Computed, Text, Workflow, Picture, URL), R3h-1/2 (modals split
+across two strands). See docs/atomic-design-layout.md for the full
+classification.
