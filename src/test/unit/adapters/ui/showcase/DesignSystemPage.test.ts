@@ -39,19 +39,19 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     expect($(el, "ds-tier-atoms").classList.contains("active")).toBe(true);
   });
 
-  it("tapping a non-atoms tier swaps the body to the coming-soon placeholder", async () => {
+  it("tapping a non-implemented tier swaps the body to the coming-soon placeholder", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",
       (e) => {
         e.open = true;
       },
     );
-    ($(el, "ds-tier-molecules") as HTMLButtonElement).click();
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
     await el.updateComplete;
-    expect($(el, "ds-tier-molecules").classList.contains("active")).toBe(true);
+    expect($(el, "ds-tier-organisms").classList.contains("active")).toBe(true);
     expect($(el, "ds-tier-atoms").classList.contains("active")).toBe(false);
     expect($(el, "ds-placeholder").textContent?.trim()).toMatch(
-      /molecules tier/i,
+      /organisms tier/i,
     );
   });
 
@@ -95,6 +95,55 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     for (const id of ["plan", "do", "check", "act"]) {
       expect($(el, `ds-pdca-${id}`)).toBeTruthy();
     }
+  });
+
+  it("Molecules tier renders unit chips, status badges, and disabled affordances (\u00a717.127 A3)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-molecules") as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect($(el, "ds-mol-units")).toBeTruthy();
+    expect($(el, "ds-mol-badges")).toBeTruthy();
+    expect($(el, "ds-mol-disabled")).toBeTruthy();
+    expect(
+      $(el, "ds-mol-unit-usd").querySelector("[data-testid='unit-chip']"),
+    ).toBeTruthy();
+    expect(
+      $(el, "ds-mol-unit-empty").querySelector("[data-testid='unit-chip']"),
+    ).toBeNull();
+    for (const id of ["plan", "do", "check", "act"]) {
+      const cell = $(el, `ds-mol-badge-${id}`);
+      const badge = cell.querySelector("[data-testid='status-badge']");
+      expect(badge?.getAttribute("data-status-id")).toBe(id);
+    }
+    expect(
+      $(el, "ds-mol-disabled-switch-off").querySelector(
+        "[data-testid='disabled-switch']",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("Molecules tier silences bubbled `value-node-disabled-change` at the host (\u00a717.127 A3)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-molecules") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const escaped = vi.fn();
+    document.addEventListener("value-node-disabled-change", escaped);
+    const switchBtn = $(el, "ds-mol-disabled-switch-off").querySelector(
+      "[data-testid='disabled-switch']",
+    ) as HTMLButtonElement;
+    switchBtn.click();
+    expect(escaped).not.toHaveBeenCalled();
+    document.removeEventListener("value-node-disabled-change", escaped);
   });
 
   it('"Back to kiosk" dispatches `design-system-close` (bubbles+composed)', async () => {

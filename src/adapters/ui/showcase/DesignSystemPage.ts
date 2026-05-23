@@ -20,6 +20,16 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
+import { renderUnitChip, unitChipStyles } from "../views/unitChip.js";
+import {
+  renderStatusBadge,
+  statusBadgeStyles,
+} from "../views/WorkflowNode/statusBadge.js";
+import {
+  disabledToggleStyles,
+  renderDisabledIndicator,
+  renderDisabledSwitch,
+} from "../views/disabledToggle.js";
 
 export const DESIGN_SYSTEM_CLOSE_EVENT = "design-system-close";
 
@@ -70,7 +80,11 @@ export class DesignSystemPage extends LitElement {
   @state()
   private currentTier: Tier = "atoms";
 
-  static readonly styles = css`
+  static readonly styles = [
+    unitChipStyles,
+    statusBadgeStyles,
+    disabledToggleStyles,
+    css`
     :host { position: fixed; inset: 0; z-index: 250; display: none; pointer-events: none; color: var(--text, #e8ecf4); background: var(--bg, #0c0f14); font: 1rem/1.4 system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
     :host([open]) { display: block; pointer-events: auto; overflow: auto; }
     .topbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 1.25rem; padding: 0.85rem 1.25rem; background: color-mix(in srgb, currentColor 6%, var(--bg, #0c0f14)); border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
@@ -99,17 +113,39 @@ export class DesignSystemPage extends LitElement {
     .glyph-cell .code { font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 0.7rem; color: var(--muted, #8b95a8); }
     .pdca-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
     .pdca-badge { padding: 0.18rem 0.75rem; border-radius: 999px; border: 1.5px solid currentColor; font-weight: 600; font-size: 0.82rem; letter-spacing: 0.04em; background: transparent; }
-  `;
+    .mol-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.85rem; }
+    .mol-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 0.85rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; background: var(--panel, #151a22); }
+    .mol-cell .stage { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 1.6em; }
+    .mol-cell .stage-title { font-size: 1.05rem; color: var(--text, #e8ecf4); }
+    .mol-cell .caption { font-size: 0.75rem; color: var(--muted, #8b95a8); }
+  `,
+  ];
+
+  /** UI events bubbled by showcase organisms that we silence at the
+   * host so they don't trigger real app logic in main.ts (§17.127 A3+). */
+  private static readonly SILENCED_BUBBLES = [
+    "value-node-disabled-change",
+  ] as const;
 
   override connectedCallback(): void {
     super.connectedCallback();
     document.addEventListener("keydown", this.handleKeydown);
+    for (const ev of DesignSystemPage.SILENCED_BUBBLES) {
+      this.addEventListener(ev, this.silenceEvent);
+    }
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     document.removeEventListener("keydown", this.handleKeydown);
+    for (const ev of DesignSystemPage.SILENCED_BUBBLES) {
+      this.removeEventListener(ev, this.silenceEvent);
+    }
   }
+
+  private readonly silenceEvent = (e: Event): void => {
+    e.stopPropagation();
+  };
 
   render() {
     if (!this.open) return nothing;
@@ -148,9 +184,71 @@ export class DesignSystemPage extends LitElement {
 
   private renderTierBody(id: Tier, label: string) {
     if (id === "atoms") return this.renderAtoms();
+    if (id === "molecules") return this.renderMolecules();
     return html`<div class="placeholder" data-testid="ds-placeholder">
       ${label} tier — coming soon.
     </div>`;
+  }
+
+  private renderMolecules() {
+    return html`
+      <h2 data-testid="ds-mol-units">Unit chip (renderUnitChip)</h2>
+      <div class="mol-grid">
+        <div class="mol-cell" data-testid="ds-mol-unit-usd">
+          <div class="stage">
+            ${renderUnitChip("USD")}<span class="stage-title">Revenue</span>
+          </div>
+          <span class="caption">renderUnitChip("USD")</span>
+        </div>
+        <div class="mol-cell" data-testid="ds-mol-unit-percent">
+          <div class="stage">
+            ${renderUnitChip("%")}<span class="stage-title">SLA</span>
+          </div>
+          <span class="caption">renderUnitChip("%")</span>
+        </div>
+        <div class="mol-cell" data-testid="ds-mol-unit-empty">
+          <div class="stage"><span class="stage-title">Headcount</span></div>
+          <span class="caption">renderUnitChip("") &rarr; nothing</span>
+        </div>
+      </div>
+      <h2 data-testid="ds-mol-badges">Status badge (renderStatusBadge)</h2>
+      <div class="mol-grid">
+        ${DEFAULT_WORKFLOW_STATUSES.map(
+          (s) => html`
+            <div
+              class="mol-cell"
+              data-testid=${`ds-mol-badge-${s.id}`}
+            >
+              <div class="stage">${renderStatusBadge(s)}</div>
+              <span class="caption">renderStatusBadge(${s.id})</span>
+            </div>
+          `,
+        )}
+      </div>
+      <h2 data-testid="ds-mol-disabled">Disabled affordances (disabledToggle.ts)</h2>
+      <div class="mol-grid">
+        <div class="mol-cell" data-testid="ds-mol-disabled-indicator">
+          <div class="stage">
+            ${renderDisabledIndicator(true)}<span class="stage-title">Disabled metric</span>
+          </div>
+          <span class="caption">renderDisabledIndicator(true)</span>
+        </div>
+        <div class="mol-cell" data-testid="ds-mol-disabled-switch-off">
+          <div class="stage">
+            ${renderDisabledSwitch(this, "ds-demo-off", true)}
+            <span class="stage-title">switch (off)</span>
+          </div>
+          <span class="caption">renderDisabledSwitch(\u2026, true)</span>
+        </div>
+        <div class="mol-cell" data-testid="ds-mol-disabled-switch-on">
+          <div class="stage">
+            ${renderDisabledSwitch(this, "ds-demo-on", false)}
+            <span class="stage-title">switch (on)</span>
+          </div>
+          <span class="caption">renderDisabledSwitch(\u2026, false)</span>
+        </div>
+      </div>
+    `;
   }
 
   private renderAtoms() {
