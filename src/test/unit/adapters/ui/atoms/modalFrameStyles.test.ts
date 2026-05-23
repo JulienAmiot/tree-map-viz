@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   modalFrameStyles,
   renderModalCloseX,
-} from "../../../../../adapters/ui/modal/modalFrameStyles.js";
+} from "../../../../../adapters/ui/atoms/modalFrameStyles.js";
 import "../../../../../adapters/ui/modal/AddChildModal.js";
 import "../../../../../adapters/ui/modal/EditNodeModal.js";
 import type { AddChildModal } from "../../../../../adapters/ui/modal/AddChildModal.js";

@@ -28,7 +28,7 @@ import {
 } from "../disabledToggle.js";
 import type { TextNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
-import { tileLayoutStyles } from "../tileLayoutStyles.js";
+import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 import { fitMarkdownBodyToTile, textBodyStyles } from "./textBody.js";
 
 @customElement("text-node-as-child")

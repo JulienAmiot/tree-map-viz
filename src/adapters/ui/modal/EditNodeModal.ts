@@ -83,7 +83,7 @@ import { COMPUTATION_KIND_LABELS } from "./AddChildModal.js";
 import {
   modalFrameStyles,
   renderModalCloseX,
-} from "./modalFrameStyles.js";
+} from "../atoms/modalFrameStyles.js";
 
 export const EDIT_NODE_CONFIRM_EVENT = "edit-node-confirm";
 export const EDIT_NODE_CANCEL_EVENT = "edit-node-cancel";

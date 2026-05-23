@@ -37,7 +37,7 @@ import {
 import { renderStaticTitle } from "../inlineTitleEdit.js";
 import type { WorkflowNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
-import { tileLayoutStyles } from "../tileLayoutStyles.js";
+import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 import { fitMarkdownBodyToTile, textBodyStyles } from "../TextNode/textBody.js";
 import { renderStatusBadge, statusBadgeStyles } from "./statusBadge.js";
 

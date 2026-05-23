@@ -33,7 +33,7 @@ import {
 } from "../disabledToggle.js";
 import { renderStaticTitle } from "../inlineTitleEdit.js";
 import type { PictureNodeViewModel } from "../NodeViewModel.js";
-import { tileLayoutStyles } from "../tileLayoutStyles.js";
+import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 
 import { ImageErrorController } from "./imageErrorController.js";
 import { pictureBodyStyles, renderPictureValueArea } from "./pictureBody.js";

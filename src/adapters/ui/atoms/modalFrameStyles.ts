@@ -42,7 +42,7 @@
  *
  * Usage pattern:
  * ```ts
- * import { modalFrameStyles, renderModalCloseX } from "./modalFrameStyles.js";
+ * import { modalFrameStyles, renderModalCloseX } from "../atoms/modalFrameStyles.js";
  *
  * static styles = [
  *   modalFrameStyles,

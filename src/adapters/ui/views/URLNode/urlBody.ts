@@ -44,7 +44,7 @@
 
 import { type TemplateResult, css, html, nothing } from "lit";
 
-import { renderWarningFill } from "../warningFill.js";
+import { renderWarningFill } from "../../atoms/warningFill.js";
 
 /**
  * CSS scoped to the `URLNode` views. Adds the `<img>` sizing rule +
