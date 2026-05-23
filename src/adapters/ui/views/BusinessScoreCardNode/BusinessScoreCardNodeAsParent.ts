@@ -100,8 +100,8 @@ import {
   inlineEditKey,
 } from "../inlineEditHelpers.js";
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
-import { formatAge } from "../ageFormat.js";
-import { formatValue } from "../numberFormat.js";
+import { formatAge } from "../../atoms/ageFormat.js";
+import { formatValue } from "../../atoms/numberFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import {
   InlineUnitEditController,

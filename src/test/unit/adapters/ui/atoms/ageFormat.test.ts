@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { formatAge } from "../../../../../adapters/ui/views/ageFormat.js";
+import { formatAge } from "../../../../../adapters/ui/atoms/ageFormat.js";
 
 const NOW = new Date("2026-05-17T12:00:00.000Z");
 

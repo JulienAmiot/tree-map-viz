@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { formatValue, VALUE_MAX_DECIMALS } from "../../../../../adapters/ui/views/numberFormat.js";
+import { formatValue, VALUE_MAX_DECIMALS } from "../../../../../adapters/ui/atoms/numberFormat.js";
 
 describe("formatValue (\u00a717.116)", () => {
   it("VALUE_MAX_DECIMALS pins the rounding boundary at 2", () => {

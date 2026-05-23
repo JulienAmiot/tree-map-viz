@@ -33,7 +33,7 @@
 import { html, nothing, type TemplateResult } from "lit";
 
 import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
-import { formatValue } from "../numberFormat.js";
+import { formatValue } from "../../atoms/numberFormat.js";
 
 /**
  * Inline `style` attribute string that applies both the SPEC §17.40
