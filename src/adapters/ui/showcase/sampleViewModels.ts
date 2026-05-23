@@ -25,7 +25,9 @@ import type {
   BusinessScoreCardNodeViewModel,
   ComputedBusinessScoreNodeViewModel,
   ComputedNodeViewModel,
+  PictureNodeViewModel,
   TextNodeViewModel,
+  URLNodeViewModel,
   WorkflowNodeViewModel,
 } from "../views/NodeViewModel.js";
 
@@ -154,6 +156,52 @@ export function sampleWorkflowNodeVM(): WorkflowNodeViewModel {
       { id: "check", label: "CHECK", color: "rgb(34, 197, 94)" },
       { id: "act", label: "ACT", color: "rgb(245, 158, 11)" },
     ],
+  };
+}
+
+/**
+ * PictureNode demo: an inline data-URL SVG schematic so the showcase
+ * never depends on a remote image host (the `<img>` warning-fallback
+ * path is covered separately by `PictureNode` unit tests). The SVG
+ * draws a stylised "kiosk wall" — a header strip, three tile
+ * rectangles + a focus accent — sized to the typical PictureNode
+ * tile aspect ratio (16:10).
+ */
+const DEMO_PICTURE_DATA_URL =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 200'>" +
+      "<rect width='320' height='200' fill='#151a22'/>" +
+      "<rect x='14' y='14' width='292' height='28' rx='4' fill='#1f2733'/>" +
+      "<rect x='14' y='58' width='90' height='128' rx='6' fill='#243042'/>" +
+      "<rect x='114' y='58' width='90' height='128' rx='6' fill='#2c3a50'/>" +
+      "<rect x='214' y='58' width='92' height='128' rx='6' fill='#5b8cff'/>" +
+      "<text x='160' y='34' fill='#e8ecf4' font-family='system-ui' " +
+      "font-size='14' text-anchor='middle'>Obeya wall</text>" +
+      "</svg>",
+  );
+
+export function samplePictureNodeVM(): PictureNodeViewModel {
+  return {
+    kind: "PictureNode",
+    id: "ds-picture",
+    title: "Architecture diagram",
+    imageUrl: DEMO_PICTURE_DATA_URL,
+  };
+}
+
+/**
+ * URLNode demo: a stable example.org URL so the `<a target="_blank">`
+ * affordance has something defensible to open if an operator taps it
+ * through the showcase (the showcase is read-only-ish; the bubbled
+ * `inline-edit-title` event is already silenced).
+ */
+export function sampleURLNodeVM(): URLNodeViewModel {
+  return {
+    kind: "URLNode",
+    id: "ds-url",
+    title: "Runbook",
+    url: "https://example.org/obeya/runbook",
   };
 }
 

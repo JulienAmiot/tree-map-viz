@@ -273,6 +273,61 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     expect(wfC).toBeTruthy();
   });
 
+  it("Organisms tier mounts Picture + URL tiles with sample VMs (\u00a717.127 A4b-4)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const picP = $(el, "ds-org-picture-asparent-cell").querySelector(
+      "picture-node-as-parent",
+    ) as { vm?: { id: string; imageUrl: string } | null } | null;
+    expect(picP?.vm?.id).toBe("ds-picture");
+    expect(picP?.vm?.imageUrl.startsWith("data:image/svg+xml")).toBe(true);
+    const picC = $(el, "ds-org-picture-aschild-cell").querySelector(
+      "picture-node-as-child",
+    );
+    expect(picC).toBeTruthy();
+    const urlP = $(el, "ds-org-url-asparent-cell").querySelector(
+      "url-node-as-parent",
+    ) as { vm?: { id: string; url: string } | null } | null;
+    expect(urlP?.vm?.id).toBe("ds-url");
+    expect(urlP?.vm?.url).toBe("https://example.org/obeya/runbook");
+    const urlC = $(el, "ds-org-url-aschild-cell").querySelector(
+      "url-node-as-child",
+    );
+    expect(urlC).toBeTruthy();
+  });
+
+  it("Organisms tier silences `inline-edit-title` dispatched from Picture / URL parents (\u00a717.127 A4b-4)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const escaped = vi.fn();
+    document.addEventListener("inline-edit-title", escaped);
+    for (const tag of ["picture-node-as-parent", "url-node-as-parent"]) {
+      el.shadowRoot
+        ?.querySelector(tag)
+        ?.dispatchEvent(
+          new CustomEvent("inline-edit-title", {
+            bubbles: true,
+            composed: true,
+            detail: { nodeId: tag, trimmed: "demo" },
+          }),
+        );
+    }
+    expect(escaped).not.toHaveBeenCalled();
+    document.removeEventListener("inline-edit-title", escaped);
+  });
+
   it("Organisms tier silences `workflow-status-change` at the host (\u00a717.127 A4b-3)", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",
