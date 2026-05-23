@@ -35,10 +35,13 @@ import "../shell/Breadcrumb.js";
 import "../views/plus/PlusTile.js";
 import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
+import "../views/ComputedNode/ComputedCards.js";
 import type { BreadcrumbSegment } from "../shell/Breadcrumb.js";
 import {
   sampleBusinessScoreVMOffTrack,
   sampleBusinessScoreVMOnTrack,
+  sampleComputedBSCVM,
+  sampleComputedNodeVM,
 } from "./sampleViewModels.js";
 
 export const DESIGN_SYSTEM_CLOSE_EVENT = "design-system-close";
@@ -156,6 +159,7 @@ export class DesignSystemPage extends LitElement {
     "inline-edit-title",
     "inline-edit-value",
     "inline-edit-unit",
+    "computation-kind-change",
   ] as const;
 
   override connectedCallback(): void {
@@ -247,6 +251,33 @@ export class DesignSystemPage extends LitElement {
         <span class="caption">
           AsChild role \u2014 computedMean branch below objective; warning
           glyph + <code>down-right</code> trend arrow (regressing).
+        </span>
+      </div>
+      <h2 data-testid="ds-org-computed">
+        Computed cards (&lt;computed-card&gt; + &lt;computed-business-score-card&gt;)
+      </h2>
+      <div class="org-cell" data-testid="ds-org-computed-cell">
+        <div class="stage org-bsc-aschild">
+          <computed-card
+            view-role="asParent"
+            .vm=${sampleComputedNodeVM()}
+          ></computed-card>
+        </div>
+        <span class="caption">
+          ComputedNode AsParent \u2014 SUM strategy picker live;
+          <code>computation-kind-change</code> silenced at the host.
+        </span>
+      </div>
+      <div class="org-cell" data-testid="ds-org-computed-bsc-cell">
+        <div class="stage org-bsc-asparent">
+          <computed-business-score-card
+            view-role="asParent"
+            .vm=${sampleComputedBSCVM()}
+          ></computed-business-score-card>
+        </div>
+        <span class="caption">
+          ComputedBusinessScoreNode AsParent \u2014 WEIGHTED_AVERAGE with
+          objective row, trend arrow <code>right</code> (flat).
         </span>
       </div>
     `;

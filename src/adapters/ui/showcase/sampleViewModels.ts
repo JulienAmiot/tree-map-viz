@@ -21,7 +21,20 @@
  * Picture / URL builders one kind at a time.
  */
 
-import type { BusinessScoreCardNodeViewModel } from "../views/NodeViewModel.js";
+import type {
+  BusinessScoreCardNodeViewModel,
+  ComputedBusinessScoreNodeViewModel,
+  ComputedNodeViewModel,
+} from "../views/NodeViewModel.js";
+
+const ALL_COMPUTATION_KINDS = [
+  "SUM",
+  "AVERAGE",
+  "MIN",
+  "MAX",
+  "WEIGHTED_AVERAGE",
+  "COUNT",
+] as const;
 
 /**
  * BSC AsParent demo: a "Revenue (USD)" metric with a recorded value
@@ -58,6 +71,47 @@ export function sampleBusinessScoreVMOnTrack(): BusinessScoreCardNodeViewModel {
  * (computedMean branch) sitting below its objective with the
  * warning glyph + a regression-trend arrow.
  */
+/**
+ * ComputedNode demo: a SUM of children pager-fatigue minutes, with
+ * the full ComputationKind list available for the AsParent picker.
+ */
+export function sampleComputedNodeVM(): ComputedNodeViewModel {
+  return {
+    kind: "ComputedNode",
+    id: "ds-computed",
+    title: "Pager hours saved",
+    value: { kind: "numeric", value: 38.5, unit: "h" },
+    computationKind: "SUM",
+    availableKinds: ALL_COMPUTATION_KINDS,
+  };
+}
+
+/**
+ * ComputedBusinessScoreNode demo: a WEIGHTED_AVERAGE of contributing
+ * children with an objective row and a "near schedule" trend arrow.
+ */
+export function sampleComputedBSCVM(): ComputedBusinessScoreNodeViewModel {
+  return {
+    kind: "ComputedBusinessScoreNode",
+    id: "ds-computed-bsc",
+    title: "Customer-impact score",
+    description: "Weighted by per-customer ARR; lower is better",
+    value: { kind: "numeric", value: 8.4, unit: "" },
+    computationKind: "WEIGHTED_AVERAGE",
+    availableKinds: ALL_COMPUTATION_KINDS,
+    dateIso: "2026-05-20",
+    dateColor: "rgb(150, 180, 130)",
+    objective: {
+      targetValue: 7,
+      targetDateIso: "2026-09-30",
+      unit: "",
+      valueColor: "rgb(200, 180, 110)",
+      warningColor: "",
+      trendArrow: "right",
+    },
+  };
+}
+
 export function sampleBusinessScoreVMOffTrack(): BusinessScoreCardNodeViewModel {
   return {
     kind: "BusinessScoreCardNode",
