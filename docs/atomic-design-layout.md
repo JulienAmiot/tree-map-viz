@@ -141,7 +141,7 @@ Molecules tier and so genuinely belongs in `molecules/`.
 | **R3h-1** | Organisms — modals (About + BoardSettings + BoardsPanel) | **done** (§17.128 R3h-1) |
 | **R3h-2** | Organisms — modals (AddChild + EditNode) | **done** (§17.128 R3h-2) — modals tier complete |
 | **R4**  | Templates — ChildrenGrid + ParentIdentityStrip | **done** (§17.128 R4) — templates tier complete |
-| **R5a** | Pages — TreeMapScreen | pending |
+| **R5a** | Pages — TreeMapScreen | **done** (§17.128 R5a) — legacy `shell/` removed |
 | **R5b** | Pages — DesignSystemPage + sampleViewModels | pending |
 
 ## 7. Test-file co-movement

@@ -18,8 +18,8 @@ if (typeof globalThis.PointerEvent === "undefined") {
 }
 
 import { DRILL_CLASS } from "../../../../../adapters/ui/animations/drillTransitions.js";
-import "../../../../../adapters/ui/shell/TreeMapScreen.js";
-import { TreeMapScreen } from "../../../../../adapters/ui/shell/TreeMapScreen.js";
+import "../../../../../adapters/ui/pages/TreeMapScreen.js";
+import { TreeMapScreen } from "../../../../../adapters/ui/pages/TreeMapScreen.js";
 import type { AddChildModal } from "../../../../../adapters/ui/organisms/modal/AddChildModal.js";
 import type { FocusBreadcrumb } from "../../../../../adapters/ui/organisms/shell/Breadcrumb.js";
 import type { ChildrenGrid } from "../../../../../adapters/ui/templates/ChildrenGrid.js";

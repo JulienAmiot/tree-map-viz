@@ -83,8 +83,8 @@ import type {
   EditNodeOpenDetail,
   FocusCloseToParentDetail,
 } from "./adapters/ui/templates/ParentIdentityStrip.js";
-import "./adapters/ui/shell/TreeMapScreen.js";
-import type { TreeMapScreen } from "./adapters/ui/shell/TreeMapScreen.js";
+import "./adapters/ui/pages/TreeMapScreen.js";
+import type { TreeMapScreen } from "./adapters/ui/pages/TreeMapScreen.js";
 import type { ComputationKindChangeDetail } from "./adapters/ui/organisms/ComputedNode/ComputedCards.js";
 import { VALUE_NODE_DISABLED_CHANGE_EVENT, type ValueNodeDisabledChangeDetail } from "./adapters/ui/molecules/disabledToggle.js";
 import type { WorkflowStatusChangeDetail } from "./adapters/ui/molecules/statusBadge.js";
