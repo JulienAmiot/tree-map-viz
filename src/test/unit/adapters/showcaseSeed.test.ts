@@ -6,7 +6,7 @@ import {
   SHOWCASE_BOARD_ID,
   SHOWCASE_BOARD_NAME,
 } from "../../../adapters/showcaseSeed.js";
-import { mapFocusedToViewModel } from "../../../adapters/ui/views/viewModelMapper.js";
+import { mapFocusedToViewModel } from "../../../adapters/ui/molecules/viewModelMapper.js";
 import type { Clock } from "../../../domain/capabilities/Clock.js";
 import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusinessScoreNode.js";

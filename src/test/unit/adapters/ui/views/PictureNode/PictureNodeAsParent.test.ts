@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import "../../../../../../adapters/ui/views/PictureNode/PictureNodeAsParent.js";
 import { PictureNodeAsParent } from "../../../../../../adapters/ui/views/PictureNode/PictureNodeAsParent.js";
-import type { PictureNodeViewModel } from "../../../../../../adapters/ui/views/NodeViewModel.js";
+import type { PictureNodeViewModel } from "../../../../../../adapters/ui/molecules/NodeViewModel.js";
 import {
   cleanupLitFixtures,
   mountLitElement,

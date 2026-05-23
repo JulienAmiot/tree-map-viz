@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   nodeViewRegistry,
   NodeViewRegistryError,
-} from "../../../../../adapters/ui/views/nodeViewRegistry.js";
+} from "../../../../../adapters/ui/molecules/nodeViewRegistry.js";
 
 describe("nodeViewRegistry", () => {
   beforeEach(() => {

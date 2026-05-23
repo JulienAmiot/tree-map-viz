@@ -8,7 +8,7 @@ import {
   type FocusCloseToParentDetail,
   ParentIdentityStrip,
 } from "../../../../../adapters/ui/shell/ParentIdentityStrip.js";
-import type { NodeViewModel } from "../../../../../adapters/ui/views/NodeViewModel.js";
+import type { NodeViewModel } from "../../../../../adapters/ui/molecules/NodeViewModel.js";
 import {
   cleanupLitFixtures,
   mountLitElement,

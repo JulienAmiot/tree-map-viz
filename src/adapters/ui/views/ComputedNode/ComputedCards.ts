@@ -102,7 +102,7 @@ import type {
   ComputedValueViewModel,
   NodeRole,
   TrendArrowDirection,
-} from "../NodeViewModel.js";
+} from "../../molecules/NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import {
   disabledToggleStyles,

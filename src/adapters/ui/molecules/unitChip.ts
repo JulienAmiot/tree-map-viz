@@ -59,7 +59,7 @@ import { focusAndSelectInline, inlineEditKey } from "./inlineEditHelpers.js";
 import type {
   BusinessScoreCardValueViewModel,
   ComputedValueViewModel,
-} from "../views/NodeViewModel.js";
+} from "./NodeViewModel.js";
 
 /**
  * SPEC §17.125 — render the unit chip when {@param unit} is

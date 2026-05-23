@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildSampleTree } from "../../../adapters/sampleData.js";
-import { mapFocusedToViewModel } from "../../../adapters/ui/views/viewModelMapper.js";
+import { mapFocusedToViewModel } from "../../../adapters/ui/molecules/viewModelMapper.js";
 import type { Clock } from "../../../domain/capabilities/Clock.js";
 import { BusinessScoreNode } from "../../../domain/nodes/BusinessScoreNode.js";
 import { ComputedBusinessScoreNode } from "../../../domain/nodes/ComputedBusinessScoreNode.js";

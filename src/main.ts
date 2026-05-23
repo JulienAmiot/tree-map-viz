@@ -93,7 +93,7 @@ import type {
   InlineEditTitleDetail,
   InlineEditValueDetail,
 } from "./adapters/ui/molecules/inlineEditEvents.js";
-import { mapFocusedToViewModel } from "./adapters/ui/views/viewModelMapper.js";
+import { mapFocusedToViewModel } from "./adapters/ui/molecules/viewModelMapper.js";
 import {
   AddChildService,
   type AddChildPayload,

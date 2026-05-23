@@ -99,7 +99,7 @@ import {
   focusAndSelectInline,
   inlineEditKey,
 } from "../../molecules/inlineEditHelpers.js";
-import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
+import type { BusinessScoreCardNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { formatValue } from "../../atoms/numberFormat.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";

@@ -53,7 +53,7 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import "../views/index.js";
-import type { NodeViewModel } from "../views/NodeViewModel.js";
+import type { NodeViewModel } from "../molecules/NodeViewModel.js";
 
 /** Event name used by the close-X button. */
 export const FOCUS_CLOSE_TO_PARENT_EVENT = "focus-close-to-parent";

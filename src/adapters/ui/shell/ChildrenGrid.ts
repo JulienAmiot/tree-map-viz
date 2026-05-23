@@ -46,7 +46,7 @@ import {
   type WeightEditOpenDetail,
 } from "../views/childWeight/weightEditEvents.js";
 import "../views/index.js";
-import type { ChildSlotViewModel } from "../views/NodeViewModel.js";
+import type { ChildSlotViewModel } from "../molecules/NodeViewModel.js";
 
 const TILE_PADDING_PX = 4;
 
