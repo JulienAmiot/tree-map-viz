@@ -30,8 +30,8 @@ import {
   renderDisabledIndicator,
   renderDisabledSwitch,
 } from "../molecules/disabledToggle.js";
-import "../shell/BurgerMenu.js";
-import "../shell/Breadcrumb.js";
+import "../organisms/shell/BurgerMenu.js";
+import "../organisms/shell/Breadcrumb.js";
 import "../shell/ParentIdentityStrip.js";
 import "../shell/ChildrenGrid.js";
 import "../shell/TreeMapScreen.js";
@@ -47,7 +47,7 @@ import "../views/PictureNode/PictureNodeAsParent.js";
 import "../views/PictureNode/PictureNodeAsChild.js";
 import "../views/URLNode/URLNodeAsParent.js";
 import "../views/URLNode/URLNodeAsChild.js";
-import type { BreadcrumbSegment } from "../shell/Breadcrumb.js";
+import type { BreadcrumbSegment } from "../organisms/shell/Breadcrumb.js";
 import {
   sampleBreadcrumbPath,
   sampleBusinessScoreVMOffTrack,
@@ -156,10 +156,10 @@ html\`\${DEFAULT_WORKFLOW_STATUSES.map((s) => renderStatusBadge(s))}\`;`,
 html\`\${renderDisabledIndicator(true)}<span>Disabled metric</span>\`;
 // Interactive switch (dispatches \`value-node-disabled-change\`):
 html\`\${renderDisabledSwitch(host, nodeId, isDisabled)}\`;`,
-  "org-burger": `import "../shell/BurgerMenu.js";
+  "org-burger": `import "../organisms/shell/BurgerMenu.js";
 html\`<burger-menu></burger-menu>\`;
 // Emits \`burger-menu-action\` { action: "import" | "export" | ... }`,
-  "org-breadcrumb": `import "../shell/Breadcrumb.js";
+  "org-breadcrumb": `import "../organisms/shell/Breadcrumb.js";
 const path = [
   { id: "root", title: "Obeya" },
   { id: "reliability", title: "Reliability" },

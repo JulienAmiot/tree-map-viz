@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import "../../../../../adapters/ui/shell/Breadcrumb.js";
+import "../../../../../../adapters/ui/organisms/shell/Breadcrumb.js";
 import {
   BREADCRUMB_NAVIGATE_EVENT,
   type BreadcrumbNavigateDetail,
   type BreadcrumbSegment,
   type FocusBreadcrumb,
-} from "../../../../../adapters/ui/shell/Breadcrumb.js";
+} from "../../../../../../adapters/ui/organisms/shell/Breadcrumb.js";
 import {
   cleanupLitFixtures,
   mountLitElement,
-} from "../../../../fixtures/litElementFixture.js";
+} from "../../../../../fixtures/litElementFixture.js";
 
 afterEach(cleanupLitFixtures);
 

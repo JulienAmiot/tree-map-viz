@@ -116,9 +116,9 @@ import "../showcase/DesignSystemPage.js";
 import type { FocusedTreeViewModel } from "../molecules/NodeViewModel.js";
 import type { WorkflowStatus } from "../../../domain/values/WorkflowStatus.js";
 import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
-import type { BreadcrumbSegment } from "./Breadcrumb.js";
-import "./Breadcrumb.js";
-import "./BurgerMenu.js";
+import type { BreadcrumbSegment } from "../organisms/shell/Breadcrumb.js";
+import "../organisms/shell/Breadcrumb.js";
+import "../organisms/shell/BurgerMenu.js";
 import "./ChildrenGrid.js";
 import "./ParentIdentityStrip.js";
 
