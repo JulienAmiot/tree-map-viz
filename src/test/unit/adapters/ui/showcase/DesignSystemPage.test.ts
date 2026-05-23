@@ -245,6 +245,58 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     expect(cbsn?.vm?.computationKind).toBe("WEIGHTED_AVERAGE");
   });
 
+  it("Organisms tier mounts Text + Workflow tiles with sample VMs (\u00a717.127 A4b-3)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const textP = $(el, "ds-org-text-asparent-cell").querySelector(
+      "text-node-as-parent",
+    ) as { vm?: { id: string; title: string } | null } | null;
+    expect(textP?.vm?.id).toBe("ds-text");
+    const textC = $(el, "ds-org-text-aschild-cell").querySelector(
+      "text-node-as-child",
+    );
+    expect(textC).toBeTruthy();
+    const wfP = $(el, "ds-org-workflow-asparent-cell").querySelector(
+      "workflow-node-as-parent",
+    ) as { vm?: { id: string; status: { id: string } } | null } | null;
+    expect(wfP?.vm?.id).toBe("ds-workflow");
+    expect(wfP?.vm?.status.id).toBe("do");
+    const wfC = $(el, "ds-org-workflow-aschild-cell").querySelector(
+      "workflow-node-as-child",
+    );
+    expect(wfC).toBeTruthy();
+  });
+
+  it("Organisms tier silences `workflow-status-change` at the host (\u00a717.127 A4b-3)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const escaped = vi.fn();
+    document.addEventListener("workflow-status-change", escaped);
+    el.shadowRoot
+      ?.querySelector("workflow-node-as-parent")
+      ?.dispatchEvent(
+        new CustomEvent("workflow-status-change", {
+          bubbles: true,
+          composed: true,
+          detail: { nodeId: "ds-workflow", newStatusId: "check" },
+        }),
+      );
+    expect(escaped).not.toHaveBeenCalled();
+    document.removeEventListener("workflow-status-change", escaped);
+  });
+
   it("Organisms tier silences `computation-kind-change` at the host (\u00a717.127 A4b-2)", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",

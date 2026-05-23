@@ -41,6 +41,13 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   showcase host silences the `value-node-disabled-change` event bubbled
   by the live switch so a click in the showcase doesn't reach
   `main.ts`'s screen listener.
+- **Organisms tier — node half: Text + Workflow (§17.127 strand A4b-3)**.
+  Live `<text-node-as-parent>` + `<text-node-as-child>` ("Retro
+  note" demo) and `<workflow-node-as-parent>` + `<workflow-node-as-child>`
+  ("Postmortem follow-up" with PDCA `DO`) mount inside the Organisms
+  tier. The WorkflowNode AsParent surfaces its inline PDCA picker
+  live; the bubbled `workflow-status-change` event is silenced at
+  the showcase host.
 - **Organisms tier — node half: Computed cards (§17.127 strand A4b-2)**.
   Live `<computed-card>` (SUM-strategy ComputedNode in AsParent
   role, "Pager hours saved" demo) and `<computed-business-score-card>`
