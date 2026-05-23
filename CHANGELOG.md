@@ -14,6 +14,22 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **BSC AsParent migrated to `<card-frame>` (\u00a717.136, S1)**.
+  The `<business-score-card-as-parent>` per-view now wraps every
+  slot filler inside the unified `<card-frame>` template:
+  disabled-toggle + sigma badge in the `icons` slot, unit chip in
+  the `unit` slot, title in the `title` slot, metric-pane + optional
+  description aside (with every \u00a717.45/\u00a717.46/\u00a717.48/\u00a717.49 entering
+  animation preserved) in the `body` slot, timestamp in the
+  `footer-right` slot. The `header-actions` + `footer-left` slots
+  stay empty until S13 cuts over the close-X / edit-pencil
+  affordances (off `<parent-identity-strip>`) and the weight button
+  (off the `<children-grid>` corner overlay) into them. Visually the
+  focused-panel BSC tile reads identically to pre-\u00a717.136 \u2014 the
+  layout primitive is now shared, not bespoke.
+
 ### Added
 
 - **`<card-frame>` molecule \u2014 shared header / body / footer
