@@ -14,19 +14,13 @@ import {
 afterEach(cleanupLitFixtures);
 
 describe("<weight-edit-button> (\u00a717.52)", () => {
-  it("renders the U+2696 scales glyph inside an accessible button (\u00a717.130)", async () => {
-    // SPEC §17.130 -- the icon is the Unicode scales codepoint
-    // (U+2696) followed by U+FE0E (text-presentation variation
-    // selector, "VS15") so platforms that emoji-color the
-    // scales by default still render the kiosk-text monochrome
-    // variant. Reverses the §17.52 design Q&A "no balance
-    // scale" decision on operator instruction; the SVG atom
-    // that previously held the cast-iron-weight glyph
-    // (`atoms/weightGlyph.ts`) is retired in the same strand.
-    // Pinning the exact two-codepoint string prevents a future
-    // refactor from silently dropping VS15 (which would emoji-
-    // color the icon on macOS Safari) or restoring the SVG
-    // glyph.
+  it("renders the Lucide `scale` icon inside an accessible button (\u00a717.132)", async () => {
+    // SPEC §17.132 -- the icon is the §17.131 `<ds-icon name="scale">`
+    // Lucide SVG (was a Unicode `U+2696 SCALES` + VS15 sequence pre-
+    // §17.132; before that it was a custom cast-iron-weight SVG atom).
+    // The Lucide swap removes the system-font dependency that drifted
+    // into the emoji-coloured rendering on macOS Safari + iOS;
+    // monochrome `currentColor` is now guaranteed across platforms.
     const el = await mountLitElement<WeightEditButton>(
       "weight-edit-button",
       (e) => {
@@ -39,10 +33,13 @@ describe("<weight-edit-button> (\u00a717.52)", () => {
     );
     expect(button).not.toBeNull();
     expect(button?.getAttribute("aria-label")).toBe("Edit weight");
-    expect(button?.textContent).toBe("\u2696\uFE0E");
-    // Pin the absence of the legacy SVG so the migration can't
-    // accidentally reintroduce the cast-iron-weight artwork.
-    expect(button?.querySelector("svg")).toBeNull();
+    const icon = button?.querySelector("ds-icon");
+    expect(icon).not.toBeNull();
+    expect(icon?.getAttribute("name")).toBe("scale");
+    // Pin the absence of any other text content so the migration
+    // can't accidentally reintroduce a Unicode glyph alongside the
+    // Lucide SVG.
+    expect(button?.textContent?.trim()).toBe("");
   });
 
   it("anchors at the tile's bottom-LEFT corner (mirror of the bottom-right timestamp)", async () => {

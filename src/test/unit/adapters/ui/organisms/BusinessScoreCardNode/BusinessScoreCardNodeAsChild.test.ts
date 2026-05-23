@@ -88,7 +88,8 @@ describe("<business-score-card-as-child>", () => {
     );
 
     const title = el.shadowRoot?.querySelector('[data-testid="title"]');
-    expect(title?.querySelector('[data-testid="computed-badge"]')?.textContent).toBe("\u03a3");
+    // §17.132 -- Σ badge is now a `<ds-icon name="sigma">` Lucide SVG.
+    expect(title?.querySelector('[data-testid="computed-badge"] ds-icon')?.getAttribute("name")).toBe("sigma");
     const chip = title?.querySelector('[data-testid="unit-chip"]');
     expect(chip).not.toBeNull();
     expect(chip?.textContent?.trim()).toBe("(%)");
@@ -349,7 +350,10 @@ describe("<business-score-card-as-child>", () => {
     );
     expect(arrow).not.toBeNull();
     expect(arrow!.getAttribute("data-direction")).toBe("up-right");
-    expect(arrow!.textContent?.trim()).toBe("\u2197");
+    // §17.132 -- glyph is now a Lucide `<ds-icon>` (was U+2197 pre-§17.132).
+    expect(arrow!.querySelector("ds-icon")?.getAttribute("name")).toBe(
+      "arrow-up-right",
+    );
     expect(arrow!.getAttribute("aria-label")?.toLowerCase()).toContain(
       "on or near schedule",
     );
@@ -363,13 +367,13 @@ describe("<business-score-card-as-child>", () => {
   });
 
   it.each([
-    ["up", "\u2191", "well ahead"],
-    ["right", "\u2192", "flat"],
-    ["down-right", "\u2198", "slight regression"],
-    ["down", "\u2193", "significant regression"],
+    ["up", "arrow-up", "well ahead"],
+    ["right", "arrow-right", "flat"],
+    ["down-right", "arrow-down-right", "slight regression"],
+    ["down", "arrow-down", "significant regression"],
   ] as const)(
-    "\u00a717.41 — direction %s renders glyph %s with a meaningful aria-label",
-    async (direction, glyph, labelFragment) => {
+    "\u00a717.41 + \u00a717.132 \u2014 direction %s renders <ds-icon name=%s> with a meaningful aria-label",
+    async (direction, slug, labelFragment) => {
       const vm = makeVm(
         {
           kind: "recordedValue",
@@ -391,7 +395,7 @@ describe("<business-score-card-as-child>", () => {
       );
       expect(arrow).not.toBeNull();
       expect(arrow!.getAttribute("data-direction")).toBe(direction);
-      expect(arrow!.textContent?.trim()).toBe(glyph);
+      expect(arrow!.querySelector("ds-icon")?.getAttribute("name")).toBe(slug);
       expect(arrow!.getAttribute("aria-label")?.toLowerCase()).toContain(
         labelFragment,
       );

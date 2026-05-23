@@ -14,6 +14,33 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **Inline-Lit glyphs migrated to the `<ds-icon>` Lucide atom (§17.132,
+  L2 of 4-strand migration)**. The five BSC trend arrows (↑ ↗ → ↘ ↓ on
+  `<business-score-card-as-parent>`, `<business-score-card-as-child>`,
+  and `<computed-business-score-card>`), the Σ aggregation badge (on
+  both BSC roles + both `<computed-card>` / `<computed-business-score-card>`
+  title prefixes), the §17.130 scales icon on `<weight-edit-button>`,
+  the §17.130 crayon icon on `<parent-identity-strip>`'s edit-pencil
+  button, and the two `×` buttons inside the design-system showcase
+  (top-bar search-clear + `</>` snippet-panel close) now render via
+  `<ds-icon name="…">` from the §17.131 Lucide registry instead of a
+  Unicode codepoint interpolated into the Lit template. The visual
+  shape is unchanged on every platform that already had the right
+  system symbol font; on iOS / older Android (where the trend arrows
+  + scales used to drift into the system emoji font's coloured
+  rendering), the glyphs are now guaranteed monochrome and inherit
+  `currentColor` consistently. The design-system showcase's
+  Atoms-tier trend-arrow grid and kiosk-glyph grid track the swap:
+  the trend cells now render the Lucide SVGs keyed by slug, and the
+  scales + crayon entries leave the kiosk-glyph grid (they no longer
+  render a Unicode glyph anywhere on the kiosk). CSS-pseudo
+  `content:` glyphs (target / warning / forbidden / off-switch ×
+  / on-switch ✓) and the close-X CSS-pseudo bars on modal frames
+  stay as-is for now; the §17.133 / §17.134 follow-up strands (L3a
+  + L3b) will migrate those next.
+
 ### Added
 
 - **Lucide icon-library foundation — `<ds-icon>` atom + license attribution

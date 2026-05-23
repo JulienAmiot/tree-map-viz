@@ -32,6 +32,7 @@
 
 import { html, nothing, type TemplateResult } from "lit";
 
+import "../../atoms/icon/Icon.js";
 import type { BusinessScoreCardNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { formatValue } from "../../atoms/numberFormat.js";
 
@@ -186,24 +187,25 @@ export function renderTargetRow(
 }
 
 /**
- * SPEC §17.41 — Unicode glyph for each {@link
- * BusinessScoreCardObjectiveViewModel.trendArrow} direction.
+ * SPEC §17.41 + §17.132 — Lucide slug for each {@link
+ * BusinessScoreCardObjectiveViewModel.trendArrow} direction. Renders
+ * via `<ds-icon name=…>` from the §17.131 icon library so the trend
+ * signal reads with consistent stroke weight + monochrome `currentColor`
+ * on every platform (the pre-§17.132 Unicode-arrow path drifted into
+ * the system emoji font on iOS / older Android, where the glyph
+ * picked up the OS's coloured-arrow rendering).
  *
  * The 5 directions cover the half-circle ↑↗→↘↓ of the 8-compass
  * palette — the only buckets that have meaning in a 1D progress-rate
  * signal (see `domain/aggregation/objectiveProgress.trendArrowFromRate`
- * for the rationale). Each glyph is a single Unicode code-point in the
- * `Arrows` block (U+2191..U+2199) — present in every modern system
- * symbol font (Segoe UI Symbol on Windows, Apple Symbols on
- * macOS / iOS, Noto Sans Symbols on Android) — so the per-view does
- * NOT need an SVG asset or webfont.
+ * for the rationale).
  */
-const TREND_ARROW_GLYPHS = {
-  up: "\u2191", //  ↑
-  "up-right": "\u2197", //  ↗
-  right: "\u2192", //  →
-  "down-right": "\u2198", //  ↘
-  down: "\u2193", //  ↓
+const TREND_ARROW_SLUGS = {
+  up: "arrow-up",
+  "up-right": "arrow-up-right",
+  right: "arrow-right",
+  "down-right": "arrow-down-right",
+  down: "arrow-down",
 } as const satisfies Record<NonNullable<BusinessScoreCardNodeViewModel["objective"]["trendArrow"]>, string>;
 
 /**
@@ -262,7 +264,7 @@ export function renderTrendArrow(
     data-direction=${direction}
     role="img"
     aria-label=${TREND_ARROW_LABELS[direction]}
-    >${TREND_ARROW_GLYPHS[direction]}</span
+    ><ds-icon name=${TREND_ARROW_SLUGS[direction]}></ds-icon></span
   >`;
 }
 
