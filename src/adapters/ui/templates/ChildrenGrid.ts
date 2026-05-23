@@ -32,8 +32,8 @@
  * on the grid — `plus-tile-activate` bubbles + composed crosses both shadow
  * boundaries.
  *
- * Importing `../views/index.js` registers + freezes `nodeViewRegistry`. The
- * grid does not register entries itself.
+ * Importing `../molecules/registerNodeViews.js` registers + freezes
+ * `nodeViewRegistry`. The grid does not register entries itself.
  */
 
 import { LitElement, css, html } from "lit";
@@ -45,7 +45,7 @@ import {
   WEIGHT_EDIT_OPEN_EVENT,
   type WeightEditOpenDetail,
 } from "../molecules/childWeight/weightEditEvents.js";
-import "../views/index.js";
+import "../molecules/registerNodeViews.js";
 import type { ChildSlotViewModel } from "../molecules/NodeViewModel.js";
 
 const TILE_PADDING_PX = 4;

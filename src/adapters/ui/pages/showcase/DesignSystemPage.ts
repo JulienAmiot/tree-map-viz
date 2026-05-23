@@ -19,35 +19,35 @@
 
 import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
-import { renderUnitChip, unitChipStyles } from "../molecules/unitChip.js";
+import { DEFAULT_WORKFLOW_STATUSES } from "../../../../domain/values/WorkflowStatus.js";
+import { renderUnitChip, unitChipStyles } from "../../molecules/unitChip.js";
 import {
   renderStatusBadge,
   statusBadgeStyles,
-} from "../molecules/statusBadge.js";
+} from "../../molecules/statusBadge.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
   renderDisabledSwitch,
-} from "../molecules/disabledToggle.js";
-import "../organisms/shell/BurgerMenu.js";
-import "../organisms/shell/Breadcrumb.js";
-import "../templates/ParentIdentityStrip.js";
-import "../templates/ChildrenGrid.js";
-import "../pages/TreeMapScreen.js";
-import "../molecules/plus/PlusTile.js";
-import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
-import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
-import "../organisms/ComputedNode/ComputedCards.js";
-import "../organisms/TextNode/TextNodeAsParent.js";
-import "../organisms/TextNode/TextNodeAsChild.js";
-import "../organisms/WorkflowNode/WorkflowNodeAsParent.js";
-import "../organisms/WorkflowNode/WorkflowNodeAsChild.js";
-import "../organisms/PictureNode/PictureNodeAsParent.js";
-import "../organisms/PictureNode/PictureNodeAsChild.js";
-import "../organisms/URLNode/URLNodeAsParent.js";
-import "../organisms/URLNode/URLNodeAsChild.js";
-import type { BreadcrumbSegment } from "../organisms/shell/Breadcrumb.js";
+} from "../../molecules/disabledToggle.js";
+import "../../organisms/shell/BurgerMenu.js";
+import "../../organisms/shell/Breadcrumb.js";
+import "../../templates/ParentIdentityStrip.js";
+import "../../templates/ChildrenGrid.js";
+import "../TreeMapScreen.js";
+import "../../molecules/plus/PlusTile.js";
+import "../../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
+import "../../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
+import "../../organisms/ComputedNode/ComputedCards.js";
+import "../../organisms/TextNode/TextNodeAsParent.js";
+import "../../organisms/TextNode/TextNodeAsChild.js";
+import "../../organisms/WorkflowNode/WorkflowNodeAsParent.js";
+import "../../organisms/WorkflowNode/WorkflowNodeAsChild.js";
+import "../../organisms/PictureNode/PictureNodeAsParent.js";
+import "../../organisms/PictureNode/PictureNodeAsChild.js";
+import "../../organisms/URLNode/URLNodeAsParent.js";
+import "../../organisms/URLNode/URLNodeAsChild.js";
+import type { BreadcrumbSegment } from "../../organisms/shell/Breadcrumb.js";
 import {
   sampleBreadcrumbPath,
   sampleBusinessScoreVMOffTrack,
@@ -137,29 +137,29 @@ export const DEFAULT_WORKFLOW_STATUSES = [
   { id: "check", label: "CHECK", color: "rgb(34, 197, 94)"   },
   { id: "act",   label: "ACT",   color: "rgb(245, 158, 11)"  },
 ] as const;`,
-  "mol-units": `import { renderUnitChip } from "../molecules/unitChip.js";
+  "mol-units": `import { renderUnitChip } from "../../molecules/unitChip.js";
 
 html\`\${renderUnitChip("USD")}<span class="stage-title">Revenue</span>\`;
 html\`\${renderUnitChip("%")}<span class="stage-title">SLA</span>\`;
 // Empty unit -> the helper returns \`nothing\`, no chip renders:
 html\`<span class="stage-title">Headcount</span>\`;`,
-  "mol-badges": `import { renderStatusBadge } from "../molecules/statusBadge.js";
-import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
+  "mol-badges": `import { renderStatusBadge } from "../../molecules/statusBadge.js";
+import { DEFAULT_WORKFLOW_STATUSES } from "../../../../domain/values/WorkflowStatus.js";
 
 html\`\${DEFAULT_WORKFLOW_STATUSES.map((s) => renderStatusBadge(s))}\`;`,
   "mol-disabled": `import {
   renderDisabledIndicator,
   renderDisabledSwitch,
-} from "../molecules/disabledToggle.js";
+} from "../../molecules/disabledToggle.js";
 
 // Static indicator:
 html\`\${renderDisabledIndicator(true)}<span>Disabled metric</span>\`;
 // Interactive switch (dispatches \`value-node-disabled-change\`):
 html\`\${renderDisabledSwitch(host, nodeId, isDisabled)}\`;`,
-  "org-burger": `import "../organisms/shell/BurgerMenu.js";
+  "org-burger": `import "../../organisms/shell/BurgerMenu.js";
 html\`<burger-menu></burger-menu>\`;
 // Emits \`burger-menu-action\` { action: "import" | "export" | ... }`,
-  "org-breadcrumb": `import "../organisms/shell/Breadcrumb.js";
+  "org-breadcrumb": `import "../../organisms/shell/Breadcrumb.js";
 const path = [
   { id: "root", title: "Obeya" },
   { id: "reliability", title: "Reliability" },
@@ -167,40 +167,40 @@ const path = [
 ];
 html\`<focus-breadcrumb .path=\${path}></focus-breadcrumb>\`;
 // Emits \`breadcrumb-navigate\` { nodeId } on non-current segment tap.`,
-  "org-plus": `import "../molecules/plus/PlusTile.js";
+  "org-plus": `import "../../molecules/plus/PlusTile.js";
 html\`<plus-tile parent-id=\${parentId}></plus-tile>\`;
 // Emits \`plus-tile-activate\` { parentId } on tap.`,
-  "org-bsc": `import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
-import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
+  "org-bsc": `import "../../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
+import "../../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 
 html\`<business-score-card-as-parent .vm=\${vm}></business-score-card-as-parent>\`;
 html\`<business-score-card-as-child  .vm=\${vm}></business-score-card-as-child>\`;
 // vm.value: recordedValue | computedMean (discriminated union).
 // vm.objective adds the target row + trend arrow (TREND_ARROW_GLYPHS).`,
-  "org-computed": `import "../organisms/ComputedNode/ComputedCards.js";
+  "org-computed": `import "../../organisms/ComputedNode/ComputedCards.js";
 
 html\`<computed-card view-role="asParent" .vm=\${vm}></computed-card>\`;
 html\`<computed-business-score-card view-role="asParent" .vm=\${vm}>
 </computed-business-score-card>\`;
 // vm.computationKind \\in { SUM | AVERAGE | MIN | MAX | WEIGHTED_AVERAGE | COUNT }
 // AsParent renders a live <select>; emits \`computation-kind-change\`.`,
-  "org-text": `import "../organisms/TextNode/TextNodeAsParent.js";
-import "../organisms/TextNode/TextNodeAsChild.js";
-import "../organisms/WorkflowNode/WorkflowNodeAsParent.js";
-import "../organisms/WorkflowNode/WorkflowNodeAsChild.js";
+  "org-text": `import "../../organisms/TextNode/TextNodeAsParent.js";
+import "../../organisms/TextNode/TextNodeAsChild.js";
+import "../../organisms/WorkflowNode/WorkflowNodeAsParent.js";
+import "../../organisms/WorkflowNode/WorkflowNodeAsChild.js";
 
 html\`<text-node-as-parent     .vm=\${textVm}></text-node-as-parent>\`;
 html\`<workflow-node-as-parent .vm=\${wfVm}></workflow-node-as-parent>\`;
 // wfVm.status + wfVm.availableStatuses drive the AsParent PDCA picker.`,
-  "org-picture": `import "../organisms/PictureNode/PictureNodeAsParent.js";
-import "../organisms/URLNode/URLNodeAsParent.js";
+  "org-picture": `import "../../organisms/PictureNode/PictureNodeAsParent.js";
+import "../../organisms/URLNode/URLNodeAsParent.js";
 
 html\`<picture-node-as-parent .vm=\${picVm}></picture-node-as-parent>\`;
 html\`<url-node-as-parent     .vm=\${urlVm}></url-node-as-parent>\`;
 // PictureNode loads picVm.imageUrl with a \xa717.44 warning-fill fallback.
 // URLNode encodes urlVm.url into a QR + clickable anchor on AsParent.`,
-  "tpl-focused": `import "../templates/ParentIdentityStrip.js";
-import "../templates/ChildrenGrid.js";
+  "tpl-focused": `import "../../templates/ParentIdentityStrip.js";
+import "../../templates/ChildrenGrid.js";
 
 html\`<parent-identity-strip
   .vm=\${focusedVm}
@@ -209,7 +209,7 @@ html\`<parent-identity-strip
 <children-grid .slots=\${slots}></children-grid>\`;
 // slots: ChildSlotViewModel[]
 //   = ({ slot: "node", vm, weight } | { slot: "plus", parentId, weight })[]`,
-  "pg-screen": `import "../pages/TreeMapScreen.js";
+  "pg-screen": `import "../TreeMapScreen.js";
 
 html\`<tree-map-screen
   .boardName=\${boardName}
