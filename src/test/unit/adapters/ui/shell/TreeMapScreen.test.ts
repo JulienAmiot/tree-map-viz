@@ -797,6 +797,33 @@ describe("<tree-map-screen>", () => {
     });
   });
 
+  describe("design-system page seam (\u00a717.127 A1)", () => {
+    it("renders closed by default; About event opens + closes About; close event closes", async () => {
+      const el = await mountLitElement<TreeMapScreen>("tree-map-screen");
+      const ds = el.shadowRoot?.querySelector("design-system-page")!;
+      expect(ds.hasAttribute("open")).toBe(false);
+      el.openAboutModal();
+      await el.updateComplete;
+      el.aboutModalElement!.dispatchEvent(
+        new CustomEvent("about-open-design-system", { bubbles: true, composed: true }),
+      );
+      await el.updateComplete;
+      expect(el.isAboutModalOpen).toBe(false);
+      expect(ds.hasAttribute("open")).toBe(true);
+      ds.dispatchEvent(
+        new CustomEvent("design-system-close", { bubbles: true, composed: true }),
+      );
+      await el.updateComplete;
+      expect(ds.hasAttribute("open")).toBe(false);
+      el.openDesignSystem();
+      await el.updateComplete;
+      expect(ds.hasAttribute("open")).toBe(true);
+      el.closeDesignSystem();
+      await el.updateComplete;
+      expect(ds.hasAttribute("open")).toBe(false);
+    });
+  });
+
   // -- SPEC §17.52 -- weight-edit popover seam ------------------------
 
   describe("weight-edit popover seam (\u00a717.52)", () => {

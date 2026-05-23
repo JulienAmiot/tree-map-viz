@@ -14,6 +14,17 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Added
+
+- **Design-system showcase, reachable from About (§17.127 strand A1)**.
+  The About modal grows an "Open design system…" button that opens a
+  new full-screen `<design-system-page>` overlay with a five-tier nav
+  (Atoms / Molecules / Organisms / Templates / Pages). Strand A1 ships
+  the foundation only — tier bodies are "Coming soon" placeholders;
+  the §17.127.2 → §17.127.6 follow-ups fill each tier one at a time
+  so every merge stays under the local `new_lines > 300` Sonar gate.
+  Dismissal: "Back to kiosk" button or Escape.
+
 ### Changed
 
 - **The unit chip is now inline-editable on the focused panel (§17.126)**.

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import "../../../../../adapters/ui/modal/AboutModal.js";
 import {
   ABOUT_CANCEL_EVENT,
+  ABOUT_OPEN_DESIGN_SYSTEM_EVENT,
   type AboutModal,
 } from "../../../../../adapters/ui/modal/AboutModal.js";
 import { APP_VERSION, BUILD_DATE } from "../../../../../version.js";
@@ -69,6 +70,19 @@ describe("<about-modal> (\u00a717.84)", () => {
     (fieldOf(el, "modal-close-x") as HTMLButtonElement).click();
     (fieldOf(el, "modal-backdrop") as HTMLElement).click();
     expect(handler).toHaveBeenCalledTimes(3);
+    const evt = handler.mock.calls[0]?.[0] as CustomEvent | undefined;
+    expect(evt?.bubbles).toBe(true);
+    expect(evt?.composed).toBe(true);
+  });
+
+  it("Open design system\u2026 button dispatches `about-open-design-system` (\u00a717.127)", async () => {
+    const el = await mountLitElement<AboutModal>("about-modal", (e) => {
+      e.open = true;
+    });
+    const handler = vi.fn();
+    el.addEventListener(ABOUT_OPEN_DESIGN_SYSTEM_EVENT, handler);
+    (fieldOf(el, "about-open-design-system") as HTMLButtonElement).click();
+    expect(handler).toHaveBeenCalledTimes(1);
     const evt = handler.mock.calls[0]?.[0] as CustomEvent | undefined;
     expect(evt?.bubbles).toBe(true);
     expect(evt?.composed).toBe(true);

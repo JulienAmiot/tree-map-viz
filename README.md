@@ -190,6 +190,7 @@ The Lit custom-element surface (each in its own shadow root, registered via
 | `<board-settings-modal>`     | Rename / delete the active board                      |
 | `<boards-panel-modal>`       | Browse / switch / create boards                       |
 | `<about-modal>`              | Read-only version + build date + repo link            |
+| `<design-system-page>`       | Full-screen design-system showcase reached from About |
 | `<version-mismatch-banner>`  | Non-blocking strip on persisted-vs-running mismatch   |
 
 ## 4. Tech stack
