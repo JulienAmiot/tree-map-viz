@@ -16,6 +16,17 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **BSC AsChild migrated to `<card-frame>` (\u00a717.136, S2)**.
+  The `<business-score-card-as-child>` per-view now wraps every
+  slot filler inside the unified `<card-frame>` template:
+  disabled indicator + sigma badge in `icons`, unit chip in `unit`,
+  title in `title`, value-area in `body`, timestamp in
+  `footer-right`. The `footer-left` slot stays empty until S13
+  cuts over the `<weight-edit-button>` (currently a corner-overlay
+  affordance on `<children-grid>`). The shared `tileLayoutStyles`
+  still pins the §17.18 absolute corner-anchor for callsites that
+  haven't migrated yet; the per-view overrides locally so its own
+  slotted timestamp sits in card-frame's natural footer flow.
 - **BSC AsParent migrated to `<card-frame>` (\u00a717.136, S1)**.
   The `<business-score-card-as-parent>` per-view now wraps every
   slot filler inside the unified `<card-frame>` template:

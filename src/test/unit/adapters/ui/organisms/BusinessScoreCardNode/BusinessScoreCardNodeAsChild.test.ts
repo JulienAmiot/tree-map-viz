@@ -59,8 +59,13 @@ describe("<business-score-card-as-child>", () => {
       "business-score-card-as-child",
       (e) => { e.vm = { ...enabledVm, disabled: true }; },
     );
-    const title = off.shadowRoot?.querySelector('[data-testid="title"]');
-    const indicator = title?.firstElementChild as HTMLElement | null;
+    // \u00a717.136 S2 -- the disabled indicator moved from inside the
+    // title element into card-frame's `icons` slot. Look it up by
+    // data-testid directly (it's the only disabled indicator in the
+    // shadow root regardless of which slot wrapper it sits in).
+    const indicator = off.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="disabled-indicator"]',
+    );
     expect(indicator?.getAttribute("data-testid")).toBe("disabled-indicator");
     expect(indicator?.tagName).toBe("SPAN");
     // §17.133 -- the indicator now hosts a single `<ds-icon name="ban">`
@@ -94,8 +99,8 @@ describe("<business-score-card-as-child>", () => {
 
     const title = el.shadowRoot?.querySelector('[data-testid="title"]');
     // §17.132 -- Σ badge is now a `<ds-icon name="sigma">` Lucide SVG.
-    expect(title?.querySelector('[data-testid="computed-badge"] ds-icon')?.getAttribute("name")).toBe("sigma");
-    const chip = title?.querySelector('[data-testid="unit-chip"]');
+    expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"] ds-icon')?.getAttribute("name")).toBe("sigma");
+    const chip = el.shadowRoot?.querySelector('[data-testid="unit-chip"]');
     expect(chip).not.toBeNull();
     expect(chip?.textContent?.trim()).toBe("(%)");
     expect(title?.textContent?.replace(/\u03a3|\(%\)/g, "").trim()).toBe("Sales");
