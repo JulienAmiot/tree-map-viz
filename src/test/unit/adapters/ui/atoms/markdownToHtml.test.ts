@@ -4,7 +4,7 @@ import {
   escapeHtml,
   isSafeHref,
   renderMarkdownToHtml,
-} from "../../../../../adapters/ui/markdown/markdownToHtml.js";
+} from "../../../../../adapters/ui/atoms/markdownToHtml.js";
 
 describe("escapeHtml", () => {
   it("escapes the five HTML-significant characters", () => {
