@@ -2,33 +2,24 @@
  * `<weight-edit-button>` -- the §17.52 corner-icon affordance for
  * inline weight editing on a child tile.
  *
- * The icon is an inline SVG drawn as a stylised cast-iron weight
- * silhouette: a trapezoidal body (slightly wider at the base, like
- * the foundry weights stamped "1 KG" / "2 KG" on a metal-shop scale)
- * topped by a U-shaped handle -- a literal answer to the operator's
- * follow-up *"the weight icon should look like a cast iron weight
- * with handle"*. The shape was iterated through three candidates --
- * a balance scale (rejected at the §17.52 design Q&A), a dumbbell
- * (the §17.52 first-cut glyph, retired here), and finally the
- * cast-iron weight that ships now. Drawn in SVG (not Unicode, not
- * CSS-only) because:
+ * Iconography history (preserved as design rationale):
  *
- *   1. There is no Unicode code-point for a cast-iron weight (or a
- *      generic "weight") in the Basic Multilingual Plane. The
- *      closest candidates are the colour-emoji \u{1F3CB} (weight
- *      lifter) or \u2696 (scales) -- the first is colour-by-default
- *      and locks us out of `currentColor`, the second is the
- *      rejected "balance" the operator turned down.
- *   2. CSS-only (the §17.28 pencil approach: two pseudo-elements +
- *      a transform stack) is feasible but renders less crisply at
- *      small tile sizes than a vector primitive -- the cast-iron
- *      weight needs a curved handle stroke + a trapezoidal body
- *      path which doesn't fit comfortably in `::before` + `::after`.
- *   3. SVG with `fill="currentColor"` + a fixed `viewBox` lets the
- *      browser rasterise the glyph at any size with sub-pixel
- *      precision, and inherits the tile's text colour through the
- *      same `currentColor` mechanism the §17.18 timestamp uses for
- *      `--age-color` fallback.
+ *   - §17.52 first cut: dumbbell, retired on operator follow-up.
+ *   - §17.52 ship: cast-iron weight SVG with U-shaped handle, drawn
+ *     because no Unicode codepoint reads as "cast iron weight" in
+ *     plain text.
+ *   - §17.129: SVG lifted into a reusable atom (`atoms/weightGlyph.ts`).
+ *   - §17.130 (current ship): switched to `U+2696 SCALES` followed by
+ *     `U+FE0E` (text-presentation variation selector). REVERSES the
+ *     §17.52 design Q&A "balance scale rejected" decision on operator
+ *     instruction. The trade-offs the §17.52 docblock listed against
+ *     the scales remain factual ("balance" is a different metaphor
+ *     than "weight"), but the simpler Unicode-only path (no SVG, no
+ *     custom atom, single glyph the browser font system can render
+ *     crisply at any size) won out. The cast-iron SVG atom is gone
+ *     in the same strand; the scales glyph reads at the same
+ *     `clamp(0.85rem, 5cqmin, 1.6rem)` tile-icon scale via a matching
+ *     `font-size` on the inner `<button>`.
  *
  * Position: bottom-LEFT corner of the tile (mirror of the §17.18
  * bottom-right timestamp). `position: absolute` against the host's
@@ -62,6 +53,20 @@ import {
   WEIGHT_EDIT_OPEN_EVENT,
   type WeightEditOpenDetail,
 } from "./weightEditEvents.js";
+
+/**
+ * SPEC §17.130 — child-weight icon is `U+2696 SCALES` followed by the
+ * `U+FE0E` text-presentation variation selector. Reverses the §17.52
+ * design Q&A "no balance scale" decision: the cast-iron-weight SVG
+ * primitive (`atoms/weightGlyph.ts`) was visually accurate but did not
+ * survive the operator's "use the scale Unicode glyph" follow-up.
+ * VS15 forces the monochrome / text rendering on platforms that would
+ * otherwise emoji-color the scales (older macOS Safari + some Linux
+ * fonts). The `WeightEditPopover` is the affordance that actually
+ * carries the slider; the icon's only job is to read as "this is the
+ * weight knob" at small tile sizes.
+ */
+const SCALES_GLYPH = "\u2696\uFE0E";
 
 @customElement("weight-edit-button")
 export class WeightEditButton extends LitElement {
@@ -102,9 +107,15 @@ export class WeightEditButton extends LitElement {
          The buttons in the parent strip (close-X / edit-pencil)
          live in vh; here the icon is per-tile so cqmin is the
          right axis (the §17.46 value's clamp uses 42cqmin for
-         the same reason). */
+         the same reason). SPEC 17.130 -- the glyph is now a
+         Unicode character (U+2696 SCALES + VS15) so the
+         font-size matches the button's own clamped box; the
+         line-height: 1 stops the metric box from pushing the
+         glyph below the visual centre. */
       width: clamp(0.85rem, 5cqmin, 1.6rem);
       height: clamp(0.85rem, 5cqmin, 1.6rem);
+      font-size: clamp(0.85rem, 5cqmin, 1.6rem);
+      line-height: 1;
       padding: 0;
       margin: 0;
       background: transparent;
@@ -127,11 +138,6 @@ export class WeightEditButton extends LitElement {
     button:active {
       background: color-mix(in srgb, currentColor 22%, transparent);
     }
-    svg {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
   `;
 
   render() {
@@ -142,42 +148,7 @@ export class WeightEditButton extends LitElement {
       title="Edit weight"
       data-testid="weight-edit-button"
       @click=${this.handleClick}
-    >
-      <svg
-        viewBox="0 0 32 32"
-        fill="currentColor"
-        aria-hidden="true"
-        focusable="false"
-      >
-        <!-- Handle: U-shaped arch sitting on top of the body. The
-             SPEC 17.52-polish ask was "cast iron weight WITH HANDLE":
-             a hollow loop drawn as a stroked path keeps the metallic
-             "cast bar bent into a U" silhouette. Stroke width 2.4 +
-             round linecaps give the bend a visible thickness without
-             collapsing into a thin line at small tile sizes. -->
-        <path
-          d="M 10 13 C 10 5.5 22 5.5 22 13"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.4"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-        <!-- Body: trapezoidal weight, slightly wider at the base than
-             at the shoulders (the classic "1 KG" foundry-weight
-             silhouette) with rounded bottom corners so the shape
-             reads as cast metal rather than a flat block. The shoulder
-             y=12.6 sits just below the handle's stroked end so the
-             handle visually tucks INTO the body without an awkward
-             gap; the bottom y=28 is flush with the viewBox so the
-             weight feels grounded. -->
-        <path
-          d="M 8 12.6 L 24 12.6 Q 25.4 12.6 25.6 14 L 27 26
-             Q 27.2 28 25.2 28 L 6.8 28 Q 4.8 28 5 26 L 6.4 14
-             Q 6.6 12.6 8 12.6 Z"
-        />
-      </svg>
-    </button>`;
+    >${SCALES_GLYPH}</button>`;
   }
 
   private handleClick = (e: MouseEvent): void => {

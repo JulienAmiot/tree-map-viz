@@ -72,6 +72,18 @@ export type EditNodeOpenDetail = {
   readonly nodeId: string;
 };
 
+/**
+ * SPEC §17.130 — focused-card edit affordance glyph: `U+1F58D LOWER
+ * LEFT CRAYON` + `U+FE0E` (text-presentation variation selector).
+ * VS15 forces monochrome rendering so the glyph inherits the strip's
+ * `currentColor` instead of locking into the system emoji font's
+ * yellow/blue colour. Replaces the §17.28 CSS-pseudo pencil (two
+ * bars drawn via `::before` / `::after` on the button), operator-
+ * requested in the §17.130 follow-up to the §17.129 design-system
+ * showcase Unicode-glyph audit.
+ */
+const CRAYON_GLYPH = "\u{1F58D}\uFE0E";
+
 @customElement("parent-identity-strip")
 export class ParentIdentityStrip extends LitElement {
   @property({ attribute: false })
@@ -282,50 +294,35 @@ export class ParentIdentityStrip extends LitElement {
       transform: translate(-50%, -50%) rotate(-45deg);
     }
     /* SPEC 17.28 -- pencil button. Same touch-target footprint as the
-       close-X sitting in a second slot to its left. The glyph is drawn
-       with two CSS bars: a long shaft tilted 45deg and a tiny tip near
-       one end so the silhouette reads as a stylised pencil rather than
-       a plus. Sized in rem (not cqmin) so it stays consistent with the
-       X across viewport sizes -- the strip itself does not establish a
-       containment context. */
+       close-X sitting in a second slot to its left.
+       SPEC 17.130 -- the glyph was a CSS-pseudo bar pair (shaft +
+       tip drawn via ::before / ::after) until the operator's
+       "use the lower-left crayon Unicode glyph" follow-up. The
+       button now renders a U+1F58D + U+FE0E (text-presentation
+       variation selector) as its sole text content; the font-size
+       below matches the strip-action's clamp box so the glyph
+       fills the touch target without overflowing. VS15 forces the
+       monochrome rendering on platforms that would otherwise
+       emoji-color the crayon; on fonts that ignore VS15 for
+       U+1F58D (older Windows builds) the glyph still renders as
+       a recognisable pencil-with-tip silhouette via the system
+       emoji font. */
     /* SPEC 17.47 -- the pencil sits immediately to the left of the
        close-X. Both buttons are clamp(1.5rem, 3vh, 2.25rem) square
        so the offset uses the same clamp; a 0.25rem gap separates
        them visually. */
     .edit-pencil {
       right: calc(1px + 0.35rem + clamp(1.5rem, 3vh, 2.25rem) + 0.25rem);
+      font-size: clamp(0.85rem, 2vh, 1.5rem);
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     /* When the close-X is hidden (root focus), the pencil takes the
        far-right slot. */
     .edit-pencil.is-trailing {
       right: calc(1px + 0.35rem);
-    }
-    .edit-pencil::before,
-    .edit-pencil::after {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      background: currentColor;
-      border-radius: 1px;
-      transform-origin: center;
-    }
-    /* Shaft -- the long body of the pencil, tilted 45deg so the cap end
-       is at the top-left and the tip end is at the bottom-right.
-       Width is a percentage of the button so it scales proportionally
-       with the §17.47 clamp-resolved button size. */
-    .edit-pencil::before {
-      width: 60%;
-      height: 2px;
-      transform: translate(-50%, -50%) rotate(-45deg);
-    }
-    /* Tip -- a tiny perpendicular bar near the bottom-right end of the
-       shaft, drawn slightly offset and rotated 90deg from the shaft
-       so it reads as the writing point. */
-    .edit-pencil::after {
-      width: 0.3rem;
-      height: 2px;
-      transform: translate(0.15rem, 0.28rem) rotate(45deg);
     }
   `;
 
@@ -358,7 +355,7 @@ export class ParentIdentityStrip extends LitElement {
             aria-label="Edit this node"
             title="Edit this node"
             @click=${this.handleEditClick}
-          ></button>`
+          >${CRAYON_GLYPH}</button>`
         : nothing}
       ${hasClose
         ? html`<button
