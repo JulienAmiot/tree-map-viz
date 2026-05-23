@@ -100,6 +100,18 @@ const DEMO_BREADCRUMB_PATH: readonly BreadcrumbSegment[] = [
   { id: "ds-pager", title: "Pager fatigue" },
 ] as const;
 
+/** §17.127 P3 — demo view-source snippet wired on the Molecules
+ * `Unit chip` section. Subsequent strands (P3b) fill in snippets
+ * for the remaining 15 sections. Sections without a snippet do not
+ * render the `</>` button. */
+const SNIPPET_MOL_UNITS = `import { renderUnitChip } from "../views/unitChip.js";
+
+// Inside a Lit \`render()\` block:
+html\`\${renderUnitChip("USD")}<span class="stage-title">Revenue</span>\`;
+html\`\${renderUnitChip("%")}<span class="stage-title">SLA</span>\`;
+// Empty unit -> the helper returns \`nothing\`, no chip renders:
+html\`<span class="stage-title">Headcount</span>\`;`;
+
 /** Other Unicode glyphs used by the kiosk views. */
 const KIOSK_GLYPHS: readonly { glyph: string; codepoint: string; label: string }[] = [
   { glyph: "\u25CE", codepoint: "U+25CE", label: "Bullseye — objective target row" },
@@ -123,6 +135,18 @@ export class DesignSystemPage extends LitElement {
    * Persists across tier switches. */
   @state()
   private query = "";
+
+  /** §17.127 P3 — currently-open view-source popover (the section
+   * the operator tapped the `</>` button on), or `null` when no
+   * popover is visible. The popover content is the section's
+   * canonical render snippet (markdown-style code block). */
+  @state()
+  private openSnippet: { sectionId: string; heading: string; code: string } | null = null;
+
+  /** §17.127 P3 — transient "Copied!" badge state on the popover's
+   * copy button; resets after a short delay. */
+  @state()
+  private copied = false;
 
   static readonly styles = [
     unitChipStyles,
@@ -187,6 +211,18 @@ export class DesignSystemPage extends LitElement {
     .pg-cell .caption { font-size: 0.78rem; color: var(--muted, #8b95a8); }
     .pg-stage { width: 100%; height: 540px; border-radius: 6px; overflow: hidden; }
     .pg-stage tree-map-screen { display: block; width: 100%; height: 100%; }
+    section { position: relative; }
+    .view-source-btn { position: absolute; top: 0.25rem; right: 0; padding: 0.2rem 0.55rem; background: color-mix(in srgb, currentColor 6%, transparent); color: var(--muted, #8b95a8); border: 1px solid color-mix(in srgb, currentColor 22%, transparent); border-radius: 6px; cursor: pointer; font: 0.78rem ui-monospace, "Consolas", "Menlo", monospace; }
+    .view-source-btn:hover { background: color-mix(in srgb, var(--accent, #5b8cff) 22%, transparent); color: var(--text, #e8ecf4); }
+    .snippet-overlay { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, #000 60%, transparent); padding: 1.5rem; }
+    .snippet-panel { display: flex; flex-direction: column; gap: 0; max-width: 720px; width: 100%; max-height: 80vh; background: var(--panel, #151a22); color: var(--text, #e8ecf4); border: 1px solid color-mix(in srgb, currentColor 26%, transparent); border-radius: 10px; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45); overflow: hidden; }
+    .snippet-panel header { display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 0.95rem; background: color-mix(in srgb, currentColor 6%, transparent); border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
+    .snippet-title { flex: 1; font-size: 0.92rem; }
+    .snippet-title code { background: color-mix(in srgb, currentColor 12%, transparent); padding: 0.05rem 0.4rem; border-radius: 4px; font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 0.85rem; }
+    .snippet-copy, .snippet-close { padding: 0.35rem 0.75rem; background: transparent; color: inherit; border: 1px solid color-mix(in srgb, currentColor 30%, transparent); border-radius: 6px; cursor: pointer; font: inherit; }
+    .snippet-copy:hover, .snippet-close:hover { background: color-mix(in srgb, currentColor 16%, transparent); }
+    .snippet-close { padding: 0.15rem 0.55rem; font-size: 1.1rem; line-height: 1; }
+    .snippet-panel pre { margin: 0; padding: 1rem; overflow: auto; background: color-mix(in srgb, currentColor 3%, transparent); font: 0.82rem/1.5 ui-monospace, "Consolas", "Menlo", monospace; }
   `,
   ];
 
@@ -285,6 +321,7 @@ export class DesignSystemPage extends LitElement {
             "<code>${this.query}</code>".
           </div>
         </main>
+        ${this.renderSnippetPopover()}
       </div>
     `;
   }
@@ -592,6 +629,7 @@ export class DesignSystemPage extends LitElement {
         </div>
       </div>
         `,
+        SNIPPET_MOL_UNITS,
       )}
       ${this.section("mol-badges", "status badge renderStatusBadge pdca workflow plan do check act", html`
       <h2 data-testid="ds-mol-badges">Status badge (renderStatusBadge)</h2>
@@ -709,12 +747,36 @@ export class DesignSystemPage extends LitElement {
     this.currentTier = id;
   }
 
-  /** §17.127 P2 — wraps a `<h2>` + body pair in a filterable
-   * `<section>`. `searchText` is the lowercase keyword haystack
-   * the filter matches against. */
-  private section(id: string, searchText: string, body: TemplateResult): TemplateResult {
-    return html`<section data-testid="ds-section-${id}" data-section-id=${id} data-search-text=${searchText.toLowerCase()}>${body}</section>`;
+  /** §17.127 P2/P3 — wraps a `<h2>` + body pair in a filterable
+   * `<section>`. `searchText` is the lowercase keyword haystack the
+   * filter matches against. When `snippet` is provided, a `</>`
+   * view-source button is rendered in the section's top-right
+   * corner; tapping it opens the snippet popover. */
+  private section(id: string, searchText: string, body: TemplateResult, snippet?: string): TemplateResult {
+    const heading = id;
+    const sourceBtn = snippet
+      ? html`<button type="button" class="view-source-btn" data-testid="ds-view-source-${id}" aria-label="View source for this section" title="View source" @click=${() => this.openSourceFor(id, heading, snippet)}>&lt;/&gt;</button>`
+      : nothing;
+    return html`<section data-testid="ds-section-${id}" data-section-id=${id} data-search-text=${searchText.toLowerCase()}>${sourceBtn}${body}</section>`;
   }
+
+  private openSourceFor(sectionId: string, heading: string, code: string): void {
+    this.openSnippet = { sectionId, heading, code };
+    this.copied = false;
+  }
+
+  private readonly closeSnippet = (): void => {
+    this.openSnippet = null;
+  };
+
+  private readonly copySnippet = async (): Promise<void> => {
+    const code = this.openSnippet?.code;
+    if (!code) return;
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(code);
+    }
+    this.copied = true;
+  };
 
   private readonly handleSearchInput = (e: Event): void => {
     this.query = (e.target as HTMLInputElement).value;
@@ -750,8 +812,32 @@ export class DesignSystemPage extends LitElement {
   };
 
   private readonly handleKeydown = (e: KeyboardEvent): void => {
-    if (this.open && e.key === "Escape") this.close();
+    if (!this.open || e.key !== "Escape") return;
+    if (this.openSnippet) {
+      this.closeSnippet();
+      return;
+    }
+    this.close();
   };
+
+  /** §17.127 P3 — overlay popover rendered when `openSnippet` is
+   * non-null. Shows the section's canonical render snippet in a
+   * `<pre><code>` block with a "Copy" affordance (clipboard) and a
+   * "Close" button (ESC also dismisses). */
+  private renderSnippetPopover(): TemplateResult | typeof nothing {
+    if (!this.openSnippet) return nothing;
+    const { sectionId, code } = this.openSnippet;
+    return html`<div class="snippet-overlay" data-testid="ds-snippet-overlay" @click=${this.closeSnippet}>
+      <div class="snippet-panel" data-testid="ds-snippet-panel" role="dialog" aria-label="View source" @click=${(e: Event) => e.stopPropagation()}>
+        <header>
+          <span class="snippet-title">View source \u2014 <code>${sectionId}</code></span>
+          <button type="button" class="snippet-copy" data-testid="ds-snippet-copy" @click=${this.copySnippet}>${this.copied ? "Copied!" : "Copy"}</button>
+          <button type="button" class="snippet-close" data-testid="ds-snippet-close" aria-label="Close" @click=${this.closeSnippet}>\u00d7</button>
+        </header>
+        <pre data-testid="ds-snippet-code"><code>${code}</code></pre>
+      </div>
+    </div>`;
+  }
 }
 
 declare global {
