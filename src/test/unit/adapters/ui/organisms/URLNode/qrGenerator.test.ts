@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { generateQRDataUrl } from "../../../../../../adapters/ui/views/URLNode/qrGenerator.js";
+import { generateQRDataUrl } from "../../../../../../adapters/ui/organisms/URLNode/qrGenerator.js";
 
 /**
  * SPEC §17.120 — unit tests for the shared `generateQRDataUrl`

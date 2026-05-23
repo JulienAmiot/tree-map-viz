@@ -29,8 +29,8 @@ import "../organisms/TextNode/TextNodeAsChild.js";
 import "../organisms/TextNode/TextNodeAsParent.js";
 import "../organisms/WorkflowNode/WorkflowNodeAsChild.js";
 import "../organisms/WorkflowNode/WorkflowNodeAsParent.js";
-import "./URLNode/URLNodeAsChild.js";
-import "./URLNode/URLNodeAsParent.js";
+import "../organisms/URLNode/URLNodeAsChild.js";
+import "../organisms/URLNode/URLNodeAsParent.js";
 import "../molecules/plus/PlusTile.js";
 
 import { nodeViewRegistry } from "../molecules/nodeViewRegistry.js";

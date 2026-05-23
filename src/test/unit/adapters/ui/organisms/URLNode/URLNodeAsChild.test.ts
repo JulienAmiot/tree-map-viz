@@ -1,8 +1,8 @@
 import type { LitElement } from "lit";
 import { afterEach, describe, expect, it } from "vitest";
 
-import "../../../../../../adapters/ui/views/URLNode/URLNodeAsChild.js";
-import { URLNodeAsChild } from "../../../../../../adapters/ui/views/URLNode/URLNodeAsChild.js";
+import "../../../../../../adapters/ui/organisms/URLNode/URLNodeAsChild.js";
+import { URLNodeAsChild } from "../../../../../../adapters/ui/organisms/URLNode/URLNodeAsChild.js";
 import type { URLNodeViewModel } from "../../../../../../adapters/ui/molecules/NodeViewModel.js";
 import {
   cleanupLitFixtures,
