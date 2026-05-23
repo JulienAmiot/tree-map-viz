@@ -93,6 +93,7 @@ import { LitElement, html, css, nothing, type TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import "../../atoms/icon/Icon.js";
+import "../../molecules/cardFrame/CardFrame.js";
 import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
 import { COMPUTATION_KIND_LABELS } from "../modal/AddChildModal.js";
 import type {
@@ -305,6 +306,17 @@ const sharedStyles = css`
   :host([view-role="asChild"]) .title {
     font-size: 3vh;
     color: inherit;
+  }
+  /* SPEC 17.136 S3 -- when the per-view is in the AsParent role,
+     the rendered timestamp lives in card-frame's footer-right slot
+     instead of the §17.18 absolute bottom-right corner. Override
+     position:absolute so the slotted timestamp sits in the natural
+     footer flow. AsChild keeps the absolute corner-anchor until
+     S4. */
+  :host([view-role="asParent"]) .timestamp {
+    position: static;
+    bottom: auto;
+    right: auto;
   }
 `;
 
@@ -574,6 +586,56 @@ function renderTimestamp(dateIso: string, dateColor: string): TemplateResult | t
     >${formatAge(dateIso)}</time>`;
 }
 
+/**
+ * SPEC §17.136 S3 -- AsParent variant of {@link renderTimestamp} that
+ * declares `slot="footer-right"` on the `<time>` element so the
+ * slotted timestamp routes to card-frame's footer-right slot. The
+ * `:host([view-role="asParent"]) .timestamp` style override pins
+ * `position: static` so the slotted element sits in the natural
+ * footer flow.
+ */
+function renderAsParentTimestamp(dateIso: string, dateColor: string): TemplateResult | typeof nothing {
+  if (!dateIso) return nothing;
+  const styleAttr = dateColor ? `--age-color: ${dateColor}` : "";
+  return html`<time slot="footer-right" class="timestamp" data-testid="value-date" datetime=${dateIso} style=${styleAttr}
+    >${formatAge(dateIso)}</time>`;
+}
+
+/**
+ * SPEC §17.136 S3 -- shared AsParent slot fillers for the icons + unit
+ * + title + subtitle slots of `<card-frame>`. Both Computed card
+ * classes feed identical pieces (disabled switch + sigma badge into
+ * `icons`, editable unit chip into `unit`, inline-editable title h1
+ * into `title`, strategy picker into `subtitle`); centralising avoids
+ * duplication across the two AsParent renderers (would otherwise
+ * trip the CPD detector at ~25 duplicate lines per class).
+ */
+function renderAsParentSlots(args: {
+  readonly host: HTMLElement;
+  readonly titleEditor: InlineTitleEditController;
+  readonly vmId: string;
+  readonly vmDisabled: boolean;
+  readonly showBadge: boolean;
+  readonly unitChip: TemplateResult | typeof nothing;
+  readonly viewKind: string;
+  readonly computationKind: ComputationKindName;
+  readonly onKindChange: (next: ComputationKindName) => void;
+}): TemplateResult {
+  const titleH1 = args.titleEditor.renderTitle(args.viewKind, nothing);
+  return html`
+    <span slot="icons" data-testid="icons-slot"
+      >${renderDisabledSwitch(args.host, args.vmId, args.vmDisabled)}${args.showBadge
+        ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated"><ds-icon name="sigma"></ds-icon></span>`
+        : nothing}</span
+    >
+    <span slot="unit" data-testid="unit-slot">${args.unitChip}</span>
+    <div slot="title" data-testid="title-slot">${titleH1}</div>
+    <div slot="subtitle" class="subtitle" data-testid="subtitle">
+      ${renderStrategyPicker(args.vmId, args.computationKind, args.onKindChange)}
+    </div>
+  `;
+}
+
 @customElement("computed-card")
 export class ComputedCard extends LitElement {
   @property({ attribute: false })
@@ -632,13 +694,43 @@ export class ComputedCard extends LitElement {
 
   render(): TemplateResult {
     if (!this.vm) return html``;
+    return this.viewRole === "asParent" ? this.renderAsParent() : this.renderAsChild();
+  }
+
+  /** SPEC 17.136 S3 -- AsParent path wraps everything in `<card-frame>`. */
+  private renderAsParent(): TemplateResult {
+    if (!this.vm) return html``;
+    const showBadge = this.vm.value.kind === "numeric";
+    const canCompute = this.vm.value.kind === "numeric";
+    const vmDisabled = this.vm.disabled ?? false;
+    return html`<card-frame style="--card-header-height: 14%; --card-footer-height: 8%">
+      ${renderAsParentSlots({
+        host: this,
+        titleEditor: this.titleEditor,
+        vmId: this.vm.id,
+        vmDisabled,
+        showBadge,
+        unitChip: this.unitEditor.renderChip(),
+        viewKind: "ComputedNode",
+        computationKind: this.vm.computationKind,
+        onKindChange: this.dispatchKindChange,
+      })}
+      <div slot="body">
+        ${canCompute
+          ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>)
+          : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
+      </div>
+    </card-frame>`;
+  }
+
+  /** SPEC 17.136 S3 -- AsChild keeps the pre-§17.136 flat layout
+   *  until S4 migrates it to `<card-frame>`. */
+  private renderAsChild(): TemplateResult {
+    if (!this.vm) return html``;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
     const vmDisabled = this.vm.disabled ?? false;
     const unit = unitFromComputedValue(this.vm.value);
-    const unitSlot = this.viewRole === "asParent"
-      ? this.unitEditor.renderChip()
-      : renderUnitChip(unit);
     return html`
       ${renderComputedTitleSlot({
         host: this,
@@ -649,7 +741,7 @@ export class ComputedCard extends LitElement {
         viewRole: this.viewRole,
         vmDisabled,
         showBadge,
-        unitSlot,
+        unitSlot: renderUnitChip(unit),
       })}
       ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       ${canCompute
@@ -700,14 +792,49 @@ export class ComputedBusinessScoreCard extends LitElement {
 
   render(): TemplateResult {
     if (!this.vm) return html``;
+    return this.viewRole === "asParent" ? this.renderAsParent() : this.renderAsChild();
+  }
+
+  /** SPEC 17.136 S3 -- AsParent path wraps everything in `<card-frame>`;
+   *  timestamp moves out of `.metric-pane` into the footer-right slot. */
+  private renderAsParent(): TemplateResult {
+    if (!this.vm) return html``;
+    const { dateIso, dateColor, objective } = this.vm;
+    const showBadge = this.vm.value.kind === "numeric";
+    const canCompute = this.vm.value.kind === "numeric";
+    const vmDisabled = this.vm.disabled ?? false;
+    return html`<card-frame style="--card-header-height: 14%; --card-footer-height: 8%">
+      ${renderAsParentSlots({
+        host: this,
+        titleEditor: this.titleEditor,
+        vmId: this.vm.id,
+        vmDisabled,
+        showBadge,
+        unitChip: this.unitEditor.renderChip(),
+        viewKind: "ComputedBusinessScoreNode",
+        computationKind: this.vm.computationKind,
+        onKindChange: this.dispatchKindChange,
+      })}
+      <div slot="body" class="metric-pane" data-testid="metric-pane">
+        ${canCompute
+          ? renderNumericValueAreaWithObjective(
+              this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>,
+              objective,
+            )
+          : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
+      </div>
+      ${canCompute ? renderAsParentTimestamp(dateIso, dateColor) : nothing}
+    </card-frame>`;
+  }
+
+  /** SPEC 17.136 S3 -- AsChild keeps the pre-§17.136 flat layout; S4 migrates it. */
+  private renderAsChild(): TemplateResult {
+    if (!this.vm) return html``;
     const { dateIso, dateColor, objective } = this.vm;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
     const vmDisabled = this.vm.disabled ?? false;
     const unit = unitFromComputedValue(this.vm.value);
-    const unitSlot = this.viewRole === "asParent"
-      ? this.unitEditor.renderChip()
-      : renderUnitChip(unit);
     return html`
       ${renderComputedTitleSlot({
         host: this,
@@ -718,7 +845,7 @@ export class ComputedBusinessScoreCard extends LitElement {
         viewRole: this.viewRole,
         vmDisabled,
         showBadge,
-        unitSlot,
+        unitSlot: renderUnitChip(unit),
       })}
       ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
       <div class="metric-pane" data-testid="metric-pane">
