@@ -26,11 +26,13 @@ import type {
   ChildSlotViewModel,
   ComputedBusinessScoreNodeViewModel,
   ComputedNodeViewModel,
+  FocusedTreeViewModel,
   PictureNodeViewModel,
   TextNodeViewModel,
   URLNodeViewModel,
   WorkflowNodeViewModel,
 } from "../views/NodeViewModel.js";
+import type { BreadcrumbSegment } from "../shell/Breadcrumb.js";
 
 const ALL_COMPUTATION_KINDS = [
   "SUM",
@@ -220,6 +222,30 @@ export function sampleChildSlots(parentId: string): readonly ChildSlotViewModel[
     { slot: "node", weight: 3, vm: sampleTextNodeVM() },
     { slot: "node", weight: 2, vm: sampleWorkflowNodeVM() },
     { slot: "plus", weight: 1, parentId },
+  ];
+}
+
+/**
+ * Focused-tree view-model used by the §17.127 A6 Pages tier. Bundles
+ * the focused VM (on-track BSC) and the same 4-slot child list as
+ * the Templates tier so the Pages screen reads as the "fully wired"
+ * version of the same composition (parent strip + grid + shell
+ * chrome). The breadcrumb is a 3-segment path so the back-to-root
+ * affordance has something to show.
+ */
+export function sampleFocusedTreeView(): FocusedTreeViewModel {
+  const center = sampleBusinessScoreVMOnTrack();
+  return {
+    center,
+    children: sampleChildSlots(center.id),
+  };
+}
+
+export function sampleBreadcrumbPath(): readonly BreadcrumbSegment[] {
+  return [
+    { id: "ds-root", title: "Obeya" },
+    { id: "ds-reliability", title: "Reliability" },
+    { id: "ds-bsc-on-track", title: "Quarterly revenue" },
   ];
 }
 

@@ -34,6 +34,7 @@ import "../shell/BurgerMenu.js";
 import "../shell/Breadcrumb.js";
 import "../shell/ParentIdentityStrip.js";
 import "../shell/ChildrenGrid.js";
+import "../shell/TreeMapScreen.js";
 import "../views/plus/PlusTile.js";
 import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
@@ -48,11 +49,13 @@ import "../views/URLNode/URLNodeAsParent.js";
 import "../views/URLNode/URLNodeAsChild.js";
 import type { BreadcrumbSegment } from "../shell/Breadcrumb.js";
 import {
+  sampleBreadcrumbPath,
   sampleBusinessScoreVMOffTrack,
   sampleBusinessScoreVMOnTrack,
   sampleChildSlots,
   sampleComputedBSCVM,
   sampleComputedNodeVM,
+  sampleFocusedTreeView,
   samplePictureNodeVM,
   sampleTextNodeVM,
   sampleURLNodeVM,
@@ -166,6 +169,10 @@ export class DesignSystemPage extends LitElement {
     .tpl-stage { display: grid; grid-template-rows: 25% 1fr; width: 100%; height: 480px; gap: 0.5rem; }
     .tpl-stage parent-identity-strip { display: block; width: 100%; height: 100%; }
     .tpl-stage children-grid { display: block; width: 100%; height: 100%; }
+    .pg-cell { display: flex; flex-direction: column; gap: 0.6rem; padding: 1rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; background: var(--panel, #151a22); margin-bottom: 0.85rem; }
+    .pg-cell .caption { font-size: 0.78rem; color: var(--muted, #8b95a8); }
+    .pg-stage { width: 100%; height: 540px; border-radius: 6px; overflow: hidden; }
+    .pg-stage tree-map-screen { display: block; width: 100%; height: 100%; }
   `,
   ];
 
@@ -248,9 +255,44 @@ export class DesignSystemPage extends LitElement {
     if (id === "organisms")
       return html`${this.renderOrganismsShell()}${this.renderOrganismsNodes()}`;
     if (id === "templates") return this.renderTemplates();
+    if (id === "pages") return this.renderPages();
     return html`<div class="placeholder" data-testid="ds-placeholder">
       ${label} tier — coming soon.
     </div>`;
+  }
+
+  /**
+   * §17.127 A6 — Pages tier mounts the real `<tree-map-screen>` Lit
+   * element (the kiosk's outer page surface) bound to a synthesized
+   * `FocusedTreeViewModel` + a 3-segment breadcrumb + a friendly
+   * board name. Every bubbled event the screen surfaces is already
+   * in `SILENCED_BUBBLES` (burger / breadcrumb / tile-drill /
+   * close-to-parent / weight / inline-edit / disabled-change) so
+   * the embedded page is fully inert with respect to `main.ts`.
+   */
+  private renderPages() {
+    return html`
+      <h2 data-testid="ds-pg-screen">
+        End-to-end kiosk screen (&lt;tree-map-screen&gt;)
+      </h2>
+      <div class="pg-cell" data-testid="ds-pg-screen-cell">
+        <div class="pg-stage">
+          <tree-map-screen
+            data-testid="ds-pg-screen-mount"
+            .boardName=${"Design system demo"}
+            .view=${sampleFocusedTreeView()}
+            .breadcrumbPath=${sampleBreadcrumbPath()}
+          ></tree-map-screen>
+        </div>
+        <span class="caption">
+          The real kiosk page surface mounted with a synthesized
+          focused-tree view. Every bubbled UI event the screen
+          surfaces is silenced at the showcase host, so taps stay
+          inside the page and never reach
+          <code>main.ts</code>'s composition root.
+        </span>
+      </div>
+    `;
   }
 
   /**

@@ -41,6 +41,16 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   showcase host silences the `value-node-disabled-change` event bubbled
   by the live switch so a click in the showcase doesn't reach
   `main.ts`'s screen listener.
+- **Pages tier — live `<tree-map-screen>` (§17.127 strand A6)**.
+  Closes out the §17.127 A-series sweep. The Pages tier mounts the
+  kiosk's real outer page surface (`<tree-map-screen>`) inside the
+  design-system showcase, bound to a synthesized `FocusedTreeViewModel`
+  ("Quarterly revenue" focused on its child grid), a 3-segment
+  breadcrumb ("Obeya / Reliability / Quarterly revenue"), and a
+  friendly board name ("Design system demo"). Every bubbled UI event
+  the embedded screen surfaces is already silenced at the showcase
+  host so taps stay inside the page. Every tier of the design-system
+  page (Atoms → Pages) now has a real, non-placeholder body.
 - **Templates tier — focused panel composition (§17.127 strand A5)**.
   Mounts the real `<parent-identity-strip>` (focused VM in AsParent
   role + edit-pencil + close-X) above a real `<children-grid>`
