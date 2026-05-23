@@ -14,6 +14,24 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Added
+
+- **`<card-frame>` molecule \u2014 shared header / body / footer
+  template (\u00a717.136, S0b of the unified card-template refactor)**.
+  The single layout primitive every node-kind organism will wrap
+  its render in (S1-S12). Exposes eight named slots arranged in a
+  three-row CSS grid: a header (panel-relative height, default
+  `22 %`) with a title row carrying `icons` + `unit` + `title` +
+  `header-actions` sub-slots plus a `subtitle` slot below it; a
+  body that fills the remaining space and clips overflow; a footer
+  (default `12 %`) anchoring `footer-left` (weight button on
+  AsChild) and `footer-right` (age) at opposite edges. No
+  production callsite is migrated yet \u2014 strands S1-S12 do that;
+  S13 cuts over the affordances + retires `<parent-identity-strip>`
+  + the `<children-grid>` corner-overlay weight button. Surfaces
+  in the design-system showcase under Molecules with a 14-rem-tall
+  demo stage showing every slot filled.
+
 ### Changed
 
 - **Weight edit button icon swapped from Lucide `scale` to Lucide

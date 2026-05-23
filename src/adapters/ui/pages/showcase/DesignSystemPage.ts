@@ -43,6 +43,7 @@ import "../TreeMapScreen.js";
 import "../../molecules/plus/PlusTile.js";
 import "../../molecules/childWeight/WeightEditButton.js";
 import "../../molecules/childWeight/WeightEditPopover.js";
+import "../../molecules/cardFrame/CardFrame.js";
 import "../../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "../../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import "../../organisms/ComputedNode/ComputedCards.js";
@@ -180,6 +181,27 @@ html\`<weight-edit-popover
   .anchorRect=\${tileRect}
   .iconRect=\${iconRect}
 ></weight-edit-popover>\`;`,
+  "mol-card-frame": `import "../../molecules/cardFrame/CardFrame.js";
+
+// \xa717.136 -- shared layout primitive every node-kind organism
+// wraps its render in. Eight named slots across three rows
+// (header / body / footer). Header + footer heights are panel-
+// relative via --card-header-height / --card-footer-height
+// (defaults 22% / 12%); the body fills the rest and clips
+// overflow so kind-specific shrink-to-fit logic lives inside a
+// known box. Strands S1-S12 migrate each (kind, role) into this
+// molecule; S13 retires <parent-identity-strip> + the
+// <children-grid> corner-overlay weight button.
+html\`<card-frame>
+  <span slot="icons">\u03A3</span>
+  <span slot="unit">(USD)</span>
+  <span slot="title">Revenue</span>
+  <span slot="subtitle">Q2 2026 target</span>
+  <span slot="header-actions">\u00D7</span>
+  <span slot="body">1 485 000</span>
+  <span slot="footer-left">[weight]</span>
+  <span slot="footer-right">2 days ago</span>
+</card-frame>\`;`,
   "org-burger": `import "../../organisms/shell/BurgerMenu.js";
 html\`<burger-menu></burger-menu>\`;
 // Emits \`burger-menu-action\` { action: "import" | "export" | ... }`,
@@ -323,6 +345,8 @@ export class DesignSystemPage extends LitElement {
     .mol-cell .stage-title { font-size: 1.05rem; color: var(--text, #e8ecf4); }
     .mol-cell--wide { grid-column: 1 / -1; }
     .mol-cell .weight-pair-stage { display: flex; align-items: flex-end; gap: 1.25rem; align-self: stretch; width: 100%; min-height: 11rem; }
+    .mol-cell .card-frame-stage { width: 100%; height: 14rem; background: color-mix(in srgb, currentColor 5%, transparent); border: 1px dashed color-mix(in srgb, currentColor 22%, transparent); border-radius: 8px; padding: 0.25rem; box-sizing: border-box; }
+    .mol-cell .card-frame-stage card-frame { display: block; width: 100%; height: 100%; }
     .mol-cell .weight-button-frame { position: relative; width: 5.5rem; height: 5.5rem; background: color-mix(in srgb, currentColor 6%, transparent); border: 1px dashed color-mix(in srgb, currentColor 18%, transparent); border-radius: 6px; flex: 0 0 auto; }
     .mol-cell .weight-pair-stage weight-edit-popover { position: static; display: inline-block; z-index: auto; }
     .mol-cell .caption { font-size: 0.75rem; color: var(--muted, #8b95a8); }
@@ -828,6 +852,30 @@ export class DesignSystemPage extends LitElement {
           composition root opens &lt;weight-edit-popover&gt; (right).
           Slider seeds from <code>.weight</code>; Confirm dispatches
           <code>inline-edit-weight</code>.
+        </span>
+      </div>
+        `,
+      )}
+      ${this.section("mol-card-frame", "card frame template header body footer slot icons unit title subtitle weight age 17.136", html`
+      <h2 data-testid="ds-mol-card-frame">Card frame template (&lt;card-frame&gt;, \u00a717.136)</h2>
+      <div class="mol-cell mol-cell--wide" data-testid="ds-mol-card-frame-cell">
+        <div class="card-frame-stage">
+          <card-frame data-testid="ds-mol-card-frame-mount">
+            <span slot="icons" data-testid="ds-mol-card-frame-icons">\u03A3</span>
+            <span slot="unit" data-testid="ds-mol-card-frame-unit">(USD)</span>
+            <span slot="title" data-testid="ds-mol-card-frame-title">Quarterly revenue</span>
+            <span slot="subtitle" data-testid="ds-mol-card-frame-subtitle">Q2 2026 target</span>
+            <span slot="header-actions" data-testid="ds-mol-card-frame-actions">\u00D7</span>
+            <span slot="body" data-testid="ds-mol-card-frame-body">1 485 000</span>
+            <span slot="footer-left" data-testid="ds-mol-card-frame-left">[weight]</span>
+            <span slot="footer-right" data-testid="ds-mol-card-frame-right">2 days ago</span>
+          </card-frame>
+        </div>
+        <span class="caption">
+          Eight named slots filled with probe content. Header
+          (default <code>22 %</code>) + footer (<code>12 %</code>) heights
+          are CSS-variable driven; the body fills the rest and clips
+          overflow.
         </span>
       </div>
         `,
