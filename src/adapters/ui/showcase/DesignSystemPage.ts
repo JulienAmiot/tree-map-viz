@@ -39,8 +39,8 @@ import "../molecules/plus/PlusTile.js";
 import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import "../organisms/ComputedNode/ComputedCards.js";
-import "../views/TextNode/TextNodeAsParent.js";
-import "../views/TextNode/TextNodeAsChild.js";
+import "../organisms/TextNode/TextNodeAsParent.js";
+import "../organisms/TextNode/TextNodeAsChild.js";
 import "../views/WorkflowNode/WorkflowNodeAsParent.js";
 import "../views/WorkflowNode/WorkflowNodeAsChild.js";
 import "../views/PictureNode/PictureNodeAsParent.js";
@@ -184,8 +184,8 @@ html\`<computed-business-score-card view-role="asParent" .vm=\${vm}>
 </computed-business-score-card>\`;
 // vm.computationKind \\in { SUM | AVERAGE | MIN | MAX | WEIGHTED_AVERAGE | COUNT }
 // AsParent renders a live <select>; emits \`computation-kind-change\`.`,
-  "org-text": `import "../views/TextNode/TextNodeAsParent.js";
-import "../views/TextNode/TextNodeAsChild.js";
+  "org-text": `import "../organisms/TextNode/TextNodeAsParent.js";
+import "../organisms/TextNode/TextNodeAsChild.js";
 import "../views/WorkflowNode/WorkflowNodeAsParent.js";
 import "../views/WorkflowNode/WorkflowNodeAsChild.js";
 

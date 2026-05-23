@@ -50,7 +50,11 @@ import {
 import type { WorkflowNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
-import { fitMarkdownBodyToTile, textBodyStyles } from "../TextNode/textBody.js";
+// SPEC §17.128 R3d bridge: TextNode moved into organisms/ before this
+// file did, so the import path takes one extra hop until R3e moves
+// WorkflowNode/ alongside it (at which point this snaps back to
+// `../TextNode/textBody.js`).
+import { fitMarkdownBodyToTile, textBodyStyles } from "../../organisms/TextNode/textBody.js";
 import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
 import {
   WORKFLOW_STATUS_CHANGE_EVENT,

@@ -134,7 +134,7 @@ Molecules tier and so genuinely belongs in `molecules/`.
 | **R3a** | Organisms — shell | **done** (§17.128 R3a) |
 | **R3b** | Organisms — BusinessScoreCardNode | **done** (§17.128 R3b) |
 | **R3c** | Organisms — ComputedNode | **done** (§17.128 R3c) |
-| **R3d** | Organisms — TextNode | pending |
+| **R3d** | Organisms — TextNode | **done** (§17.128 R3d) |
 | **R3e** | Organisms — WorkflowNode | pending |
 | **R3f** | Organisms — PictureNode | pending |
 | **R3g** | Organisms — URLNode | pending |
