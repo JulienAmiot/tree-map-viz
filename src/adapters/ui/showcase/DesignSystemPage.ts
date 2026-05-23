@@ -100,17 +100,125 @@ const DEMO_BREADCRUMB_PATH: readonly BreadcrumbSegment[] = [
   { id: "ds-pager", title: "Pager fatigue" },
 ] as const;
 
-/** §17.127 P3 — demo view-source snippet wired on the Molecules
- * `Unit chip` section. Subsequent strands (P3b) fill in snippets
- * for the remaining 15 sections. Sections without a snippet do not
- * render the `</>` button. */
-const SNIPPET_MOL_UNITS = `import { renderUnitChip } from "../views/unitChip.js";
+/** §17.127 P3 — view-source snippets keyed by `<section>` id. Every
+ * entry produces a `</>` button on its section's heading; the button
+ * opens a modal popover showing the snippet (see `renderSnippetPopover`).
+ * Adding a new section to the showcase is two edits: a `section(id, …)`
+ * call inside a `renderXxx()` method, and an entry here. Sections without
+ * an entry simply don't render the button. */
+const SNIPPETS: Record<string, string> = {
+  "atoms-colors": `/* src/index.css */
+:root {
+  --bg: #0c0f14;
+  --panel: #151a22;
+  --text: #e8ecf4;
+  --muted: #8b95a8;
+  --accent: #5b8cff;
+}`,
+  "atoms-arrows": `// src/adapters/ui/views/BusinessScoreCardNode/valueTemplate.ts
+export const TREND_ARROW_GLYPHS = {
+  "up-strong":   "\\u2191",
+  "up-right":    "\\u2197",
+  "right":       "\\u2192",
+  "down-right":  "\\u2198",
+  "down-strong": "\\u2193",
+} as const;`,
+  "atoms-glyphs": `// Unicode glyphs used across the kiosk
+//   U+25CE  bullseye    -> objective target row
+//   U+26A0  warning     -> deadline-risk overlay (+ VS15 \\uFE0E)
+//   U+03A3  sigma       -> computed-mean badge
+//   U+29B8  forbidden   -> disabled indicator
+//   U+00D7  times       -> disabled-switch off
+//   U+2713  check       -> disabled-switch on`,
+  "atoms-pdca": `// src/domain/values/WorkflowStatus.ts
+export const DEFAULT_WORKFLOW_STATUSES = [
+  { id: "plan",  label: "PLAN",  color: "rgb(161, 161, 170)" },
+  { id: "do",    label: "DO",    color: "rgb(59, 130, 246)"  },
+  { id: "check", label: "CHECK", color: "rgb(34, 197, 94)"   },
+  { id: "act",   label: "ACT",   color: "rgb(245, 158, 11)"  },
+] as const;`,
+  "mol-units": `import { renderUnitChip } from "../views/unitChip.js";
 
-// Inside a Lit \`render()\` block:
 html\`\${renderUnitChip("USD")}<span class="stage-title">Revenue</span>\`;
 html\`\${renderUnitChip("%")}<span class="stage-title">SLA</span>\`;
 // Empty unit -> the helper returns \`nothing\`, no chip renders:
-html\`<span class="stage-title">Headcount</span>\`;`;
+html\`<span class="stage-title">Headcount</span>\`;`,
+  "mol-badges": `import { renderStatusBadge } from "../views/WorkflowNode/statusBadge.js";
+import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
+
+html\`\${DEFAULT_WORKFLOW_STATUSES.map((s) => renderStatusBadge(s))}\`;`,
+  "mol-disabled": `import {
+  renderDisabledIndicator,
+  renderDisabledSwitch,
+} from "../views/disabledToggle.js";
+
+// Static indicator:
+html\`\${renderDisabledIndicator(true)}<span>Disabled metric</span>\`;
+// Interactive switch (dispatches \`value-node-disabled-change\`):
+html\`\${renderDisabledSwitch(host, nodeId, isDisabled)}\`;`,
+  "org-burger": `import "../shell/BurgerMenu.js";
+html\`<burger-menu></burger-menu>\`;
+// Emits \`burger-menu-action\` { action: "import" | "export" | ... }`,
+  "org-breadcrumb": `import "../shell/Breadcrumb.js";
+const path = [
+  { id: "root", title: "Obeya" },
+  { id: "reliability", title: "Reliability" },
+  { id: "pager", title: "Pager fatigue" },
+];
+html\`<focus-breadcrumb .path=\${path}></focus-breadcrumb>\`;
+// Emits \`breadcrumb-navigate\` { nodeId } on non-current segment tap.`,
+  "org-plus": `import "../views/plus/PlusTile.js";
+html\`<plus-tile parent-id=\${parentId}></plus-tile>\`;
+// Emits \`plus-tile-activate\` { parentId } on tap.`,
+  "org-bsc": `import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
+import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
+
+html\`<business-score-card-as-parent .vm=\${vm}></business-score-card-as-parent>\`;
+html\`<business-score-card-as-child  .vm=\${vm}></business-score-card-as-child>\`;
+// vm.value: recordedValue | computedMean (discriminated union).
+// vm.objective adds the target row + trend arrow (TREND_ARROW_GLYPHS).`,
+  "org-computed": `import "../views/ComputedNode/ComputedCards.js";
+
+html\`<computed-card view-role="asParent" .vm=\${vm}></computed-card>\`;
+html\`<computed-business-score-card view-role="asParent" .vm=\${vm}>
+</computed-business-score-card>\`;
+// vm.computationKind \\in { SUM | AVERAGE | MIN | MAX | WEIGHTED_AVERAGE | COUNT }
+// AsParent renders a live <select>; emits \`computation-kind-change\`.`,
+  "org-text": `import "../views/TextNode/TextNodeAsParent.js";
+import "../views/TextNode/TextNodeAsChild.js";
+import "../views/WorkflowNode/WorkflowNodeAsParent.js";
+import "../views/WorkflowNode/WorkflowNodeAsChild.js";
+
+html\`<text-node-as-parent     .vm=\${textVm}></text-node-as-parent>\`;
+html\`<workflow-node-as-parent .vm=\${wfVm}></workflow-node-as-parent>\`;
+// wfVm.status + wfVm.availableStatuses drive the AsParent PDCA picker.`,
+  "org-picture": `import "../views/PictureNode/PictureNodeAsParent.js";
+import "../views/URLNode/URLNodeAsParent.js";
+
+html\`<picture-node-as-parent .vm=\${picVm}></picture-node-as-parent>\`;
+html\`<url-node-as-parent     .vm=\${urlVm}></url-node-as-parent>\`;
+// PictureNode loads picVm.imageUrl with a \xa717.44 warning-fill fallback.
+// URLNode encodes urlVm.url into a QR + clickable anchor on AsParent.`,
+  "tpl-focused": `import "../shell/ParentIdentityStrip.js";
+import "../shell/ChildrenGrid.js";
+
+html\`<parent-identity-strip
+  .vm=\${focusedVm}
+  parent-id=\${parentId}
+></parent-identity-strip>
+<children-grid .slots=\${slots}></children-grid>\`;
+// slots: ChildSlotViewModel[]
+//   = ({ slot: "node", vm, weight } | { slot: "plus", parentId, weight })[]`,
+  "pg-screen": `import "../shell/TreeMapScreen.js";
+
+html\`<tree-map-screen
+  .boardName=\${boardName}
+  .view=\${focusedTreeViewModel}
+  .breadcrumbPath=\${breadcrumbPath}
+></tree-map-screen>\`;
+// See \`main.ts\` for the full composition root that wires the screen
+// to TreeNavigationService + EditNodeService + BoardCollectionService.`,
+};
 
 /** Other Unicode glyphs used by the kiosk views. */
 const KIOSK_GLYPHS: readonly { glyph: string; codepoint: string; label: string }[] = [
@@ -629,7 +737,6 @@ export class DesignSystemPage extends LitElement {
         </div>
       </div>
         `,
-        SNIPPET_MOL_UNITS,
       )}
       ${this.section("mol-badges", "status badge renderStatusBadge pdca workflow plan do check act", html`
       <h2 data-testid="ds-mol-badges">Status badge (renderStatusBadge)</h2>
@@ -749,19 +856,19 @@ export class DesignSystemPage extends LitElement {
 
   /** §17.127 P2/P3 — wraps a `<h2>` + body pair in a filterable
    * `<section>`. `searchText` is the lowercase keyword haystack the
-   * filter matches against. When `snippet` is provided, a `</>`
+   * filter matches against. When `SNIPPETS[id]` exists, a `</>`
    * view-source button is rendered in the section's top-right
    * corner; tapping it opens the snippet popover. */
-  private section(id: string, searchText: string, body: TemplateResult, snippet?: string): TemplateResult {
-    const heading = id;
-    const sourceBtn = snippet
-      ? html`<button type="button" class="view-source-btn" data-testid="ds-view-source-${id}" aria-label="View source for this section" title="View source" @click=${() => this.openSourceFor(id, heading, snippet)}>&lt;/&gt;</button>`
+  private section(id: string, searchText: string, body: TemplateResult): TemplateResult {
+    const code = SNIPPETS[id];
+    const sourceBtn = code
+      ? html`<button type="button" class="view-source-btn" data-testid="ds-view-source-${id}" aria-label="View source for this section" title="View source" @click=${() => this.openSourceFor(id, code)}>&lt;/&gt;</button>`
       : nothing;
     return html`<section data-testid="ds-section-${id}" data-section-id=${id} data-search-text=${searchText.toLowerCase()}>${sourceBtn}${body}</section>`;
   }
 
-  private openSourceFor(sectionId: string, heading: string, code: string): void {
-    this.openSnippet = { sectionId, heading, code };
+  private openSourceFor(sectionId: string, code: string): void {
+    this.openSnippet = { sectionId, heading: sectionId, code };
     this.copied = false;
   }
 

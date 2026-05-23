@@ -41,6 +41,13 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   showcase host silences the `value-node-disabled-change` event bubbled
   by the live switch so a click in the showcase doesn't reach
   `main.ts`'s screen listener.
+- **Design-system showcase — "View source" snippet fill (§17.127 strand P3b)**.
+  Completes P3. Every one of the 16 sections in the showcase now has
+  a `</>` button surfacing its canonical render snippet via the
+  popover from P3a. Snippets are centralised in a single
+  `SNIPPETS: Record<string, string>` map at the top of the showcase
+  module; adding a new section to the showcase is one entry in the
+  map plus one `section()` call in the relevant render method.
 - **Design-system showcase — "View source" snippet popover (§17.127 strand P3a, scaffolding)**.
   Each design-system section can now expose a `</>` button (top-right
   of the section heading) that opens a modal popover showing the
