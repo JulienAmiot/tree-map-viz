@@ -32,8 +32,8 @@ import {
 } from "../molecules/disabledToggle.js";
 import "../organisms/shell/BurgerMenu.js";
 import "../organisms/shell/Breadcrumb.js";
-import "../shell/ParentIdentityStrip.js";
-import "../shell/ChildrenGrid.js";
+import "../templates/ParentIdentityStrip.js";
+import "../templates/ChildrenGrid.js";
 import "../shell/TreeMapScreen.js";
 import "../molecules/plus/PlusTile.js";
 import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
@@ -199,8 +199,8 @@ html\`<picture-node-as-parent .vm=\${picVm}></picture-node-as-parent>\`;
 html\`<url-node-as-parent     .vm=\${urlVm}></url-node-as-parent>\`;
 // PictureNode loads picVm.imageUrl with a \xa717.44 warning-fill fallback.
 // URLNode encodes urlVm.url into a QR + clickable anchor on AsParent.`,
-  "tpl-focused": `import "../shell/ParentIdentityStrip.js";
-import "../shell/ChildrenGrid.js";
+  "tpl-focused": `import "../templates/ParentIdentityStrip.js";
+import "../templates/ChildrenGrid.js";
 
 html\`<parent-identity-strip
   .vm=\${focusedVm}

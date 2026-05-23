@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import "../../../../../adapters/ui/shell/ParentIdentityStrip.js";
+import "../../../../../adapters/ui/templates/ParentIdentityStrip.js";
 import {
   EDIT_NODE_OPEN_EVENT,
   type EditNodeOpenDetail,
   FOCUS_CLOSE_TO_PARENT_EVENT,
   type FocusCloseToParentDetail,
   ParentIdentityStrip,
-} from "../../../../../adapters/ui/shell/ParentIdentityStrip.js";
+} from "../../../../../adapters/ui/templates/ParentIdentityStrip.js";
 import type { NodeViewModel } from "../../../../../adapters/ui/molecules/NodeViewModel.js";
 import {
   cleanupLitFixtures,
