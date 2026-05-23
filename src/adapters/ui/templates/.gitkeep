@@ -1,0 +1,4 @@
+Placeholder so git tracks the empty templates/ directory ahead of
+the §17.128 R4 strand. Real files land in R4 (ChildrenGrid,
+ParentIdentityStrip). See docs/atomic-design-layout.md for the
+full classification.
