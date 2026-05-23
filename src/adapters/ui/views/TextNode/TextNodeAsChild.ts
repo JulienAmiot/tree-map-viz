@@ -25,7 +25,7 @@ import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
-} from "../disabledToggle.js";
+} from "../../molecules/disabledToggle.js";
 import type { TextNodeViewModel } from "../NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";

@@ -55,7 +55,7 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
-import { disabledToggleStyles, renderDisabledSwitch } from "../disabledToggle.js";
+import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
 import {
   InlineTitleEditController,
   type InlineTitleEditTarget,

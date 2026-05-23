@@ -54,12 +54,12 @@ import {
 import {
   INLINE_EDIT_UNIT_EVENT,
   type InlineEditUnitDetail,
-} from "./inlineEditEvents.js";
-import { focusAndSelectInline, inlineEditKey } from "./inlineEditHelpers.js";
+} from "../views/inlineEditEvents.js";
+import { focusAndSelectInline, inlineEditKey } from "../views/inlineEditHelpers.js";
 import type {
   BusinessScoreCardValueViewModel,
   ComputedValueViewModel,
-} from "./NodeViewModel.js";
+} from "../views/NodeViewModel.js";
 
 /**
  * SPEC §17.125 — render the unit chip when {@param unit} is

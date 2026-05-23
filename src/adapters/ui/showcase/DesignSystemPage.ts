@@ -20,16 +20,16 @@
 import { LitElement, css, html, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
-import { renderUnitChip, unitChipStyles } from "../views/unitChip.js";
+import { renderUnitChip, unitChipStyles } from "../molecules/unitChip.js";
 import {
   renderStatusBadge,
   statusBadgeStyles,
-} from "../views/WorkflowNode/statusBadge.js";
+} from "../molecules/statusBadge.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
   renderDisabledSwitch,
-} from "../views/disabledToggle.js";
+} from "../molecules/disabledToggle.js";
 import "../shell/BurgerMenu.js";
 import "../shell/Breadcrumb.js";
 import "../shell/ParentIdentityStrip.js";
@@ -137,20 +137,20 @@ export const DEFAULT_WORKFLOW_STATUSES = [
   { id: "check", label: "CHECK", color: "rgb(34, 197, 94)"   },
   { id: "act",   label: "ACT",   color: "rgb(245, 158, 11)"  },
 ] as const;`,
-  "mol-units": `import { renderUnitChip } from "../views/unitChip.js";
+  "mol-units": `import { renderUnitChip } from "../molecules/unitChip.js";
 
 html\`\${renderUnitChip("USD")}<span class="stage-title">Revenue</span>\`;
 html\`\${renderUnitChip("%")}<span class="stage-title">SLA</span>\`;
 // Empty unit -> the helper returns \`nothing\`, no chip renders:
 html\`<span class="stage-title">Headcount</span>\`;`,
-  "mol-badges": `import { renderStatusBadge } from "../views/WorkflowNode/statusBadge.js";
+  "mol-badges": `import { renderStatusBadge } from "../molecules/statusBadge.js";
 import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
 
 html\`\${DEFAULT_WORKFLOW_STATUSES.map((s) => renderStatusBadge(s))}\`;`,
   "mol-disabled": `import {
   renderDisabledIndicator,
   renderDisabledSwitch,
-} from "../views/disabledToggle.js";
+} from "../molecules/disabledToggle.js";
 
 // Static indicator:
 html\`\${renderDisabledIndicator(true)}<span>Disabled metric</span>\`;

@@ -108,7 +108,7 @@ import {
   disabledToggleStyles,
   renderDisabledIndicator,
   renderDisabledSwitch,
-} from "../disabledToggle.js";
+} from "../../molecules/disabledToggle.js";
 import {
   InlineTitleEditController,
   type InlineTitleEditTarget,
@@ -122,7 +122,7 @@ import {
   renderUnitChip,
   unitChipStyles,
   unitFromComputedValue,
-} from "../unitChip.js";
+} from "../../molecules/unitChip.js";
 
 /** SPEC §17.104 — custom event name + payload shape. Retained for the §17.116-followup modal wiring. */
 export const COMPUTATION_KIND_CHANGE_EVENT = "computation-kind-change";
