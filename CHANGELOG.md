@@ -32,6 +32,15 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   sigma, forbidden, times, check) with their U+ codepoints labelled,
   and the four PDCA workflow status badges sourced from
   `DEFAULT_WORKFLOW_STATUSES` (PLAN / DO / CHECK / ACT).
+- **Molecules tier of the design-system showcase (§17.127 strand A3)**.
+  The second tier now mounts the kiosk's real view-layer molecule
+  helpers: `renderUnitChip` (three states: USD, %, empty → nothing),
+  `renderStatusBadge` for each PDCA status (PLAN / DO / CHECK / ACT),
+  `renderDisabledIndicator(true)` (the forbidden glyph), and
+  `renderDisabledSwitch` in both enabled + disabled states. The
+  showcase host silences the `value-node-disabled-change` event bubbled
+  by the live switch so a click in the showcase doesn't reach
+  `main.ts`'s screen listener.
 
 ### Changed
 
