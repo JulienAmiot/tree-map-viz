@@ -24,6 +24,14 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   the §17.127.2 → §17.127.6 follow-ups fill each tier one at a time
   so every merge stays under the local `new_lines > 300` Sonar gate.
   Dismissal: "Back to kiosk" button or Escape.
+- **Atoms tier of the design-system showcase (§17.127 strand A2)**.
+  The first tier is now real: five colour swatches sourced from
+  `src/index.css` (`--bg`, `--panel`, `--text`, `--muted`, `--accent`),
+  the five trend-arrow glyphs sourced from BSC `valueTemplate.ts`
+  (↑ ↗ → ↘ ↓), the kiosk's other Unicode glyphs (bullseye, warning,
+  sigma, forbidden, times, check) with their U+ codepoints labelled,
+  and the four PDCA workflow status badges sourced from
+  `DEFAULT_WORKFLOW_STATUSES` (PLAN / DO / CHECK / ACT).
 
 ### Changed
 
