@@ -552,6 +552,88 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     }
   });
 
+  it("top-bar search input hides sections that don't match (\u00a717.127 P2)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    const input = $(el, "ds-search") as HTMLInputElement;
+    input.value = "trend";
+    input.dispatchEvent(new Event("input"));
+    await el.updateComplete;
+    const arrowsSection = $(el, "ds-section-atoms-arrows") as HTMLElement;
+    const glyphsSection = $(el, "ds-section-atoms-glyphs") as HTMLElement;
+    expect(arrowsSection.hidden).toBe(false);
+    expect(glyphsSection.hidden).toBe(true);
+    expect(
+      el.shadowRoot?.querySelector<HTMLElement>(
+        "[data-testid='ds-empty-state']",
+      )?.hidden,
+    ).toBe(true);
+  });
+
+  it("empty-state appears when no section matches the query (\u00a717.127 P2)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    const input = $(el, "ds-search") as HTMLInputElement;
+    input.value = "zzz-nothing-matches";
+    input.dispatchEvent(new Event("input"));
+    await el.updateComplete;
+    const empty = $(el, "ds-empty-state") as HTMLElement;
+    expect(empty.hidden).toBe(false);
+    expect(empty.textContent ?? "").toContain("zzz-nothing-matches");
+    const sections = el.shadowRoot!.querySelectorAll<HTMLElement>(
+      "section[data-search-text]",
+    );
+    for (const s of sections) expect(s.hidden).toBe(true);
+  });
+
+  it("clear button resets the query and shows every section (\u00a717.127 P2)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    const input = $(el, "ds-search") as HTMLInputElement;
+    input.value = "trend";
+    input.dispatchEvent(new Event("input"));
+    await el.updateComplete;
+    ($(el, "ds-search-clear") as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect((el.shadowRoot?.querySelector("[data-testid='ds-search']") as
+      HTMLInputElement | null)?.value).toBe("");
+    const sections = el.shadowRoot!.querySelectorAll<HTMLElement>(
+      "section[data-search-text]",
+    );
+    for (const s of sections) expect(s.hidden).toBe(false);
+  });
+
+  it("query persists across tier switches and shows tier-specific empty-state (\u00a717.127 P2)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    const input = $(el, "ds-search") as HTMLInputElement;
+    input.value = "trend";
+    input.dispatchEvent(new Event("input"));
+    await el.updateComplete;
+    expect(($(el, "ds-section-atoms-arrows") as HTMLElement).hidden).toBe(false);
+    ($(el, "ds-tier-templates") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const empty = $(el, "ds-empty-state") as HTMLElement;
+    expect(empty.hidden).toBe(false);
+    expect(empty.querySelector("strong")?.textContent).toBe("Templates");
+  });
+
   it("Molecules tier silences bubbled `value-node-disabled-change` at the host (\u00a717.127 A3)", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",
