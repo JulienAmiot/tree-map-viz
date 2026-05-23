@@ -30,6 +30,10 @@ import {
   renderDisabledIndicator,
   renderDisabledSwitch,
 } from "../views/disabledToggle.js";
+import "../shell/BurgerMenu.js";
+import "../shell/Breadcrumb.js";
+import "../views/plus/PlusTile.js";
+import type { BreadcrumbSegment } from "../shell/Breadcrumb.js";
 
 export const DESIGN_SYSTEM_CLOSE_EVENT = "design-system-close";
 
@@ -60,6 +64,13 @@ const TREND_ARROWS: readonly { glyph: string; label: string }[] = [
   { glyph: "\u2192", label: "Flat" },
   { glyph: "\u2198", label: "Slight regression" },
   { glyph: "\u2193", label: "Significant regression" },
+] as const;
+
+/** Sample breadcrumb path used by the Organisms tier (§17.127 A4a). */
+const DEMO_BREADCRUMB_PATH: readonly BreadcrumbSegment[] = [
+  { id: "ds-root", title: "Obeya" },
+  { id: "ds-reliability", title: "Reliability" },
+  { id: "ds-pager", title: "Pager fatigue" },
 ] as const;
 
 /** Other Unicode glyphs used by the kiosk views. */
@@ -118,6 +129,10 @@ export class DesignSystemPage extends LitElement {
     .mol-cell .stage { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 1.6em; }
     .mol-cell .stage-title { font-size: 1.05rem; color: var(--text, #e8ecf4); }
     .mol-cell .caption { font-size: 0.75rem; color: var(--muted, #8b95a8); }
+    .org-cell { display: flex; flex-direction: column; gap: 0.6rem; padding: 1rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; background: var(--panel, #151a22); margin-bottom: 0.85rem; }
+    .org-cell .stage { display: flex; align-items: center; gap: 0.6rem; min-height: 2.5em; }
+    .org-cell .caption { font-size: 0.78rem; color: var(--muted, #8b95a8); }
+    .org-plus-stage { width: 120px; height: 120px; }
   `,
   ];
 
@@ -125,6 +140,9 @@ export class DesignSystemPage extends LitElement {
    * host so they don't trigger real app logic in main.ts (§17.127 A3+). */
   private static readonly SILENCED_BUBBLES = [
     "value-node-disabled-change",
+    "burger-menu-action",
+    "breadcrumb-navigate",
+    "plus-tile-activate",
   ] as const;
 
   override connectedCallback(): void {
@@ -185,9 +203,50 @@ export class DesignSystemPage extends LitElement {
   private renderTierBody(id: Tier, label: string) {
     if (id === "atoms") return this.renderAtoms();
     if (id === "molecules") return this.renderMolecules();
+    if (id === "organisms") return this.renderOrganismsShell();
     return html`<div class="placeholder" data-testid="ds-placeholder">
       ${label} tier — coming soon.
     </div>`;
+  }
+
+  private renderOrganismsShell() {
+    return html`
+      <h2 data-testid="ds-org-burger">Burger menu (&lt;burger-menu&gt;)</h2>
+      <div class="org-cell" data-testid="ds-org-burger-cell">
+        <div class="stage"><burger-menu></burger-menu></div>
+        <span class="caption">
+          Triple-bar trigger \u2192 popup with Import / Export / Boards /
+          Settings / About. Activating an item emits
+          <code>burger-menu-action</code> (silenced inside the showcase).
+        </span>
+      </div>
+      <h2 data-testid="ds-org-breadcrumb">Focus breadcrumb (&lt;focus-breadcrumb&gt;)</h2>
+      <div class="org-cell" data-testid="ds-org-breadcrumb-cell">
+        <div class="stage">
+          <focus-breadcrumb
+            .path=${DEMO_BREADCRUMB_PATH}
+          ></focus-breadcrumb>
+        </div>
+        <span class="caption">
+          Path from root \u2192 focused leaf. Tapping a non-current segment
+          emits <code>breadcrumb-navigate</code> (silenced inside the
+          showcase).
+        </span>
+      </div>
+      <h2 data-testid="ds-org-plus">Plus tile (&lt;plus-tile&gt;)</h2>
+      <div class="org-cell" data-testid="ds-org-plus-cell">
+        <div class="stage">
+          <div class="org-plus-stage">
+            <plus-tile parent-id="ds-demo-parent"></plus-tile>
+          </div>
+        </div>
+        <span class="caption">
+          Dashed "add-child" affordance rendered by the children grid when
+          the focused parent has room. Emits <code>plus-tile-activate</code>
+          (silenced inside the showcase).
+        </span>
+      </div>
+    `;
   }
 
   private renderMolecules() {
