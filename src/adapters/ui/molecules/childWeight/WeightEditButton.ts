@@ -9,13 +9,15 @@
  *   - §17.129: SVG briefly lifted into an atom, then retired.
  *   - §17.130: switched to `U+2696 SCALES` + `U+FE0E` (text-
  *     presentation variation selector).
- *   - §17.132 (current ship): Unicode glyph replaced by the §17.131
- *     `<ds-icon name="scale">` Lucide SVG so the glyph reads with
- *     consistent stroke weight + monochrome `currentColor` on every
- *     platform (the §17.130 Unicode path drifted into the system
- *     emoji font on iOS, where the scales picked up the OS coloured-
- *     emoji rendering). REVERSES the §17.52 design Q&A "balance scale
- *     rejected" decision on operator instruction (same call as §17.130).
+ *   - §17.132: Unicode glyph replaced by `<ds-icon name="scale">`
+ *     (Lucide balance-scale SVG, monochrome `currentColor`).
+ *   - §17.136 (current ship): switched again on operator instruction
+ *     ("Replace the scale by a weight icon from lucide.") to
+ *     `<ds-icon name="dumbbell">` so the glyph reads unambiguously
+ *     as a weight (the §17.132 `scale` balance picture overlapped
+ *     visually with the §17.52a balance-vs-weight design Q&A;
+ *     `dumbbell` is the unequivocal weight metaphor). Closes the
+ *     iconography loop opened by the §17.52 first-cut dumbbell.
  *
  * Position: bottom-LEFT corner of the tile (mirror of the §17.18
  * bottom-right timestamp). `position: absolute` against the host's
@@ -87,9 +89,10 @@ export class WeightEditButton extends LitElement {
          single-child layouts). The clamp floor (0.85rem) keeps
          the touch target legible on small tiles; the ceiling
          (1.6rem) prevents typographic blow-out on giant layouts.
-         SPEC 17.132 -- ds-icon defaults to a 1em box, so setting
-         font-size here drives the SVG rendered size exactly as
-         the Unicode glyph it replaced did. */
+         SPEC 17.132 / 17.136 -- ds-icon defaults to a 1em box, so
+         setting font-size here drives the SVG rendered size exactly
+         as the Unicode glyph + the pre-17.136 Lucide scale SVG did
+         before the 17.136 dumbbell swap. */
       width: clamp(0.85rem, 5cqmin, 1.6rem);
       height: clamp(0.85rem, 5cqmin, 1.6rem);
       font-size: clamp(0.85rem, 5cqmin, 1.6rem);
@@ -126,7 +129,7 @@ export class WeightEditButton extends LitElement {
       title="Edit weight"
       data-testid="weight-edit-button"
       @click=${this.handleClick}
-    ><ds-icon name="scale"></ds-icon></button>`;
+    ><ds-icon name="dumbbell"></ds-icon></button>`;
   }
 
   private handleClick = (e: MouseEvent): void => {

@@ -15,11 +15,11 @@ afterEach(cleanupLitFixtures);
 describe("<ds-icon> atom (\u00a717.131)", () => {
   it("renders the Lucide SVG when name is registered", async () => {
     const el = await mountLitElement<DsIcon>("ds-icon", (e) => {
-      e.name = "scale";
+      e.name = "dumbbell";
     });
     const svg = el.shadowRoot?.querySelector("svg");
     expect(svg).not.toBeNull();
-    expect(svg?.getAttribute("class")).toContain("lucide-scale");
+    expect(svg?.getAttribute("class")).toContain("lucide-dumbbell");
   });
 
   it("inherits currentColor via stroke=currentColor on the Lucide SVG", async () => {
@@ -70,9 +70,9 @@ describe("<ds-icon> atom (\u00a717.131)", () => {
       "arrow-down",
       "ban",
       "check",
+      "dumbbell",
       "pencil-line",
       "plus",
-      "scale",
       "sigma",
       "target",
       "triangle-alert",
@@ -82,6 +82,9 @@ describe("<ds-icon> atom (\u00a717.131)", () => {
       expect(ICON_REGISTRY[slug]).toBeDefined();
       expect(ICON_REGISTRY[slug]).toContain("<svg");
     }
+    // §17.136 -- the pre-§17.136 `scale` slug is retired from the
+    // registry; the only weight glyph is `dumbbell`.
+    expect((ICON_REGISTRY as Record<string, string>)["scale"]).toBeUndefined();
   });
 
   it("ICON_REGISTRY is frozen so callers cannot mutate it at runtime", () => {
