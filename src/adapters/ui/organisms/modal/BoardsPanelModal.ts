@@ -49,7 +49,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import {
   modalFrameStyles,
   renderModalCloseX,
-} from "../atoms/modalFrameStyles.js";
+} from "../../atoms/modalFrameStyles.js";
 
 export const BOARDS_PANEL_SWITCH_EVENT = "boards-panel-switch";
 export const BOARDS_PANEL_CREATE_EVENT = "boards-panel-create";

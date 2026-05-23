@@ -63,7 +63,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import {
   modalFrameStyles,
   renderModalCloseX,
-} from "../atoms/modalFrameStyles.js";
+} from "../../atoms/modalFrameStyles.js";
 
 export const BOARD_SETTINGS_CONFIRM_EVENT = "board-settings-confirm";
 export const BOARD_SETTINGS_DELETE_EVENT = "board-settings-delete";

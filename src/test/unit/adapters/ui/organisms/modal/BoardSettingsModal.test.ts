@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import "../../../../../adapters/ui/modal/BoardSettingsModal.js";
+import "../../../../../../adapters/ui/organisms/modal/BoardSettingsModal.js";
 import {
   BOARD_SETTINGS_CANCEL_EVENT,
   BOARD_SETTINGS_CONFIRM_EVENT,
@@ -9,11 +9,11 @@ import {
   type BoardSettingsDeleteDetail,
   type BoardSettingsModal,
   type BoardSettingsTarget,
-} from "../../../../../adapters/ui/modal/BoardSettingsModal.js";
+} from "../../../../../../adapters/ui/organisms/modal/BoardSettingsModal.js";
 import {
   cleanupLitFixtures,
   mountLitElement,
-} from "../../../../fixtures/litElementFixture.js";
+} from "../../../../../fixtures/litElementFixture.js";
 
 afterEach(cleanupLitFixtures);
 

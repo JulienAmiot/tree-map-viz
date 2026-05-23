@@ -89,20 +89,20 @@ import {
   runDrillTransition,
 } from "../animations/drillTransitions.js";
 import { OrientationController } from "../controllers/OrientationController.js";
-import "../modal/AboutModal.js";
-import type { AboutModal } from "../modal/AboutModal.js";
+import "../organisms/modal/AboutModal.js";
+import type { AboutModal } from "../organisms/modal/AboutModal.js";
 import "../modal/AddChildModal.js";
 import type { AddChildModal } from "../modal/AddChildModal.js";
-import "../modal/BoardSettingsModal.js";
+import "../organisms/modal/BoardSettingsModal.js";
 import type {
   BoardSettingsModal,
   BoardSettingsTarget,
-} from "../modal/BoardSettingsModal.js";
-import "../modal/BoardsPanelModal.js";
+} from "../organisms/modal/BoardSettingsModal.js";
+import "../organisms/modal/BoardsPanelModal.js";
 import type {
   BoardsPanelModal,
   BoardsPanelTarget,
-} from "../modal/BoardsPanelModal.js";
+} from "../organisms/modal/BoardsPanelModal.js";
 import "../modal/EditNodeModal.js";
 import type {
   EditNodeModal,

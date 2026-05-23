@@ -63,11 +63,11 @@ import type {
 import type {
   BoardSettingsConfirmDetail,
   BoardSettingsDeleteDetail,
-} from "./adapters/ui/modal/BoardSettingsModal.js";
+} from "./adapters/ui/organisms/modal/BoardSettingsModal.js";
 import type {
   BoardsPanelCreateDetail,
   BoardsPanelSwitchDetail,
-} from "./adapters/ui/modal/BoardsPanelModal.js";
+} from "./adapters/ui/organisms/modal/BoardsPanelModal.js";
 import type {
   EditNodeConfirmDetail,
   EditNodeModalPayload,

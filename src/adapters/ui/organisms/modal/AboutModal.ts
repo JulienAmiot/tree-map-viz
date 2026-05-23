@@ -8,11 +8,11 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
-import { APP_VERSION, BUILD_DATE } from "../../../version.js";
+import { APP_VERSION, BUILD_DATE } from "../../../../version.js";
 import {
   modalFrameStyles,
   renderModalCloseX,
-} from "../atoms/modalFrameStyles.js";
+} from "../../atoms/modalFrameStyles.js";
 
 export const ABOUT_CANCEL_EVENT = "about-cancel";
 /** SPEC §17.127 — fired when the operator taps "Open design system…" inside the About modal. */

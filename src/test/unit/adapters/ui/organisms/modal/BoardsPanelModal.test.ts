@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import "../../../../../adapters/ui/modal/BoardsPanelModal.js";
+import "../../../../../../adapters/ui/organisms/modal/BoardsPanelModal.js";
 import {
   BOARDS_PANEL_CANCEL_EVENT,
   BOARDS_PANEL_CREATE_EVENT,
@@ -9,11 +9,11 @@ import {
   type BoardsPanelModal,
   type BoardsPanelSwitchDetail,
   type BoardsPanelTarget,
-} from "../../../../../adapters/ui/modal/BoardsPanelModal.js";
+} from "../../../../../../adapters/ui/organisms/modal/BoardsPanelModal.js";
 import {
   cleanupLitFixtures,
   mountLitElement,
-} from "../../../../fixtures/litElementFixture.js";
+} from "../../../../../fixtures/litElementFixture.js";
 
 afterEach(cleanupLitFixtures);
 
