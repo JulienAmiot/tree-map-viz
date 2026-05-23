@@ -15,6 +15,8 @@ import {
 } from "./modalFrameStyles.js";
 
 export const ABOUT_CANCEL_EVENT = "about-cancel";
+/** SPEC §17.127 — fired when the operator taps "Open design system…" inside the About modal. */
+export const ABOUT_OPEN_DESIGN_SYSTEM_EVENT = "about-open-design-system";
 const REPO_URL = "https://github.com/JulienAmiot/tree-map-viz";
 /** §17.87 — operator-facing "What's new" link; back-filled per `package.json#version` entry, kept in sync via `.cursor/rules/keep-changelog-in-sync.mdc`. */
 const CHANGELOG_URL = `${REPO_URL}/blob/master/CHANGELOG.md`;
@@ -63,13 +65,19 @@ export class AboutModal extends LitElement {
           <div class="row"><span class="label">Repository</span><span class="value"><a href=${REPO_URL} target="_blank" rel="noopener noreferrer" data-testid="about-repo-link">${REPO_URL}</a></span></div>
           <div class="row"><span class="label">What's new</span><span class="value"><a href=${CHANGELOG_URL} target="_blank" rel="noopener noreferrer" data-testid="about-changelog-link">Changelog</a></span></div>
         </div>
-        <div class="actions"><button type="button" class="btn" data-testid="modal-cancel" @click=${this.cancel}>Close</button></div>
+        <div class="actions"><button type="button" class="btn" data-testid="about-open-design-system" @click=${this.openDesignSystem} style="margin-right:auto">Open design system…</button><button type="button" class="btn" data-testid="modal-cancel" @click=${this.cancel}>Close</button></div>
       </section>
     `;
   }
 
   private readonly cancel = (): void => {
     this.dispatchEvent(new CustomEvent(ABOUT_CANCEL_EVENT, { bubbles: true, composed: true }));
+  };
+
+  private readonly openDesignSystem = (): void => {
+    this.dispatchEvent(
+      new CustomEvent(ABOUT_OPEN_DESIGN_SYSTEM_EVENT, { bubbles: true, composed: true }),
+    );
   };
 
   private readonly handleKeydown = (e: KeyboardEvent): void => {
@@ -79,5 +87,8 @@ export class AboutModal extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap { "about-modal": AboutModal }
-  interface HTMLElementEventMap { "about-cancel": CustomEvent<void> }
+  interface HTMLElementEventMap {
+    "about-cancel": CustomEvent<void>;
+    "about-open-design-system": CustomEvent<void>;
+  }
 }

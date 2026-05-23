@@ -112,6 +112,7 @@ import "../views/childWeight/WeightEditPopover.js";
 import type { WeightEditOpenDetail } from "../views/childWeight/weightEditEvents.js";
 import type { PlusTileActivateDetail } from "../views/plus/PlusTile.js";
 import "../views/index.js";
+import "../showcase/DesignSystemPage.js";
 import type { FocusedTreeViewModel } from "../views/NodeViewModel.js";
 import type { WorkflowStatus } from "../../../domain/values/WorkflowStatus.js";
 import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
@@ -221,6 +222,11 @@ export class TreeMapScreen extends LitElement {
   // SPEC §17.84 — read-only About modal; no target, no error.
   @state()
   private aboutModalOpen = false;
+
+  /** SPEC §17.127 — design-system showcase page open state. Reached
+   * via the About modal's "Open design system…" button (§17.127 A1). */
+  @state()
+  private designSystemOpen = false;
 
   /**
    * SPEC §17.52 -- active child-tile weight-edit popover state.
@@ -445,7 +451,12 @@ export class TreeMapScreen extends LitElement {
       <about-modal
         ?open=${this.aboutModalOpen}
         @about-cancel=${this.handleAboutModalClose}
+        @about-open-design-system=${this.handleOpenDesignSystem}
       ></about-modal>
+      <design-system-page
+        ?open=${this.designSystemOpen}
+        @design-system-close=${this.handleDesignSystemClose}
+      ></design-system-page>
       <weight-edit-popover
         ?open=${this.weightEditTarget !== null}
         .nodeId=${this.weightEditTarget?.nodeId ?? ""}
@@ -644,6 +655,15 @@ export class TreeMapScreen extends LitElement {
     this.aboutModalOpen = false;
   };
 
+  private readonly handleOpenDesignSystem = (): void => {
+    this.aboutModalOpen = false;
+    this.designSystemOpen = true;
+  };
+
+  private readonly handleDesignSystemClose = (): void => {
+    this.designSystemOpen = false;
+  };
+
   /** Called by the composition root after a successful `addChild` so the
    * modal closes (preserving any other state the shell owns). Public so
    * `main.ts` can drive it without re-querying the modal element. */
@@ -743,6 +763,17 @@ export class TreeMapScreen extends LitElement {
   /** Defensive programmatic close (e.g. on route change). */
   closeAboutModal(): void {
     this.aboutModalOpen = false;
+  }
+
+  /** SPEC §17.127 — open the design-system showcase (closes About if open). */
+  openDesignSystem(): void {
+    this.aboutModalOpen = false;
+    this.designSystemOpen = true;
+  }
+
+  /** Defensive programmatic close (e.g. on route change). */
+  closeDesignSystem(): void {
+    this.designSystemOpen = false;
   }
 
   /** Read-only accessor used by tests — keeps the `@state` private. */
