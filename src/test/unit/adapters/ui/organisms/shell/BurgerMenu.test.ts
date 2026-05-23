@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import "../../../../../adapters/ui/shell/BurgerMenu.js";
+import "../../../../../../adapters/ui/organisms/shell/BurgerMenu.js";
 import {
   BURGER_MENU_ACTION_EVENT,
   BurgerMenu,
   type BurgerMenuActionDetail,
-} from "../../../../../adapters/ui/shell/BurgerMenu.js";
+} from "../../../../../../adapters/ui/organisms/shell/BurgerMenu.js";
 import {
   cleanupLitFixtures,
   mountLitElement,
-} from "../../../../fixtures/litElementFixture.js";
+} from "../../../../../fixtures/litElementFixture.js";
 
 afterEach(cleanupLitFixtures);
 

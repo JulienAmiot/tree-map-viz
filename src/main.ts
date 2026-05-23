@@ -76,8 +76,8 @@ import type {
 import type {
   BreadcrumbNavigateDetail,
   BreadcrumbSegment,
-} from "./adapters/ui/shell/Breadcrumb.js";
-import type { BurgerMenuActionDetail } from "./adapters/ui/shell/BurgerMenu.js";
+} from "./adapters/ui/organisms/shell/Breadcrumb.js";
+import type { BurgerMenuActionDetail } from "./adapters/ui/organisms/shell/BurgerMenu.js";
 import type { TileDrillDetail } from "./adapters/ui/shell/ChildrenGrid.js";
 import type {
   EditNodeOpenDetail,

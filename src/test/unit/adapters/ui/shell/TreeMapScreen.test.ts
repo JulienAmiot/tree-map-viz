@@ -21,7 +21,7 @@ import { DRILL_CLASS } from "../../../../../adapters/ui/animations/drillTransiti
 import "../../../../../adapters/ui/shell/TreeMapScreen.js";
 import { TreeMapScreen } from "../../../../../adapters/ui/shell/TreeMapScreen.js";
 import type { AddChildModal } from "../../../../../adapters/ui/modal/AddChildModal.js";
-import type { FocusBreadcrumb } from "../../../../../adapters/ui/shell/Breadcrumb.js";
+import type { FocusBreadcrumb } from "../../../../../adapters/ui/organisms/shell/Breadcrumb.js";
 import type { ChildrenGrid } from "../../../../../adapters/ui/shell/ChildrenGrid.js";
 import type { ParentIdentityStrip } from "../../../../../adapters/ui/shell/ParentIdentityStrip.js";
 import type {
