@@ -634,6 +634,94 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     expect(empty.querySelector("strong")?.textContent).toBe("Templates");
   });
 
+  it("sections without a snippet do NOT render the view-source button (\u00a717.127 P3a)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    expect(
+      el.shadowRoot?.querySelector("[data-testid='ds-view-source-atoms-colors']"),
+    ).toBeNull();
+  });
+
+  it("the wired demo section (mol-units) renders the view-source button (\u00a717.127 P3a)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-molecules") as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect($(el, "ds-view-source-mol-units")).toBeTruthy();
+  });
+
+  it("clicking the view-source button opens the snippet popover with the section's code (\u00a717.127 P3a)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-molecules") as HTMLButtonElement).click();
+    await el.updateComplete;
+    ($(el, "ds-view-source-mol-units") as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect($(el, "ds-snippet-overlay")).toBeTruthy();
+    expect($(el, "ds-snippet-panel")).toBeTruthy();
+    const code = $(el, "ds-snippet-code").textContent ?? "";
+    expect(code).toContain("renderUnitChip(\"USD\")");
+    expect(code).toContain("renderUnitChip(\"%\")");
+    expect($(el, "ds-snippet-copy")).toBeTruthy();
+  });
+
+  it("the snippet popover's close button + ESC both dismiss it (\u00a717.127 P3a)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-molecules") as HTMLButtonElement).click();
+    await el.updateComplete;
+    ($(el, "ds-view-source-mol-units") as HTMLButtonElement).click();
+    await el.updateComplete;
+    ($(el, "ds-snippet-close") as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect(
+      el.shadowRoot?.querySelector("[data-testid='ds-snippet-overlay']"),
+    ).toBeNull();
+    ($(el, "ds-view-source-mol-units") as HTMLButtonElement).click();
+    await el.updateComplete;
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await el.updateComplete;
+    expect(
+      el.shadowRoot?.querySelector("[data-testid='ds-snippet-overlay']"),
+    ).toBeNull();
+  });
+
+  it("ESC closes the snippet popover BEFORE falling through to closing the page (\u00a717.127 P3a)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    const closeHandler = vi.fn();
+    el.addEventListener(DESIGN_SYSTEM_CLOSE_EVENT, closeHandler);
+    ($(el, "ds-tier-molecules") as HTMLButtonElement).click();
+    await el.updateComplete;
+    ($(el, "ds-view-source-mol-units") as HTMLButtonElement).click();
+    await el.updateComplete;
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await el.updateComplete;
+    expect(closeHandler).not.toHaveBeenCalled();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(closeHandler).toHaveBeenCalledTimes(1);
+  });
+
   it("Molecules tier silences bubbled `value-node-disabled-change` at the host (\u00a717.127 A3)", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",

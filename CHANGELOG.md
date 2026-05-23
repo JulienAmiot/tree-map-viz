@@ -41,6 +41,16 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   showcase host silences the `value-node-disabled-change` event bubbled
   by the live switch so a click in the showcase doesn't reach
   `main.ts`'s screen listener.
+- **Design-system showcase — "View source" snippet popover (§17.127 strand P3a, scaffolding)**.
+  Each design-system section can now expose a `</>` button (top-right
+  of the section heading) that opens a modal popover showing the
+  canonical render snippet for that section, with a "Copy" button
+  (writes to the clipboard when the API is available) and a close
+  affordance (×, ESC, or click on the dim backdrop). ESC closes the
+  popover before falling through to closing the showcase page. This
+  strand ships the scaffolding plus one wired demo on the Molecules
+  "Unit chip" section; the remaining 15 sections gain their snippets
+  in strand P3b.
 - **Design-system showcase — top-bar search filter (§17.127 strand P2)**.
   The design-system page now has a search input next to its "Back to
   kiosk" button. Typing filters every section in the current tier by
