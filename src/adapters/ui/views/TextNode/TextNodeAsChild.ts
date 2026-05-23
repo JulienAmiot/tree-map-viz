@@ -27,7 +27,7 @@ import {
   renderDisabledIndicator,
 } from "../disabledToggle.js";
 import type { TextNodeViewModel } from "../NodeViewModel.js";
-import { formatAge } from "../ageFormat.js";
+import { formatAge } from "../../atoms/ageFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import { fitMarkdownBodyToTile, textBodyStyles } from "./textBody.js";
 

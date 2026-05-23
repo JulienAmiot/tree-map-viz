@@ -24,7 +24,7 @@ import type { CardRegistry } from "../../../domain/Tree.js";
 import { Tree } from "../../../domain/Tree.js";
 import type { WorkflowStatus } from "../../../domain/values/WorkflowStatus.js";
 
-import { dateAgeColor } from "./dateAgeColor.js";
+import { dateAgeColor } from "../atoms/dateAgeColor.js";
 import type {
   BusinessScoreCardObjectiveViewModel,
   BusinessScoreCardValueViewModel,

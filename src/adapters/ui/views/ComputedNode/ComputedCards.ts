@@ -103,7 +103,7 @@ import type {
   NodeRole,
   TrendArrowDirection,
 } from "../NodeViewModel.js";
-import { formatAge } from "../ageFormat.js";
+import { formatAge } from "../../atoms/ageFormat.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
@@ -114,7 +114,7 @@ import {
   type InlineTitleEditTarget,
   titleInlineEditStyles,
 } from "../inlineTitleEdit.js";
-import { formatValue } from "../numberFormat.js";
+import { formatValue } from "../../atoms/numberFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import {
   InlineUnitEditController,

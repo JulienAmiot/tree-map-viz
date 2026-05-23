@@ -6,7 +6,7 @@ import {
   FRESH_RGB,
   MAX_AGE_DAYS,
   STALE_RGB,
-} from "../../../../../adapters/ui/views/dateAgeColor.js";
+} from "../../../../../adapters/ui/atoms/dateAgeColor.js";
 
 const now = new Date("2026-04-30T12:00:00.000Z");
 

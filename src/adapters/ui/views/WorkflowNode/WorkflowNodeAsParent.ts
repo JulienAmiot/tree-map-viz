@@ -48,7 +48,7 @@ import {
   titleInlineEditStyles,
 } from "../inlineTitleEdit.js";
 import type { WorkflowNodeViewModel } from "../NodeViewModel.js";
-import { formatAge } from "../ageFormat.js";
+import { formatAge } from "../../atoms/ageFormat.js";
 import { tileLayoutStyles } from "../tileLayoutStyles.js";
 import { fitMarkdownBodyToTile, textBodyStyles } from "../TextNode/textBody.js";
 import { disabledToggleStyles, renderDisabledSwitch } from "../disabledToggle.js";

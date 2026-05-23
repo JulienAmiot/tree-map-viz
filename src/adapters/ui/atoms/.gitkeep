@@ -1,5 +1,0 @@
-Placeholder so git tracks the empty atoms/ directory ahead of the
-§17.128 R1a strand. Real files land in R1a (format helpers:
-ageFormat, numberFormat, dateAgeColor), R1b (visual helpers:
-tileLayoutStyles, warningFill, modalFrameStyles), R1c (markdownToHtml).
-See docs/atomic-design-layout.md for the full classification.
