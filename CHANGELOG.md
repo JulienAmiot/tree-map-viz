@@ -14,6 +14,20 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Removed
+
+- **Retired-Unicode-glyphs tombstone block from the design-system
+  showcase (§17.135)**. The §17.133 Atoms-tier section that listed
+  the five retired Unicode codepoints (`U+25CE` / `U+26A0` /
+  `U+29B8` / `U+00D7` / `U+2713`) alongside their Lucide
+  replacements — kept after the §17.131 / §17.133 strands as a
+  codepoint-search breadcrumb — is gone. The Lucide library
+  section one level down already renders every replacement icon
+  as a first-class `<ds-icon>` mount with its slug, so the
+  tombstone was strictly redundant. The showcase's Atoms tier now
+  collapses to four sections: colours, trend arrows, the Lucide
+  icon library, and the PDCA workflow status colours.
+
 ### Changed
 
 - **Close-X CSS-pseudo bar pairs migrated to the `<ds-icon>` Lucide

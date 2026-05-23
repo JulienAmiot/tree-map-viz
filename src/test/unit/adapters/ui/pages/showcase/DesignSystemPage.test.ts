@@ -56,7 +56,7 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     }
   });
 
-  it("Atoms tier renders five section headers + the 5 colour tokens", async () => {
+  it("Atoms tier renders four section headers + the 5 colour tokens (\u00a717.135)", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",
       (e) => {
@@ -65,28 +65,37 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     );
     expect($(el, "ds-atoms-colors")).toBeTruthy();
     expect($(el, "ds-atoms-arrows")).toBeTruthy();
-    expect($(el, "ds-atoms-glyphs")).toBeTruthy();
     expect($(el, "ds-atoms-icons")).toBeTruthy();
     expect($(el, "ds-atoms-pdca")).toBeTruthy();
     for (const t of ["bg", "panel", "text", "muted", "accent"]) {
       expect($(el, `ds-token-${t}`)).toBeTruthy();
     }
-    // \u00a717.132 + \u00a717.133 -- every Unicode CSS-pseudo glyph that
-    // used to render on the kiosk has now been migrated to the
-    // \u00a717.131 `<ds-icon>` Lucide atom. The `atoms-glyphs` section
-    // turns into a retirement tombstone block listing the old
-    // codepoints alongside their Lucide replacements (so a search
-    // for "U+25CE" / "U+29B8" in the design system still lands on a
-    // result). The five retired codepoints each surface as a
-    // `data-testid="ds-glyph-retired-<u+codepoint>"` `<li>`; the
-    // pre-\u00a717.133 `ds-glyph-<codepoint>` cell `<div>`s no longer
-    // exist anywhere on the page.
+    // \u00a717.135 -- the \u00a717.133 retired-Unicode-glyphs tombstone
+    // block (the `atoms-glyphs` section + its
+    // `ds-glyphs-retired-*` list + the five
+    // `ds-glyph-retired-u+...` entries) is gone. The Lucide
+    // migration is complete and every retired codepoint already
+    // has a first-class entry in the Lucide library section
+    // below, so the tombstone became redundant. The pre-\u00a717.133
+    // `ds-glyph-<codepoint>` cells from the original \u00a717.127 A2
+    // glyph grid stay absent too -- they have been gone since L3a.
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="ds-atoms-glyphs"]'),
+    ).toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="ds-glyphs-retired-note"]'),
+    ).toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="ds-glyphs-retired-list"]'),
+    ).toBeNull();
     for (const codepoint of [
       "u+25ce",
       "u+26a0",
       "u+29b8",
       "u+00d7",
       "u+2713",
+      "u+2696",
+      "u+1f58d",
     ]) {
       expect(
         el.shadowRoot?.querySelector(`[data-testid="ds-glyph-${codepoint}"]`),
@@ -95,17 +104,8 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
         el.shadowRoot?.querySelector(
           `[data-testid="ds-glyph-retired-${codepoint}"]`,
         ),
-      ).toBeTruthy();
+      ).toBeNull();
     }
-    // The \u00a717.132 scales + crayon entries that flipped to ABSENCE
-    // in the L2 strand stay absent (L2 retired them entirely, never
-    // added them to the L3a retirement tombstone).
-    expect(
-      el.shadowRoot?.querySelector('[data-testid="ds-glyph-u+2696"]'),
-    ).toBeNull();
-    expect(
-      el.shadowRoot?.querySelector('[data-testid="ds-glyph-u+1f58d"]'),
-    ).toBeNull();
   });
 
   it("Atoms tier renders the Lucide icon-library section with every registered slug + a license attribution (\u00a717.131)", async () => {
@@ -646,9 +646,9 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     input.dispatchEvent(new Event("input"));
     await el.updateComplete;
     const arrowsSection = $(el, "ds-section-atoms-arrows") as HTMLElement;
-    const glyphsSection = $(el, "ds-section-atoms-glyphs") as HTMLElement;
+    const colorsSection = $(el, "ds-section-atoms-colors") as HTMLElement;
     expect(arrowsSection.hidden).toBe(false);
-    expect(glyphsSection.hidden).toBe(true);
+    expect(colorsSection.hidden).toBe(true);
     expect(
       el.shadowRoot?.querySelector<HTMLElement>(
         "[data-testid='ds-empty-state']",
@@ -726,7 +726,7 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     const tiersWithSections: ReadonlyArray<readonly [string, readonly string[]]> = [
       [
         "atoms",
-        ["atoms-colors", "atoms-arrows", "atoms-glyphs", "atoms-icons", "atoms-pdca"],
+        ["atoms-colors", "atoms-arrows", "atoms-icons", "atoms-pdca"],
       ],
       ["molecules", ["mol-units", "mol-badges", "mol-disabled", "mol-weight"]],
       [
