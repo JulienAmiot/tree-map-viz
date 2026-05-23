@@ -88,7 +88,7 @@ import type { TreeMapScreen } from "./adapters/ui/shell/TreeMapScreen.js";
 import type { ComputationKindChangeDetail } from "./adapters/ui/views/ComputedNode/ComputedCards.js";
 import { VALUE_NODE_DISABLED_CHANGE_EVENT, type ValueNodeDisabledChangeDetail } from "./adapters/ui/molecules/disabledToggle.js";
 import type { WorkflowStatusChangeDetail } from "./adapters/ui/molecules/statusBadge.js";
-import type { InlineEditWeightDetail } from "./adapters/ui/views/childWeight/weightEditEvents.js";
+import type { InlineEditWeightDetail } from "./adapters/ui/molecules/childWeight/weightEditEvents.js";
 import type {
   InlineEditTitleDetail,
   InlineEditValueDetail,

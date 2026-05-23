@@ -29,7 +29,7 @@ import type {
   FocusedTreeViewModel,
   NodeViewModel,
 } from "../../../../../adapters/ui/molecules/NodeViewModel.js";
-import { PLUS_TILE_ACTIVATE_EVENT } from "../../../../../adapters/ui/views/plus/PlusTile.js";
+import { PLUS_TILE_ACTIVATE_EVENT } from "../../../../../adapters/ui/molecules/plus/PlusTile.js";
 import { FakeResizeObserver } from "../../../../fixtures/fakeResizeObserver.js";
 import {
   cleanupLitFixtures,

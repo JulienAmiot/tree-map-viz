@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import "../../../../../../adapters/ui/views/childWeight/WeightEditButton.js";
-import { WeightEditButton } from "../../../../../../adapters/ui/views/childWeight/WeightEditButton.js";
+import "../../../../../../adapters/ui/molecules/childWeight/WeightEditButton.js";
+import { WeightEditButton } from "../../../../../../adapters/ui/molecules/childWeight/WeightEditButton.js";
 import {
   WEIGHT_EDIT_OPEN_EVENT,
   type WeightEditOpenDetail,
-} from "../../../../../../adapters/ui/views/childWeight/weightEditEvents.js";
+} from "../../../../../../adapters/ui/molecules/childWeight/weightEditEvents.js";
 import {
   cleanupLitFixtures,
   mountLitElement,

@@ -40,11 +40,11 @@ import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import { TreemapController } from "../controllers/TreemapController.js";
-import "../views/childWeight/WeightEditButton.js";
+import "../molecules/childWeight/WeightEditButton.js";
 import {
   WEIGHT_EDIT_OPEN_EVENT,
   type WeightEditOpenDetail,
-} from "../views/childWeight/weightEditEvents.js";
+} from "../molecules/childWeight/weightEditEvents.js";
 import "../views/index.js";
 import type { ChildSlotViewModel } from "../molecules/NodeViewModel.js";
 
