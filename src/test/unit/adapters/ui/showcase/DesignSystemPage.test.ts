@@ -224,6 +224,51 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     expect(asChild?.vm?.value.kind).toBe("computedMean");
   });
 
+  it("Organisms tier mounts ComputedNode + CBSN with WEIGHTED_AVERAGE pickers (\u00a717.127 A4b-2)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const computed = $(el, "ds-org-computed-cell").querySelector(
+      "computed-card",
+    ) as { vm?: { id: string; computationKind: string } | null } | null;
+    expect(computed?.vm?.id).toBe("ds-computed");
+    expect(computed?.vm?.computationKind).toBe("SUM");
+    const cbsn = $(el, "ds-org-computed-bsc-cell").querySelector(
+      "computed-business-score-card",
+    ) as { vm?: { id: string; computationKind: string } | null } | null;
+    expect(cbsn?.vm?.id).toBe("ds-computed-bsc");
+    expect(cbsn?.vm?.computationKind).toBe("WEIGHTED_AVERAGE");
+  });
+
+  it("Organisms tier silences `computation-kind-change` at the host (\u00a717.127 A4b-2)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const escaped = vi.fn();
+    document.addEventListener("computation-kind-change", escaped);
+    el.shadowRoot
+      ?.querySelector("computed-card")
+      ?.dispatchEvent(
+        new CustomEvent("computation-kind-change", {
+          bubbles: true,
+          composed: true,
+          detail: { nodeId: "ds-computed", newKind: "AVERAGE" },
+        }),
+      );
+    expect(escaped).not.toHaveBeenCalled();
+    document.removeEventListener("computation-kind-change", escaped);
+  });
+
   it("Organisms tier silences inline-edit-* bubbles dispatched from BSC tiles (\u00a717.127 A4b-1)", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",

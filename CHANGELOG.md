@@ -41,6 +41,13 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   showcase host silences the `value-node-disabled-change` event bubbled
   by the live switch so a click in the showcase doesn't reach
   `main.ts`'s screen listener.
+- **Organisms tier — node half: Computed cards (§17.127 strand A4b-2)**.
+  Live `<computed-card>` (SUM-strategy ComputedNode in AsParent
+  role, "Pager hours saved" demo) and `<computed-business-score-card>`
+  (WEIGHTED_AVERAGE CBSN AsParent, "Customer-impact score" demo
+  with objective row) mount inside the Organisms tier. The strategy
+  picker on each tile is live but the bubbled
+  `computation-kind-change` event is silenced at the showcase host.
 - **Organisms tier — node half: BSC (§17.127 strand A4b-1)**. The
   live `<business-score-card-as-parent>` and `<business-score-card-as-child>`
   elements mount inside the Organisms tier with realistic VMs
