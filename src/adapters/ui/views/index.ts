@@ -19,8 +19,8 @@
  * (§5 final sentence). The shell decides whether to render it directly.
  */
 
-import "./BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
-import "./BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
+import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
+import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "./ComputedNode/ComputedCards.js";
 import "../molecules/NodeView.js";
 import "./PictureNode/PictureNodeAsChild.js";
