@@ -358,15 +358,16 @@ export const tileLayoutStyles = css`
     color: var(--muted, currentColor);
     user-select: none;
   }
-  .warning-fill::before {
-    /* U+26A0 + U+FE0E forces text-style (monochrome) presentation so
-       systems that default the warning sign to colour emoji honour
-       the .warning-fill colour. Sized in cqmin so the glyph fills
-       the tile the same way the §17.24 PlusTile cross does. */
-    content: "\u26A0\uFE0E";
-    font-size: clamp(2rem, 50cqmin, 12rem);
-    line-height: 1;
-    font-weight: 700;
+  /* SPEC 17.133 -- the U+26A0 warning glyph that used to ride a
+     ::before pseudo on .warning-fill is now a ds-icon
+     name=triangle-alert Lucide SVG child mounted by the shared
+     renderWarningFill() atom. The cqmin-driven size that made the
+     glyph fill the tile the same way the 17.24 PlusTile cross does
+     is applied directly to the child icon width/height so the SVG
+     keeps the pre-17.133 tile-fill proportions. */
+  .warning-fill > ds-icon {
+    width: clamp(2rem, 50cqmin, 12rem);
+    height: clamp(2rem, 50cqmin, 12rem);
   }
   /* SPEC §17.116 — the inline ".sigma" chip retired in §17.116d once
      Computed* (§17.116c) and BSC computedMean (§17.116d) both moved
@@ -447,6 +448,12 @@ export const tileLayoutStyles = css`
      pseudo-element's inherited line-height and a thin border on the
      host span -- the worst case is a plain circle, still clearly
      "target marker" alongside the value. */
+  /* SPEC 17.133 -- the U+25CE bullseye glyph that used to ride a
+     ::before pseudo on .target-icon is now a ds-icon name=target
+     Lucide SVG child mounted by renderTargetRow() in
+     valueTemplate.ts. The wrapping span keeps its 1.05em square
+     + flex centring so the SVG lands at the same visual size on
+     every tile. */
   .target-icon {
     flex: 0 0 auto;
     display: inline-flex;
@@ -458,12 +465,9 @@ export const tileLayoutStyles = css`
     align-self: center;
     color: currentColor;
   }
-  .target-icon::before {
-    content: "\u25CE";
-    /* Force text-style presentation in case a future system flips
-       the glyph to colour emoji. */
-    font-feature-settings: normal;
-    font-size: 1.05em;
+  .target-icon > ds-icon {
+    width: 100%;
+    height: 100%;
   }
 
   /* ----- Trend arrow (SPEC 17.41) -----
@@ -536,6 +540,14 @@ export const tileLayoutStyles = css`
      .warningColor takes precedence and paints the glyph on the
      17.44 yellow->orange->red ramp. The fallback keeps the rule
      readable under unit fixtures that omit the inline style. */
+  /* SPEC 17.133 -- the U+26A0 warning glyph that used to ride a
+     ::before pseudo on .warning-icon is now a ds-icon
+     name=triangle-alert Lucide SVG child mounted by
+     renderTargetRow() in valueTemplate.ts. The wrapping span keeps
+     its inline-flex centring + the inline color style baked by the
+     mapper from vm.objective.warningColor (17.44 yellow -> orange
+     -> red severity ramp); the SVG inherits the wrapper colour via
+     Lucide stroke=currentColor. */
   .warning-icon {
     flex: 0 0 auto;
     display: inline-flex;
@@ -546,13 +558,6 @@ export const tileLayoutStyles = css`
     color: currentColor;
     pointer-events: none;
     user-select: none;
-  }
-  .warning-icon::before {
-    /* U+26A0 + U+FE0E forces text-style (monochrome) presentation so
-       systems that default the warning sign to colour emoji honour
-       our inline color. */
-    content: "\u26A0\uFE0E";
-    font-feature-settings: normal;
   }
   /* SPEC §17.121i — the §17.121g strike-through + value-area dim
      are retired on operator feedback ("remove the striken style

@@ -80,7 +80,12 @@ describe("<url-node-as-child>", () => {
     const indicator = title?.firstElementChild as HTMLElement | null;
     expect(indicator?.getAttribute("data-testid")).toBe("disabled-indicator");
     expect(indicator?.tagName).toBe("SPAN");
-    expect(indicator?.children.length).toBe(0);
+    // §17.133 -- the indicator now hosts a single `<ds-icon name="ban">`
+    // Lucide SVG child (was an empty span styled by a `::before`
+    // pseudo pre-§17.133).
+    expect(indicator?.children.length).toBe(1);
+    expect(indicator?.firstElementChild?.tagName.toLowerCase()).toBe("ds-icon");
+    expect(indicator?.firstElementChild?.getAttribute("name")).toBe("ban");
     expect(off.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });
 

@@ -380,7 +380,7 @@ function renderWarningFill(value: ComputedValueViewModel): TemplateResult {
     data-reason=${reason}
     role="img"
     aria-label="Cannot compute value"
-  ></div>`;
+  ><ds-icon name="triangle-alert"></ds-icon></div>`;
 }
 
 function renderTitleWithBadge(

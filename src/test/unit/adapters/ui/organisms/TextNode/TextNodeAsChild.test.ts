@@ -36,10 +36,14 @@ describe("<text-node-as-child>", () => {
     expect(indicator?.getAttribute("data-testid")).toBe("disabled-indicator");
     // SPEC §17.121j — the indicator is a plain inline span (no
     // child elements / pill chrome) so it never clips against the
-    // 3vh title row's overflow: hidden; the glyph itself is painted
-    // via the `.disabled-indicator::before` rule.
+    // 3vh title row's overflow: hidden. §17.133 -- the glyph is now
+    // a `<ds-icon name="ban">` Lucide SVG child of the indicator
+    // span (was an empty span styled by a `::before` pseudo
+    // pre-§17.133).
     expect(indicator?.tagName).toBe("SPAN");
-    expect(indicator?.children.length).toBe(0);
+    expect(indicator?.children.length).toBe(1);
+    expect(indicator?.firstElementChild?.tagName.toLowerCase()).toBe("ds-icon");
+    expect(indicator?.firstElementChild?.getAttribute("name")).toBe("ban");
     expect(indicator?.getAttribute("role")).toBe("img");
     expect(off.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });

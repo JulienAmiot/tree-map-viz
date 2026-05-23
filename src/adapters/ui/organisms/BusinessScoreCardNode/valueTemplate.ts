@@ -171,10 +171,10 @@ export function renderTargetRow(
         role="img"
         aria-label="Trajectory predicts missing the deadline"
         style=${`color: ${obj.warningColor}`}
-      ></span>`
+      ><ds-icon name="triangle-alert"></ds-icon></span>`
     : nothing;
   return html`<div class="target-row" data-testid="target-row">
-    <span class="target-icon" data-testid="target-icon" aria-hidden="true"></span>
+    <span class="target-icon" data-testid="target-icon" aria-hidden="true"><ds-icon name="target"></ds-icon></span>
     <span class="target-text" data-testid="target-text"
       >${formatValue(obj.targetValue)}<span class="target-unit">&nbsp;${obj.unit}</span></span
     >${dateLabel
