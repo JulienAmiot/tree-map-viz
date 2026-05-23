@@ -4,7 +4,7 @@ import {
   PLUS_TILE_ACTIVATE_EVENT,
   PlusTile,
   type PlusTileActivateDetail,
-} from "../../../../../../adapters/ui/views/plus/PlusTile.js";
+} from "../../../../../../adapters/ui/molecules/plus/PlusTile.js";
 import {
   cleanupLitFixtures,
   mountLitElement,

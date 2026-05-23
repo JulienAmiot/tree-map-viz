@@ -108,9 +108,9 @@ import type {
   EditNodeModal,
   EditNodeTarget,
 } from "../modal/EditNodeModal.js";
-import "../views/childWeight/WeightEditPopover.js";
-import type { WeightEditOpenDetail } from "../views/childWeight/weightEditEvents.js";
-import type { PlusTileActivateDetail } from "../views/plus/PlusTile.js";
+import "../molecules/childWeight/WeightEditPopover.js";
+import type { WeightEditOpenDetail } from "../molecules/childWeight/weightEditEvents.js";
+import type { PlusTileActivateDetail } from "../molecules/plus/PlusTile.js";
 import "../views/index.js";
 import "../showcase/DesignSystemPage.js";
 import type { FocusedTreeViewModel } from "../molecules/NodeViewModel.js";

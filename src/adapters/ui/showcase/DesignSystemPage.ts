@@ -35,7 +35,7 @@ import "../shell/Breadcrumb.js";
 import "../shell/ParentIdentityStrip.js";
 import "../shell/ChildrenGrid.js";
 import "../shell/TreeMapScreen.js";
-import "../views/plus/PlusTile.js";
+import "../molecules/plus/PlusTile.js";
 import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import "../views/ComputedNode/ComputedCards.js";
@@ -167,7 +167,7 @@ const path = [
 ];
 html\`<focus-breadcrumb .path=\${path}></focus-breadcrumb>\`;
 // Emits \`breadcrumb-navigate\` { nodeId } on non-current segment tap.`,
-  "org-plus": `import "../views/plus/PlusTile.js";
+  "org-plus": `import "../molecules/plus/PlusTile.js";
 html\`<plus-tile parent-id=\${parentId}></plus-tile>\`;
 // Emits \`plus-tile-activate\` { parentId } on tap.`,
   "org-bsc": `import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
