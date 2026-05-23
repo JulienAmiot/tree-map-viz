@@ -203,6 +203,69 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     }
   });
 
+  it("Organisms tier mounts BSC AsParent + AsChild with sample VMs (\u00a717.127 A4b-1)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const asParent = $(el, "ds-org-bsc-asparent-cell").querySelector(
+      "business-score-card-as-parent",
+    ) as { vm?: { id: string; title: string } | null } | null;
+    expect(asParent?.vm?.id).toBe("ds-bsc-on-track");
+    expect(asParent?.vm?.title).toBe("Quarterly revenue");
+    const asChild = $(el, "ds-org-bsc-aschild-cell").querySelector(
+      "business-score-card-as-child",
+    ) as { vm?: { id: string; value: { kind: string } } | null } | null;
+    expect(asChild?.vm?.id).toBe("ds-bsc-off-track");
+    expect(asChild?.vm?.value.kind).toBe("computedMean");
+  });
+
+  it("Organisms tier silences inline-edit-* bubbles dispatched from BSC tiles (\u00a717.127 A4b-1)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const escaped: string[] = [];
+    const listener = (ev: Event) => escaped.push(ev.type);
+    for (const t of [
+      "inline-edit-title",
+      "inline-edit-value",
+      "inline-edit-unit",
+    ]) {
+      document.addEventListener(t, listener);
+    }
+    const tile = el.shadowRoot?.querySelector("business-score-card-as-parent");
+    for (const t of [
+      "inline-edit-title",
+      "inline-edit-value",
+      "inline-edit-unit",
+    ]) {
+      tile?.dispatchEvent(
+        new CustomEvent(t, {
+          bubbles: true,
+          composed: true,
+          detail: { nodeId: "ds-bsc-on-track", trimmed: "demo" },
+        }),
+      );
+    }
+    expect(escaped).toEqual([]);
+    for (const t of [
+      "inline-edit-title",
+      "inline-edit-value",
+      "inline-edit-unit",
+    ]) {
+      document.removeEventListener(t, listener);
+    }
+  });
+
   it("Molecules tier silences bubbled `value-node-disabled-change` at the host (\u00a717.127 A3)", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",

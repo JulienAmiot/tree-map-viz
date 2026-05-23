@@ -33,7 +33,13 @@ import {
 import "../shell/BurgerMenu.js";
 import "../shell/Breadcrumb.js";
 import "../views/plus/PlusTile.js";
+import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
+import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import type { BreadcrumbSegment } from "../shell/Breadcrumb.js";
+import {
+  sampleBusinessScoreVMOffTrack,
+  sampleBusinessScoreVMOnTrack,
+} from "./sampleViewModels.js";
 
 export const DESIGN_SYSTEM_CLOSE_EVENT = "design-system-close";
 
@@ -133,6 +139,10 @@ export class DesignSystemPage extends LitElement {
     .org-cell .stage { display: flex; align-items: center; gap: 0.6rem; min-height: 2.5em; }
     .org-cell .caption { font-size: 0.78rem; color: var(--muted, #8b95a8); }
     .org-plus-stage { width: 120px; height: 120px; }
+    .org-bsc-asparent { width: 100%; min-height: 220px; }
+    .org-bsc-asparent business-score-card-as-parent { display: block; width: 100%; height: 100%; min-height: 220px; }
+    .org-bsc-aschild { width: 280px; height: 200px; }
+    .org-bsc-aschild business-score-card-as-child { display: block; width: 100%; height: 100%; }
   `,
   ];
 
@@ -143,6 +153,9 @@ export class DesignSystemPage extends LitElement {
     "burger-menu-action",
     "breadcrumb-navigate",
     "plus-tile-activate",
+    "inline-edit-title",
+    "inline-edit-value",
+    "inline-edit-unit",
   ] as const;
 
   override connectedCallback(): void {
@@ -203,10 +216,40 @@ export class DesignSystemPage extends LitElement {
   private renderTierBody(id: Tier, label: string) {
     if (id === "atoms") return this.renderAtoms();
     if (id === "molecules") return this.renderMolecules();
-    if (id === "organisms") return this.renderOrganismsShell();
+    if (id === "organisms")
+      return html`${this.renderOrganismsShell()}${this.renderOrganismsNodes()}`;
     return html`<div class="placeholder" data-testid="ds-placeholder">
       ${label} tier — coming soon.
     </div>`;
+  }
+
+  private renderOrganismsNodes() {
+    const onTrack = sampleBusinessScoreVMOnTrack();
+    const offTrack = sampleBusinessScoreVMOffTrack();
+    return html`
+      <h2 data-testid="ds-org-bsc">
+        Business Score Card (&lt;business-score-card-as-parent / -as-child&gt;)
+      </h2>
+      <div class="org-cell" data-testid="ds-org-bsc-asparent-cell">
+        <div class="stage org-bsc-asparent">
+          <business-score-card-as-parent .vm=${onTrack}></business-score-card-as-parent>
+        </div>
+        <span class="caption">
+          AsParent role \u2014 recorded value above objective, trend arrow
+          <code>up-right</code> (on track). Inline-edit affordances on the
+          title / value / unit chip are silenced by the showcase host.
+        </span>
+      </div>
+      <div class="org-cell" data-testid="ds-org-bsc-aschild-cell">
+        <div class="stage org-bsc-aschild">
+          <business-score-card-as-child .vm=${offTrack}></business-score-card-as-child>
+        </div>
+        <span class="caption">
+          AsChild role \u2014 computedMean branch below objective; warning
+          glyph + <code>down-right</code> trend arrow (regressing).
+        </span>
+      </div>
+    `;
   }
 
   private renderOrganismsShell() {
