@@ -39,18 +39,21 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     expect($(el, "ds-tier-atoms").classList.contains("active")).toBe(true);
   });
 
-  it("tapping a non-implemented tier swaps the body to the coming-soon placeholder", async () => {
+  it("every tier has a real body — no `ds-placeholder` ever renders (\u00a717.127 A6)", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",
       (e) => {
         e.open = true;
       },
     );
-    ($(el, "ds-tier-pages") as HTMLButtonElement).click();
-    await el.updateComplete;
-    expect($(el, "ds-tier-pages").classList.contains("active")).toBe(true);
-    expect($(el, "ds-tier-atoms").classList.contains("active")).toBe(false);
-    expect($(el, "ds-placeholder").textContent?.trim()).toMatch(/pages tier/i);
+    for (const id of ["atoms", "molecules", "organisms", "templates", "pages"]) {
+      ($(el, `ds-tier-${id}`) as HTMLButtonElement).click();
+      await el.updateComplete;
+      expect($(el, `ds-tier-${id}`).classList.contains("active")).toBe(true);
+      expect(
+        el.shadowRoot?.querySelector("[data-testid='ds-placeholder']"),
+      ).toBeNull();
+    }
   });
 
   it("Atoms tier renders four section headers + the 5 colour tokens", async () => {
@@ -492,6 +495,61 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     );
     expect(escaped).toEqual([]);
     for (const t of events) document.removeEventListener(t, listener);
+  });
+
+  it("Pages tier mounts the real <tree-map-screen> with a focused-tree VM (\u00a717.127 A6)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-pages") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const screen = $(el, "ds-pg-screen-mount") as unknown as {
+      view?: { center: { id: string } } | null;
+      boardName?: string;
+      breadcrumbPath?: ReadonlyArray<{ id: string; title: string }>;
+    };
+    expect(screen.view?.center.id).toBe("ds-bsc-on-track");
+    expect(screen.boardName).toBe("Design system demo");
+    expect(screen.breadcrumbPath?.length).toBe(3);
+    expect(screen.breadcrumbPath?.[0].title).toBe("Obeya");
+  });
+
+  it("Pages tier silences `tile-drill` + `burger-menu-action` from the embedded screen (\u00a717.127 A6)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-pages") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const escaped: string[] = [];
+    const listener = (ev: Event) => escaped.push(ev.type);
+    for (const t of ["tile-drill", "burger-menu-action"]) {
+      document.addEventListener(t, listener);
+    }
+    const screen = el.shadowRoot?.querySelector("tree-map-screen");
+    screen?.dispatchEvent(
+      new CustomEvent("tile-drill", {
+        bubbles: true,
+        composed: true,
+        detail: { nodeId: "ds-text" },
+      }),
+    );
+    screen?.dispatchEvent(
+      new CustomEvent("burger-menu-action", {
+        bubbles: true,
+        composed: true,
+        detail: { action: "about" },
+      }),
+    );
+    expect(escaped).toEqual([]);
+    for (const t of ["tile-drill", "burger-menu-action"]) {
+      document.removeEventListener(t, listener);
+    }
   });
 
   it("Molecules tier silences bubbled `value-node-disabled-change` at the host (\u00a717.127 A3)", async () => {
