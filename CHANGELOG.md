@@ -41,6 +41,15 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   showcase host silences the `value-node-disabled-change` event bubbled
   by the live switch so a click in the showcase doesn't reach
   `main.ts`'s screen listener.
+- **Organisms tier — node half: Picture + URL (§17.127 strand A4b-4)**.
+  Live `<picture-node-as-parent>` + `<picture-node-as-child>`
+  ("Architecture diagram" rendered from an inline data-URL SVG so the
+  demo stays offline-safe) and `<url-node-as-parent>` +
+  `<url-node-as-child>` ("Runbook" pointing at `example.org`, surfaced
+  via the QR encoder + the §17.123 clickable anchor aside). Completes
+  the A4b node-tier sweep — all 6 visible node kinds (BSC, Computed,
+  CBSN, Text, Workflow, Picture, URL) now mount inside the Organisms
+  tier.
 - **Organisms tier — node half: Text + Workflow (§17.127 strand A4b-3)**.
   Live `<text-node-as-parent>` + `<text-node-as-child>` ("Retro
   note" demo) and `<workflow-node-as-parent>` + `<workflow-node-as-child>`

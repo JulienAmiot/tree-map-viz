@@ -40,13 +40,19 @@ import "../views/TextNode/TextNodeAsParent.js";
 import "../views/TextNode/TextNodeAsChild.js";
 import "../views/WorkflowNode/WorkflowNodeAsParent.js";
 import "../views/WorkflowNode/WorkflowNodeAsChild.js";
+import "../views/PictureNode/PictureNodeAsParent.js";
+import "../views/PictureNode/PictureNodeAsChild.js";
+import "../views/URLNode/URLNodeAsParent.js";
+import "../views/URLNode/URLNodeAsChild.js";
 import type { BreadcrumbSegment } from "../shell/Breadcrumb.js";
 import {
   sampleBusinessScoreVMOffTrack,
   sampleBusinessScoreVMOnTrack,
   sampleComputedBSCVM,
   sampleComputedNodeVM,
+  samplePictureNodeVM,
   sampleTextNodeVM,
+  sampleURLNodeVM,
   sampleWorkflowNodeVM,
 } from "./sampleViewModels.js";
 
@@ -326,6 +332,45 @@ export class DesignSystemPage extends LitElement {
         <span class="caption">
           WorkflowNode AsChild \u2014 read-only badge in the subtitle slot.
         </span>
+      </div>
+      <h2 data-testid="ds-org-picture">
+        Picture + URL cards (&lt;picture-node-as-*&gt; / &lt;url-node-as-*&gt;)
+      </h2>
+      <div class="org-cell" data-testid="ds-org-picture-asparent-cell">
+        <div class="stage org-bsc-asparent">
+          <picture-node-as-parent
+            .vm=${samplePictureNodeVM()}
+          ></picture-node-as-parent>
+        </div>
+        <span class="caption">
+          PictureNode AsParent \u2014 inline data-URL SVG so the demo
+          stays offline-safe; only the title is inline-editable
+          (bubbled <code>inline-edit-title</code> is silenced).
+        </span>
+      </div>
+      <div class="org-cell" data-testid="ds-org-picture-aschild-cell">
+        <div class="stage org-bsc-aschild">
+          <picture-node-as-child
+            .vm=${samplePictureNodeVM()}
+          ></picture-node-as-child>
+        </div>
+        <span class="caption">
+          PictureNode AsChild \u2014 same VM rendered as a grid tile.
+        </span>
+      </div>
+      <div class="org-cell" data-testid="ds-org-url-asparent-cell">
+        <div class="stage org-bsc-asparent">
+          <url-node-as-parent .vm=${sampleURLNodeVM()}></url-node-as-parent>
+        </div>
+        <span class="caption">
+          URLNode AsParent \u2014 QR code + clickable URL aside (§17.123).
+        </span>
+      </div>
+      <div class="org-cell" data-testid="ds-org-url-aschild-cell">
+        <div class="stage org-bsc-aschild">
+          <url-node-as-child .vm=${sampleURLNodeVM()}></url-node-as-child>
+        </div>
+        <span class="caption">URLNode AsChild \u2014 compact grid tile.</span>
       </div>
     `;
   }
