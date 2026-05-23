@@ -41,8 +41,8 @@ import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import "../organisms/ComputedNode/ComputedCards.js";
 import "../organisms/TextNode/TextNodeAsParent.js";
 import "../organisms/TextNode/TextNodeAsChild.js";
-import "../views/WorkflowNode/WorkflowNodeAsParent.js";
-import "../views/WorkflowNode/WorkflowNodeAsChild.js";
+import "../organisms/WorkflowNode/WorkflowNodeAsParent.js";
+import "../organisms/WorkflowNode/WorkflowNodeAsChild.js";
 import "../views/PictureNode/PictureNodeAsParent.js";
 import "../views/PictureNode/PictureNodeAsChild.js";
 import "../views/URLNode/URLNodeAsParent.js";
@@ -186,8 +186,8 @@ html\`<computed-business-score-card view-role="asParent" .vm=\${vm}>
 // AsParent renders a live <select>; emits \`computation-kind-change\`.`,
   "org-text": `import "../organisms/TextNode/TextNodeAsParent.js";
 import "../organisms/TextNode/TextNodeAsChild.js";
-import "../views/WorkflowNode/WorkflowNodeAsParent.js";
-import "../views/WorkflowNode/WorkflowNodeAsChild.js";
+import "../organisms/WorkflowNode/WorkflowNodeAsParent.js";
+import "../organisms/WorkflowNode/WorkflowNodeAsChild.js";
 
 html\`<text-node-as-parent     .vm=\${textVm}></text-node-as-parent>\`;
 html\`<workflow-node-as-parent .vm=\${wfVm}></workflow-node-as-parent>\`;

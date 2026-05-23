@@ -38,10 +38,7 @@ import { renderStaticTitle } from "../../molecules/inlineTitleEdit.js";
 import type { WorkflowNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
-// SPEC §17.128 R3d bridge: see WorkflowNodeAsParent.ts for the same
-// reason — temporary `../../organisms/...` hop until R3e moves
-// WorkflowNode/ next to TextNode/.
-import { fitMarkdownBodyToTile, textBodyStyles } from "../../organisms/TextNode/textBody.js";
+import { fitMarkdownBodyToTile, textBodyStyles } from "../TextNode/textBody.js";
 import { renderStatusBadge, statusBadgeStyles } from "../../molecules/statusBadge.js";
 
 @customElement("workflow-node-as-child")
