@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import "../../../../../../adapters/ui/views/WorkflowNode/WorkflowNodeAsParent.js";
-import { WorkflowNodeAsParent } from "../../../../../../adapters/ui/views/WorkflowNode/WorkflowNodeAsParent.js";
+import "../../../../../../adapters/ui/organisms/WorkflowNode/WorkflowNodeAsParent.js";
+import { WorkflowNodeAsParent } from "../../../../../../adapters/ui/organisms/WorkflowNode/WorkflowNodeAsParent.js";
 import {
   INLINE_EDIT_TITLE_EVENT,
   INLINE_EDIT_VALUE_EVENT,
