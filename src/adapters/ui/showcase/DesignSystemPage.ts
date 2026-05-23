@@ -1,13 +1,25 @@
 /**
  * `<design-system-page>` — full-screen showcase reached from the
- * About modal (§17.127 strand A1). Foundation only: top bar + tier
- * nav + tier-router; bodies are "Coming soon" placeholders. Follow-up
- * strands §17.127.2 → §17.127.6 fill each tier under the 300-line
- * Sonar gate. Dismissal: close button or Escape → `design-system-close`.
+ * About modal (§17.127 strand A1). Tiers fill in incrementally:
+ * Atoms (§17.127 A2), Molecules / Organisms / Templates / Pages
+ * (§17.127.3 → §17.127.6). Dismissal: close button or Escape →
+ * `design-system-close`.
+ *
+ * §17.127 A2 — Atoms tier shows real codebase tokens + glyphs:
+ *   - colour tokens read from `src/index.css` (`:root` block);
+ *   - the 5 trend-arrow glyphs taken from
+ *     `BusinessScoreCardNode/valueTemplate.ts#TREND_ARROW_GLYPHS`;
+ *   - the bullseye (U+25CE) and warning (U+26A0 + VS15) glyphs taken
+ *     from `tileLayoutStyles.ts`'s ::before content rules;
+ *   - the disabled-indicator (U+29B8) glyph taken from
+ *     `disabledToggle.ts`'s `.disabled-indicator::before`;
+ *   - the four PDCA workflow status colours sourced from
+ *     `domain/values/WorkflowStatus.ts#DEFAULT_WORKFLOW_STATUSES`.
  */
 
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
 
 export const DESIGN_SYSTEM_CLOSE_EVENT = "design-system-close";
 
@@ -19,6 +31,35 @@ const TIERS: readonly { id: Tier; label: string; lead: string }[] = [
   { id: "organisms", label: "Organisms", lead: "Live Lit custom elements." },
   { id: "templates", label: "Templates", lead: "Page-level layouts." },
   { id: "pages", label: "Pages", lead: "End-to-end screens." },
+] as const;
+
+/** Colour tokens declared in `src/index.css`'s `:root` block. */
+const COLOR_TOKENS: readonly { name: string; value: string; usage: string }[] =
+  [
+    { name: "--bg", value: "#0c0f14", usage: "App background" },
+    { name: "--panel", value: "#151a22", usage: "Panel / tile surface" },
+    { name: "--text", value: "#e8ecf4", usage: "Primary text" },
+    { name: "--muted", value: "#8b95a8", usage: "Secondary / muted text" },
+    { name: "--accent", value: "#5b8cff", usage: "Focus / active accent" },
+  ] as const;
+
+/** Trend arrows — mirrored from `BSC valueTemplate.ts#TREND_ARROW_GLYPHS`. */
+const TREND_ARROWS: readonly { glyph: string; label: string }[] = [
+  { glyph: "\u2191", label: "Well ahead" },
+  { glyph: "\u2197", label: "On track" },
+  { glyph: "\u2192", label: "Flat" },
+  { glyph: "\u2198", label: "Slight regression" },
+  { glyph: "\u2193", label: "Significant regression" },
+] as const;
+
+/** Other Unicode glyphs used by the kiosk views. */
+const KIOSK_GLYPHS: readonly { glyph: string; codepoint: string; label: string }[] = [
+  { glyph: "\u25CE", codepoint: "U+25CE", label: "Bullseye — objective target row" },
+  { glyph: "\u26A0\uFE0E", codepoint: "U+26A0", label: "Warning — deadline-risk overlay" },
+  { glyph: "\u03A3", codepoint: "U+03A3", label: "Sigma — computed-mean badge" },
+  { glyph: "\u29B8", codepoint: "U+29B8", label: "Forbidden — disabled indicator" },
+  { glyph: "\u00D7", codepoint: "U+00D7", label: "Times — disabled-switch off" },
+  { glyph: "\u2713", codepoint: "U+2713", label: "Check — disabled-switch on" },
 ] as const;
 
 @customElement("design-system-page")
@@ -43,8 +84,21 @@ export class DesignSystemPage extends LitElement {
     nav.tiers button:hover, nav.tiers button.active { background: color-mix(in srgb, var(--accent, #5b8cff) 18%, transparent); color: var(--text, #e8ecf4); }
     main { padding: 1.5rem 1.75rem 4rem; max-width: 1200px; }
     h1 { color: var(--text, #e8ecf4); margin: 0 0 0.25rem; font-size: 1.5rem; }
+    h2 { color: var(--text, #e8ecf4); margin: 1.75rem 0 0.5rem; font-size: 1.05rem; font-weight: 600; }
     .lead { color: var(--muted, #8b95a8); margin-bottom: 1.5rem; }
     .placeholder { padding: 2rem 1.25rem; background: color-mix(in srgb, currentColor 4%, transparent); border: 1px dashed color-mix(in srgb, currentColor 22%, transparent); border-radius: 10px; color: var(--muted, #8b95a8); text-align: center; }
+    .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.75rem; }
+    .swatch { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.75rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; background: color-mix(in srgb, currentColor 3%, transparent); }
+    .swatch .chip { height: 2.2rem; border-radius: 6px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
+    .swatch .name { font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 0.82rem; color: var(--text, #e8ecf4); }
+    .swatch .usage { font-size: 0.75rem; color: var(--muted, #8b95a8); }
+    .glyph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; }
+    .glyph-cell { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; padding: 0.85rem 0.5rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; }
+    .glyph-cell .big { font-size: 2rem; line-height: 1; color: var(--text, #e8ecf4); }
+    .glyph-cell .label { font-size: 0.78rem; color: var(--muted, #8b95a8); text-align: center; }
+    .glyph-cell .code { font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 0.7rem; color: var(--muted, #8b95a8); }
+    .pdca-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .pdca-badge { padding: 0.18rem 0.75rem; border-radius: 999px; border: 1.5px solid currentColor; font-weight: 600; font-size: 0.82rem; letter-spacing: 0.04em; background: transparent; }
   `;
 
   override connectedCallback(): void {
@@ -86,10 +140,69 @@ export class DesignSystemPage extends LitElement {
         <main data-testid="ds-main">
           <h1>${active.label}</h1>
           <p class="lead">${active.lead}</p>
-          <div class="placeholder" data-testid="ds-placeholder">
-            ${active.label} tier — coming soon.
-          </div>
+          ${this.renderTierBody(active.id, active.label)}
         </main>
+      </div>
+    `;
+  }
+
+  private renderTierBody(id: Tier, label: string) {
+    if (id === "atoms") return this.renderAtoms();
+    return html`<div class="placeholder" data-testid="ds-placeholder">
+      ${label} tier — coming soon.
+    </div>`;
+  }
+
+  private renderAtoms() {
+    return html`
+      <h2 data-testid="ds-atoms-colors">Colour tokens (src/index.css :root)</h2>
+      <div class="swatch-grid">
+        ${COLOR_TOKENS.map(
+          (t) => html`
+            <div class="swatch" data-testid=${`ds-token-${t.name.slice(2)}`}>
+              <div class="chip" style=${`background:${t.value}`}></div>
+              <span class="name">${t.name}</span>
+              <span class="name">${t.value}</span>
+              <span class="usage">${t.usage}</span>
+            </div>
+          `,
+        )}
+      </div>
+      <h2 data-testid="ds-atoms-arrows">Trend arrows (BSC value row)</h2>
+      <div class="glyph-grid">
+        ${TREND_ARROWS.map(
+          (a) => html`
+            <div class="glyph-cell" data-testid=${`ds-arrow-${a.glyph.codePointAt(0)?.toString(16)}`}>
+              <span class="big">${a.glyph}</span>
+              <span class="label">${a.label}</span>
+            </div>
+          `,
+        )}
+      </div>
+      <h2 data-testid="ds-atoms-glyphs">Kiosk Unicode glyphs</h2>
+      <div class="glyph-grid">
+        ${KIOSK_GLYPHS.map(
+          (g) => html`
+            <div class="glyph-cell" data-testid=${`ds-glyph-${g.codepoint.toLowerCase()}`}>
+              <span class="big">${g.glyph}</span>
+              <span class="code">${g.codepoint}</span>
+              <span class="label">${g.label}</span>
+            </div>
+          `,
+        )}
+      </div>
+      <h2 data-testid="ds-atoms-pdca">PDCA workflow status colours</h2>
+      <div class="pdca-row">
+        ${DEFAULT_WORKFLOW_STATUSES.map(
+          (s) => html`
+            <span
+              class="pdca-badge"
+              style=${`color:${s.color}`}
+              data-testid=${`ds-pdca-${s.id}`}
+              >${s.label}</span
+            >
+          `,
+        )}
       </div>
     `;
   }
