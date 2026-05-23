@@ -75,15 +75,15 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
-import { ComputationKind } from "../../../domain/computation/ComputationKind.js";
-import type { WorkflowStatus } from "../../../domain/values/WorkflowStatus.js";
-import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
+import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
+import type { WorkflowStatus } from "../../../../domain/values/WorkflowStatus.js";
+import { DEFAULT_WORKFLOW_STATUSES } from "../../../../domain/values/WorkflowStatus.js";
 
 import { COMPUTATION_KIND_LABELS } from "./AddChildModal.js";
 import {
   modalFrameStyles,
   renderModalCloseX,
-} from "../atoms/modalFrameStyles.js";
+} from "../../atoms/modalFrameStyles.js";
 
 export const EDIT_NODE_CONFIRM_EVENT = "edit-node-confirm";
 export const EDIT_NODE_CANCEL_EVENT = "edit-node-cancel";

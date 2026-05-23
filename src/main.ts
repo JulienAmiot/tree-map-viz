@@ -59,7 +59,7 @@ import { HashRouter } from "./adapters/routing/HashRouter.js";
 import type {
   AddChildConfirmDetail,
   AddChildModalPayload,
-} from "./adapters/ui/modal/AddChildModal.js";
+} from "./adapters/ui/organisms/modal/AddChildModal.js";
 import type {
   BoardSettingsConfirmDetail,
   BoardSettingsDeleteDetail,
@@ -72,7 +72,7 @@ import type {
   EditNodeConfirmDetail,
   EditNodeModalPayload,
   EditNodeTarget,
-} from "./adapters/ui/modal/EditNodeModal.js";
+} from "./adapters/ui/organisms/modal/EditNodeModal.js";
 import type {
   BreadcrumbNavigateDetail,
   BreadcrumbSegment,

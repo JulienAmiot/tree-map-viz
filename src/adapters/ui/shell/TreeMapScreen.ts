@@ -91,8 +91,8 @@ import {
 import { OrientationController } from "../controllers/OrientationController.js";
 import "../organisms/modal/AboutModal.js";
 import type { AboutModal } from "../organisms/modal/AboutModal.js";
-import "../modal/AddChildModal.js";
-import type { AddChildModal } from "../modal/AddChildModal.js";
+import "../organisms/modal/AddChildModal.js";
+import type { AddChildModal } from "../organisms/modal/AddChildModal.js";
 import "../organisms/modal/BoardSettingsModal.js";
 import type {
   BoardSettingsModal,
@@ -103,11 +103,11 @@ import type {
   BoardsPanelModal,
   BoardsPanelTarget,
 } from "../organisms/modal/BoardsPanelModal.js";
-import "../modal/EditNodeModal.js";
+import "../organisms/modal/EditNodeModal.js";
 import type {
   EditNodeModal,
   EditNodeTarget,
-} from "../modal/EditNodeModal.js";
+} from "../organisms/modal/EditNodeModal.js";
 import "../molecules/childWeight/WeightEditPopover.js";
 import type { WeightEditOpenDetail } from "../molecules/childWeight/weightEditEvents.js";
 import type { PlusTileActivateDetail } from "../molecules/plus/PlusTile.js";

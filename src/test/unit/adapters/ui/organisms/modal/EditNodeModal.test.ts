@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import "../../../../../adapters/ui/modal/EditNodeModal.js";
+import "../../../../../../adapters/ui/organisms/modal/EditNodeModal.js";
 import {
   EDIT_NODE_CANCEL_EVENT,
   EDIT_NODE_CONFIRM_EVENT,
   type EditNodeConfirmDetail,
   type EditNodeModal,
   type EditNodeTarget,
-} from "../../../../../adapters/ui/modal/EditNodeModal.js";
+} from "../../../../../../adapters/ui/organisms/modal/EditNodeModal.js";
 import {
   cleanupLitFixtures,
   mountLitElement,
-} from "../../../../fixtures/litElementFixture.js";
+} from "../../../../../fixtures/litElementFixture.js";
 
 afterEach(cleanupLitFixtures);
 

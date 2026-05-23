@@ -93,7 +93,7 @@ import { LitElement, html, css, nothing, type TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
-import { COMPUTATION_KIND_LABELS } from "../../modal/AddChildModal.js";
+import { COMPUTATION_KIND_LABELS } from "../modal/AddChildModal.js";
 import type {
   BusinessScoreCardObjectiveViewModel,
   ComputationKindName,

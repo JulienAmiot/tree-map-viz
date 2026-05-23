@@ -4,10 +4,10 @@ import {
   modalFrameStyles,
   renderModalCloseX,
 } from "../../../../../adapters/ui/atoms/modalFrameStyles.js";
-import "../../../../../adapters/ui/modal/AddChildModal.js";
-import "../../../../../adapters/ui/modal/EditNodeModal.js";
-import type { AddChildModal } from "../../../../../adapters/ui/modal/AddChildModal.js";
-import type { EditNodeModal } from "../../../../../adapters/ui/modal/EditNodeModal.js";
+import "../../../../../adapters/ui/organisms/modal/AddChildModal.js";
+import "../../../../../adapters/ui/organisms/modal/EditNodeModal.js";
+import type { AddChildModal } from "../../../../../adapters/ui/organisms/modal/AddChildModal.js";
+import type { EditNodeModal } from "../../../../../adapters/ui/organisms/modal/EditNodeModal.js";
 import {
   cleanupLitFixtures,
   mountLitElement,
