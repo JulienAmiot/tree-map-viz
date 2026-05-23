@@ -25,6 +25,8 @@ import type {
   BusinessScoreCardNodeViewModel,
   ComputedBusinessScoreNodeViewModel,
   ComputedNodeViewModel,
+  TextNodeViewModel,
+  WorkflowNodeViewModel,
 } from "../views/NodeViewModel.js";
 
 const ALL_COMPUTATION_KINDS = [
@@ -109,6 +111,49 @@ export function sampleComputedBSCVM(): ComputedBusinessScoreNodeViewModel {
       warningColor: "",
       trendArrow: "right",
     },
+  };
+}
+
+/**
+ * TextNode demo: a short retrospective note with a recent timestamp.
+ * `TextNode.value` mirrors `description` per the §17.15 single-source
+ * rule; the showcase therefore only carries `value.text`.
+ */
+export function sampleTextNodeVM(): TextNodeViewModel {
+  return {
+    kind: "TextNode",
+    id: "ds-text",
+    title: "Retro note",
+    value: {
+      text: "Pager noise from monitor X resolved; remove alarm on green.",
+      dateIso: "2026-05-22",
+      dateColor: "rgb(120, 180, 120)",
+    },
+  };
+}
+
+/**
+ * WorkflowNode demo: a "Postmortem follow-up" item with PDCA status
+ * `do` (in progress) and the full PDCA table available for the
+ * focused-panel inline picker.
+ */
+export function sampleWorkflowNodeVM(): WorkflowNodeViewModel {
+  return {
+    kind: "WorkflowNode",
+    id: "ds-workflow",
+    title: "Postmortem follow-up",
+    value: {
+      text: "Draft + circulate by EOW.",
+      dateIso: "2026-05-21",
+      dateColor: "rgb(150, 200, 150)",
+    },
+    status: { id: "do", label: "DO", color: "rgb(59, 130, 246)" },
+    availableStatuses: [
+      { id: "plan", label: "PLAN", color: "rgb(161, 161, 170)" },
+      { id: "do", label: "DO", color: "rgb(59, 130, 246)" },
+      { id: "check", label: "CHECK", color: "rgb(34, 197, 94)" },
+      { id: "act", label: "ACT", color: "rgb(245, 158, 11)" },
+    ],
   };
 }
 

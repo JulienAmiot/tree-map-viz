@@ -36,12 +36,18 @@ import "../views/plus/PlusTile.js";
 import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "../views/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import "../views/ComputedNode/ComputedCards.js";
+import "../views/TextNode/TextNodeAsParent.js";
+import "../views/TextNode/TextNodeAsChild.js";
+import "../views/WorkflowNode/WorkflowNodeAsParent.js";
+import "../views/WorkflowNode/WorkflowNodeAsChild.js";
 import type { BreadcrumbSegment } from "../shell/Breadcrumb.js";
 import {
   sampleBusinessScoreVMOffTrack,
   sampleBusinessScoreVMOnTrack,
   sampleComputedBSCVM,
   sampleComputedNodeVM,
+  sampleTextNodeVM,
+  sampleWorkflowNodeVM,
 } from "./sampleViewModels.js";
 
 export const DESIGN_SYSTEM_CLOSE_EVENT = "design-system-close";
@@ -160,6 +166,7 @@ export class DesignSystemPage extends LitElement {
     "inline-edit-value",
     "inline-edit-unit",
     "computation-kind-change",
+    "workflow-status-change",
   ] as const;
 
   override connectedCallback(): void {
@@ -278,6 +285,46 @@ export class DesignSystemPage extends LitElement {
         <span class="caption">
           ComputedBusinessScoreNode AsParent \u2014 WEIGHTED_AVERAGE with
           objective row, trend arrow <code>right</code> (flat).
+        </span>
+      </div>
+      <h2 data-testid="ds-org-text">
+        Text + Workflow cards (&lt;text-node-as-*&gt; / &lt;workflow-node-as-*&gt;)
+      </h2>
+      <div class="org-cell" data-testid="ds-org-text-asparent-cell">
+        <div class="stage org-bsc-asparent">
+          <text-node-as-parent .vm=${sampleTextNodeVM()}></text-node-as-parent>
+        </div>
+        <span class="caption">
+          TextNode AsParent \u2014 free-text note; value mirrors
+          description per the §17.15 single-source rule.
+        </span>
+      </div>
+      <div class="org-cell" data-testid="ds-org-text-aschild-cell">
+        <div class="stage org-bsc-aschild">
+          <text-node-as-child .vm=${sampleTextNodeVM()}></text-node-as-child>
+        </div>
+        <span class="caption">TextNode AsChild \u2014 compact grid tile.</span>
+      </div>
+      <div class="org-cell" data-testid="ds-org-workflow-asparent-cell">
+        <div class="stage org-bsc-asparent">
+          <workflow-node-as-parent
+            .vm=${sampleWorkflowNodeVM()}
+          ></workflow-node-as-parent>
+        </div>
+        <span class="caption">
+          WorkflowNode AsParent \u2014 PDCA status <code>DO</code> with the
+          inline <code>&lt;select&gt;</code> picker; bubbled
+          <code>workflow-status-change</code> is silenced.
+        </span>
+      </div>
+      <div class="org-cell" data-testid="ds-org-workflow-aschild-cell">
+        <div class="stage org-bsc-aschild">
+          <workflow-node-as-child
+            .vm=${sampleWorkflowNodeVM()}
+          ></workflow-node-as-child>
+        </div>
+        <span class="caption">
+          WorkflowNode AsChild \u2014 read-only badge in the subtitle slot.
         </span>
       </div>
     `;
