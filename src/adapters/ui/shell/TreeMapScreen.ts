@@ -119,8 +119,8 @@ import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus
 import type { BreadcrumbSegment } from "../organisms/shell/Breadcrumb.js";
 import "../organisms/shell/Breadcrumb.js";
 import "../organisms/shell/BurgerMenu.js";
-import "./ChildrenGrid.js";
-import "./ParentIdentityStrip.js";
+import "../templates/ChildrenGrid.js";
+import "../templates/ParentIdentityStrip.js";
 
 @customElement("tree-map-screen")
 export class TreeMapScreen extends LitElement {

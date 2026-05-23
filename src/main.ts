@@ -78,11 +78,11 @@ import type {
   BreadcrumbSegment,
 } from "./adapters/ui/organisms/shell/Breadcrumb.js";
 import type { BurgerMenuActionDetail } from "./adapters/ui/organisms/shell/BurgerMenu.js";
-import type { TileDrillDetail } from "./adapters/ui/shell/ChildrenGrid.js";
+import type { TileDrillDetail } from "./adapters/ui/templates/ChildrenGrid.js";
 import type {
   EditNodeOpenDetail,
   FocusCloseToParentDetail,
-} from "./adapters/ui/shell/ParentIdentityStrip.js";
+} from "./adapters/ui/templates/ParentIdentityStrip.js";
 import "./adapters/ui/shell/TreeMapScreen.js";
 import type { TreeMapScreen } from "./adapters/ui/shell/TreeMapScreen.js";
 import type { ComputationKindChangeDetail } from "./adapters/ui/organisms/ComputedNode/ComputedCards.js";

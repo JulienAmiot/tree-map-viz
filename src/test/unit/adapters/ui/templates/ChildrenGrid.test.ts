@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import "../../../../../adapters/ui/shell/ChildrenGrid.js";
+import "../../../../../adapters/ui/templates/ChildrenGrid.js";
 import {
   ChildrenGrid,
   TILE_DRILL_EVENT,
   WEIGHT_LONG_PRESS_MS,
   WEIGHT_LONG_PRESS_MOVE_TOLERANCE_PX,
   type TileDrillDetail,
-} from "../../../../../adapters/ui/shell/ChildrenGrid.js";
+} from "../../../../../adapters/ui/templates/ChildrenGrid.js";
 import type { WeightEditOpenDetail } from "../../../../../adapters/ui/molecules/childWeight/weightEditEvents.js";
 import { WEIGHT_EDIT_OPEN_EVENT } from "../../../../../adapters/ui/molecules/childWeight/weightEditEvents.js";
 import type { ChildSlotViewModel } from "../../../../../adapters/ui/molecules/NodeViewModel.js";
