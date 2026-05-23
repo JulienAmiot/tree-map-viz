@@ -21,7 +21,7 @@
 
 import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
-import "./ComputedNode/ComputedCards.js";
+import "../organisms/ComputedNode/ComputedCards.js";
 import "../molecules/NodeView.js";
 import "./PictureNode/PictureNodeAsChild.js";
 import "./PictureNode/PictureNodeAsParent.js";
@@ -93,6 +93,6 @@ export type {
   URLNodeViewModel,
 } from "../molecules/NodeViewModel.js";
 export { nodeViewRegistry, NodeViewRegistryError } from "../molecules/nodeViewRegistry.js";
-export { COMPUTATION_KIND_CHANGE_EVENT, type ComputationKindChangeDetail } from "./ComputedNode/ComputedCards.js";
+export { COMPUTATION_KIND_CHANGE_EVENT, type ComputationKindChangeDetail } from "../organisms/ComputedNode/ComputedCards.js";
 export { PLUS_TILE_ACTIVATE_EVENT } from "../molecules/plus/PlusTile.js";
 export type { PlusTileActivateDetail } from "../molecules/plus/PlusTile.js";

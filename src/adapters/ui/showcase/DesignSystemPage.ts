@@ -38,7 +38,7 @@ import "../shell/TreeMapScreen.js";
 import "../molecules/plus/PlusTile.js";
 import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
-import "../views/ComputedNode/ComputedCards.js";
+import "../organisms/ComputedNode/ComputedCards.js";
 import "../views/TextNode/TextNodeAsParent.js";
 import "../views/TextNode/TextNodeAsChild.js";
 import "../views/WorkflowNode/WorkflowNodeAsParent.js";
@@ -177,7 +177,7 @@ html\`<business-score-card-as-parent .vm=\${vm}></business-score-card-as-parent>
 html\`<business-score-card-as-child  .vm=\${vm}></business-score-card-as-child>\`;
 // vm.value: recordedValue | computedMean (discriminated union).
 // vm.objective adds the target row + trend arrow (TREND_ARROW_GLYPHS).`,
-  "org-computed": `import "../views/ComputedNode/ComputedCards.js";
+  "org-computed": `import "../organisms/ComputedNode/ComputedCards.js";
 
 html\`<computed-card view-role="asParent" .vm=\${vm}></computed-card>\`;
 html\`<computed-business-score-card view-role="asParent" .vm=\${vm}>
