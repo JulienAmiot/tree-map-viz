@@ -87,13 +87,14 @@ const COLOR_TOKENS: readonly { name: string; value: string; usage: string }[] =
     { name: "--accent", value: "#5b8cff", usage: "Focus / active accent" },
   ] as const;
 
-/** Trend arrows — mirrored from `BSC valueTemplate.ts#TREND_ARROW_GLYPHS`. */
-const TREND_ARROWS: readonly { glyph: string; label: string }[] = [
-  { glyph: "\u2191", label: "Well ahead" },
-  { glyph: "\u2197", label: "On track" },
-  { glyph: "\u2192", label: "Flat" },
-  { glyph: "\u2198", label: "Slight regression" },
-  { glyph: "\u2193", label: "Significant regression" },
+/** Trend arrows — mirrored from `BSC valueTemplate.ts#TREND_ARROW_SLUGS`
+ * (§17.132 swap from Unicode glyphs to Lucide). */
+const TREND_ARROWS: readonly { slug: string; label: string }[] = [
+  { slug: "arrow-up", label: "Well ahead" },
+  { slug: "arrow-up-right", label: "On track" },
+  { slug: "arrow-right", label: "Flat" },
+  { slug: "arrow-down-right", label: "Slight regression" },
+  { slug: "arrow-down", label: "Significant regression" },
 ] as const;
 
 /** Sample breadcrumb path used by the Organisms tier (§17.127 A4a). */
@@ -118,21 +119,23 @@ const SNIPPETS: Record<string, string> = {
   --muted: #8b95a8;
   --accent: #5b8cff;
 }`,
-  "atoms-arrows": `// src/adapters/ui/organisms/BusinessScoreCardNode/valueTemplate.ts
-export const TREND_ARROW_GLYPHS = {
-  "up-strong":   "\\u2191",
-  "up-right":    "\\u2197",
-  "right":       "\\u2192",
-  "down-right":  "\\u2198",
-  "down-strong": "\\u2193",
-} as const;`,
-  "atoms-glyphs": `// Unicode glyphs used across the kiosk
-//   U+25CE  bullseye    -> objective target row
-//   U+26A0  warning     -> deadline-risk overlay (+ VS15 \\uFE0E)
-//   U+03A3  sigma       -> computed-mean badge
-//   U+29B8  forbidden   -> disabled indicator
-//   U+00D7  times       -> disabled-switch off
-//   U+2713  check       -> disabled-switch on`,
+  "atoms-arrows": `// src/adapters/ui/organisms/BusinessScoreCardNode/valueTemplate.ts (§17.132)
+const TREND_ARROW_SLUGS = {
+  "up":          "arrow-up",
+  "up-right":    "arrow-up-right",
+  "right":       "arrow-right",
+  "down-right":  "arrow-down-right",
+  "down":        "arrow-down",
+} as const;
+// rendered as <ds-icon name=\${TREND_ARROW_SLUGS[direction]}></ds-icon>
+// (was a Unicode arrow + per-platform emoji-font fallback pre-§17.132).`,
+  "atoms-glyphs": `// Remaining Unicode glyphs used by the kiosk's CSS-pseudo
+// constructions (the L3a migration strand will swap these to <ds-icon>):
+//   U+25CE  bullseye    -> .target-icon::before
+//   U+26A0  warning     -> .warning-icon::before + .warning-fill::before
+//   U+29B8  forbidden   -> .disabled-indicator::before
+//   U+00D7  times       -> .disabled-switch::before (off-state)
+//   U+2713  check       -> .disabled-switch[aria-checked=true]::before`,
   "atoms-icons": `import { ICON_REGISTRY } from "../../atoms/icon/Icon.js";
 html\`<ds-icon name="scale"></ds-icon>\`;
 html\`<ds-icon name="check" label="Confirmed"></ds-icon>\`;
@@ -244,16 +247,15 @@ html\`<tree-map-screen
 // to TreeNavigationService + EditNodeService + BoardCollectionService.`,
 };
 
-/** Other Unicode glyphs used by the kiosk views. */
+/** Remaining Unicode glyphs in CSS-pseudo `content:` rules (the §17.132
+ * L2 swap retired the sigma + scales + crayon entries; the L3a strand
+ * will retire the rest by migrating the CSS pseudos to `<ds-icon>`). */
 const KIOSK_GLYPHS: readonly { glyph: string; codepoint: string; label: string }[] = [
   { glyph: "\u25CE", codepoint: "U+25CE", label: "Bullseye — objective target row" },
   { glyph: "\u26A0\uFE0E", codepoint: "U+26A0", label: "Warning — deadline-risk overlay" },
-  { glyph: "\u03A3", codepoint: "U+03A3", label: "Sigma — computed-mean badge" },
   { glyph: "\u29B8", codepoint: "U+29B8", label: "Forbidden — disabled indicator" },
   { glyph: "\u00D7", codepoint: "U+00D7", label: "Times — disabled-switch off" },
   { glyph: "\u2713", codepoint: "U+2713", label: "Check — disabled-switch on" },
-  { glyph: "\u2696\uFE0E", codepoint: "U+2696", label: "Scales — child-weight corner icon (§17.130)" },
-  { glyph: "\u{1F58D}\uFE0E", codepoint: "U+1F58D", label: "Lower-left crayon — focused-card edit affordance (§17.130)" },
 ] as const;
 
 @customElement("design-system-page")
@@ -433,9 +435,7 @@ export class DesignSystemPage extends LitElement {
                 aria-label="Clear filter"
                 title="Clear filter"
                 @click=${this.clearSearch}
-              >
-                ×
-              </button>`
+              ><ds-icon name="x"></ds-icon></button>`
             : nothing}
         </label>
         <button type="button" class="close-btn" data-testid="design-system-close" @click=${this.close}>
@@ -872,8 +872,8 @@ export class DesignSystemPage extends LitElement {
       <div class="glyph-grid">
         ${TREND_ARROWS.map(
           (a) => html`
-            <div class="glyph-cell" data-testid=${`ds-arrow-${a.glyph.codePointAt(0)?.toString(16)}`}>
-              <span class="big">${a.glyph}</span>
+            <div class="glyph-cell" data-testid=${`ds-arrow-${a.slug}`}>
+              <ds-icon class="big" name=${a.slug}></ds-icon>
               <span class="label">${a.label}</span>
             </div>
           `,
@@ -1021,7 +1021,7 @@ export class DesignSystemPage extends LitElement {
         <header>
           <span class="snippet-title">View source \u2014 <code>${sectionId}</code></span>
           <button type="button" class="snippet-copy" data-testid="ds-snippet-copy" @click=${this.copySnippet}>${this.copied ? "Copied!" : "Copy"}</button>
-          <button type="button" class="snippet-close" data-testid="ds-snippet-close" aria-label="Close" @click=${this.closeSnippet}>\u00d7</button>
+          <button type="button" class="snippet-close" data-testid="ds-snippet-close" aria-label="Close" @click=${this.closeSnippet}><ds-icon name="x"></ds-icon></button>
         </header>
         <pre data-testid="ds-snippet-code"><code>${code}</code></pre>
       </div>

@@ -88,6 +88,7 @@
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
+import "../../atoms/icon/Icon.js";
 import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
 import {
   INLINE_EDIT_TITLE_EVENT,
@@ -919,7 +920,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
       title="Click to edit title"
       @click=${this.startTitleEdit}
     >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}${showBadge
-      ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value">Σ</span>`
+      ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value"><ds-icon name="sigma"></ds-icon></span>`
       : nothing}${this.unitEditor.renderChip()}${this.vm.title}</h1>`;
   }
 

@@ -11,6 +11,7 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
+import "../../atoms/icon/Icon.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
@@ -69,7 +70,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
         data-view-kind="BusinessScoreCardNode"
         data-id=${this.vm.id}
       >${renderDisabledIndicator(disabled)}${showBadge
-        ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value">Σ</span>`
+        ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value"><ds-icon name="sigma"></ds-icon></span>`
         : nothing}${renderUnitChip(unit)}${this.vm.title}</h2>
       <div class="subtitle" data-testid="subtitle"></div>
       ${dateIso

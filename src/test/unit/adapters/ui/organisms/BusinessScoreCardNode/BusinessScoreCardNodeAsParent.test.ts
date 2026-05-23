@@ -114,9 +114,11 @@ describe("<business-score-card-as-parent>", () => {
         ?.textContent?.replace(/\u03a3|\(%\)/g, "")
         .trim(),
     ).toBe("Revenue");
+    // §17.132 -- Σ badge is now a `<ds-icon name="sigma">` Lucide SVG
+    // wrapped in the same `<span data-testid="computed-badge">`.
     expect(
-      el.shadowRoot?.querySelector('[data-testid="title"] [data-testid="computed-badge"]')?.textContent?.trim(),
-    ).toBe("\u03a3");
+      el.shadowRoot?.querySelector('[data-testid="title"] [data-testid="computed-badge"] ds-icon')?.getAttribute("name"),
+    ).toBe("sigma");
     const desc = el.shadowRoot?.querySelector('[data-testid="description"]');
     expect(desc).not.toBeNull();
     expect(desc?.textContent?.trim()).toBe("Revenue vs plan");
@@ -1042,7 +1044,10 @@ describe("<business-score-card-as-parent>", () => {
       );
       expect(arrow).not.toBeNull();
       expect(arrow!.getAttribute("data-direction")).toBe("up");
-      expect(arrow!.textContent?.trim()).toBe("\u2191");
+      // §17.132 -- glyph is now a Lucide `<ds-icon>` (was U+2191 pre-§17.132).
+      expect(arrow!.querySelector("ds-icon")?.getAttribute("name")).toBe(
+        "arrow-up",
+      );
       // §17.41 colour policy -- monochrome (currentColor); no inline
       // colour plumbing.
       expect(arrow!.getAttribute("style") ?? "").toBe("");

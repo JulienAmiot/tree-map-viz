@@ -82,7 +82,8 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     const title = sr.querySelector('[data-testid="title"]');
     expect(title?.getAttribute("data-view-kind")).toBe("ComputedNode");
     // SPEC §17.116 — Σ is now a prefix INSIDE the title row, not a chip next to the value.
-    expect(title?.querySelector('[data-testid="computed-badge"]')?.textContent).toBe("\u03a3");
+    // §17.132 -- Σ badge is now a `<ds-icon name="sigma">` Lucide SVG.
+    expect(title?.querySelector('[data-testid="computed-badge"] ds-icon')?.getAttribute("name")).toBe("sigma");
     // §17.125: the unit reads as a parenthesised chip in the title
     // row immediately after the Σ badge. Strip Σ + (EUR) to read the
     // bare title text.
@@ -227,7 +228,8 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     const sr = el.shadowRoot!;
     const title = sr.querySelector('[data-testid="title"]');
     expect(title?.getAttribute("data-view-kind")).toBe("ComputedBusinessScoreNode");
-    expect(title?.querySelector('[data-testid="computed-badge"]')?.textContent).toBe("\u03a3");
+    // §17.132 -- Σ badge is now a `<ds-icon name="sigma">` Lucide SVG.
+    expect(title?.querySelector('[data-testid="computed-badge"] ds-icon')?.getAttribute("name")).toBe("sigma");
     const chip = title?.querySelector('[data-testid="unit-chip"]');
     expect(chip?.textContent?.trim()).toBe("(%)");
     expect(title?.textContent?.replace(/\u03a3|\(%\)/g, "").trim()).toBe("Avg score");
@@ -286,7 +288,10 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(sr.querySelector('[data-testid="value-date"]')).toBeNull();
     const arrow = sr.querySelector('[data-testid="trend-arrow"]');
     expect(arrow?.getAttribute("data-direction")).toBe("up-right");
-    expect(arrow?.textContent).toBe("\u2197");
+    // §17.132 -- glyph is now a Lucide `<ds-icon>` (was U+2197 pre-§17.132).
+    expect(arrow?.querySelector("ds-icon")?.getAttribute("name")).toBe(
+      "arrow-up-right",
+    );
   });
 
   it("\u00a717.116-followup-3 — CBSN .value stamps --char-count and the host injects a .value-area { height: 100% } override so the value-area matches the standard BSC vertical alignment", async () => {

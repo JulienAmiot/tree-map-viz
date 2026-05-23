@@ -92,6 +92,7 @@
 import { LitElement, html, css, nothing, type TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
+import "../../atoms/icon/Icon.js";
 import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
 import { COMPUTATION_KIND_LABELS } from "../modal/AddChildModal.js";
 import type {
@@ -347,8 +348,9 @@ const cbsnHostStyles = css`
   .value-area { height: 100%; }
 `;
 
-const TREND_GLYPHS: Record<TrendArrowDirection, string> = {
-  up: "\u2191", "up-right": "\u2197", right: "\u2192", "down-right": "\u2198", down: "\u2193",
+const TREND_SLUGS: Record<TrendArrowDirection, string> = {
+  up: "arrow-up", "up-right": "arrow-up-right", right: "arrow-right",
+  "down-right": "arrow-down-right", down: "arrow-down",
 };
 
 function renderTargetUnit(unit: string): TemplateResult | typeof nothing {
@@ -391,7 +393,7 @@ function renderTitleWithBadge(
 ): TemplateResult {
   return html`<h2 class="title" data-testid="title" data-view-kind=${viewKind} data-id=${vmId}
     >${titlePrefix}${showBadge
-      ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>`
+      ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated"><ds-icon name="sigma"></ds-icon></span>`
       : nothing}${unitSlot}${vmTitle}</h2>`;
 }
 
@@ -416,7 +418,7 @@ function renderInlineTitlePrefix(
   unitSlot: TemplateResult | typeof nothing,
 ): TemplateResult {
   return html`${renderDisabledSwitch(host, vmId, vmDisabled)}${showBadge
-    ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated">Σ</span>`
+    ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated"><ds-icon name="sigma"></ds-icon></span>`
     : nothing}${unitSlot}`;
 }
 
@@ -555,7 +557,7 @@ function renderObjectiveRow(obj: BusinessScoreCardObjectiveViewModel): TemplateR
 function renderTrend(obj: BusinessScoreCardObjectiveViewModel): TemplateResult | typeof nothing {
   if (obj.trendArrow === null) return nothing;
   return html`<span class="trend-arrow" data-testid="trend-arrow" data-direction=${obj.trendArrow}
-    role="img" aria-label="Trend">${TREND_GLYPHS[obj.trendArrow]}</span>`;
+    role="img" aria-label="Trend"><ds-icon name=${TREND_SLUGS[obj.trendArrow]}></ds-icon></span>`;
 }
 
 /**

@@ -53,6 +53,7 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
+import "../atoms/icon/Icon.js";
 import "../molecules/registerNodeViews.js";
 import type { NodeViewModel } from "../molecules/NodeViewModel.js";
 
@@ -71,18 +72,6 @@ export const EDIT_NODE_OPEN_EVENT = "edit-node-open";
 export type EditNodeOpenDetail = {
   readonly nodeId: string;
 };
-
-/**
- * SPEC §17.130 — focused-card edit affordance glyph: `U+1F58D LOWER
- * LEFT CRAYON` + `U+FE0E` (text-presentation variation selector).
- * VS15 forces monochrome rendering so the glyph inherits the strip's
- * `currentColor` instead of locking into the system emoji font's
- * yellow/blue colour. Replaces the §17.28 CSS-pseudo pencil (two
- * bars drawn via `::before` / `::after` on the button), operator-
- * requested in the §17.130 follow-up to the §17.129 design-system
- * showcase Unicode-glyph audit.
- */
-const CRAYON_GLYPH = "\u{1F58D}\uFE0E";
 
 @customElement("parent-identity-strip")
 export class ParentIdentityStrip extends LitElement {
@@ -293,24 +282,13 @@ export class ParentIdentityStrip extends LitElement {
     .close-x::after {
       transform: translate(-50%, -50%) rotate(-45deg);
     }
-    /* SPEC 17.28 -- pencil button. Same touch-target footprint as the
-       close-X sitting in a second slot to its left.
-       SPEC 17.130 -- the glyph was a CSS-pseudo bar pair (shaft +
-       tip drawn via ::before / ::after) until the operator's
-       "use the lower-left crayon Unicode glyph" follow-up. The
-       button now renders a U+1F58D + U+FE0E (text-presentation
-       variation selector) as its sole text content; the font-size
-       below matches the strip-action's clamp box so the glyph
-       fills the touch target without overflowing. VS15 forces the
-       monochrome rendering on platforms that would otherwise
-       emoji-color the crayon; on fonts that ignore VS15 for
-       U+1F58D (older Windows builds) the glyph still renders as
-       a recognisable pencil-with-tip silhouette via the system
-       emoji font. */
-    /* SPEC 17.47 -- the pencil sits immediately to the left of the
-       close-X. Both buttons are clamp(1.5rem, 3vh, 2.25rem) square
-       so the offset uses the same clamp; a 0.25rem gap separates
-       them visually. */
+    /* SPEC 17.28 / 17.132 -- pencil button. Same touch-target footprint
+       as the close-X sitting in a second slot to its left. The glyph is
+       the 17.131 <ds-icon name=pencil-line> Lucide SVG; the font-size
+       here drives the ds-icon 1em host box so the SVG fills the touch
+       target without overflowing.
+       SPEC 17.47 -- both buttons are clamp(1.5rem, 3vh, 2.25rem) square
+       so the offset uses the same clamp; a 0.25rem gap separates them. */
     .edit-pencil {
       right: calc(1px + 0.35rem + clamp(1.5rem, 3vh, 2.25rem) + 0.25rem);
       font-size: clamp(0.85rem, 2vh, 1.5rem);
@@ -355,7 +333,7 @@ export class ParentIdentityStrip extends LitElement {
             aria-label="Edit this node"
             title="Edit this node"
             @click=${this.handleEditClick}
-          >${CRAYON_GLYPH}</button>`
+          ><ds-icon name="pencil-line"></ds-icon></button>`
         : nothing}
       ${hasClose
         ? html`<button

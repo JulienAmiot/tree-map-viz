@@ -71,13 +71,18 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     for (const t of ["bg", "panel", "text", "muted", "accent"]) {
       expect($(el, `ds-token-${t}`)).toBeTruthy();
     }
-    // \u00a717.130 -- the kiosk-glyphs grid now also surfaces the
-    // scales (child-weight) + lower-left crayon (focused-card edit)
-    // glyphs that replaced the §17.52 SVG / §17.28 CSS-pseudo
-    // constructions. Pin both codepoints so a future glyph swap
-    // can't silently drop them from the design system.
-    expect($(el, "ds-glyph-u+2696")).toBeTruthy();
-    expect($(el, "ds-glyph-u+1f58d")).toBeTruthy();
+    // \u00a717.132 -- the scales + crayon Unicode glyphs were retired
+    // from the kiosk-glyphs grid when the L2 strand migrated the
+    // child-weight + focused-card-edit affordances to the §17.131
+    // `<ds-icon>` Lucide atom (those callsites no longer render a
+    // Unicode glyph at all). Pin their ABSENCE so a future regression
+    // can't silently restore the system-font dependency.
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="ds-glyph-u+2696"]'),
+    ).toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="ds-glyph-u+1f58d"]'),
+    ).toBeNull();
   });
 
   it("Atoms tier renders the Lucide icon-library section with every registered slug + a license attribution (\u00a717.131)", async () => {
@@ -128,15 +133,18 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
       "[data-testid^='ds-arrow-']",
     );
     expect(arrowCells.length).toBe(5);
-    const arrowGlyphs = Array.from(arrowCells).map(
-      (c) => c.querySelector(".big")?.textContent?.trim(),
+    // §17.132 -- the showcase arrows are now `<ds-icon>` Lucide SVGs
+    // keyed by slug; the cell `data-testid` carries the slug rather
+    // than the Unicode code-point it used pre-§17.132.
+    const arrowSlugs = Array.from(arrowCells).map(
+      (c) => c.querySelector(".big")?.getAttribute("name"),
     );
-    expect(arrowGlyphs).toEqual([
-      "\u2191",
-      "\u2197",
-      "\u2192",
-      "\u2198",
-      "\u2193",
+    expect(arrowSlugs).toEqual([
+      "arrow-up",
+      "arrow-up-right",
+      "arrow-right",
+      "arrow-down-right",
+      "arrow-down",
     ]);
     for (const id of ["plan", "do", "check", "act"]) {
       expect($(el, `ds-pdca-${id}`)).toBeTruthy();
@@ -737,7 +745,7 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
       id: string;
       mustContain: string;
     }> = [
-      { tier: "atoms", id: "atoms-arrows", mustContain: "TREND_ARROW_GLYPHS" },
+      { tier: "atoms", id: "atoms-arrows", mustContain: "TREND_ARROW_SLUGS" },
       { tier: "molecules", id: "mol-badges", mustContain: "renderStatusBadge" },
       { tier: "molecules", id: "mol-weight", mustContain: "weight-edit-button" },
       { tier: "organisms", id: "org-bsc", mustContain: "business-score-card-as-parent" },

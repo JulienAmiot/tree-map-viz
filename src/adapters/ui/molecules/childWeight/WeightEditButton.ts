@@ -5,21 +5,17 @@
  * Iconography history (preserved as design rationale):
  *
  *   - §17.52 first cut: dumbbell, retired on operator follow-up.
- *   - §17.52 ship: cast-iron weight SVG with U-shaped handle, drawn
- *     because no Unicode codepoint reads as "cast iron weight" in
- *     plain text.
- *   - §17.129: SVG lifted into a reusable atom (`atoms/weightGlyph.ts`).
- *   - §17.130 (current ship): switched to `U+2696 SCALES` followed by
- *     `U+FE0E` (text-presentation variation selector). REVERSES the
- *     §17.52 design Q&A "balance scale rejected" decision on operator
- *     instruction. The trade-offs the §17.52 docblock listed against
- *     the scales remain factual ("balance" is a different metaphor
- *     than "weight"), but the simpler Unicode-only path (no SVG, no
- *     custom atom, single glyph the browser font system can render
- *     crisply at any size) won out. The cast-iron SVG atom is gone
- *     in the same strand; the scales glyph reads at the same
- *     `clamp(0.85rem, 5cqmin, 1.6rem)` tile-icon scale via a matching
- *     `font-size` on the inner `<button>`.
+ *   - §17.52 ship: cast-iron weight SVG with U-shaped handle.
+ *   - §17.129: SVG briefly lifted into an atom, then retired.
+ *   - §17.130: switched to `U+2696 SCALES` + `U+FE0E` (text-
+ *     presentation variation selector).
+ *   - §17.132 (current ship): Unicode glyph replaced by the §17.131
+ *     `<ds-icon name="scale">` Lucide SVG so the glyph reads with
+ *     consistent stroke weight + monochrome `currentColor` on every
+ *     platform (the §17.130 Unicode path drifted into the system
+ *     emoji font on iOS, where the scales picked up the OS coloured-
+ *     emoji rendering). REVERSES the §17.52 design Q&A "balance scale
+ *     rejected" decision on operator instruction (same call as §17.130).
  *
  * Position: bottom-LEFT corner of the tile (mirror of the §17.18
  * bottom-right timestamp). `position: absolute` against the host's
@@ -49,24 +45,11 @@
 import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
+import "../../atoms/icon/Icon.js";
 import {
   WEIGHT_EDIT_OPEN_EVENT,
   type WeightEditOpenDetail,
 } from "./weightEditEvents.js";
-
-/**
- * SPEC §17.130 — child-weight icon is `U+2696 SCALES` followed by the
- * `U+FE0E` text-presentation variation selector. Reverses the §17.52
- * design Q&A "no balance scale" decision: the cast-iron-weight SVG
- * primitive (`atoms/weightGlyph.ts`) was visually accurate but did not
- * survive the operator's "use the scale Unicode glyph" follow-up.
- * VS15 forces the monochrome / text rendering on platforms that would
- * otherwise emoji-color the scales (older macOS Safari + some Linux
- * fonts). The `WeightEditPopover` is the affordance that actually
- * carries the slider; the icon's only job is to read as "this is the
- * weight knob" at small tile sizes.
- */
-const SCALES_GLYPH = "\u2696\uFE0E";
 
 @customElement("weight-edit-button")
 export class WeightEditButton extends LitElement {
@@ -104,14 +87,9 @@ export class WeightEditButton extends LitElement {
          single-child layouts). The clamp floor (0.85rem) keeps
          the touch target legible on small tiles; the ceiling
          (1.6rem) prevents typographic blow-out on giant layouts.
-         The buttons in the parent strip (close-X / edit-pencil)
-         live in vh; here the icon is per-tile so cqmin is the
-         right axis (the §17.46 value's clamp uses 42cqmin for
-         the same reason). SPEC 17.130 -- the glyph is now a
-         Unicode character (U+2696 SCALES + VS15) so the
-         font-size matches the button's own clamped box; the
-         line-height: 1 stops the metric box from pushing the
-         glyph below the visual centre. */
+         SPEC 17.132 -- ds-icon defaults to a 1em box, so setting
+         font-size here drives the SVG rendered size exactly as
+         the Unicode glyph it replaced did. */
       width: clamp(0.85rem, 5cqmin, 1.6rem);
       height: clamp(0.85rem, 5cqmin, 1.6rem);
       font-size: clamp(0.85rem, 5cqmin, 1.6rem);
@@ -148,7 +126,7 @@ export class WeightEditButton extends LitElement {
       title="Edit weight"
       data-testid="weight-edit-button"
       @click=${this.handleClick}
-    >${SCALES_GLYPH}</button>`;
+    ><ds-icon name="scale"></ds-icon></button>`;
   }
 
   private handleClick = (e: MouseEvent): void => {
