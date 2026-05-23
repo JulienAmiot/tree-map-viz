@@ -75,8 +75,8 @@ src/adapters/ui/
 | `views/WorkflowNode/*` (2 files, post-R2a) | `organisms/WorkflowNode/*` | organism | R3e |
 | `views/PictureNode/*` (4 files) | `organisms/PictureNode/*` | organism | R3f |
 | `views/URLNode/*` (5 files) | `organisms/URLNode/*` | organism | R3g |
-| `modal/AddChildModal.ts` + `EditNodeModal.ts` | `organisms/modal/*` | organism | R3h-1 |
-| `modal/{About,BoardSettings,BoardsPanel}Modal.ts` | `organisms/modal/*` | organism | R3h-2 |
+| `modal/{About,BoardSettings,BoardsPanel}Modal.ts` | `organisms/modal/*` | organism | R3h-1 |
+| `modal/AddChildModal.ts` + `EditNodeModal.ts` | `organisms/modal/*` | organism | R3h-2 |
 | `shell/ChildrenGrid.ts` | `templates/ChildrenGrid.ts` | template | R4 |
 | `shell/ParentIdentityStrip.ts` | `templates/ParentIdentityStrip.ts` | template | R4 |
 | `shell/TreeMapScreen.ts` | `pages/TreeMapScreen.ts` | page | R5a |
@@ -138,8 +138,8 @@ Molecules tier and so genuinely belongs in `molecules/`.
 | **R3e** | Organisms — WorkflowNode | **done** (§17.128 R3e) |
 | **R3f** | Organisms — PictureNode | **done** (§17.128 R3f) |
 | **R3g** | Organisms — URLNode | **done** (§17.128 R3g) — per-kind organism tier complete |
-| **R3h-1** | Organisms — modals (AddChild + EditNode) | pending |
-| **R3h-2** | Organisms — modals (About + BoardSettings + BoardsPanel) | pending |
+| **R3h-1** | Organisms — modals (About + BoardSettings + BoardsPanel) | **done** (§17.128 R3h-1) |
+| **R3h-2** | Organisms — modals (AddChild + EditNode) | pending |
 | **R4**  | Templates — ChildrenGrid + ParentIdentityStrip | pending |
 | **R5a** | Pages — TreeMapScreen | pending |
 | **R5b** | Pages — DesignSystemPage + sampleViewModels | pending |

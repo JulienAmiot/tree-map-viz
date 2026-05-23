@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import "../../../../../adapters/ui/modal/AboutModal.js";
+import "../../../../../../adapters/ui/organisms/modal/AboutModal.js";
 import {
   ABOUT_CANCEL_EVENT,
   ABOUT_OPEN_DESIGN_SYSTEM_EVENT,
   type AboutModal,
-} from "../../../../../adapters/ui/modal/AboutModal.js";
-import { APP_VERSION, BUILD_DATE } from "../../../../../version.js";
+} from "../../../../../../adapters/ui/organisms/modal/AboutModal.js";
+import { APP_VERSION, BUILD_DATE } from "../../../../../../version.js";
 import {
   cleanupLitFixtures,
   mountLitElement,
-} from "../../../../fixtures/litElementFixture.js";
+} from "../../../../../fixtures/litElementFixture.js";
 
 afterEach(cleanupLitFixtures);
 
