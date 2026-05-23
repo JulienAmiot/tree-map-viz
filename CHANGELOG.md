@@ -41,6 +41,14 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   showcase host silences the `value-node-disabled-change` event bubbled
   by the live switch so a click in the showcase doesn't reach
   `main.ts`'s screen listener.
+- **Templates tier — focused panel composition (§17.127 strand A5)**.
+  Mounts the real `<parent-identity-strip>` (focused VM in AsParent
+  role + edit-pencil + close-X) above a real `<children-grid>`
+  (squarified treemap of 3 sample child slots + a trailing `+`
+  affordance) inside the Templates tier. All four bubbled events
+  unique to this composition — `focus-close-to-parent`,
+  `edit-node-open`, `tile-drill`, `weight-edit-open` — are silenced
+  at the showcase host.
 - **Organisms tier — node half: Picture + URL (§17.127 strand A4b-4)**.
   Live `<picture-node-as-parent>` + `<picture-node-as-child>`
   ("Architecture diagram" rendered from an inline data-URL SVG so the

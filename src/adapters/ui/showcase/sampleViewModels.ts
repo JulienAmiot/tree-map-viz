@@ -23,6 +23,7 @@
 
 import type {
   BusinessScoreCardNodeViewModel,
+  ChildSlotViewModel,
   ComputedBusinessScoreNodeViewModel,
   ComputedNodeViewModel,
   PictureNodeViewModel,
@@ -203,6 +204,23 @@ export function sampleURLNodeVM(): URLNodeViewModel {
     title: "Runbook",
     url: "https://example.org/obeya/runbook",
   };
+}
+
+/**
+ * Children-grid slot list used by the §17.127 A5 Templates tier.
+ * Mixes three node slots of different kinds (a child BSC that uses
+ * the off-track VM, a Text note, and a Workflow item) plus a trailing
+ * `+` slot so the §4 capacity affordance is visible. Weights mirror
+ * the rough kiosk-realistic distribution (largest tile carries ~50 %
+ * of the area, smallest ~15 %).
+ */
+export function sampleChildSlots(parentId: string): readonly ChildSlotViewModel[] {
+  return [
+    { slot: "node", weight: 5, vm: sampleBusinessScoreVMOffTrack() },
+    { slot: "node", weight: 3, vm: sampleTextNodeVM() },
+    { slot: "node", weight: 2, vm: sampleWorkflowNodeVM() },
+    { slot: "plus", weight: 1, parentId },
+  ];
 }
 
 export function sampleBusinessScoreVMOffTrack(): BusinessScoreCardNodeViewModel {
