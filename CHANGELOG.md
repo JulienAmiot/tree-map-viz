@@ -14,6 +14,19 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **Weight edit button icon swapped from Lucide `scale` to Lucide
+  `dumbbell` (§17.136, S0a of the unified card-template refactor)**.
+  Operator instruction — *"Replace the scale by a weight icon from
+  lucide."* The corner-icon affordance on every child tile (§17.52)
+  now renders the dumbbell Lucide SVG instead of the balance-scale
+  one; the §17.132 `scale` slug is retired from `ICON_REGISTRY`.
+  Closes the iconography loop opened by the §17.52 first-cut
+  dumbbell that was retired on operator follow-up four years ago.
+  No CSS / sizing change — the existing `font-size: clamp(...)` chain
+  drives the new SVG box the same way it drove the old one.
+
 ### Removed
 
 - **Retired-Unicode-glyphs tombstone block from the design-system

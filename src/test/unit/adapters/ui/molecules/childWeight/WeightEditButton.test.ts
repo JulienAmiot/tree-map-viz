@@ -14,13 +14,16 @@ import {
 afterEach(cleanupLitFixtures);
 
 describe("<weight-edit-button> (\u00a717.52)", () => {
-  it("renders the Lucide `scale` icon inside an accessible button (\u00a717.132)", async () => {
-    // SPEC §17.132 -- the icon is the §17.131 `<ds-icon name="scale">`
-    // Lucide SVG (was a Unicode `U+2696 SCALES` + VS15 sequence pre-
-    // §17.132; before that it was a custom cast-iron-weight SVG atom).
-    // The Lucide swap removes the system-font dependency that drifted
-    // into the emoji-coloured rendering on macOS Safari + iOS;
-    // monochrome `currentColor` is now guaranteed across platforms.
+  it("renders the Lucide `dumbbell` icon inside an accessible button (\u00a717.136)", async () => {
+    // SPEC §17.136 -- the icon is the §17.131 `<ds-icon name="dumbbell">`
+    // Lucide SVG. Iconography history: §17.52a custom cast-iron-weight
+    // SVG -> §17.130 Unicode scales -> §17.132 Lucide `scale` ->
+    // §17.136 Lucide `dumbbell` on operator instruction ("Replace the
+    // scale by a weight icon from lucide."). `dumbbell` reads
+    // unambiguously as a weight metaphor; the balance-scale picture
+    // was visually conflating with the §17.52a Q&A. Pinning the
+    // current slug here so a regression to either previous shape
+    // surfaces immediately.
     const el = await mountLitElement<WeightEditButton>(
       "weight-edit-button",
       (e) => {
@@ -35,10 +38,12 @@ describe("<weight-edit-button> (\u00a717.52)", () => {
     expect(button?.getAttribute("aria-label")).toBe("Edit weight");
     const icon = button?.querySelector("ds-icon");
     expect(icon).not.toBeNull();
-    expect(icon?.getAttribute("name")).toBe("scale");
-    // Pin the absence of any other text content so the migration
-    // can't accidentally reintroduce a Unicode glyph alongside the
-    // Lucide SVG.
+    expect(icon?.getAttribute("name")).toBe("dumbbell");
+    // §17.136 -- pin the absence of the pre-§17.136 `scale` slug AND
+    // of any Unicode-glyph textContent so a regression to either
+    // previous rendering shape (Lucide `scale` SVG or U+2696 + VS15)
+    // surfaces immediately.
+    expect(icon?.getAttribute("name")).not.toBe("scale");
     expect(button?.textContent?.trim()).toBe("");
   });
 
