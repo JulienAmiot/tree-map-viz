@@ -14,22 +14,19 @@ import {
 afterEach(cleanupLitFixtures);
 
 describe("<weight-edit-button> (\u00a717.52)", () => {
-  it("renders an SVG cast-iron-weight glyph (handle stroke + body fill) inside an accessible button", async () => {
-    // SPEC §17.52-polish -- the icon is an inline SVG drawn as a
-    // stylised cast-iron weight: a U-shaped handle (drawn as a
-    // stroked path so the bend reads as a hollow loop) above a
-    // trapezoidal body (drawn as a filled path, slightly wider
-    // at the base than at the shoulders -- the classic foundry-
-    // weight silhouette stamped "1 KG" / "2 KG"). Two `<path>`
-    // elements: the first is the handle (fill="none" +
-    // stroke="currentColor"), the second is the body (fill from
-    // the SVG's parent currentColor). Pinning the path shape +
-    // the `aria-label` prevents a future refactor from silently
-    // swapping the glyph (e.g. for a balance scale, which the
-    // operator explicitly turned down at the §17.52 design Q&A,
-    // or the dumbbell from the §17.52 first cut, which the
-    // operator's "cast iron weight with handle" follow-up
-    // retired).
+  it("renders the U+2696 scales glyph inside an accessible button (\u00a717.130)", async () => {
+    // SPEC §17.130 -- the icon is the Unicode scales codepoint
+    // (U+2696) followed by U+FE0E (text-presentation variation
+    // selector, "VS15") so platforms that emoji-color the
+    // scales by default still render the kiosk-text monochrome
+    // variant. Reverses the §17.52 design Q&A "no balance
+    // scale" decision on operator instruction; the SVG atom
+    // that previously held the cast-iron-weight glyph
+    // (`atoms/weightGlyph.ts`) is retired in the same strand.
+    // Pinning the exact two-codepoint string prevents a future
+    // refactor from silently dropping VS15 (which would emoji-
+    // color the icon on macOS Safari) or restoring the SVG
+    // glyph.
     const el = await mountLitElement<WeightEditButton>(
       "weight-edit-button",
       (e) => {
@@ -42,25 +39,10 @@ describe("<weight-edit-button> (\u00a717.52)", () => {
     );
     expect(button).not.toBeNull();
     expect(button?.getAttribute("aria-label")).toBe("Edit weight");
-    const svg = button?.querySelector("svg");
-    expect(svg).not.toBeNull();
-    expect(svg?.getAttribute("viewBox")).toBe("0 0 32 32");
-    const paths = svg?.querySelectorAll("path");
-    expect(paths?.length).toBe(2);
-    // The first path is the handle: stroked (no fill).
-    const handle = paths?.[0];
-    expect(handle?.getAttribute("fill")).toBe("none");
-    expect(handle?.getAttribute("stroke")).toBe("currentColor");
-    // The second path is the body: filled by the SVG's
-    // currentColor (no explicit fill attribute means it inherits
-    // from the <svg fill="currentColor">).
-    const body = paths?.[1];
-    expect(body?.hasAttribute("stroke")).toBe(false);
-    // Pin the lack of `<rect>` elements so a future refactor
-    // that re-introduces the §17.52 first-cut dumbbell glyph
-    // (5 rects: plate-collar-bar-collar-plate) fails fast.
-    const rects = svg?.querySelectorAll("rect");
-    expect(rects?.length).toBe(0);
+    expect(button?.textContent).toBe("\u2696\uFE0E");
+    // Pin the absence of the legacy SVG so the migration can't
+    // accidentally reintroduce the cast-iron-weight artwork.
+    expect(button?.querySelector("svg")).toBeNull();
   });
 
   it("anchors at the tile's bottom-LEFT corner (mirror of the bottom-right timestamp)", async () => {

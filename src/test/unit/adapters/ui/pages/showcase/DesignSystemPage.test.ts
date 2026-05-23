@@ -70,6 +70,13 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     for (const t of ["bg", "panel", "text", "muted", "accent"]) {
       expect($(el, `ds-token-${t}`)).toBeTruthy();
     }
+    // \u00a717.130 -- the kiosk-glyphs grid now also surfaces the
+    // scales (child-weight) + lower-left crayon (focused-card edit)
+    // glyphs that replaced the §17.52 SVG / §17.28 CSS-pseudo
+    // constructions. Pin both codepoints so a future glyph swap
+    // can't silently drop them from the design system.
+    expect($(el, "ds-glyph-u+2696")).toBeTruthy();
+    expect($(el, "ds-glyph-u+1f58d")).toBeTruthy();
   });
 
   it("Atoms tier renders all 5 trend arrows + the 4 PDCA badges (\u00a717.127 A2)", async () => {
@@ -110,6 +117,12 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     expect($(el, "ds-mol-units")).toBeTruthy();
     expect($(el, "ds-mol-badges")).toBeTruthy();
     expect($(el, "ds-mol-disabled")).toBeTruthy();
+    expect($(el, "ds-mol-weight")).toBeTruthy();
+    const weightCell = $(el, "ds-mol-weight-cell");
+    expect(weightCell.querySelector("weight-edit-button")).toBeTruthy();
+    const popover = weightCell.querySelector("weight-edit-popover");
+    expect(popover).toBeTruthy();
+    expect(popover?.hasAttribute("open")).toBe(true);
     expect(
       $(el, "ds-mol-unit-usd").querySelector("[data-testid='unit-chip']"),
     ).toBeTruthy();
@@ -646,7 +659,7 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
         "atoms",
         ["atoms-colors", "atoms-arrows", "atoms-glyphs", "atoms-pdca"],
       ],
-      ["molecules", ["mol-units", "mol-badges", "mol-disabled"]],
+      ["molecules", ["mol-units", "mol-badges", "mol-disabled", "mol-weight"]],
       [
         "organisms",
         [
@@ -688,6 +701,7 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     }> = [
       { tier: "atoms", id: "atoms-arrows", mustContain: "TREND_ARROW_GLYPHS" },
       { tier: "molecules", id: "mol-badges", mustContain: "renderStatusBadge" },
+      { tier: "molecules", id: "mol-weight", mustContain: "weight-edit-button" },
       { tier: "organisms", id: "org-bsc", mustContain: "business-score-card-as-parent" },
       { tier: "templates", id: "tpl-focused", mustContain: "parent-identity-strip" },
       { tier: "pages", id: "pg-screen", mustContain: "tree-map-screen" },

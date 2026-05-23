@@ -41,6 +41,21 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   showcase host silences the `value-node-disabled-change` event bubbled
   by the live switch so a click in the showcase doesn't reach
   `main.ts`'s screen listener.
+- **Cast-iron-weight glyph promoted to an atom + child-weight
+  affordances surfaced on the design-system showcase (§17.129)**.
+  The §17.52 cast-iron-weight SVG icon used by `<weight-edit-button>`
+  on every child tile is lifted into its own atom
+  (`atoms/weightGlyph.ts → renderWeightGlyph()`), so the design-system
+  showcase can demo it next to the other glyph primitives. The Atoms
+  tier grows an "Cast-iron-weight glyph" section. The Molecules tier
+  grows a "Child weight affordances (childWeight/\*)" section showing
+  the `<weight-edit-button>` corner icon beside the live
+  `<weight-edit-popover>` panel (mounted open at `.weight=2.5`, with
+  a `position: static` override so the otherwise viewport-fixed panel
+  flows inline). The `inline-edit-weight` bubbled event joins the
+  showcase host's silenced list so a Confirm tap-through doesn't
+  reach `main.ts`'s `EditNodeService.editFields` path. Reachable from
+  About → Open design system → Atoms / Molecules.
 - **Design-system showcase — "View source" snippet fill (§17.127 strand P3b)**.
   Completes P3. Every one of the 16 sections in the showcase now has
   a `</>` button surfacing its canonical render snippet via the
@@ -129,6 +144,22 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Affordance icons switched to Unicode glyphs (§17.130)**. Two
+  long-standing affordances now render their icon as a Unicode
+  codepoint instead of a custom artwork:
+  - The **child-tile weight knob** (`<weight-edit-button>`, bottom-
+    left corner of every child tile) now renders **⚖** (U+2696 SCALES)
+    instead of the §17.52 cast-iron-weight SVG. The dedicated SVG
+    helper module is retired.
+  - The **focused-card edit button** (the pencil button on the
+    parent identity strip, opens the Edit-node modal) now renders
+    **🖍** (U+1F58D LOWER LEFT CRAYON) instead of the §17.28 CSS-pseudo
+    pencil construction. Behaviour and event dispatching are
+    unchanged on both affordances.
+  Both glyphs use the U+FE0E text-presentation variation selector so
+  they inherit the kiosk's text color rather than the system emoji
+  palette where possible. Both new codepoints surface in the design-
+  system showcase's Atoms → Kiosk Unicode glyphs grid.
 - **The unit chip is now inline-editable on the focused panel (§17.126)**.
   Click the `(unit)` chip in the title row of a focused Business
   Score Card or Computed Business Score Card to swap it for a one-

@@ -36,6 +36,8 @@ import "../../templates/ParentIdentityStrip.js";
 import "../../templates/ChildrenGrid.js";
 import "../TreeMapScreen.js";
 import "../../molecules/plus/PlusTile.js";
+import "../../molecules/childWeight/WeightEditButton.js";
+import "../../molecules/childWeight/WeightEditPopover.js";
 import "../../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "../../organisms/BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import "../../organisms/ComputedNode/ComputedCards.js";
@@ -156,6 +158,23 @@ html\`\${DEFAULT_WORKFLOW_STATUSES.map((s) => renderStatusBadge(s))}\`;`,
 html\`\${renderDisabledIndicator(true)}<span>Disabled metric</span>\`;
 // Interactive switch (dispatches \`value-node-disabled-change\`):
 html\`\${renderDisabledSwitch(host, nodeId, isDisabled)}\`;`,
+  "mol-weight": `import "../../molecules/childWeight/WeightEditButton.js";
+import "../../molecules/childWeight/WeightEditPopover.js";
+
+// Corner-icon affordance on every child tile. Emits
+// \`weight-edit-open\` { nodeId, weight, tileRect, iconRect }:
+html\`<weight-edit-button node-id=\${id} .weight=\${w}></weight-edit-button>\`;
+
+// Slider panel the composition root opens on the
+// \`weight-edit-open\` event. Emits \`inline-edit-weight\`
+// { nodeId, weight } on confirm:
+html\`<weight-edit-popover
+  ?open=\${open}
+  node-id=\${id}
+  .weight=\${w}
+  .anchorRect=\${tileRect}
+  .iconRect=\${iconRect}
+></weight-edit-popover>\`;`,
   "org-burger": `import "../../organisms/shell/BurgerMenu.js";
 html\`<burger-menu></burger-menu>\`;
 // Emits \`burger-menu-action\` { action: "import" | "export" | ... }`,
@@ -228,6 +247,8 @@ const KIOSK_GLYPHS: readonly { glyph: string; codepoint: string; label: string }
   { glyph: "\u29B8", codepoint: "U+29B8", label: "Forbidden — disabled indicator" },
   { glyph: "\u00D7", codepoint: "U+00D7", label: "Times — disabled-switch off" },
   { glyph: "\u2713", codepoint: "U+2713", label: "Check — disabled-switch on" },
+  { glyph: "\u2696\uFE0E", codepoint: "U+2696", label: "Scales — child-weight corner icon (§17.130)" },
+  { glyph: "\u{1F58D}\uFE0E", codepoint: "U+1F58D", label: "Lower-left crayon — focused-card edit affordance (§17.130)" },
 ] as const;
 
 @customElement("design-system-page")
@@ -301,6 +322,10 @@ export class DesignSystemPage extends LitElement {
     .mol-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 0.85rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; background: var(--panel, #151a22); }
     .mol-cell .stage { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 1.6em; }
     .mol-cell .stage-title { font-size: 1.05rem; color: var(--text, #e8ecf4); }
+    .mol-cell--wide { grid-column: 1 / -1; }
+    .mol-cell .weight-pair-stage { display: flex; align-items: flex-end; gap: 1.25rem; align-self: stretch; width: 100%; min-height: 11rem; }
+    .mol-cell .weight-button-frame { position: relative; width: 5.5rem; height: 5.5rem; background: color-mix(in srgb, currentColor 6%, transparent); border: 1px dashed color-mix(in srgb, currentColor 18%, transparent); border-radius: 6px; flex: 0 0 auto; }
+    .mol-cell .weight-pair-stage weight-edit-popover { position: static; display: inline-block; z-index: auto; }
     .mol-cell .caption { font-size: 0.75rem; color: var(--muted, #8b95a8); }
     .org-cell { display: flex; flex-direction: column; gap: 0.6rem; padding: 1rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; background: var(--panel, #151a22); margin-bottom: 0.85rem; }
     .org-cell .stage { display: flex; align-items: center; gap: 0.6rem; min-height: 2.5em; }
@@ -350,6 +375,7 @@ export class DesignSystemPage extends LitElement {
     "edit-node-open",
     "tile-drill",
     "weight-edit-open",
+    "inline-edit-weight",
   ] as const;
 
   override connectedCallback(): void {
@@ -781,6 +807,34 @@ export class DesignSystemPage extends LitElement {
       </div>
         `,
       )}
+      ${this.section("mol-weight", "weight edit button popover slider child tile corner icon cast iron inline-edit-weight", html`
+      <h2 data-testid="ds-mol-weight">Child weight affordances (childWeight/*)</h2>
+      <div class="mol-cell mol-cell--wide" data-testid="ds-mol-weight-cell">
+        <div class="stage weight-pair-stage">
+          <div class="weight-button-frame">
+            <weight-edit-button
+              data-testid="ds-mol-weight-button-el"
+              node-id="ds-demo-weight"
+              .weight=${2.5}
+            ></weight-edit-button>
+          </div>
+          <weight-edit-popover
+            data-testid="ds-mol-weight-popover-el"
+            open
+            node-id="ds-demo-weight"
+            .weight=${2.5}
+          ></weight-edit-popover>
+        </div>
+        <span class="caption">
+          &lt;weight-edit-button&gt; (left, anchored bottom-left of the
+          tile frame) \u2192 dispatches <code>weight-edit-open</code> \u2192
+          composition root opens &lt;weight-edit-popover&gt; (right).
+          Slider seeds from <code>.weight</code>; Confirm dispatches
+          <code>inline-edit-weight</code>.
+        </span>
+      </div>
+        `,
+      )}
     `;
   }
 
@@ -816,7 +870,7 @@ export class DesignSystemPage extends LitElement {
       </div>
         `,
       )}
-      ${this.section("atoms-glyphs", "glyph bullseye warning sigma forbidden times check unicode codepoint kiosk", html`
+      ${this.section("atoms-glyphs", "glyph bullseye warning sigma forbidden times check scales crayon weight edit pencil unicode codepoint kiosk", html`
       <h2 data-testid="ds-atoms-glyphs">Kiosk Unicode glyphs</h2>
       <div class="glyph-grid">
         ${KIOSK_GLYPHS.map(
