@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import "../../../../../../adapters/ui/views/PictureNode/PictureNodeAsChild.js";
 import { PictureNodeAsChild } from "../../../../../../adapters/ui/views/PictureNode/PictureNodeAsChild.js";
-import type { PictureNodeViewModel } from "../../../../../../adapters/ui/views/NodeViewModel.js";
+import type { PictureNodeViewModel } from "../../../../../../adapters/ui/molecules/NodeViewModel.js";
 import {
   cleanupLitFixtures,
   mountLitElement,

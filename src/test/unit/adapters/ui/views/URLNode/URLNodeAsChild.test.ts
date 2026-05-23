@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import "../../../../../../adapters/ui/views/URLNode/URLNodeAsChild.js";
 import { URLNodeAsChild } from "../../../../../../adapters/ui/views/URLNode/URLNodeAsChild.js";
-import type { URLNodeViewModel } from "../../../../../../adapters/ui/views/NodeViewModel.js";
+import type { URLNodeViewModel } from "../../../../../../adapters/ui/molecules/NodeViewModel.js";
 import {
   cleanupLitFixtures,
   mountLitElement,

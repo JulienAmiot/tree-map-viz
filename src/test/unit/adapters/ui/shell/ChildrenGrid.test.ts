@@ -10,7 +10,7 @@ import {
 } from "../../../../../adapters/ui/shell/ChildrenGrid.js";
 import type { WeightEditOpenDetail } from "../../../../../adapters/ui/views/childWeight/weightEditEvents.js";
 import { WEIGHT_EDIT_OPEN_EVENT } from "../../../../../adapters/ui/views/childWeight/weightEditEvents.js";
-import type { ChildSlotViewModel } from "../../../../../adapters/ui/views/NodeViewModel.js";
+import type { ChildSlotViewModel } from "../../../../../adapters/ui/molecules/NodeViewModel.js";
 import { FakeResizeObserver } from "../../../../fixtures/fakeResizeObserver.js";
 import {
   cleanupLitFixtures,

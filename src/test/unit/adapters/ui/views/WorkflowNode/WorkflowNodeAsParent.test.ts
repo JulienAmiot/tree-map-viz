@@ -8,7 +8,7 @@ import {
   type InlineEditTitleDetail,
   type InlineEditValueDetail,
 } from "../../../../../../adapters/ui/molecules/inlineEditEvents.js";
-import type { WorkflowNodeViewModel } from "../../../../../../adapters/ui/views/NodeViewModel.js";
+import type { WorkflowNodeViewModel } from "../../../../../../adapters/ui/molecules/NodeViewModel.js";
 import { VALUE_NODE_DISABLED_CHANGE_EVENT, type ValueNodeDisabledChangeDetail } from "../../../../../../adapters/ui/molecules/disabledToggle.js";
 import {
   WORKFLOW_STATUS_CHANGE_EVENT,

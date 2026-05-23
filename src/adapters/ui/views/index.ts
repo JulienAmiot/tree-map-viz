@@ -22,7 +22,7 @@
 import "./BusinessScoreCardNode/BusinessScoreCardNodeAsChild.js";
 import "./BusinessScoreCardNode/BusinessScoreCardNodeAsParent.js";
 import "./ComputedNode/ComputedCards.js";
-import "./NodeView.js";
+import "../molecules/NodeView.js";
 import "./PictureNode/PictureNodeAsChild.js";
 import "./PictureNode/PictureNodeAsParent.js";
 import "./TextNode/TextNodeAsChild.js";
@@ -33,7 +33,7 @@ import "./URLNode/URLNodeAsChild.js";
 import "./URLNode/URLNodeAsParent.js";
 import "./plus/PlusTile.js";
 
-import { nodeViewRegistry } from "./nodeViewRegistry.js";
+import { nodeViewRegistry } from "../molecules/nodeViewRegistry.js";
 
 if (!nodeViewRegistry.isFrozen()) {
   nodeViewRegistry.register("TextNode", {
@@ -91,8 +91,8 @@ export type {
   TextNodeViewModel,
   WorkflowNodeViewModel,
   URLNodeViewModel,
-} from "./NodeViewModel.js";
-export { nodeViewRegistry, NodeViewRegistryError } from "./nodeViewRegistry.js";
+} from "../molecules/NodeViewModel.js";
+export { nodeViewRegistry, NodeViewRegistryError } from "../molecules/nodeViewRegistry.js";
 export { COMPUTATION_KIND_CHANGE_EVENT, type ComputationKindChangeDetail } from "./ComputedNode/ComputedCards.js";
 export { PLUS_TILE_ACTIVATE_EVENT } from "./plus/PlusTile.js";
 export type { PlusTileActivateDetail } from "./plus/PlusTile.js";

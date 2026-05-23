@@ -32,7 +32,7 @@
 
 import { html, nothing, type TemplateResult } from "lit";
 
-import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
+import type { BusinessScoreCardNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { formatValue } from "../../atoms/numberFormat.js";
 
 /**

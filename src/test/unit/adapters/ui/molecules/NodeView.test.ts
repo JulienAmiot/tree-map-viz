@@ -1,9 +1,9 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import "../../../../../adapters/ui/views/NodeView.js";
-import type { NodeView } from "../../../../../adapters/ui/views/NodeView.js";
-import type { TextNodeViewModel } from "../../../../../adapters/ui/views/NodeViewModel.js";
-import { nodeViewRegistry } from "../../../../../adapters/ui/views/nodeViewRegistry.js";
+import "../../../../../adapters/ui/molecules/NodeView.js";
+import type { NodeView } from "../../../../../adapters/ui/molecules/NodeView.js";
+import type { TextNodeViewModel } from "../../../../../adapters/ui/molecules/NodeViewModel.js";
+import { nodeViewRegistry } from "../../../../../adapters/ui/molecules/nodeViewRegistry.js";
 import {
   cleanupLitFixtures,
   mountLitElement,

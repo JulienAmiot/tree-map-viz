@@ -15,7 +15,7 @@ import {
   disabledToggleStyles,
   renderDisabledIndicator,
 } from "../../molecules/disabledToggle.js";
-import type { BusinessScoreCardNodeViewModel } from "../NodeViewModel.js";
+import type { BusinessScoreCardNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 import {

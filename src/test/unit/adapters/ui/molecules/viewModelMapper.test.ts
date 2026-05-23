@@ -4,7 +4,7 @@ import {
   mapFocusedToViewModel,
   mapNodeToViewModel,
   ViewModelMappingError,
-} from "../../../../../adapters/ui/views/viewModelMapper.js";
+} from "../../../../../adapters/ui/molecules/viewModelMapper.js";
 import type { Clock } from "../../../../../domain/capabilities/Clock.js";
 import { BusinessScoreCard } from "../../../../../domain/cards/BusinessScoreCard.js";
 import { ComputationKind } from "../../../../../domain/computation/ComputationKind.js";

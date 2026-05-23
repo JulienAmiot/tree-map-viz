@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import "../../../../../../adapters/ui/views/URLNode/URLNodeAsParent.js";
 import { URLNodeAsParent } from "../../../../../../adapters/ui/views/URLNode/URLNodeAsParent.js";
-import type { URLNodeViewModel } from "../../../../../../adapters/ui/views/NodeViewModel.js";
+import type { URLNodeViewModel } from "../../../../../../adapters/ui/molecules/NodeViewModel.js";
 import {
   cleanupLitFixtures,
   mountLitElement,

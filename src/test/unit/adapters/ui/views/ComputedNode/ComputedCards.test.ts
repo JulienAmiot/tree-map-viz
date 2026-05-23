@@ -8,7 +8,7 @@ import {
 import type {
   BusinessScoreCardObjectiveViewModel, ComputationKindName,
   ComputedBusinessScoreNodeViewModel, ComputedNodeViewModel, ComputedValueViewModel,
-} from "../../../../../../adapters/ui/views/NodeViewModel.js";
+} from "../../../../../../adapters/ui/molecules/NodeViewModel.js";
 import { cleanupLitFixtures, mountLitElement } from "../../../../../fixtures/litElementFixture.js";
 
 afterEach(cleanupLitFixtures);

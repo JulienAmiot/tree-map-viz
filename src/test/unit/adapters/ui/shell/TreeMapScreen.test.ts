@@ -28,7 +28,7 @@ import type {
   ChildSlotViewModel,
   FocusedTreeViewModel,
   NodeViewModel,
-} from "../../../../../adapters/ui/views/NodeViewModel.js";
+} from "../../../../../adapters/ui/molecules/NodeViewModel.js";
 import { PLUS_TILE_ACTIVATE_EVENT } from "../../../../../adapters/ui/views/plus/PlusTile.js";
 import { FakeResizeObserver } from "../../../../fixtures/fakeResizeObserver.js";
 import {

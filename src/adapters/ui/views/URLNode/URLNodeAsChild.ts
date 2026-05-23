@@ -46,7 +46,7 @@ import {
   renderDisabledIndicator,
 } from "../../molecules/disabledToggle.js";
 import { renderStaticTitle } from "../../molecules/inlineTitleEdit.js";
-import type { URLNodeViewModel } from "../NodeViewModel.js";
+import type { URLNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 
 import { QRGenController } from "./qrGenController.js";

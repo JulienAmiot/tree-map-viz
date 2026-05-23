@@ -31,7 +31,7 @@ import type {
   TextNodeViewModel,
   URLNodeViewModel,
   WorkflowNodeViewModel,
-} from "../views/NodeViewModel.js";
+} from "../molecules/NodeViewModel.js";
 import type { BreadcrumbSegment } from "../shell/Breadcrumb.js";
 
 const ALL_COMPUTATION_KINDS = [

@@ -113,7 +113,7 @@ import type { WeightEditOpenDetail } from "../views/childWeight/weightEditEvents
 import type { PlusTileActivateDetail } from "../views/plus/PlusTile.js";
 import "../views/index.js";
 import "../showcase/DesignSystemPage.js";
-import type { FocusedTreeViewModel } from "../views/NodeViewModel.js";
+import type { FocusedTreeViewModel } from "../molecules/NodeViewModel.js";
 import type { WorkflowStatus } from "../../../domain/values/WorkflowStatus.js";
 import { DEFAULT_WORKFLOW_STATUSES } from "../../../domain/values/WorkflowStatus.js";
 import type { BreadcrumbSegment } from "./Breadcrumb.js";

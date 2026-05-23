@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import "../../../../../../adapters/ui/views/WorkflowNode/WorkflowNodeAsChild.js";
 import { WorkflowNodeAsChild } from "../../../../../../adapters/ui/views/WorkflowNode/WorkflowNodeAsChild.js";
-import type { WorkflowNodeViewModel } from "../../../../../../adapters/ui/views/NodeViewModel.js";
+import type { WorkflowNodeViewModel } from "../../../../../../adapters/ui/molecules/NodeViewModel.js";
 import {
   cleanupLitFixtures,
   mountLitElement,

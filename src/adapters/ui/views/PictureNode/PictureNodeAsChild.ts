@@ -32,7 +32,7 @@ import {
   renderDisabledIndicator,
 } from "../../molecules/disabledToggle.js";
 import { renderStaticTitle } from "../../molecules/inlineTitleEdit.js";
-import type { PictureNodeViewModel } from "../NodeViewModel.js";
+import type { PictureNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 
 import { ImageErrorController } from "./imageErrorController.js";
