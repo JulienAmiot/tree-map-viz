@@ -89,6 +89,7 @@ import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
 import "../../atoms/icon/Icon.js";
+import "../../molecules/cardFrame/CardFrame.js";
 import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
 import {
   INLINE_EDIT_TITLE_EVENT,
@@ -183,32 +184,31 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
     disabledToggleStyles,
     unitChipStyles,
     css`
-      /* SPEC 17.45 -- the per-view's host stacks title + body
-         vertically. The body row holds the metric-pane (left) and the
-         optional description (right). The shared tileLayoutStyles
-         declares :host { position: relative; container-type: size }
-         which we keep -- the metric-pane carries its own
-         position: relative as the timestamp's containing block, so
-         the per-view's own host context is no longer load-bearing for
-         absolute children (the pre-§17.45 :host { position: static }
-         override that piped the timestamp to the strip's wrapper is
-         retired). The container-type: size is preserved for the
-         value's cqmin clamp. */
-      :host {
-        display: flex;
-        flex-direction: column;
-      }
+      /* SPEC 17.136 S1 -- the per-view's host is the outer wrapper
+         for card-frame. The shared tileLayoutStyles still carries
+         :host { padding; overflow:hidden; container-type:size;
+         position:relative } which the card-frame grid is laid out
+         inside. The pre-17.136 :host display:flex / flex-direction:
+         column title/body split is retired -- card-frame now drives
+         the layout. */
       .title {
-        font-size: 2.4vh;
-        flex: 0 0 auto;
-        /* SPEC 17.42 -- the focused-panel title is bright off-white
-           (rgb(245, 245, 245)) regardless of board. The per-board
-           fresh-date colour the §17.21 / §17.31 design plumbed
-           through --board-fresh has been retired; the kiosk's
-           dark theme already gives the title enough emphasis with
-           a flat near-white, and the per-board colour picker added
-           a personalisation surface that nobody used. */
+        /* SPEC 17.42 -- focused-panel title is bright off-white
+           regardless of board. */
         color: rgb(245, 245, 245);
+        font-size: 2.4vh;
+      }
+      /* SPEC 17.136 S1 -- the timestamp moved from an absolutely-
+         positioned bottom-right corner to card-frame footer-right
+         slot. The shared tileLayoutStyles still pins position:
+         absolute + bottom + right for the AsChild role (S2 will
+         migrate that), so we override here to drop the absolute
+         positioning. The age-color + font-size + tabular-nums +
+         nowrap stay intact because they are declared as separate
+         properties on the same tileLayoutStyles rule. */
+      .timestamp {
+        position: static;
+        bottom: auto;
+        right: auto;
       }
       /* SPEC §17.116 -- Σ prefix in the title row when the value
          branch is "computedMean" (the pre-§17.116 inline ".sigma"
@@ -519,27 +519,20 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
          extends past the strip (and therefore never past the
          viewport).
 
-         SPEC 17.50 -- the inline title-edit must NOT run behind the
-         §17.47 close-X / edit-pencil buttons that overlay the title
-         row's right end. The static title text gets clipped by
-         text-overflow: ellipsis (so the visual hint of "title is
-         long, the buttons are still tappable" reads cleanly), but
-         an INTERACTIVE input has to keep the operator's typed text
-         visible -- letting it run behind the buttons would hide the
-         right end of what they are editing. The strip publishes
-         --strip-gutter-right (one OR two button widths, see
-         ParentIdentityStrip) and we subtract it from max-width.
-         At root focus (no close-X) the var resolves to one button
-         width; with both buttons it resolves to two widths plus
-         the inter-button gap; the fallback 0px keeps unit fixtures
-         that mount the per-view OUTSIDE the strip rendering at the
-         row's full width. */
+         SPEC 17.136 S1 -- the pre-17.136 max-width escape of the
+         strip published-gutter custom property is retired. The
+         title now lives in card-frame title slot, which sits inside
+         the title-row title flex cell -- card-frame grid layout
+         keeps the title cell separate from header-actions (where
+         close-X + edit-pencil land in S13), so the input no longer
+         needs to escape a published gutter. Plain max-width: 100%
+         constrains the input to its slot cell. */
       .title-edit {
         height: 100%;
         padding: 0 0.4rem;
         line-height: 1;
         min-width: 0;
-        max-width: calc(100% - var(--strip-gutter-right, 0px));
+        max-width: 100%;
       }
       /* SPEC 17.50 -- the inline value-edit input fits the metric-
          pane (plus its inner padding) instead of inheriting the
@@ -844,24 +837,28 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
     const dateColor = this.vm.dateColor;
     const description = this.vm.description.trim();
     const hasDescription = description.length > 0;
-    return html`
+    const showBadge = this.vm.value.kind === "computedMean";
+    // SPEC §17.136 S1 -- panel-relative header + footer heights.
+    // AsParent uses smaller fractions than the card-frame defaults
+    // (22% / 12%) because the focused-panel host is ~85vh tall and
+    // a 22% header would dominate the metric.
+    const sizing = "--card-header-height: 14%; --card-footer-height: 8%";
+    return html`<card-frame style=${sizing}>
+      <span slot="icons" data-testid="icons-slot"
+        >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}${showBadge
+          ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value"><ds-icon name="sigma"></ds-icon></span>`
+          : nothing}</span
+      >
+      <span slot="unit" data-testid="unit-slot">${this.unitEditor.renderChip()}</span>
       ${this.renderTitle()}
-      <div class="subtitle" data-testid="subtitle"></div>
+      <div class="subtitle" slot="subtitle" data-testid="subtitle"></div>
       <div
         class="body"
+        slot="body"
         data-has-description=${hasDescription ? "true" : "false"}
         data-entering=${this.bodyEntering ? "true" : "false"}
       >
         <div class="metric-pane" data-testid="metric-pane">
-          ${dateIso && this.editingField !== "value"
-            ? html`<time
-                class="timestamp"
-                data-testid="value-date"
-                datetime=${dateIso}
-                style=${dateColor ? `--age-color: ${dateColor}` : ""}
-                >${formatAge(dateIso)}</time
-              >`
-            : nothing}
           <div class="value-area" data-testid="value-row">
             <div class="value-row">
               ${this.renderValue()}
@@ -880,21 +877,30 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
             </aside>`
           : nothing}
       </div>
-    `;
+      ${dateIso && this.editingField !== "value"
+        ? html`<time
+            class="timestamp"
+            slot="footer-right"
+            data-testid="value-date"
+            datetime=${dateIso}
+            style=${dateColor ? `--age-color: ${dateColor}` : ""}
+            >${formatAge(dateIso)}</time
+          >`
+        : nothing}
+    </card-frame>`;
   }
 
   /** SPEC 17.28 -- title row, click-to-edit affordance.
-      SPEC §17.116 -- Σ prefix in front of the title when the value
-      branch is `computedMean` (the pre-§17.116 `.sigma` chip next to
-      the value moved into the title row; aggregated tiles announce
-      their derived nature on the title rather than competing with
-      the value glyph for horizontal space). */
+      SPEC §17.136 S1 -- the disabled toggle + sigma badge +
+      unit-chip moved out of the title element and into card-frame's
+      dedicated `icons` + `unit` slots (rendered in the main render()
+      method). The title element now carries only the title text. */
   private renderTitle() {
     if (!this.vm) return nothing;
-    const showBadge = this.vm.value.kind === "computedMean";
     if (this.editingField === "title") {
       return html`<h1
         class="title"
+        slot="title"
         data-testid="title"
         data-view-kind="BusinessScoreCardNode"
         data-id=${this.vm.id}
@@ -912,6 +918,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
     }
     return html`<h1
       class="title is-editable"
+      slot="title"
       data-testid="title"
       data-view-kind="BusinessScoreCardNode"
       data-id=${this.vm.id}
@@ -919,9 +926,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
       tabindex="0"
       title="Click to edit title"
       @click=${this.startTitleEdit}
-    >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}${showBadge
-      ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value"><ds-icon name="sigma"></ds-icon></span>`
-      : nothing}${this.unitEditor.renderChip()}${this.vm.title}</h1>`;
+    >${this.vm.title}</h1>`;
   }
 
   /**
