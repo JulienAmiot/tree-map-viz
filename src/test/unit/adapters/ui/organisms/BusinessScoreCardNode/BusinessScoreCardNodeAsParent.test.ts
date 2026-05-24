@@ -912,31 +912,34 @@ describe("<business-score-card-as-parent>", () => {
           e.vm = vm;
         },
       );
+      const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
+      expect(row).not.toBeNull();
+      // SPEC §17.137 A1 — bullseye + target value moved into
+      // <objective-cell>'s shadow root; date moved into
+      // <target-date-cell>. Each lives behind one shadow boundary.
+      const objective = row?.querySelector("objective-cell");
+      expect(objective).not.toBeNull();
       expect(
-        el.shadowRoot?.querySelector('[data-testid="target-row"]'),
+        objective?.shadowRoot?.querySelector('[data-testid="target-icon"]'),
       ).not.toBeNull();
       expect(
-        el.shadowRoot?.querySelector('[data-testid="target-icon"]'),
-      ).not.toBeNull();
-      expect(
-        el.shadowRoot
+        objective?.shadowRoot
           ?.querySelector('[data-testid="target-text"]')
           ?.textContent?.replace(/\s+/g, " ")
           .trim(),
       ).toBe("80 %");
-      expect(
-        el.shadowRoot
-          ?.querySelector('[data-testid="target-date"]')
-          ?.getAttribute("datetime"),
-      ).toBe("2026-12-31T00:00:00.000Z");
+      const dateCell = row?.querySelector("target-date-cell");
+      expect(dateCell).not.toBeNull();
+      const date = dateCell?.shadowRoot?.querySelector(
+        '[data-testid="target-date"]',
+      );
+      expect(date?.getAttribute("datetime")).toBe(
+        "2026-12-31T00:00:00.000Z",
+      );
       // SPEC §17.116-followup-2 — the visible label uses the
       // `d MMM yyyy` shape (UTC accessors so the kiosk reads the
       // calendar date the operator typed regardless of local TZ).
-      expect(
-        el.shadowRoot
-          ?.querySelector('[data-testid="target-date"]')
-          ?.textContent?.trim(),
-      ).toBe("31 Dec 2026");
+      expect(date?.textContent?.trim()).toBe("31 Dec 2026");
     });
 
     it("\u00a717.44 — renders the deadline-risk warning glyph inside the target row, after the target date, tinted by warningColor", async () => {
@@ -962,15 +965,17 @@ describe("<business-score-card-as-parent>", () => {
         '[data-testid="off-track-warning"]',
       );
       // §17.44 — warning lives inside the target row, after the date,
-      // tinted by the deviation magnitude.
+      // tinted by the deviation magnitude. SPEC §17.137 A1 keeps the
+      // warning inline in the row (A2 will fold it into
+      // <objective-cell>).
       expect(warn).not.toBeNull();
       expect(warn?.getAttribute("style") ?? "").toMatch(
         /\bcolor:\s*rgb\(220,\s*38,\s*38\)/,
       );
-      const date = row?.querySelector('[data-testid="target-date"]');
-      expect(date).not.toBeNull();
+      const dateCell = row?.querySelector("target-date-cell");
+      expect(dateCell).not.toBeNull();
       expect(
-        date!.compareDocumentPosition(warn!) &
+        dateCell!.compareDocumentPosition(warn!) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     });

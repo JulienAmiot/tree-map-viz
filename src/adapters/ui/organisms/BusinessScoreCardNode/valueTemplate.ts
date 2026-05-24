@@ -33,6 +33,8 @@
 import { html, nothing, type TemplateResult } from "lit";
 
 import "../../atoms/icon/Icon.js";
+import "../../molecules/objective/Objective.js";
+import "../../molecules/objective/TargetDate.js";
 import type { BusinessScoreCardNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { formatValue } from "../../atoms/numberFormat.js";
 
@@ -163,7 +165,6 @@ export function renderTargetRow(
     return nothing;
   }
   const obj = vm.objective;
-  const dateLabel = obj.targetDateIso ? formatDate(obj.targetDateIso) : "";
   const warning = obj.warningColor
     ? html`<span
         class="warning-icon"
@@ -174,14 +175,12 @@ export function renderTargetRow(
       ><ds-icon name="triangle-alert"></ds-icon></span>`
     : nothing;
   return html`<div class="target-row" data-testid="target-row">
-    <span class="target-icon" data-testid="target-icon" aria-hidden="true"><ds-icon name="target"></ds-icon></span>
-    <span class="target-text" data-testid="target-text"
-      >${formatValue(obj.targetValue)}<span class="target-unit">&nbsp;${obj.unit}</span></span
-    >${dateLabel
+    <objective-cell
+      .targetValue=${obj.targetValue}
+      .unit=${obj.unit}
+    ></objective-cell>${obj.targetDateIso
       ? html`<span class="target-sep" aria-hidden="true">·</span>
-          <time class="target-date" data-testid="target-date" datetime=${obj.targetDateIso}
-            >${dateLabel}</time
-          >`
+          <target-date-cell .dateIso=${obj.targetDateIso}></target-date-cell>`
       : nothing}${warning}
   </div>`;
 }
@@ -287,52 +286,4 @@ export function timestampForValue(
   vm: BusinessScoreCardNodeViewModel,
 ): string | null {
   return vm.dateIso ? vm.dateIso : null;
-}
-
-/**
- * ISO-8601 → `d MMM yyyy` short date (operator-facing format, e.g.
- * `7 Jan 2027`). Used by `renderTargetRow` for the target-row's
- * deadline label. Calendar dates are still appropriate for a *future*
- * deadline; SPEC §17.116 only switches the bottom-right *age*
- * timestamp away from calendar dates — see `formatAge` in
- * `../ageFormat.ts` for that.
- *
- * SPEC §17.116-followup-2 — replaces the pre-followup-2
- * `toLocaleDateString()` rendering on operator feedback. The locale
- * default landed on a numeric `dd/mm/yyyy` (or `mm/dd/yyyy` on en-US
- * locales) which the operator found ambiguous next to the §17.116
- * age timestamp; the `7 Jan 2027` shape disambiguates the day-vs-
- * month order and aligns visually with the natural-language age
- * phrase (`2 years 3 months`).
- *
- * The day component is rendered without a leading zero (`7 Jan 2027`,
- * NOT `07 Jan 2027`) per the operator-facing format. UTC accessors
- * are used so the kiosk reads the calendar date the operator typed in
- * the date input (the `<input type="date">` field bakes a midnight-UTC
- * ISO when the modal serialises the form) regardless of the kiosk's
- * local timezone — local accessors would shift `2027-01-07T00:00:00Z`
- * to `Jan 6` on UTC-positive timezones, which would surprise
- * operators looking at the form they just submitted.
- *
- * The English short-month names are hard-coded rather than driven by
- * `Intl.DateTimeFormat` so the rendered string is locale-independent
- * (the kiosk's audience is bilingual but the operator's documentation
- * uses English month abbreviations; the consistent `MMM` shape is
- * worth more than per-locale month name correctness).
- */
-const SHORT_MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-] as const;
-
-export function formatDate(iso: string): string {
-  const ms = Date.parse(iso);
-  if (Number.isNaN(ms)) {
-    return iso;
-  }
-  const d = new Date(ms);
-  const day = d.getUTCDate();
-  const month = SHORT_MONTHS[d.getUTCMonth()];
-  const year = d.getUTCFullYear();
-  return `${day} ${month} ${year}`;
 }

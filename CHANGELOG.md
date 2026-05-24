@@ -16,6 +16,19 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **`Objective` and `target date` promoted to molecules (\u00a717.137, A1)**.
+  Pre-A1 the bullseye glyph + target value + unit + date were stamped
+  inline by `renderTargetRow` in BusinessScoreCardNode's value
+  template; A1 promotes them into two dedicated LitElements,
+  `<objective-cell>` (bullseye + value + unit) and `<target-date-cell>`
+  (the formatted date), under
+  `src/adapters/ui/molecules/objective/`. Pure refactor \u2014 visual
+  output + `target-icon` / `target-text` / `target-date` testids
+  preserved 1:1, the \u00a717.44 deadline-risk warning stays inline
+  in `renderTargetRow` (A2 folds it into `<objective-cell>` when the
+  split-body layout co-locates them anyway). The pre-A1 inline
+  `formatDate` helper moves to `<target-date-cell>` as
+  `formatTargetDate` (sole consumer).
 - **Per-AsChild slot-fill test pins for the §17.136 S13b
   weight-edit button (\u00a717.136, S13b-2)**. Follow-up slice
   to S13b-1 (split per the 300-line gate ceiling): each of the

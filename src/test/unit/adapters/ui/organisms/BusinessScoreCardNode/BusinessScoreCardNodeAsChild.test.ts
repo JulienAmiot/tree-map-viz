@@ -233,15 +233,22 @@ describe("<business-score-card-as-child>", () => {
 
     const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
     expect(row).not.toBeNull();
+    // SPEC §17.137 A1 — the bullseye + target value + unit moved
+    // into the <objective-cell> molecule's shadow root; the date
+    // moved into <target-date-cell>. The row owns their composition.
+    const objective = row?.querySelector("objective-cell");
+    expect(objective).not.toBeNull();
     expect(
-      el.shadowRoot?.querySelector('[data-testid="target-icon"]'),
+      objective?.shadowRoot?.querySelector('[data-testid="target-icon"]'),
     ).not.toBeNull();
-    const text = el.shadowRoot
+    const text = objective?.shadowRoot
       ?.querySelector('[data-testid="target-text"]')
       ?.textContent?.replace(/\s+/g, " ")
       .trim();
     expect(text).toBe("80 %");
-    const date = el.shadowRoot?.querySelector(
+    const dateCell = row?.querySelector("target-date-cell");
+    expect(dateCell).not.toBeNull();
+    const date = dateCell?.shadowRoot?.querySelector(
       '[data-testid="target-date"]',
     );
     expect(date).not.toBeNull();
@@ -289,7 +296,8 @@ describe("<business-score-card-as-child>", () => {
       '[data-testid="off-track-warning"]',
     );
     // §17.44 — the warning lives INSIDE the target row, not at the
-    // tile's bottom-left.
+    // tile's bottom-left. SPEC §17.137 A1 keeps the warning inline
+    // in the row (A2 will fold it into <objective-cell>).
     expect(warn).not.toBeNull();
     // §17.44 — inline color tints the glyph on the
     // yellow → orange → red deviation ramp; the CSS fallback
@@ -300,11 +308,11 @@ describe("<business-score-card-as-child>", () => {
     expect(warn?.getAttribute("aria-label")?.toLowerCase()).toContain(
       "deadline",
     );
-    // §17.44 — sits AFTER the target date in DOM order.
-    const date = row?.querySelector('[data-testid="target-date"]');
-    expect(date).not.toBeNull();
+    // §17.44 — sits AFTER the <target-date-cell> in DOM order.
+    const dateCell = row?.querySelector("target-date-cell");
+    expect(dateCell).not.toBeNull();
     expect(
-      date!.compareDocumentPosition(warn!) &
+      dateCell!.compareDocumentPosition(warn!) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
