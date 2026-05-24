@@ -25,7 +25,7 @@ function targetText(el: ObjectiveCell): string {
   );
 }
 
-describe("<objective-cell> (\u00a717.137 A1)", () => {
+describe("<objective-cell> (\u00a717.137 A1 + A2a)", () => {
   it("renders the bullseye + target value + unit with the testids the per-role CSS expects", async () => {
     const el = await mount(12.5, "%");
     const icon = el.shadowRoot?.querySelector('[data-testid="target-icon"]');
@@ -36,6 +36,48 @@ describe("<objective-cell> (\u00a717.137 A1)", () => {
     expect(
       el.shadowRoot?.querySelector(".target-unit")?.textContent?.endsWith("%"),
     ).toBe(true);
+  });
+
+  it("omits the warning glyph when `warningColor` is empty (on-track \u2192 silent, \u00a717.137 A2a)", async () => {
+    const el = await mount(80, "EUR");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="off-track-warning"]'),
+    ).toBeNull();
+  });
+
+  it("renders the \u00a717.44 warning glyph tinted by `warningColor` when the trajectory predicts missing the deadline (\u00a717.137 A2a)", async () => {
+    const el = await mountLitElement<ObjectiveCell>(
+      "objective-cell",
+      (e) => {
+        e.targetValue = 80;
+        e.unit = "EUR";
+        e.warningColor = "rgb(255, 80, 80)";
+      },
+    );
+    const warning = el.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="off-track-warning"]',
+    );
+    expect(warning).not.toBeNull();
+    expect(warning?.getAttribute("role")).toBe("img");
+    expect(warning?.getAttribute("aria-label")).toBe(
+      "Trajectory predicts missing the deadline",
+    );
+    expect(warning?.getAttribute("style")).toBe("color: rgb(255, 80, 80)");
+    expect(warning?.querySelector("ds-icon")?.getAttribute("name")).toBe(
+      "triangle-alert",
+    );
+  });
+
+  it("re-renders the warning glyph when `warningColor` flips from empty to non-empty (reactive @property, \u00a717.137 A2a)", async () => {
+    const el = await mount(50, "%");
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="off-track-warning"]'),
+    ).toBeNull();
+    el.warningColor = "rgb(255, 165, 0)";
+    await el.updateComplete;
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="off-track-warning"]'),
+    ).not.toBeNull();
   });
 
   it("re-renders when `targetValue` is updated (reactive @property)", async () => {

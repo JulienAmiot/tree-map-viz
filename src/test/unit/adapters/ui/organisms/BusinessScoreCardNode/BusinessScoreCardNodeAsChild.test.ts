@@ -292,29 +292,25 @@ describe("<business-score-card-as-child>", () => {
 
     const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
     expect(row).not.toBeNull();
-    const warn = row?.querySelector<HTMLElement>(
+    // SPEC §17.137 A2a — the §17.44 warning glyph folded into the
+    // <objective-cell> molecule (was inline after the date pre-A2a;
+    // A2's split-body layout co-locates target value + warning in
+    // a single grid cell, so the warning's natural home is now
+    // inside the molecule that owns the target value).
+    const objective = row?.querySelector("objective-cell");
+    expect(objective).not.toBeNull();
+    const warn = objective?.shadowRoot?.querySelector<HTMLElement>(
       '[data-testid="off-track-warning"]',
     );
-    // §17.44 — the warning lives INSIDE the target row, not at the
-    // tile's bottom-left. SPEC §17.137 A1 keeps the warning inline
-    // in the row (A2 will fold it into <objective-cell>).
     expect(warn).not.toBeNull();
     // §17.44 — inline color tints the glyph on the
-    // yellow → orange → red deviation ramp; the CSS fallback
-    // (currentColor) is overridden per-element.
+    // yellow → orange → red deviation ramp.
     expect(warn?.getAttribute("style") ?? "").toMatch(
       /\bcolor:\s*rgb\(220,\s*38,\s*38\)/,
     );
     expect(warn?.getAttribute("aria-label")?.toLowerCase()).toContain(
       "deadline",
     );
-    // §17.44 — sits AFTER the <target-date-cell> in DOM order.
-    const dateCell = row?.querySelector("target-date-cell");
-    expect(dateCell).not.toBeNull();
-    expect(
-      dateCell!.compareDocumentPosition(warn!) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
   });
 
   it("\u00a717.44 — does not render the warning glyph when warningColor is empty", async () => {
