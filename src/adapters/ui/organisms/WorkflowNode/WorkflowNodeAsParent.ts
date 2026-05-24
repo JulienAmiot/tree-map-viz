@@ -66,6 +66,10 @@ import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 import { fitMarkdownBodyToTile, textBodyStyles } from "../TextNode/textBody.js";
 import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
 import {
+  headerActionsStyles,
+  renderHeaderActions,
+} from "../../molecules/headerActions.js";
+import {
   WORKFLOW_STATUS_CHANGE_EVENT,
   renderStatusBadgePicker,
   statusBadgeStyles,
@@ -76,6 +80,11 @@ import {
 export class WorkflowNodeAsParent extends LitElement {
   @property({ attribute: false })
   vm: WorkflowNodeViewModel | null = null;
+
+  /** SPEC §17.136 S13a -- focused-node parent id; consumed by the
+      `header-actions` slot via `renderHeaderActions`. */
+  @property({ attribute: "parent-id" })
+  parentId = "";
 
   @state()
   private editingValue = false;
@@ -94,6 +103,7 @@ export class WorkflowNodeAsParent extends LitElement {
     statusBadgeStyles,
     titleInlineEditStyles,
     disabledToggleStyles,
+    headerActionsStyles,
     css`
       :host {
         /* SPEC §17.121e — opt into the shared .subtitle slot from
@@ -198,6 +208,9 @@ export class WorkflowNodeAsParent extends LitElement {
     return html`<card-frame style=${sizing}>
       <span slot="icons" data-testid="icons-slot"
         >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}</span
+      >
+      <span slot="header-actions"
+        >${renderHeaderActions(this, { nodeId: this.vm.id, parentId: this.parentId })}</span
       >
       <div slot="title" data-testid="title-slot">${titleH1}</div>
       <div class="subtitle" slot="subtitle" data-testid="subtitle">

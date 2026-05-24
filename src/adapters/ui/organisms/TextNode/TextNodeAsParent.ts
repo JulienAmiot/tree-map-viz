@@ -47,6 +47,10 @@ import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
 import "../../molecules/cardFrame/CardFrame.js";
 import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
 import {
+  headerActionsStyles,
+  renderHeaderActions,
+} from "../../molecules/headerActions.js";
+import {
   INLINE_EDIT_TITLE_EVENT,
   INLINE_EDIT_VALUE_EVENT,
   type InlineEditTitleDetail,
@@ -66,6 +70,12 @@ export class TextNodeAsParent extends LitElement {
   @property({ attribute: false })
   vm: TextNodeViewModel | null = null;
 
+  /** SPEC §17.136 S13a -- focused-node parent id; consumed by the
+      shared `renderHeaderActions` helper stamped into card-frame's
+      `header-actions` slot. */
+  @property({ attribute: "parent-id" })
+  parentId = "";
+
   /**
    * §17.28 — which displayed field is currently being inline-edited.
    * `null` is the default (read-only display). Click on the title /
@@ -83,6 +93,7 @@ export class TextNodeAsParent extends LitElement {
     tileLayoutStyles,
     textBodyStyles,
     disabledToggleStyles,
+    headerActionsStyles,
     css`
       /* SPEC 17.136 S5 -- the per-view's host is the outer wrapper for
          card-frame; the molecule's three-row grid drives the layout.
@@ -239,6 +250,9 @@ export class TextNodeAsParent extends LitElement {
     return html`<card-frame style=${sizing}>
       <span slot="icons" data-testid="icons-slot"
         >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}</span
+      >
+      <span slot="header-actions"
+        >${renderHeaderActions(this, { nodeId: this.vm.id, parentId: this.parentId })}</span
       >
       ${this.renderTitle()}
       <div class="subtitle" slot="subtitle" data-testid="subtitle"></div>
