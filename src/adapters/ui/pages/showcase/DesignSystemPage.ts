@@ -321,24 +321,35 @@ export class DesignSystemPage extends LitElement {
     h2 { color: var(--text, #e8ecf4); margin: 1.75rem 0 0.5rem; font-size: 1.05rem; font-weight: 600; }
     .lead { color: var(--muted, #8b95a8); margin-bottom: 1.5rem; }
     .placeholder { padding: 2rem 1.25rem; background: color-mix(in srgb, currentColor 4%, transparent); border: 1px dashed color-mix(in srgb, currentColor 22%, transparent); border-radius: 10px; color: var(--muted, #8b95a8); text-align: center; }
-    .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.75rem; }
-    .swatch { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.75rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; background: color-mix(in srgb, currentColor 3%, transparent); }
-    .swatch .chip { height: 2.2rem; border-radius: 6px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
-    .swatch .name { font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 0.82rem; color: var(--text, #e8ecf4); }
-    .swatch .usage { font-size: 0.75rem; color: var(--muted, #8b95a8); }
-    .glyph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; }
-    .glyph-cell { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; padding: 0.85rem 0.5rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; }
-    .glyph-cell .big { font-size: 2rem; line-height: 1; color: var(--text, #e8ecf4); }
-    .glyph-cell .label { font-size: 0.78rem; color: var(--muted, #8b95a8); text-align: center; }
-    .glyph-cell .code { font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 0.7rem; color: var(--muted, #8b95a8); }
-    .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
-    .icon-cell { display: flex; flex-direction: column; align-items: center; gap: 0.45rem; padding: 0.85rem 0.5rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; }
-    .icon-cell ds-icon { font-size: 2rem; color: var(--text, #e8ecf4); }
-    .icon-cell .slug { font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 0.78rem; color: var(--muted, #8b95a8); }
+    /* SPEC 17.137 A3 -- unified atom-tile shape. Pre-A3 the four
+       atoms-tier sections used four distinct shapes:
+         - .swatch (180px minmax, left-aligned, 3-text + colour
+           chip)
+         - .glyph-cell (150px minmax, centered, big glyph + label)
+         - .icon-cell (140px minmax, centered, ds-icon + slug)
+         - .pdca-badge (no tile -- inline pill in a flex-wrap row)
+       The operator's A3 brief is "all atom tiles should be the
+       same size", so post-A3 every atom-tier item renders inside
+       the same outer shape: .atom-grid container (single
+       minmax(160px, 1fr) auto-fill) + .atom-tile base (consistent
+       padding / border / radius / min-height). Modifier classes
+       (.atom-tile--swatch left-aligns the swatch content;
+       .atom-tile--glyph / --icon / --pdca centre theirs) carry
+       only the content-axis differences -- the outer box stays
+       identical. */
+    .atom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; }
+    .atom-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.45rem; padding: 0.85rem 0.6rem; min-height: 6rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; background: color-mix(in srgb, currentColor 3%, transparent); box-sizing: border-box; }
+    .atom-tile--swatch { align-items: stretch; justify-content: flex-start; gap: 0.35rem; }
+    .atom-tile .chip { height: 2.2rem; border-radius: 6px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); align-self: stretch; }
+    .atom-tile .name { font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 0.82rem; color: var(--text, #e8ecf4); }
+    .atom-tile .usage { font-size: 0.75rem; color: var(--muted, #8b95a8); }
+    .atom-tile .big { font-size: 2rem; line-height: 1; color: var(--text, #e8ecf4); }
+    .atom-tile .label { font-size: 0.78rem; color: var(--muted, #8b95a8); text-align: center; }
+    .atom-tile ds-icon { font-size: 2rem; color: var(--text, #e8ecf4); }
+    .atom-tile .slug { font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 0.78rem; color: var(--muted, #8b95a8); }
+    .atom-tile .pdca-badge { padding: 0.18rem 0.75rem; border-radius: 999px; border: 1.5px solid currentColor; font-weight: 600; font-size: 0.82rem; letter-spacing: 0.04em; background: transparent; }
     .icon-note { margin: 0.85rem 0 0; padding: 0.75rem 0.95rem; background: color-mix(in srgb, currentColor 4%, transparent); border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; color: var(--muted, #8b95a8); font-size: 0.85rem; }
     .icon-note a { color: var(--accent, #5b8cff); }
-    .pdca-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
-    .pdca-badge { padding: 0.18rem 0.75rem; border-radius: 999px; border: 1.5px solid currentColor; font-weight: 600; font-size: 0.82rem; letter-spacing: 0.04em; background: transparent; }
     .mol-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.85rem; }
     .mol-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 0.85rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; background: var(--panel, #151a22); }
     .mol-cell .stage { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 1.6em; }
@@ -887,10 +898,10 @@ export class DesignSystemPage extends LitElement {
     return html`
       ${this.section("atoms-colors", "color tokens swatch background bg panel text muted accent root css", html`
       <h2 data-testid="ds-atoms-colors">Colour tokens (src/index.css :root)</h2>
-      <div class="swatch-grid">
+      <div class="atom-grid">
         ${COLOR_TOKENS.map(
           (t) => html`
-            <div class="swatch" data-testid=${`ds-token-${t.name.slice(2)}`}>
+            <div class="atom-tile atom-tile--swatch" data-testid=${`ds-token-${t.name.slice(2)}`}>
               <div class="chip" style=${`background:${t.value}`}></div>
               <span class="name">${t.name}</span>
               <span class="name">${t.value}</span>
@@ -903,10 +914,10 @@ export class DesignSystemPage extends LitElement {
       )}
       ${this.section("atoms-arrows", "trend arrow up right flat down regression bsc value glyph", html`
       <h2 data-testid="ds-atoms-arrows">Trend arrows (BSC value row)</h2>
-      <div class="glyph-grid">
+      <div class="atom-grid">
         ${TREND_ARROWS.map(
           (a) => html`
-            <div class="glyph-cell" data-testid=${`ds-arrow-${a.slug}`}>
+            <div class="atom-tile atom-tile--glyph" data-testid=${`ds-arrow-${a.slug}`}>
               <ds-icon class="big" name=${a.slug}></ds-icon>
               <span class="label">${a.label}</span>
             </div>
@@ -917,10 +928,10 @@ export class DesignSystemPage extends LitElement {
       )}
       ${this.section("atoms-icons", "icon library lucide ds-icon svg open source attribution license weight cast iron foundry pencil crayon target triangle alert warning sigma ban forbidden check times x arrow trend plus", html`
       <h2 data-testid="ds-atoms-icons">Icon library &mdash; Lucide (&lt;ds-icon&gt;)</h2>
-      <div class="icon-grid">
+      <div class="atom-grid">
         ${Object.keys(ICON_REGISTRY).sort((a, b) => a.localeCompare(b)).map(
           (slug) => html`
-            <div class="icon-cell" data-testid=${`ds-icon-cell-${slug}`}>
+            <div class="atom-tile atom-tile--icon" data-testid=${`ds-icon-cell-${slug}`}>
               <ds-icon name=${slug}></ds-icon>
               <span class="slug">${slug}</span>
             </div>
@@ -934,15 +945,15 @@ export class DesignSystemPage extends LitElement {
       )}
       ${this.section("atoms-pdca", "pdca workflow status plan do check act color badge", html`
       <h2 data-testid="ds-atoms-pdca">PDCA workflow status colours</h2>
-      <div class="pdca-row">
+      <div class="atom-grid">
         ${DEFAULT_WORKFLOW_STATUSES.map(
           (s) => html`
-            <span
-              class="pdca-badge"
-              style=${`color:${s.color}`}
-              data-testid=${`ds-pdca-${s.id}`}
-              >${s.label}</span
-            >
+            <div class="atom-tile atom-tile--pdca" data-testid=${`ds-pdca-${s.id}`}>
+              <span class="pdca-badge" style=${`color:${s.color}`}
+                >${s.label}</span
+              >
+              <span class="label">${s.id}</span>
+            </div>
           `,
         )}
       </div>
