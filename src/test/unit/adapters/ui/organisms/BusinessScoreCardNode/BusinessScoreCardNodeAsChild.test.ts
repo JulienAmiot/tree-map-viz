@@ -433,4 +433,27 @@ describe("<business-score-card-as-child>", () => {
       el.shadowRoot?.querySelector('[data-testid="trend-arrow"]'),
     ).toBeNull();
   });
+
+  it("\u00a717.136 S13b \u2014 stamps a `<weight-edit-button slot=\"footer-left\">` carrying the vm.id + the forwarded weight property (the §17.52 corner overlay retires from the grid and lands inside card-frame's footer-left cell)", async () => {
+    const vm = makeVm({
+      kind: "recordedValue",
+      value: 12,
+      unit: "%",
+      dateIso: "2026-04-23T00:00:00.000Z",
+    });
+    const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
+      "business-score-card-as-child",
+      (e) => {
+        e.vm = vm;
+        e.weight = 2.5;
+      },
+    );
+    const btn = el.shadowRoot?.querySelector<HTMLElement & { weight: number }>(
+      "weight-edit-button",
+    );
+    expect(btn).not.toBeNull();
+    expect(btn?.getAttribute("slot")).toBe("footer-left");
+    expect(btn?.getAttribute("node-id")).toBe(vm.id);
+    expect(btn?.weight).toBe(2.5);
+  });
 });

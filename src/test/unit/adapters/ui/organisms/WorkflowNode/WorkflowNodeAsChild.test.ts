@@ -158,4 +158,21 @@ describe("<workflow-node-as-child> (§17.117)", () => {
       /--status-color:\s*rgb\(150,\s*150,\s*150\)/,
     );
   });
+
+  it("\u00a717.136 S13b \u2014 stamps a `<weight-edit-button slot=\"footer-left\">` carrying the vm.id + the forwarded weight property", async () => {
+    const el = await mountLitElement<WorkflowNodeAsChild>(
+      "workflow-node-as-child",
+      (e) => {
+        e.vm = vmWith({ id: "wf-child-uuid" });
+        e.weight = 1.75;
+      },
+    );
+    const btn = el.shadowRoot?.querySelector<HTMLElement & { weight: number }>(
+      "weight-edit-button",
+    );
+    expect(btn).not.toBeNull();
+    expect(btn?.getAttribute("slot")).toBe("footer-left");
+    expect(btn?.getAttribute("node-id")).toBe("wf-child-uuid");
+    expect(btn?.weight).toBe(1.75);
+  });
 });
