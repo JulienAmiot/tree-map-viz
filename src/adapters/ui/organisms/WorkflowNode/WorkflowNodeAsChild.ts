@@ -1,6 +1,6 @@
 /**
  * `<workflow-node-as-child>` — compact treemap-tile rendering for
- * `WorkflowNode` (SPEC §17.117, §17.121e refresh).
+ * `WorkflowNode` (SPEC §17.117, §17.121e refresh, §17.136 S8).
  *
  * Same overall layout as `<text-node-as-child>` (title row at top,
  * markdown body fills the middle, age-coloured timestamp at the
@@ -9,32 +9,36 @@
  * background stays transparent per the operator's "only the text
  * and border are colored" requirement.
  *
- * SPEC §17.121e moved the badge from its pre-§17.121e bottom-left
- * absolute-positioned corner into the shared `.subtitle` slot
- * directly under the title. The slot is declared by
- * `tileLayoutStyles` and opt-in per view via `--subtitle-row-height`
- * (`2vh` here, declared on `:host` below). The badge's CSS contract
- * stays unchanged otherwise (coloured border / text, transparent
- * background, `pointer-events: none`).
+ * §17.136 S8 — the entire render output is wrapped in a `<card-frame>`
+ * molecule with the molecule's default `22 % / 12 %` header/footer
+ * (small tree-map tile, defaults apply — same as S2 BSC AsChild + S4
+ * Computed AsChild + S6 TextNode AsChild). Slot routing: disabled
+ * indicator in `icons`, title text in `title`, §17.117 status badge
+ * in `subtitle`, markdown `.md-body` value-area in `body`, §17.18
+ * timestamp in `footer-right`. The pre-§17.136 S8 timestamp lived
+ * at the tile's bottom-right corner via the shared
+ * `tileLayoutStyles .timestamp { position: absolute; bottom: 0.2rem;
+ * right: 0.35rem }` rule; with card-frame the timestamp lives in
+ * the footer-right slot in natural flow, so we override the shared
+ * rule with `position: static; bottom: auto; right: auto` (same
+ * pattern as S2 / S4 / S5 / S6).
  *
  * Markdown rendering + JS shrink-to-fit reuse the §17.27 `textBody`
  * primitives verbatim — WorkflowNode IS-A TextNode in the domain, and
  * the body content (the latest history entry's string) shares the
- * exact markdown pipeline. The role-level additions vs the TextNode
- * view are the status badge subtitle + the swapped `data-view-kind`
- * attribute so e2e selectors can target the new tile shape.
+ * exact markdown pipeline.
  */
 
-import { LitElement, css, html } from "lit";
+import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
+import "../../molecules/cardFrame/CardFrame.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
 } from "../../molecules/disabledToggle.js";
-import { renderStaticTitle } from "../../molecules/inlineTitleEdit.js";
 import type { WorkflowNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
@@ -62,6 +66,19 @@ export class WorkflowNodeAsChild extends LitElement {
          we add. */
       :host {
         --subtitle-row-height: 2vh;
+      }
+      /* SPEC §17.136 S8 -- card-frame's footer-right slot flows the
+         timestamp in the natural footer row; the shared
+         tileLayoutStyles still pins position:absolute + bottom + right
+         for the unmigrated Picture/URL AsChild views (S10/S12 retire
+         those; S13 drops the shared absolute rule), so we override
+         here to drop the absolute positioning while leaving the
+         age-color / font-size / tabular-nums / nowrap declarations
+         from tileLayoutStyles intact. */
+      .timestamp {
+        position: static;
+        bottom: auto;
+        right: auto;
       }
     `,
   ];
@@ -96,25 +113,21 @@ export class WorkflowNodeAsChild extends LitElement {
     const empty = value.text.length === 0;
     const dateStyle = value.dateColor ? `--age-color: ${value.dateColor}` : "";
     const disabled = this.vm.disabled ?? false;
-    return html`
-      ${renderStaticTitle({
-        target: { nodeId: this.vm.id, title: this.vm.title },
-        viewKind: "WorkflowNode",
-        prefix: renderDisabledIndicator(disabled),
-      })}
-      <div class="subtitle" data-testid="subtitle">
+    return html`<card-frame>
+      <span slot="icons" data-testid="icons-slot"
+        >${renderDisabledIndicator(disabled)}</span
+      >
+      <h2
+        class="title"
+        slot="title"
+        data-testid="title"
+        data-view-kind="WorkflowNode"
+        data-id=${this.vm.id}
+      >${this.vm.title}</h2>
+      <div class="subtitle" slot="subtitle" data-testid="subtitle">
         ${renderStatusBadge(status)}
       </div>
-      ${value.dateIso
-        ? html`<time
-            class="timestamp"
-            data-testid="value-date"
-            datetime=${value.dateIso}
-            style=${dateStyle}
-            >${dateLabel}</time
-          >`
-        : html``}
-      <div class="value-area" data-testid="value-row">
+      <div class="value-area" slot="body" data-testid="value-row">
         <div
           class=${empty ? "md-body empty" : "md-body"}
           data-testid="value"
@@ -123,7 +136,17 @@ export class WorkflowNodeAsChild extends LitElement {
           ${empty ? "" : unsafeHTML(renderMarkdownToHtml(value.text))}
         </div>
       </div>
-    `;
+      ${value.dateIso
+        ? html`<time
+            class="timestamp"
+            slot="footer-right"
+            data-testid="value-date"
+            datetime=${value.dateIso}
+            style=${dateStyle}
+            >${dateLabel}</time
+          >`
+        : nothing}
+    </card-frame>`;
   }
 }
 
