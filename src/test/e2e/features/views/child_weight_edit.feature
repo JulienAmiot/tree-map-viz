@@ -3,7 +3,7 @@ Feature: Inline weight editing on child tiles (SPEC §17.52)
 
   SPEC §17.52: child-tile weight editing as a per-tile inline affordance.
   Two triggers open the same slider popover:
-    - a small dumbbell icon in the tile's bottom-LEFT corner (mirror of
+    - a small weight icon in the tile's bottom-LEFT corner (mirror of
       the §17.18 bottom-right timestamp); always visible per tile.
     - a long-press anywhere on the tile body (~500 ms hold); a hidden
       gesture for power users.

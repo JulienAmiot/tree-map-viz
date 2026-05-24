@@ -2,7 +2,7 @@
  * Inline weight-edit events for the §17.52 child-tile weight slider.
  *
  * SPEC §17.52 surfaces a per-child-tile inline weight edit affordance:
- * a small dumbbell glyph in the tile's bottom-LEFT corner (mirror of the
+ * a small weight glyph in the tile's bottom-LEFT corner (mirror of the
  * §17.18 bottom-right timestamp) AND a long-press anywhere on the tile
  * both open a popover with a horizontal range slider. The slider's
  * current value updates the popover's numeric label live; the

@@ -14,16 +14,19 @@ import {
 afterEach(cleanupLitFixtures);
 
 describe("<weight-edit-button> (\u00a717.52)", () => {
-  it("renders the Lucide `dumbbell` icon inside an accessible button (\u00a717.136)", async () => {
-    // SPEC §17.136 -- the icon is the §17.131 `<ds-icon name="dumbbell">`
-    // Lucide SVG. Iconography history: §17.52a custom cast-iron-weight
-    // SVG -> §17.130 Unicode scales -> §17.132 Lucide `scale` ->
-    // §17.136 Lucide `dumbbell` on operator instruction ("Replace the
-    // scale by a weight icon from lucide."). `dumbbell` reads
-    // unambiguously as a weight metaphor; the balance-scale picture
-    // was visually conflating with the §17.52a Q&A. Pinning the
-    // current slug here so a regression to either previous shape
-    // surfaces immediately.
+  it("renders the Lucide `weight` icon inside an accessible button (\u00a717.136 S0a-followup)", async () => {
+    // SPEC §17.136 S0a-followup -- the icon is the §17.131
+    // `<ds-icon name="weight">` Lucide SVG. Iconography history:
+    // §17.52a custom cast-iron-weight SVG -> §17.130 Unicode scales
+    // -> §17.132 Lucide `scale` -> §17.136 S0a Lucide `dumbbell` ->
+    // §17.136 S0a-followup Lucide `weight` on operator instruction
+    // ("Replace the dumbell icone by the 'weight' icon"). The
+    // `weight` slug is a cast-iron foundry silhouette (trapezoidal
+    // body + U-handle), closing the iconography loop on the same
+    // shape the §17.52-polish hand-drawn SVG shipped four years
+    // ago. Pinning the current slug here so a regression to any
+    // previous shape (scale, dumbbell, Unicode glyph, hand-drawn
+    // SVG) surfaces immediately.
     const el = await mountLitElement<WeightEditButton>(
       "weight-edit-button",
       (e) => {
@@ -38,12 +41,12 @@ describe("<weight-edit-button> (\u00a717.52)", () => {
     expect(button?.getAttribute("aria-label")).toBe("Edit weight");
     const icon = button?.querySelector("ds-icon");
     expect(icon).not.toBeNull();
-    expect(icon?.getAttribute("name")).toBe("dumbbell");
-    // §17.136 -- pin the absence of the pre-§17.136 `scale` slug AND
-    // of any Unicode-glyph textContent so a regression to either
-    // previous rendering shape (Lucide `scale` SVG or U+2696 + VS15)
-    // surfaces immediately.
+    expect(icon?.getAttribute("name")).toBe("weight");
+    // §17.136 S0a-followup -- pin the absence of any previous
+    // rendering shape so a regression to a stale slug surfaces
+    // immediately.
     expect(icon?.getAttribute("name")).not.toBe("scale");
+    expect(icon?.getAttribute("name")).not.toBe("dumbbell");
     expect(button?.textContent?.trim()).toBe("");
   });
 

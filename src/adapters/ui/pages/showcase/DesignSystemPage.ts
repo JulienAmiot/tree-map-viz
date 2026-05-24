@@ -135,7 +135,7 @@ const TREND_ARROW_SLUGS = {
 // rendered as <ds-icon name=\${TREND_ARROW_SLUGS[direction]}></ds-icon>
 // (was a Unicode arrow + per-platform emoji-font fallback pre-§17.132).`,
   "atoms-icons": `import { ICON_REGISTRY } from "../../atoms/icon/Icon.js";
-html\`<ds-icon name="dumbbell"></ds-icon>\`;
+html\`<ds-icon name="weight"></ds-icon>\`;
 html\`<ds-icon name="check" label="Confirmed"></ds-icon>\`;
 html\`<ds-icon name="x" style="--ds-icon-stroke-width: 3"></ds-icon>\`;`,
   "atoms-pdca": `// src/domain/values/WorkflowStatus.ts
@@ -915,7 +915,7 @@ export class DesignSystemPage extends LitElement {
       </div>
         `,
       )}
-      ${this.section("atoms-icons", "icon library lucide ds-icon svg open source attribution license dumbbell weight pencil crayon target triangle alert warning sigma ban forbidden check times x arrow trend plus", html`
+      ${this.section("atoms-icons", "icon library lucide ds-icon svg open source attribution license weight cast iron foundry pencil crayon target triangle alert warning sigma ban forbidden check times x arrow trend plus", html`
       <h2 data-testid="ds-atoms-icons">Icon library &mdash; Lucide (&lt;ds-icon&gt;)</h2>
       <div class="icon-grid">
         ${Object.keys(ICON_REGISTRY).sort((a, b) => a.localeCompare(b)).map(

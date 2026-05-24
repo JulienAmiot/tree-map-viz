@@ -275,11 +275,14 @@ export class ParentIdentityStrip extends LitElement {
       align-items: center;
       justify-content: center;
     }
-    /* SPEC 17.28 / 17.132 -- pencil button. Same touch-target footprint
-       as the close-X sitting in a second slot to its left. The glyph is
-       the 17.131 <ds-icon name=pencil-line> Lucide SVG; the font-size
-       here drives the ds-icon 1em host box so the SVG fills the touch
-       target without overflowing.
+    /* SPEC 17.28 / 17.132 / 17.136 S0a-followup -- pencil button. Same
+       touch-target footprint as the close-X sitting in a second slot to
+       its left. The glyph is the 17.131 <ds-icon name=pencil> Lucide SVG
+       (swapped from pencil-line on operator instruction "Replace the
+       pencil-line by the pencil" -- the bare pencil slug reads as a
+       single graphite pencil rather than the underline-decorated edit
+       cursor variant); the font-size here drives the ds-icon 1em host
+       box so the SVG fills the touch target without overflowing.
        SPEC 17.47 -- both buttons are clamp(1.5rem, 3vh, 2.25rem) square
        so the offset uses the same clamp; a 0.25rem gap separates them. */
     .edit-pencil {
@@ -326,7 +329,7 @@ export class ParentIdentityStrip extends LitElement {
             aria-label="Edit this node"
             title="Edit this node"
             @click=${this.handleEditClick}
-          ><ds-icon name="pencil-line"></ds-icon></button>`
+          ><ds-icon name="pencil"></ds-icon></button>`
         : nothing}
       ${hasClose
         ? html`<button
