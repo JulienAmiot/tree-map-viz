@@ -719,34 +719,25 @@ export class DesignSystemPage extends LitElement {
       )}
         `,
       )}
-      ${this.section("org-computed", "computed card cbsn business score sum average weighted strategy kind aggregation", html`
+      ${this.section("org-computed", "computed card cbsn business score sum average weighted strategy kind aggregation portrait landscape", html`
       <h2 data-testid="ds-org-computed">
-        Computed cards (&lt;computed-card&gt; + &lt;computed-business-score-card&gt;)
+        ComputedNode (&lt;computed-card&gt;)
       </h2>
-      <div class="org-cell" data-testid="ds-org-computed-cell">
-        <div class="stage org-bsc-aschild">
-          <computed-card
-            view-role="asParent"
-            .vm=${sampleComputedNodeVM()}
-          ></computed-card>
-        </div>
-        <span class="caption">
-          ComputedNode AsParent \u2014 SUM strategy picker live;
-          <code>computation-kind-change</code> silenced at the host.
-        </span>
-      </div>
-      <div class="org-cell" data-testid="ds-org-computed-bsc-cell">
-        <div class="stage org-bsc-asparent">
-          <computed-business-score-card
-            view-role="asParent"
-            .vm=${sampleComputedBSCVM()}
-          ></computed-business-score-card>
-        </div>
-        <span class="caption">
-          ComputedBusinessScoreNode AsParent \u2014 WEIGHTED_AVERAGE with
-          objective row, trend arrow <code>right</code> (flat).
-        </span>
-      </div>
+      ${this.renderKindFourUp(
+        "computed",
+        () => html`<computed-card view-role="asChild" .vm=${sampleComputedNodeVM()}></computed-card>`,
+        () => html`<computed-card view-role="asParent" .vm=${sampleComputedNodeVM()}></computed-card>`,
+        "Same ComputedNode VM (SUM strategy) rendered as a child grid tile (portrait + landscape) and as a focused parent (portrait + landscape). The AsParent strategy picker is live; computation-kind-change events are silenced at the showcase host.",
+      )}
+      <h2 data-testid="ds-org-computed-bsc">
+        ComputedBusinessScoreNode (&lt;computed-business-score-card&gt;)
+      </h2>
+      ${this.renderKindFourUp(
+        "computed-bsc",
+        () => html`<computed-business-score-card view-role="asChild" .vm=${sampleComputedBSCVM()}></computed-business-score-card>`,
+        () => html`<computed-business-score-card view-role="asParent" .vm=${sampleComputedBSCVM()}></computed-business-score-card>`,
+        "Same CBSN VM (WEIGHTED_AVERAGE, on-track, trend arrow right) rendered in all four positions. The AsParent header carries the strategy picker; the objective + target-date row sits in the value-area's split-body grid.",
+      )}
         `,
       )}
       ${this.section("org-text", "text node workflow pdca status note retro postmortem", html`

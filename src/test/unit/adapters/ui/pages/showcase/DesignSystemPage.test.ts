@@ -443,16 +443,45 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     );
     ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
     await el.updateComplete;
-    const computed = $(el, "ds-org-computed-cell").querySelector(
+    const computed = $(el, "ds-org-computed-asparent-cell").querySelector(
       "computed-card",
     ) as { vm?: { id: string; computationKind: string } | null } | null;
     expect(computed?.vm?.id).toBe("ds-computed");
     expect(computed?.vm?.computationKind).toBe("SUM");
-    const cbsn = $(el, "ds-org-computed-bsc-cell").querySelector(
+    const cbsn = $(el, "ds-org-computed-bsc-asparent-cell").querySelector(
       "computed-business-score-card",
     ) as { vm?: { id: string; computationKind: string } | null } | null;
     expect(cbsn?.vm?.id).toBe("ds-computed-bsc");
     expect(cbsn?.vm?.computationKind).toBe("WEIGHTED_AVERAGE");
+  });
+
+  it("Organisms tier renders Computed + CBSN in all four positions (\u00a717.137 A5b)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect($(el, "ds-org-computed-fourup")).toBeTruthy();
+    expect($(el, "ds-org-computed-bsc-fourup")).toBeTruthy();
+    const computedPortrait = $(
+      el,
+      "ds-org-computed-aschild-portrait-cell",
+    ).querySelector("computed-card");
+    expect(computedPortrait).toBeTruthy();
+    expect((computedPortrait as Element).getAttribute("view-role")).toBe(
+      "asChild",
+    );
+    const cbsnPortraitParent = $(
+      el,
+      "ds-org-computed-bsc-asparent-portrait-cell",
+    ).querySelector("computed-business-score-card");
+    expect(cbsnPortraitParent).toBeTruthy();
+    expect((cbsnPortraitParent as Element).getAttribute("view-role")).toBe(
+      "asParent",
+    );
   });
 
   it("Organisms tier mounts Text + Workflow tiles with sample VMs (\u00a717.127 A4b-3)", async () => {
