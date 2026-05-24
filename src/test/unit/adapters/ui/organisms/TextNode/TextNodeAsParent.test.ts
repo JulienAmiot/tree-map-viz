@@ -32,16 +32,15 @@ describe("<text-node-as-parent>", () => {
     expect(subtitle?.textContent?.trim()).toBe("");
   });
 
-  it("\u00a717.121i / \u00a717.122a \u2014 renders a `.disabled-switch` toggle button as the FIRST child of the title row, with aria-checked = !disabled (checked means ENABLED, knob right; unchecked means DISABLED, knob left)", async () => {
+  it("\u00a717.121i / \u00a717.122a / \u00a717.136 S5 \u2014 renders a `.disabled-switch` toggle button in card-frame's `icons` slot (was the title's firstElementChild pre-\u00a717.136 S5), with aria-checked = !disabled (checked means ENABLED, knob right; unchecked means DISABLED, knob left)", async () => {
     const active = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith(); });
-    const activeTitle = active.shadowRoot?.querySelector('[data-testid="title"]');
-    const activeSwitch = activeTitle?.firstElementChild as HTMLButtonElement | null;
-    expect(activeSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
+    const activeSwitch = active.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]');
     expect(activeSwitch?.getAttribute("role")).toBe("switch");
     expect(activeSwitch?.getAttribute("aria-checked")).toBe("true");
+    expect(activeSwitch?.closest('[data-testid="icons-slot"]')).not.toBeNull();
+    expect(activeSwitch?.closest('[data-testid="title"]')).toBeNull();
     const off = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith({ disabled: true }); });
-    const offTitle = off.shadowRoot?.querySelector('[data-testid="title"]');
-    const offSwitch = offTitle?.firstElementChild as HTMLButtonElement | null;
+    const offSwitch = off.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]');
     expect(offSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
     expect(offSwitch?.getAttribute("aria-checked")).toBe("false");
   });
@@ -79,7 +78,7 @@ describe("<text-node-as-parent>", () => {
     expect(el.shadowRoot?.querySelector('[data-testid="description"]')).toBeNull();
   });
 
-  it("renders the timestamp in the bottom-right corner with an age-based --age-color (\u00a717.18)", async () => {
+  it("\u00a717.18 / \u00a717.136 S5 \u2014 renders the timestamp in card-frame's `footer-right` slot with an age-based --age-color (was an absolute bottom-right corner-anchor pre-\u00a717.136 S5)", async () => {
     const el = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => {
       e.vm = vmWith();
     });
@@ -88,18 +87,21 @@ describe("<text-node-as-parent>", () => {
     expect(ts).not.toBeNull();
     expect(ts?.getAttribute("datetime")).toBe(dateIso);
     expect(ts?.classList.contains("timestamp")).toBe(true);
-    // §17.18 — read the static CSS text directly (jsdom can't compute
-    // shadow-scoped CSS); same pattern as ChildrenGrid.test.ts.
+    expect(ts?.getAttribute("slot")).toBe("footer-right");
+    // §17.18 — inline `--age-color` carries the lerped colour.
+    expect(ts?.getAttribute("style") ?? "").toMatch(/--age-color:\s*rgb\(/);
+    // §17.136 S5 — the per-view overrides the shared tileLayoutStyles
+    // absolute corner-anchor with position:static so the slotted
+    // timestamp sits in card-frame's natural footer flow. The shared
+    // bottom: 0.2rem / right: 0.35rem rule still exists in
+    // tileLayoutStyles (S6 will retire the AsChild absolute corner-
+    // anchor), so we pin the override's presence here instead.
     const cssText = (TextNodeAsParent.styles as readonly { cssText?: string }[])
       .map((s) => String(s.cssText ?? s))
       .join("\n");
-    // §17.18 / §17.46 — bottom-right corner, post-§17.46 trimmed
-    // literals (was 0.4rem; see TextNodeAsChild.test.ts for the
-    // rationale).
-    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?bottom:\s*0\.2rem/);
-    expect(cssText).not.toMatch(/\.timestamp\s*\{[\s\S]*?top:\s*0\.2rem/);
-    // §17.18 — inline `--age-color` carries the lerped colour.
-    expect(ts?.getAttribute("style") ?? "").toMatch(/--age-color:\s*rgb\(/);
+    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?position:\s*static/);
+    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?bottom:\s*auto/);
+    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?right:\s*auto/);
   });
 
   it("does not render a Σ badge (TextNode has no computed flag, \u00a75)", async () => {

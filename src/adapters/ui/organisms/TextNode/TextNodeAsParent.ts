@@ -1,24 +1,34 @@
 /**
  * `<text-node-as-parent>` — large parent-strip rendering for `TextNode`
- * (SPEC §5 — refined in §17.14, §17.18, §17.27, §17.30).
+ * (SPEC §5 — refined in §17.14, §17.18, §17.27, §17.30, §17.136 S5).
  *
- * Layout (post-§17.30):
- *   - Title (top, `3vh` row, `vh`-scaled font, consistent across tiles).
- *   - Value (fills the tile below the title) — the `text` of the latest
- *     entry, parsed as **markdown** (SPEC §17.27) and rendered into a
- *     `.md-body` block whose font-size is tile-relative (`cqmin`
- *     clamp) and tightened by a JS shrink-to-fit pass so the full
- *     content stays visible regardless of tile size.
- *   - Timestamp (**bottom-right** corner of the focused-panel strip,
- *     §17.30) — the `asOf` of the latest entry in the underlying
- *     `TextCard` history. The `bottom: 0.4rem` / `right: 0.6rem`
- *     offsets (inherited from `tileLayoutStyles`) measure against the
- *     `<parent-identity-strip>` wrapper, not this element's own host
- *     (the per-view's `:host { position: static }` override lets the
- *     absolute positioning escape one layer outward), so the parent
- *     date sits at the same visual distance from the focused panel's
- *     outer edge as a child tile's date sits from its tile outer
- *     edge — **0.4rem / 0.6rem in both cases**.
+ * Layout (post-§17.136 S5 — `<card-frame>` molecule drives the grid):
+ *   - The entire render output is now wrapped in a single `<card-frame>`
+ *     molecule with inline `--card-header-height: 14%` +
+ *     `--card-footer-height: 8%` overrides (same focused-panel ratio
+ *     S1 / S3 use; the molecule's 22 % / 12 % defaults would dominate
+ *     the ~85 vh focused-panel host).
+ *   - `slot="icons"`: the §17.121i disabled-switch toggle (TextNode
+ *     has no aggregation flag, so no §17.116 sigma badge here).
+ *   - `slot="unit"`: empty (TextNode has no unit chip).
+ *   - `slot="title"`: title text only (the disabled switch moved to
+ *     icons; pre-§17.136 the switch was the title's `firstElementChild`).
+ *   - `slot="subtitle"`: the §17.121j placeholder span (kept so the
+ *     focused-panel column reads consistently across kinds).
+ *   - `slot="body"`: the §17.27 markdown `.md-body` value-area; the
+ *     §17.28 textarea editor takes its place during inline value edits.
+ *   - `slot="footer-right"`: the §17.18 timestamp `<time>` element.
+ *     Pre-§17.136 S5 the timestamp was absolutely positioned at the
+ *     focused panel's outer bottom-right corner via a one-level
+ *     `:host { position: static }` escape; with card-frame the
+ *     timestamp lives in the footer's natural flow and the host
+ *     `position` override + the `--strip-gutter-right` escape on
+ *     `.title-edit { max-width }` retire (the title cell is sibling
+ *     to `header-actions` inside card-frame, no outer gutter to
+ *     escape any more).
+ *   - `slot="footer-left"` + `slot="header-actions"`: empty until
+ *     S13 cuts over the close-X / edit-pencil affordances (off
+ *     `<parent-identity-strip>`) and the §17.52 weight button.
  *   - Timestamp colour follows the §17.42 fixed white → dark-grey
  *     age gradient (`dateAgeColor`); the per-board fresh colour
  *     §17.21 / §17.31 plumbed has been retired.
@@ -34,6 +44,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
+import "../../molecules/cardFrame/CardFrame.js";
 import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
 import {
   INLINE_EDIT_TITLE_EVENT,
@@ -73,22 +84,14 @@ export class TextNodeAsParent extends LitElement {
     textBodyStyles,
     disabledToggleStyles,
     css`
-      /* SPEC 17.30 -- escape the parent strip's outer padding so the
-         absolutely-positioned .timestamp lands at the strip's outer
-         bottom-right corner with the same 0.4rem / 0.6rem offsets a
-         child tile uses. The shared tileLayoutStyles sets :host {
-         position: relative } which makes this element its own
-         containing block; flipping back to static lets the timestamp
-         resolve its containing block to <parent-identity-strip>'s
-         .strip wrapper (the next positioned ancestor up the tree),
-         so the inherited .timestamp { bottom: 0.4rem; right: 0.6rem }
-         measures against the focused panel itself. The container-type:
-         size from tileLayoutStyles (used by the value's cqmin
-         font-size) is preserved -- it does NOT require position:
-         relative. */
-      :host {
-        position: static;
-      }
+      /* SPEC 17.136 S5 -- the per-view's host is the outer wrapper for
+         card-frame; the molecule's three-row grid drives the layout.
+         The pre-17.136 :host { position: static } strip-escape retires
+         (the timestamp lives in card-frame's footer-right slot in
+         natural flow, not as an absolute corner-anchor any more), so
+         the shared tileLayoutStyles :host { position: relative } takes
+         effect again and the container-type: size still drives the
+         value's cqmin font-size. */
       /* Parent strip uses a slightly larger title than the children,
          while still respecting the §17.14 vh-relative sizing. */
       .title {
@@ -101,6 +104,18 @@ export class TextNodeAsParent extends LitElement {
            a flat near-white, and the per-board colour picker added
            a personalisation surface that nobody used. */
         color: rgb(245, 245, 245);
+      }
+      /* SPEC 17.136 S5 -- card-frame's footer-right slot flows the
+         timestamp in the natural footer row; the shared
+         tileLayoutStyles still pins position:absolute + bottom + right
+         for the §17.18 AsChild corner-anchor (S6 will migrate that),
+         so we override here to drop the absolute positioning while
+         leaving the age-color / font-size / tabular-nums / nowrap
+         declarations from tileLayoutStyles intact. */
+      .timestamp {
+        position: static;
+        bottom: auto;
+        right: auto;
       }
       /* SPEC 17.28 -- click-to-edit affordances. The cursor flip on
          hover signals the click target is editable; the value body
@@ -132,7 +147,7 @@ export class TextNodeAsParent extends LitElement {
         font-weight: inherit;
       }
       /* SPEC 17.37 -- the inline title-edit fits exactly within the
-         3vh title row (no vertical overflow). Pre-17.37 the input
+         title row (no vertical overflow). Pre-17.37 the input
          inherited the value-edit's 0.25rem top + 0.25rem bottom
          padding, which combined with the 2.4vh font-size and the
          1px border made the input ~5-6px taller than the title
@@ -142,27 +157,22 @@ export class TextNodeAsParent extends LitElement {
          no vertical padding and a line-height of 1, so it sits
          flush with where the static title sat -- entering edit
          mode no longer shifts the focused panel's layout
-         downward. min-width: 0 + max-width defeat the input's
-         intrinsic min-content so a narrow title row still
-         constrains the input to the row width and the input never
-         extends past the strip (and therefore never past the
-         viewport).
+         downward. min-width: 0 defeats the input's intrinsic
+         min-content so a narrow title row still constrains the
+         input to the row width.
 
-         SPEC 17.50 -- the inline title-edit must NOT run behind
-         the §17.47 close-X / edit-pencil buttons that overlay the
-         title row's right end. The static title text gets clipped
-         by text-overflow: ellipsis, but an INTERACTIVE input has
-         to keep the operator's typed text visible. The strip
-         publishes --strip-gutter-right (one OR two button widths,
-         see ParentIdentityStrip) and we subtract it from max-width.
-         The fallback 0px keeps unit fixtures that mount the per-
-         view OUTSIDE the strip rendering at the row's full width. */
+         SPEC 17.136 S5 -- the §17.50-era --strip-gutter-right
+         escape on max-width retires; the title cell now sits
+         inside card-frame's title row sibling to the
+         header-actions slot, so the operator's typed text never
+         runs under the close-X / edit-pencil affordances by
+         construction. */
       .title-edit {
         height: 100%;
         padding: 0 0.4rem;
         line-height: 1;
         min-width: 0;
-        max-width: calc(100% - var(--strip-gutter-right, 0px));
+        max-width: 100%;
       }
       .value-edit {
         min-height: 6rem;
@@ -222,19 +232,17 @@ export class TextNodeAsParent extends LitElement {
     const { value } = this.vm;
     const dateLabel = value.dateIso ? formatAge(value.dateIso) : "";
     const empty = value.text.length === 0;
-    return html`
+    // SPEC §17.136 S5 -- panel-relative header + footer heights
+    // (focused-panel host is ~85vh; card-frame's 22% / 12% defaults
+    // would dominate the value-area).
+    const sizing = "--card-header-height: 14%; --card-footer-height: 8%";
+    return html`<card-frame style=${sizing}>
+      <span slot="icons" data-testid="icons-slot"
+        >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}</span
+      >
       ${this.renderTitle()}
-      <div class="subtitle" data-testid="subtitle"></div>
-      ${value.dateIso && this.editingField !== "value"
-        ? html`<time
-            class="timestamp"
-            data-testid="value-date"
-            datetime=${value.dateIso}
-            style=${value.dateColor ? `--age-color: ${value.dateColor}` : ""}
-            >${dateLabel}</time
-          >`
-        : nothing}
-      <div class="value-area" data-testid="value-row">
+      <div class="subtitle" slot="subtitle" data-testid="subtitle"></div>
+      <div class="value-area" slot="body" data-testid="value-row">
         ${this.editingField === "value"
           ? this.renderValueEditor(value.text)
           : html`<div
@@ -249,15 +257,28 @@ export class TextNodeAsParent extends LitElement {
               ${empty ? "" : unsafeHTML(renderMarkdownToHtml(value.text))}
             </div>`}
       </div>
-    `;
+      ${value.dateIso && this.editingField !== "value"
+        ? html`<time
+            class="timestamp"
+            slot="footer-right"
+            data-testid="value-date"
+            datetime=${value.dateIso}
+            style=${value.dateColor ? `--age-color: ${value.dateColor}` : ""}
+            >${dateLabel}</time
+          >`
+        : nothing}
+    </card-frame>`;
   }
 
-  /** SPEC 17.28 -- title row, click-to-edit affordance. */
+  /** SPEC 17.28 -- title row, click-to-edit affordance.
+      SPEC §17.136 S5 -- the disabled toggle moved out of the title
+      element into card-frame's dedicated `icons` slot. */
   private renderTitle() {
     if (!this.vm) return nothing;
     if (this.editingField === "title") {
       return html`<h1
         class="title"
+        slot="title"
         data-testid="title"
         data-view-kind="TextNode"
         data-id=${this.vm.id}
@@ -275,6 +296,7 @@ export class TextNodeAsParent extends LitElement {
     }
     return html`<h1
       class="title is-editable"
+      slot="title"
       data-testid="title"
       data-view-kind="TextNode"
       data-id=${this.vm.id}
@@ -282,7 +304,7 @@ export class TextNodeAsParent extends LitElement {
       tabindex="0"
       title="Click to edit title"
       @click=${this.startTitleEdit}
-    >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}${this.vm.title}</h1>`;
+    >${this.vm.title}</h1>`;
   }
 
   /** SPEC 17.28 -- multi-line markdown source editor. */
