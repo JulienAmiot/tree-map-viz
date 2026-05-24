@@ -174,6 +174,41 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     }
   });
 
+  it("\u00a717.137 A4 \u2014 atoms-typography section surfaces every kiosk text role with sample + label + meaning + family/weight; every tile inlines the role's own font-size + font-weight so the showcase matches the kiosk's real rendering", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    const sr = el.shadowRoot!;
+    expect($(el, "ds-atoms-typography")).toBeTruthy();
+    const requiredRoles = [
+      "title",
+      "value",
+      "subtitle",
+      "target",
+      "timestamp",
+      "description",
+      "code",
+    ];
+    for (const role of requiredRoles) {
+      const tile = sr.querySelector<HTMLElement>(
+        `[data-testid='ds-typography-${role}']`,
+      );
+      expect(tile).not.toBeNull();
+      expect(tile?.classList.contains("atom-tile--typography")).toBe(true);
+      const sample = tile?.querySelector<HTMLElement>(".typography-sample");
+      expect(sample).not.toBeNull();
+      const style = sample!.getAttribute("style") ?? "";
+      expect(style).toMatch(/font-size:/);
+      expect(style).toMatch(/font-weight:/);
+      expect(tile?.querySelector(".name")?.textContent?.trim()).toBeTruthy();
+      expect(tile?.querySelector(".usage")?.textContent?.trim()).toBeTruthy();
+      expect(tile?.querySelector(".code")?.textContent?.trim()).toBeTruthy();
+    }
+  });
+
   it("\u00a717.137 A3 \u2014 every atom-tier item lives inside the unified .atom-tile shape (swatch / glyph / icon / pdca all use .atom-tile + a per-content modifier class, so the showcase reads as one tile family)", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",
@@ -183,6 +218,7 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     );
     const sr = el.shadowRoot!;
     const atomTestidPrefixes = [
+      "ds-typography-",
       "ds-token-",
       "ds-arrow-",
       "ds-icon-cell-",
@@ -197,7 +233,8 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
         expect(tile.classList.contains("atom-tile")).toBe(true);
       }
     }
-    expect(sr.querySelectorAll(".atom-grid").length).toBe(4);
+    // \u00a717.137 A4 -- typography section adds a 5th .atom-grid.
+    expect(sr.querySelectorAll(".atom-grid").length).toBe(5);
     expect(sr.querySelector(".swatch-grid")).toBeNull();
     expect(sr.querySelector(".glyph-grid")).toBeNull();
     expect(sr.querySelector(".icon-grid")).toBeNull();
