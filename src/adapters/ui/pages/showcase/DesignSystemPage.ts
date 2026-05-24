@@ -92,6 +92,34 @@ const COLOR_TOKENS: readonly { name: string; value: string; usage: string }[] =
     { name: "--accent", value: "#5b8cff", usage: "Focus / active accent" },
   ] as const;
 
+/** SPEC §17.137 A4 — typography roles surfaced on the atoms tier so
+ * the operator can read every font-size + font-weight + semantic
+ * meaning at a glance. The `sample` field is the literal string the
+ * showcase tile renders in the role's CSS to convey the role's
+ * visual weight; the `meaning` field is the one-line copy that
+ * explains where each role lands across the kiosk. The CSS class
+ * for each tile (`.typography-tile--<id>`) inlines the role's
+ * font-size + font-weight + style + family directly so the
+ * showcase tile matches the kiosk's real rendering of that role. */
+const TYPOGRAPHY_ROLES: readonly {
+  id: string;
+  label: string;
+  sample: string;
+  fontSize: string;
+  fontWeight: string;
+  fontStyle: string;
+  fontFamily: string;
+  meaning: string;
+}[] = [
+  { id: "title",       label: "Tile / panel title",   sample: "Quarterly revenue",         fontSize: "1.05rem", fontWeight: "700", fontStyle: "normal", fontFamily: "system-ui",                              meaning: "Identifies the card. 2vh on child tiles, 2.4vh on the focused parent (system-ui, 700 \u2014 bold)." },
+  { id: "value",       label: "Figure / value",       sample: "75 %",                      fontSize: "2rem",    fontWeight: "700", fontStyle: "normal", fontFamily: "system-ui",                              meaning: "The big at-a-glance number. clamp(1.5rem, 42cqmin, 22rem) \u2014 fills the tile body, bold (700)." },
+  { id: "subtitle",    label: "Subtitle / status",    sample: "PLAN \u00b7 DO \u00b7 CHECK",          fontSize: "0.92rem", fontWeight: "600", fontStyle: "normal", fontFamily: "system-ui",                              meaning: "Sits directly under the title. 1.4vh, weight 600 \u2014 surfaces the active state (PDCA badge, computation kind)." },
+  { id: "target",      label: "Target / objective",   sample: "\u25CE  100 %",                  fontSize: "0.95rem", fontWeight: "500", fontStyle: "normal", fontFamily: "system-ui",                              meaning: "Supporting context next to the figure. clamp(0.3rem, 8.4cqmin, 4.4rem), weight 500 \u2014 never bold, never gradient-coloured." },
+  { id: "timestamp",   label: "Timestamp / age",      sample: "2 months ago",              fontSize: "0.78rem", fontWeight: "400", fontStyle: "normal", fontFamily: "ui-monospace, Consolas, Menlo, monospace", meaning: "Bottom-right age strip. 1.15vh, tabular-nums, age-coloured (off-white \u2192 dark-grey by days)." },
+  { id: "description", label: "Description (parent)", sample: "Sourced from BI warehouse", fontSize: "0.92rem", fontWeight: "400", fontStyle: "italic", fontFamily: "system-ui",                              meaning: "Italic, muted. 1.5vh \u2014 only on the focused-panel parent, line-clamped at 8 lines." },
+  { id: "code",        label: "Code / monospace",     sample: "const x = 42;",             fontSize: "0.82rem", fontWeight: "400", fontStyle: "normal", fontFamily: "ui-monospace, Consolas, Menlo, monospace", meaning: "Source snippets, color tokens, file paths. ui-monospace family \u2014 only in the showcase (kiosk itself is sans)." },
+] as const;
+
 /** Trend arrows — mirrored from `BSC valueTemplate.ts#TREND_ARROW_SLUGS`
  * (§17.132 swap from Unicode glyphs to Lucide). */
 const TREND_ARROWS: readonly { slug: string; label: string }[] = [
@@ -138,6 +166,20 @@ const TREND_ARROW_SLUGS = {
 html\`<ds-icon name="weight"></ds-icon>\`;
 html\`<ds-icon name="check" label="Confirmed"></ds-icon>\`;
 html\`<ds-icon name="x" style="--ds-icon-stroke-width: 3"></ds-icon>\`;`,
+  "atoms-typography": `// SPEC \u00a717.137 A4 -- typography roles surfaced on the atoms tier.
+// Each kiosk text role lives in tileLayoutStyles (or per-view styles)
+// with a clamp-/vh-relative font-size + a weight that signals the
+// role's visual hierarchy. The showcase tile renders the role's
+// sample text with the role's own font properties inlined.
+const TYPOGRAPHY_ROLES = [
+  { id: "title",      label: "Tile / panel title",  fontSize: "2vh / 2.4vh",       weight: 700 },
+  { id: "value",      label: "Figure / value",      fontSize: "clamp(1.5rem, 42cqmin, 22rem)", weight: 700 },
+  { id: "subtitle",   label: "Subtitle / status",   fontSize: "1.4vh",             weight: 600 },
+  { id: "target",     label: "Target / objective",  fontSize: "clamp(0.3rem, 8.4cqmin, 4.4rem)", weight: 500 },
+  { id: "timestamp",  label: "Timestamp / age",     fontSize: "1.15vh",            weight: 400 },
+  { id: "description",label: "Description (parent)",fontSize: "1.5vh italic",      weight: 400 },
+  { id: "code",       label: "Code / monospace",    fontSize: "0.82rem",           weight: 400 },
+] as const;`,
   "atoms-pdca": `// src/domain/values/WorkflowStatus.ts
 export const DEFAULT_WORKFLOW_STATUSES = [
   { id: "plan",  label: "PLAN",  color: "rgb(161, 161, 170)" },
@@ -348,6 +390,17 @@ export class DesignSystemPage extends LitElement {
     .atom-tile ds-icon { font-size: 2rem; color: var(--text, #e8ecf4); }
     .atom-tile .slug { font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 0.78rem; color: var(--muted, #8b95a8); }
     .atom-tile .pdca-badge { padding: 0.18rem 0.75rem; border-radius: 999px; border: 1.5px solid currentColor; font-weight: 600; font-size: 0.82rem; letter-spacing: 0.04em; background: transparent; }
+    /* SPEC 17.137 A4 -- typography role tile. Left-aligned so the
+       four text rows (sample / label / meaning / code) read top-
+       down; the sample is the biggest in the tile (carries the
+       role's visual hierarchy at a glance), then the role label,
+       then the one-line meaning, then the font-family + weight
+       in monospace. The sample's font properties are inlined per
+       tile so the showcase matches the role's real rendering. */
+    .atom-tile--typography { align-items: flex-start; justify-content: flex-start; text-align: left; gap: 0.45rem; min-height: 8rem; }
+    .atom-tile--typography .typography-sample { color: var(--text, #e8ecf4); line-height: 1.2; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .atom-tile--typography .usage { font-size: 0.78rem; color: var(--muted, #8b95a8); line-height: 1.4; }
+    .atom-tile--typography .code { font-family: ui-monospace, "Consolas", "Menlo", monospace; font-size: 0.72rem; color: color-mix(in srgb, currentColor 60%, transparent); }
     .icon-note { margin: 0.85rem 0 0; padding: 0.75rem 0.95rem; background: color-mix(in srgb, currentColor 4%, transparent); border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; color: var(--muted, #8b95a8); font-size: 0.85rem; }
     .icon-note a { color: var(--accent, #5b8cff); }
     .mol-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.85rem; }
@@ -896,6 +949,34 @@ export class DesignSystemPage extends LitElement {
 
   private renderAtoms() {
     return html`
+      ${this.section("atoms-typography", "typography font role title value subtitle target timestamp description code weight size meaning hierarchy", html`
+      <h2 data-testid="ds-atoms-typography">Typography roles</h2>
+      <div class="atom-grid">
+        ${TYPOGRAPHY_ROLES.map(
+          (r) => html`
+            <div
+              class=${`atom-tile atom-tile--typography atom-tile--typography-${r.id}`}
+              data-testid=${`ds-typography-${r.id}`}
+            >
+              <span
+                class="typography-sample"
+                style=${`font-size:${r.fontSize};font-weight:${r.fontWeight};font-style:${r.fontStyle};font-family:${r.fontFamily}`}
+                >${r.sample}</span
+              >
+              <span class="name">${r.label}</span>
+              <span class="usage">${r.meaning}</span>
+              <span class="code"
+                >${r.fontFamily.split(",")[0]} \u00b7 ${r.fontWeight}${r.fontStyle ===
+                "italic"
+                  ? " italic"
+                  : ""}</span
+              >
+            </div>
+          `,
+        )}
+      </div>
+        `,
+      )}
       ${this.section("atoms-colors", "color tokens swatch background bg panel text muted accent root css", html`
       <h2 data-testid="ds-atoms-colors">Colour tokens (src/index.css :root)</h2>
       <div class="atom-grid">

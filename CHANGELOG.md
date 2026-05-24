@@ -14,6 +14,17 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Added
+
+- **Typography subsection on the showcase atoms tier (\u00a717.137, A4)**.
+  A new `atoms-typography` section opens the atoms tier with a
+  data-driven listing of every kiosk text role (title, value,
+  subtitle, target, timestamp, description, code/monospace). Each
+  role tile renders the role's sample text in the role's own
+  inlined font-size + font-weight + font-style + font-family so
+  the showcase matches the kiosk's real rendering of that role,
+  plus a one-line meaning explaining where the role lands.
+
 ### Changed
 
 - **Showcase atoms unified onto a single `.atom-tile` shape (\u00a717.137, A3)**.
