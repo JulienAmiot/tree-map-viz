@@ -742,45 +742,23 @@ export class DesignSystemPage extends LitElement {
       )}
       ${this.section("org-text", "text node workflow pdca status note retro postmortem", html`
       <h2 data-testid="ds-org-text">
-        Text + Workflow cards (&lt;text-node-as-*&gt; / &lt;workflow-node-as-*&gt;)
+        TextNode (&lt;text-node-as-parent / -as-child&gt;)
       </h2>
-      <div class="org-cell" data-testid="ds-org-text-asparent-cell">
-        <div class="stage org-bsc-asparent">
-          <text-node-as-parent .vm=${sampleTextNodeVM()}></text-node-as-parent>
-        </div>
-        <span class="caption">
-          TextNode AsParent \u2014 free-text note; value mirrors
-          description per the §17.15 single-source rule.
-        </span>
-      </div>
-      <div class="org-cell" data-testid="ds-org-text-aschild-cell">
-        <div class="stage org-bsc-aschild">
-          <text-node-as-child .vm=${sampleTextNodeVM()}></text-node-as-child>
-        </div>
-        <span class="caption">TextNode AsChild \u2014 compact grid tile.</span>
-      </div>
-      <div class="org-cell" data-testid="ds-org-workflow-asparent-cell">
-        <div class="stage org-bsc-asparent">
-          <workflow-node-as-parent
-            .vm=${sampleWorkflowNodeVM()}
-          ></workflow-node-as-parent>
-        </div>
-        <span class="caption">
-          WorkflowNode AsParent \u2014 PDCA status <code>DO</code> with the
-          inline <code>&lt;select&gt;</code> picker; bubbled
-          <code>workflow-status-change</code> is silenced.
-        </span>
-      </div>
-      <div class="org-cell" data-testid="ds-org-workflow-aschild-cell">
-        <div class="stage org-bsc-aschild">
-          <workflow-node-as-child
-            .vm=${sampleWorkflowNodeVM()}
-          ></workflow-node-as-child>
-        </div>
-        <span class="caption">
-          WorkflowNode AsChild \u2014 read-only badge in the subtitle slot.
-        </span>
-      </div>
+      ${this.renderKindFourUp(
+        "text",
+        () => html`<text-node-as-child .vm=${sampleTextNodeVM()}></text-node-as-child>`,
+        () => html`<text-node-as-parent .vm=${sampleTextNodeVM()}></text-node-as-parent>`,
+        "Same TextNode VM in all four positions. The free-text note's value mirrors the description per the \u00a717.15 single-source rule; AsChild stays compact while AsParent surfaces the full markdown body.",
+      )}
+      <h2 data-testid="ds-org-workflow">
+        WorkflowNode (&lt;workflow-node-as-parent / -as-child&gt;)
+      </h2>
+      ${this.renderKindFourUp(
+        "workflow",
+        () => html`<workflow-node-as-child .vm=${sampleWorkflowNodeVM()}></workflow-node-as-child>`,
+        () => html`<workflow-node-as-parent .vm=${sampleWorkflowNodeVM()}></workflow-node-as-parent>`,
+        "Same WorkflowNode VM (PDCA status DO) in all four positions. AsParent stamps the inline <select> picker; AsChild stamps the read-only badge in the subtitle slot. Bubbled workflow-status-change events are silenced at the showcase host.",
+      )}
         `,
       )}
       ${this.section("org-picture", "picture image url qr code node child parent svg data anchor runbook", html`

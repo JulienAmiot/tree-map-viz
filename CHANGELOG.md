@@ -16,6 +16,13 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **Showcase organisms: Text + Workflow migrated to 4-position grids (\u00a717.137, A5c)**.
+  Third of four A5 sub-slices. The pre-A5c combined Text +
+  Workflow section (one h2, four AsParent/AsChild cells)
+  splits into two stacked 4-up grids \u2014 one for `<text-node-
+  as-*>` and one for `<workflow-node-as-*>`. Each kind now
+  stamps in all four positions; AsParent surfaces the markdown
+  body / PDCA picker, AsChild stays compact.
 - **Showcase organisms: Computed + CBSN migrated to 4-position grids (\u00a717.137, A5b)**.
   Second of four A5 sub-slices. The pre-A5b combined Computed
   section (one h2, two AsParent-only cells with mismatched
