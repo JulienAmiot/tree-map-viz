@@ -16,6 +16,20 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **URLNode AsChild migrated to `<card-frame>` (\u00a717.136, S12)**.
+  The `<url-node-as-child>` per-view wraps its entire render output
+  inside the unified template with the molecule's default 22%/12%
+  header/footer (small tree-map tile). Slot routing: disabled
+  indicator in `icons` (was the title's `firstElementChild`
+  pre-strand), title text in `title` (plain `<h2 slot="title">`,
+  stamped directly), empty `.subtitle` placeholder in `subtitle`,
+  the QR `.value-area` (image / warning-fill) in `body`. No
+  timestamp \u2014 URLNode is a snapshot leaf. Closes out the
+  URLNode kind end-to-end AND the per-(kind,role) migration loop
+  end-to-end (S1\u2192S12; only S13's cutover remains \u2014 fill
+  `header-actions` + `footer-left` slots, retire legacy
+  `<parent-identity-strip>` + `<children-grid>` corner overlay,
+  update `<tree-map-screen>` + Templates showcase tier).
 - **URLNode AsParent migrated to `<card-frame>` (\u00a717.136, S11)**.
   The `<url-node-as-parent>` per-view wraps its entire render output
   inside the unified template with `--card-header-height: 14%` +

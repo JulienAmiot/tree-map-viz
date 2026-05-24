@@ -71,18 +71,23 @@ const OVERSIZED_URL = "a".repeat(10000);
  * parent-role surface.
  */
 describe("<url-node-as-child>", () => {
-  it("\u00a717.121i \u2014 a disabled VM prepends a `.disabled-indicator` forbidden-sign glyph at the LEFT of the title; an enabled VM emits nothing (no strike, no value-area dim)", async () => {
+  it("\u00a717.121i / \u00a717.136 S12 \u2014 a disabled VM surfaces a `.disabled-indicator` forbidden-sign glyph in card-frame's `icons` slot (was the title's firstElementChild pre-\u00a717.136 S12); an enabled VM emits nothing (no strike, no value-area dim)", async () => {
     const enabled = await mountLitElement<URLNodeAsChild>("url-node-as-child", (e) => { e.vm = vmWith(); });
     expect(enabled.shadowRoot?.querySelector('[data-testid="disabled-indicator"]')).toBeNull();
     expect(enabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
     const off = await mountLitElement<URLNodeAsChild>("url-node-as-child", (e) => { e.vm = vmWith({ disabled: true }); });
-    const title = off.shadowRoot?.querySelector('[data-testid="title"]');
-    const indicator = title?.firstElementChild as HTMLElement | null;
-    expect(indicator?.getAttribute("data-testid")).toBe("disabled-indicator");
+    const indicator = off.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="disabled-indicator"]',
+    );
+    expect(indicator).not.toBeNull();
+    // \u00a717.136 S12 -- the indicator now lives in card-frame's
+    // `icons` slot (was the title's firstElementChild pre-strand).
+    // Mirror of S6 / S8 / S10's slot-membership flip.
+    expect(indicator?.closest('[data-testid="icons-slot"]')).not.toBeNull();
+    expect(indicator?.closest('[data-testid="title"]')).toBeNull();
     expect(indicator?.tagName).toBe("SPAN");
-    // §17.133 -- the indicator now hosts a single `<ds-icon name="ban">`
-    // Lucide SVG child (was an empty span styled by a `::before`
-    // pseudo pre-§17.133).
+    // §17.133 -- the indicator hosts a single `<ds-icon name="ban">`
+    // Lucide SVG child. Unchanged by §17.136 S12.
     expect(indicator?.children.length).toBe(1);
     expect(indicator?.firstElementChild?.tagName.toLowerCase()).toBe("ds-icon");
     expect(indicator?.firstElementChild?.getAttribute("name")).toBe("ban");
@@ -94,6 +99,30 @@ describe("<url-node-as-child>", () => {
     const subtitle = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="subtitle"]');
     expect(subtitle).not.toBeNull();
     expect(subtitle?.textContent?.trim()).toBe("");
+    // \u00a717.136 S12 -- subtitle is now routed through card-frame's
+    // `subtitle` named slot.
+    expect(subtitle?.getAttribute("slot")).toBe("subtitle");
+  });
+
+  it("\u00a717.136 S12 \u2014 wraps the entire render output in a single `<card-frame>` with default 22% / 12% header / footer (small tree-map tile) and routes the value-area to `slot=\"body\"`", async () => {
+    const el = await mountLitElement<URLNodeAsChild>(
+      "url-node-as-child",
+      (e) => { e.vm = vmWith(); },
+    );
+    await waitForQRSettled(el);
+    const cardFrames = el.shadowRoot?.querySelectorAll("card-frame");
+    expect(cardFrames?.length).toBe(1);
+    const cf = cardFrames?.[0] as HTMLElement;
+    // No inline sizing override -- the molecule's defaults apply on
+    // tree-map child tiles (same as S2 / S4 / S6 / S8 / S10).
+    const style = cf.getAttribute("style") ?? "";
+    expect(style).not.toMatch(/--card-header-height/);
+    expect(style).not.toMatch(/--card-footer-height/);
+    // Slot routing: value-area lives in `slot="body"`; no timestamp
+    // on a snapshot leaf.
+    const valueRow = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="value-row"]');
+    expect(valueRow?.getAttribute("slot")).toBe("body");
+    expect(el.shadowRoot?.querySelector('[data-testid="value-date"]')).toBeNull();
   });
 
   it("renders the title with the URLNode view-kind tag", async () => {

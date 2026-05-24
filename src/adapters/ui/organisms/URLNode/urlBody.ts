@@ -159,8 +159,15 @@ export function renderURLValueArea(
   qrDataUrl: string | null,
   alt: string,
   hasError: boolean,
+  slot?: string,
 ): TemplateResult {
-  return html`<div class="value-area" data-testid="value-row">
+  // §17.136 S12 -- AsChild stamps the value-area directly as a
+  // card-frame `body`-slot child to avoid an extra wrapper div;
+  // AsParent (S11) still wraps the value-area inside `.metric-pane`
+  // so it omits the slot arg. The reflected slot attribute is "" when
+  // the arg is absent, which the browser treats the same as no
+  // slot (default-slot membership).
+  return html`<div class="value-area" data-testid="value-row" slot=${slot ?? nothing}>
     ${renderURLBody(qrDataUrl, alt, hasError)}
   </div>`;
 }
