@@ -422,6 +422,24 @@ export class DesignSystemPage extends LitElement {
     .org-bsc-asparent business-score-card-as-parent { display: block; width: 100%; height: 100%; min-height: 220px; }
     .org-bsc-aschild { width: 280px; height: 200px; }
     .org-bsc-aschild business-score-card-as-child { display: block; width: 100%; height: 100%; }
+    /* SPEC 17.137 A5 -- 4-position grid: each card kind renders
+       in (child-portrait, child-landscape, parent-portrait,
+       parent-landscape). Sized so the per-view's :host aspect
+       ratio (container-type: size on the per-view) flips the
+       @container (orientation: portrait) rule defined in
+       tileLayoutStyles -- portrait stages are taller than wide,
+       landscape stages are wider than tall. The 2x2 grid keeps
+       the four variants inlined (operator's "portrait and
+       landscape should be inlined" brief) while the rows split
+       the role axis (top = child, bottom = parent). */
+    .org-kind-fourup { display: grid; grid-template-columns: auto auto; gap: 0.75rem; margin-bottom: 0.85rem; align-items: start; justify-content: start; }
+    .org-kind-fourup .org-cell { margin-bottom: 0; }
+    .org-kind-fourup .org-caption-row { grid-column: 1 / -1; font-size: 0.78rem; color: var(--muted, #8b95a8); padding-top: 0.25rem; }
+    .stage--child-portrait { width: 160px; height: 240px; }
+    .stage--child-landscape { width: 280px; height: 180px; }
+    .stage--parent-portrait { width: 220px; height: 320px; }
+    .stage--parent-landscape { width: 380px; height: 220px; }
+    .stage--child-portrait > *, .stage--child-landscape > *, .stage--parent-portrait > *, .stage--parent-landscape > * { display: block; width: 100%; height: 100%; }
     .tpl-cell { display: flex; flex-direction: column; gap: 0.6rem; padding: 1rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 8px; background: var(--panel, #151a22); margin-bottom: 0.85rem; }
     .tpl-cell .caption { font-size: 0.78rem; color: var(--muted, #8b95a8); }
     .tpl-stage { display: grid; grid-template-rows: 25% 1fr; width: 100%; height: 480px; gap: 0.5rem; }
@@ -631,33 +649,74 @@ export class DesignSystemPage extends LitElement {
     );
   }
 
+  /** SPEC 17.137 A5 -- per-node-kind 4-position render. Each call
+   *  returns a 2x2 grid of stages (rows = role, cols = orientation)
+   *  so the operator sees the same VM rendered as a child tile in
+   *  portrait + landscape, and as a focused parent in portrait +
+   *  landscape on the same row. The render closures are invoked
+   *  per cell so each stage stamps a fresh element instance with
+   *  its own internal state (drillTransitions, inline-edit
+   *  controllers, etc.); reusing a single TemplateResult across
+   *  cells would have Lit error on multi-anchor binding. The
+   *  landscape testids preserve the pre-A5 names
+   *  (`ds-org-${kind}-asparent-cell` / `-aschild-cell`) so the
+   *  existing per-kind organism pins keep resolving. */
+  private renderKindFourUp(
+    kindId: string,
+    asChild: () => TemplateResult,
+    asParent: () => TemplateResult,
+    caption: string,
+  ): TemplateResult {
+    return html`<div
+      class="org-kind-fourup"
+      data-testid=${`ds-org-${kindId}-fourup`}
+    >
+      <div
+        class="org-cell"
+        data-testid=${`ds-org-${kindId}-aschild-portrait-cell`}
+      >
+        <div class="stage stage--child-portrait">${asChild()}</div>
+        <span class="caption">child \u00b7 portrait</span>
+      </div>
+      <div
+        class="org-cell"
+        data-testid=${`ds-org-${kindId}-aschild-cell`}
+      >
+        <div class="stage stage--child-landscape">${asChild()}</div>
+        <span class="caption">child \u00b7 landscape</span>
+      </div>
+      <div
+        class="org-cell"
+        data-testid=${`ds-org-${kindId}-asparent-portrait-cell`}
+      >
+        <div class="stage stage--parent-portrait">${asParent()}</div>
+        <span class="caption">parent \u00b7 portrait</span>
+      </div>
+      <div
+        class="org-cell"
+        data-testid=${`ds-org-${kindId}-asparent-cell`}
+      >
+        <div class="stage stage--parent-landscape">${asParent()}</div>
+        <span class="caption">parent \u00b7 landscape</span>
+      </div>
+      <p class="org-caption-row">${caption}</p>
+    </div>`;
+  }
+
   private renderOrganismsNodes() {
     const onTrack = sampleBusinessScoreVMOnTrack();
     const offTrack = sampleBusinessScoreVMOffTrack();
     return html`
-      ${this.section("org-bsc", "business score card bsc parent child trend objective on-track off-track", html`
+      ${this.section("org-bsc", "business score card bsc parent child trend objective on-track off-track portrait landscape", html`
       <h2 data-testid="ds-org-bsc">
         Business Score Card (&lt;business-score-card-as-parent / -as-child&gt;)
       </h2>
-      <div class="org-cell" data-testid="ds-org-bsc-asparent-cell">
-        <div class="stage org-bsc-asparent">
-          <business-score-card-as-parent .vm=${onTrack}></business-score-card-as-parent>
-        </div>
-        <span class="caption">
-          AsParent role \u2014 recorded value above objective, trend arrow
-          <code>up-right</code> (on track). Inline-edit affordances on the
-          title / value / unit chip are silenced by the showcase host.
-        </span>
-      </div>
-      <div class="org-cell" data-testid="ds-org-bsc-aschild-cell">
-        <div class="stage org-bsc-aschild">
-          <business-score-card-as-child .vm=${offTrack}></business-score-card-as-child>
-        </div>
-        <span class="caption">
-          AsChild role \u2014 computedMean branch below objective; warning
-          glyph + <code>down-right</code> trend arrow (regressing).
-        </span>
-      </div>
+      ${this.renderKindFourUp(
+        "bsc",
+        () => html`<business-score-card-as-child .vm=${offTrack}></business-score-card-as-child>`,
+        () => html`<business-score-card-as-parent .vm=${onTrack}></business-score-card-as-parent>`,
+        "Same kind, four positions: child / parent across portrait / landscape. Child uses the off-track computedMean VM (warning + down-right trend); parent uses the on-track recordedValue VM. Inline-edit + drill affordances are silenced by the showcase host.",
+      )}
         `,
       )}
       ${this.section("org-computed", "computed card cbsn business score sum average weighted strategy kind aggregation", html`

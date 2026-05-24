@@ -395,6 +395,45 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     expect(asChild?.vm?.value.kind).toBe("computedMean");
   });
 
+  it("Organisms tier renders BSC in all four positions (child/parent x portrait/landscape) (\u00a717.137 A5a)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    await el.updateComplete;
+    const fourup = $(el, "ds-org-bsc-fourup");
+    expect(fourup).toBeTruthy();
+    const expectedCells = [
+      "ds-org-bsc-aschild-portrait-cell",
+      "ds-org-bsc-aschild-cell",
+      "ds-org-bsc-asparent-portrait-cell",
+      "ds-org-bsc-asparent-cell",
+    ];
+    for (const tid of expectedCells) {
+      const cell = $(el, tid);
+      expect(cell).toBeTruthy();
+      const stage = cell.querySelector(".stage");
+      expect(stage).toBeTruthy();
+      const stageClass = stage?.className ?? "";
+      expect(stageClass).toMatch(
+        /stage--(child|parent)-(portrait|landscape)/,
+      );
+    }
+    const portraitChild = $(
+      el,
+      "ds-org-bsc-aschild-portrait-cell",
+    ).querySelector("business-score-card-as-child");
+    expect(portraitChild).toBeTruthy();
+    const portraitParent = $(
+      el,
+      "ds-org-bsc-asparent-portrait-cell",
+    ).querySelector("business-score-card-as-parent");
+    expect(portraitParent).toBeTruthy();
+  });
+
   it("Organisms tier mounts ComputedNode + CBSN with WEIGHTED_AVERAGE pickers (\u00a717.127 A4b-2)", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",
