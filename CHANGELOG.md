@@ -16,6 +16,21 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **TextNode AsParent migrated to `<card-frame>` (\u00a717.136, S5)**.
+  The `<text-node-as-parent>` per-view wraps its entire render
+  output inside the unified template with the same focused-panel
+  sizing the BSC AsParent / Computed AsParent migrations use
+  (`--card-header-height: 14%; --card-footer-height: 8%`). Slot
+  routing: disabled switch in `icons` (TextNode has no aggregation
+  flag), title text in `title`, \u00a717.121j placeholder in `subtitle`,
+  \u00a717.27 markdown `.md-body` value-area in `body`, \u00a717.18 timestamp
+  in `footer-right`. The pre-\u00a717.30 `:host { position: static }`
+  strip-escape retires (the timestamp lives in card-frame's
+  footer-right slot in natural flow now); the `--strip-gutter-right`
+  escape on the inline title-edit's `max-width` retires too (the
+  title cell sits inside card-frame's title row sibling to
+  `header-actions`, so the operator's typed text never runs under
+  the close-X / edit-pencil affordances by construction).
 - **Computed AsChild migrated to `<card-frame>` (\u00a717.136, S4)**.
   Both `<computed-card>` and `<computed-business-score-card>`
   AsChild renders wrap every slot filler inside the unified
