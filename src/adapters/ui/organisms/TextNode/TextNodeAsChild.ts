@@ -1,13 +1,27 @@
 /**
  * `<text-node-as-child>` — compact treemap-tile rendering for `TextNode`
- * (SPEC §5 — refined in §17.14, §17.18, §17.27).
+ * (SPEC §5 — refined in §17.14, §17.18, §17.27, §17.136 S6).
  *
  * Same fields as `<text-node-as-parent>` (§5 — uniform fields across
  * roles); same shared `tileLayoutStyles` + `textBodyStyles`. §17.42
  * collapsed the title font-weight so child and parent both render
- * at 700; the role no longer carries any per-role `.title`
- * override here. Timestamp sits in the **bottom-right** corner with
- * an age-based colour gradient (`dateAgeColor`).
+ * at 700; the role no longer carries any per-role `.title` override.
+ *
+ * §17.136 S6 — the entire render output is wrapped in a `<card-frame>`
+ * molecule with the molecule's default `22 % / 12 %` header/footer
+ * (small tree-map tile, defaults apply — same as S2 BSC AsChild + S4
+ * Computed AsChild). Slot routing: disabled indicator in `icons`
+ * (no §17.116 sigma badge — TextNode has no aggregation flag), title
+ * text in `title`, §17.121j placeholder in `subtitle`, §17.27
+ * markdown `.md-body` value-area in `body`, §17.18 timestamp in
+ * `footer-right`. `footer-left` + `header-actions` stay empty until
+ * S13 cuts over the weight button. Pre-§17.136 S6 the timestamp was
+ * absolutely positioned at the tile's bottom-right corner via the
+ * shared `tileLayoutStyles .timestamp { position: absolute; bottom:
+ * 0.2rem; right: 0.35rem }` rule; with card-frame the timestamp lives
+ * in the footer-right slot in natural flow, so we override the
+ * shared rule with `position: static; bottom: auto; right: auto`
+ * (same pattern as S2 / S4 / S5).
  *
  * SPEC §17.27 — the value is rendered as **markdown**: the latest
  * `TimestampedValue<string>` text passes through `renderMarkdownToHtml`
@@ -17,11 +31,12 @@
  * full content stays visible regardless of tile size.
  */
 
-import { LitElement, html } from "lit";
+import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
+import "../../molecules/cardFrame/CardFrame.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
@@ -43,7 +58,27 @@ export class TextNodeAsChild extends LitElement {
    */
   private resizeObserver: ResizeObserver | null = null;
 
-  static readonly styles = [tileLayoutStyles, textBodyStyles, disabledToggleStyles];
+  static readonly styles = [
+    tileLayoutStyles,
+    textBodyStyles,
+    disabledToggleStyles,
+    css`
+      /* SPEC §17.136 S6 -- card-frame's footer-right slot flows the
+         timestamp in the natural footer row; the shared
+         tileLayoutStyles still pins position:absolute + bottom + right
+         for the unmigrated WorkflowNode/PictureNode/URLNode AsChild
+         per-views (S7-S12 will migrate those and S13 will retire the
+         shared absolute rule once every per-view has been moved off
+         it), so we override here to drop the absolute positioning
+         while leaving the age-color / font-size / tabular-nums /
+         nowrap declarations from tileLayoutStyles intact. */
+      .timestamp {
+        position: static;
+        bottom: auto;
+        right: auto;
+      }
+    `,
+  ];
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -79,24 +114,19 @@ export class TextNodeAsChild extends LitElement {
     const dateLabel = value.dateIso ? formatAge(value.dateIso) : "";
     const empty = value.text.length === 0;
     const disabled = this.vm.disabled ?? false;
-    return html`
+    return html`<card-frame>
+      <span slot="icons" data-testid="icons-slot"
+        >${renderDisabledIndicator(disabled)}</span
+      >
       <h2
         class="title"
+        slot="title"
         data-testid="title"
         data-view-kind="TextNode"
         data-id=${this.vm.id}
-      >${renderDisabledIndicator(disabled)}${this.vm.title}</h2>
-      <div class="subtitle" data-testid="subtitle"></div>
-      ${value.dateIso
-        ? html`<time
-            class="timestamp"
-            data-testid="value-date"
-            datetime=${value.dateIso}
-            style=${value.dateColor ? `--age-color: ${value.dateColor}` : ""}
-            >${dateLabel}</time
-          >`
-        : html``}
-      <div class="value-area" data-testid="value-row">
+      >${this.vm.title}</h2>
+      <div class="subtitle" slot="subtitle" data-testid="subtitle"></div>
+      <div class="value-area" slot="body" data-testid="value-row">
         <div
           class=${empty ? "md-body empty" : "md-body"}
           data-testid="value"
@@ -105,7 +135,17 @@ export class TextNodeAsChild extends LitElement {
           ${empty ? "" : unsafeHTML(renderMarkdownToHtml(value.text))}
         </div>
       </div>
-    `;
+      ${value.dateIso
+        ? html`<time
+            class="timestamp"
+            slot="footer-right"
+            data-testid="value-date"
+            datetime=${value.dateIso}
+            style=${value.dateColor ? `--age-color: ${value.dateColor}` : ""}
+            >${dateLabel}</time
+          >`
+        : nothing}
+    </card-frame>`;
   }
 }
 
