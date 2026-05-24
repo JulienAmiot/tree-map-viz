@@ -117,7 +117,7 @@ describe("<workflow-node-as-child> (§17.117)", () => {
     ).toBeNull();
   });
 
-  it("\u00a717.121i \u2014 a disabled VM prepends a `.disabled-indicator` pill at the LEFT of the title; an enabled VM emits nothing (no strike, no value-area dim)", async () => {
+  it("\u00a717.121i / \u00a717.136 S8 \u2014 a disabled VM surfaces a `.disabled-indicator` glyph in card-frame's `icons` slot (was the title's firstElementChild pre-\u00a717.136 S8); an enabled VM emits nothing (no strike, no value-area dim)", async () => {
     const enabled = await mountLitElement<WorkflowNodeAsChild>(
       "workflow-node-as-child",
       (e) => { e.vm = vmWith(); },
@@ -132,8 +132,10 @@ describe("<workflow-node-as-child> (§17.117)", () => {
       "workflow-node-as-child",
       (e) => { e.vm = vmWith({ disabled: true }); },
     );
-    const title = disabled.shadowRoot?.querySelector('[data-testid="title"]');
-    expect(title?.firstElementChild?.getAttribute("data-testid")).toBe("disabled-indicator");
+    const indicator = disabled.shadowRoot?.querySelector<HTMLElement>('[data-testid="disabled-indicator"]');
+    expect(indicator).not.toBeNull();
+    expect(indicator?.closest('[data-testid="icons-slot"]')).not.toBeNull();
+    expect(indicator?.closest('[data-testid="title"]')).toBeNull();
     expect(
       disabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled"),
     ).toBe(false);

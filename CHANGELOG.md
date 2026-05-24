@@ -16,6 +16,16 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **WorkflowNode AsChild migrated to `<card-frame>` (\u00a717.136, S8)**.
+  The `<workflow-node-as-child>` per-view wraps its entire render
+  output inside the unified template with the molecule's default
+  22%/12% header/footer (small tree-map tile). Slot routing:
+  disabled indicator in `icons`, title text in `title`, \u00a717.117
+  status badge in `subtitle`, markdown `.md-body` value-area in
+  `body`, \u00a717.18 timestamp in `footer-right`. The per-view stamps
+  its own `<h2 slot="title">` now (drops the `renderStaticTitle`
+  helper route). Closes out the WorkflowNode kind end-to-end \u2014
+  both roles now share the same card primitive.
 - **WorkflowNode AsParent migrated to `<card-frame>` (\u00a717.136, S7)**.
   The `<workflow-node-as-parent>` per-view wraps its entire render
   output inside the unified template with the focused-panel sizing
