@@ -447,8 +447,9 @@ function renderObjectiveRow(obj: BusinessScoreCardObjectiveViewModel): TemplateR
       .unit=${obj.unit}
       .warningColor=${obj.warningColor}
     ></objective-cell>${obj.targetDateIso
-      ? html`<span class="target-sep" aria-hidden="true">·</span>
-          <target-date-cell .dateIso=${obj.targetDateIso}></target-date-cell>`
+      ? html`<target-date-cell
+          .dateIso=${obj.targetDateIso}
+        ></target-date-cell>`
       : nothing}
   </div>`;
 }

@@ -671,4 +671,22 @@ describe("<computed-card> + <computed-business-score-card> inline unit-chip edit
       ccParent.shadowRoot?.querySelector("weight-edit-button"),
     ).toBeNull();
   });
+
+  it("\u00a717.137 A2b \u2014 CBSN's renderObjectiveRow omits the <target-date-cell> branch when `objective.targetDateIso` is empty; <objective-cell> still renders alongside (mirror of BSC's silent-on-empty-date contract)", async () => {
+    const el = await mountLitElement<ComputedBusinessScoreCard>(
+      "computed-business-score-card",
+      (e) => {
+        e.vm = cbsnVm(
+          { kind: "numeric", value: 75, unit: "%" },
+          "AVERAGE",
+          "2026-04-23T18:25:43.511Z",
+          { ...FLAT_OBJ, targetDateIso: "" },
+        );
+      },
+    );
+    const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
+    expect(row).not.toBeNull();
+    expect(row?.querySelector("target-date-cell")).toBeNull();
+    expect(row?.querySelector("objective-cell")).not.toBeNull();
+  });
 });

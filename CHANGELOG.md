@@ -16,6 +16,17 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Split-body CSS Grid layout on BSC + CBSN tiles (\u00a717.137, A2b)**.
+  The pre-A2b column-flex stack (`.value-row` above `.target-row`,
+  the target row a horizontal row of icon + value + unit + date +
+  warning) is retired in favour of a CSS Grid that puts the value
+  + trend arrow on the LEFT (landscape) or TOP (portrait), and the
+  target value + date stacked on the RIGHT (landscape) or BOTTOM
+  (portrait), per the operator-locked 50%/25%/25% portrait split.
+  The orientation flips automatically via a `@container
+  (orientation: portrait)` query on the per-view's `:host` (already
+  `container-type: size` from the shared `tileLayoutStyles`); no
+  per-view template restructuring needed.
 - **Deadline-risk warning folded into `<objective-cell>`; CBSN migrated to the molecules (\u00a717.137, A2a)**.
   The §17.44 deadline-risk warning glyph moves from "after the
   date" in `renderTargetRow` to "after the target text" inside

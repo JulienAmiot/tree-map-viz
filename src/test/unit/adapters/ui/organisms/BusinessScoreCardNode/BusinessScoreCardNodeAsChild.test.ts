@@ -460,4 +460,52 @@ describe("<business-score-card-as-child>", () => {
     expect(btn?.getAttribute("node-id")).toBe(vm.id);
     expect(btn?.weight).toBe(2.5);
   });
+
+  it("\u00a717.137 A2b \u2014 the <target-date-cell> branch in renderTargetRow only renders when `objective.targetDateIso` is non-empty (silent on empty/missing date)", async () => {
+    const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
+      "business-score-card-as-child",
+      (e) => {
+        e.vm = makeVm(
+          {
+            kind: "recordedValue",
+            value: 50,
+            unit: "%",
+            dateIso: "2026-04-23T18:25:43.511Z",
+          },
+          undefined,
+          { targetDateIso: "" },
+        );
+      },
+    );
+    const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
+    expect(row).not.toBeNull();
+    expect(row?.querySelector("target-date-cell")).toBeNull();
+    expect(row?.querySelector("objective-cell")).not.toBeNull();
+  });
+
+  it("\u00a717.137 A2b \u2014 split-body grid layout: <objective-cell> + <target-date-cell> are direct children of `.target-row`, both inside `.value-area`; the pre-A2b column-flex stack is retired in favour of CSS Grid (value-row on the left/top, target-row on the right/bottom)", async () => {
+    const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
+      "business-score-card-as-child",
+      (e) => {
+        e.vm = makeVm({
+          kind: "recordedValue",
+          value: 75,
+          unit: "%",
+          dateIso: "2026-04-23T18:25:43.511Z",
+        });
+      },
+    );
+    const valueArea = el.shadowRoot?.querySelector<HTMLElement>(".value-area");
+    expect(valueArea).not.toBeNull();
+    const targetRow = valueArea?.querySelector<HTMLElement>(".target-row");
+    expect(targetRow).not.toBeNull();
+    expect(targetRow?.parentElement).toBe(valueArea);
+    const objective = targetRow?.querySelector<HTMLElement>("objective-cell");
+    const date = targetRow?.querySelector<HTMLElement>("target-date-cell");
+    expect(objective).not.toBeNull();
+    expect(date).not.toBeNull();
+    expect(objective?.parentElement).toBe(targetRow);
+    expect(date?.parentElement).toBe(targetRow);
+    expect(targetRow?.querySelector(".target-sep")).toBeNull();
+  });
 });
