@@ -16,6 +16,19 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **PictureNode AsChild migrated to `<card-frame>` (\u00a717.136, S10)**.
+  The `<picture-node-as-child>` per-view wraps its entire render
+  output inside the unified template with the molecule's default
+  22%/12% header/footer (small tree-map tile). Slot routing:
+  disabled indicator in `icons` (was the title's `firstElementChild`
+  pre-strand), title text in `title` (the per-view stamps its own
+  `<h2 slot="title">` directly, dropping the `renderStaticTitle`
+  helper route), empty `.subtitle` placeholder in `subtitle`,
+  `.value-area` (image / warning-fill) in `body`. No timestamp \u2014
+  PictureNode is a snapshot leaf so `footer-right` stays empty.
+  Closes out the PictureNode kind end-to-end \u2014 both
+  `<picture-node-as-parent>` (S9) and `<picture-node-as-child>` (S10)
+  now share the unified `<card-frame>` primitive.
 - **PictureNode AsParent migrated to `<card-frame>` (\u00a717.136, S9)**.
   The `<picture-node-as-parent>` per-view wraps its entire render
   output inside the unified template with the focused-panel sizing
