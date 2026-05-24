@@ -1,6 +1,6 @@
 /**
  * `<workflow-node-as-parent>` — large parent-strip rendering for
- * `WorkflowNode` (SPEC §17.117, §17.121e refresh).
+ * `WorkflowNode` (SPEC §17.117, §17.121e refresh, §17.136 S7).
  *
  * Mirrors `<text-node-as-parent>` end-to-end (bright off-white title,
  * markdown body with shrink-to-fit, click-to-edit title + value,
@@ -8,18 +8,30 @@
  * the composition root routes back to `EditNodeService.editFields`
  * / `appendValue`) and adds the §17.117 status badge.
  *
+ * §17.136 S7 — the entire render output is wrapped in a `<card-frame>`
+ * molecule with inline `--card-header-height: 14% +
+ * --card-footer-height: 8%` overrides (focused-panel host is ~85vh;
+ * the molecule's 22%/12% defaults would dominate). Slot routing
+ * (same shape as S1 / S3 / S5): `icons` carries the §17.121i disabled
+ * switch (WorkflowNode has no aggregation flag, so no §17.116 sigma
+ * badge); `unit` stays empty (no unit chip on a workflow card);
+ * `title` carries the inline-editable `<h1>` wrapped in a `<div
+ * slot="title">` (same wrap pattern as the §17.136 S3 Computed
+ * AsParent); `subtitle` carries the §17.121f inline status-badge
+ * picker; `body` carries the markdown `.md-body` value-area;
+ * `footer-right` carries the §17.18 timestamp; `footer-left` +
+ * `header-actions` stay empty until S13. The pre-§17.30 `:host {
+ * position: static }` strip-escape retires (the timestamp now lives
+ * in card-frame's footer-right slot in natural flow, not as an
+ * absolute corner-anchor).
+ *
  * SPEC §17.121e — the badge sits inside the shared `.subtitle` slot
  * directly under the title (was a bottom-left absolutely-positioned
  * corner pre-§17.121e). The slot is declared by `tileLayoutStyles`
  * and opted into via `--subtitle-row-height: 2vh` on `:host` below.
  * Both AsChild + AsParent opt into the same `2vh` so the badge sits
  * at the same vertical position relative to the title across the
- * two roles — visual parity is now a direct consequence of opting
- * into the shared slot rather than a side-effect of an absolute-
- * positioning escape trick. The `:host { position: static }` override
- * stays in place for the timestamp's outer-corner escape (the
- * timestamp still rides the §17.30 playbook), but the badge no
- * longer depends on it.
+ * two roles.
  *
  * SPEC §17.121f — the parent-strip status is now INLINE EDITABLE.
  * The subtitle slot renders a `<select class="status-badge-picker">`
@@ -34,6 +46,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
+import "../../molecules/cardFrame/CardFrame.js";
 import {
   INLINE_EDIT_VALUE_EVENT,
   type InlineEditValueDetail,
@@ -83,7 +96,6 @@ export class WorkflowNodeAsParent extends LitElement {
     disabledToggleStyles,
     css`
       :host {
-        position: static;
         /* SPEC §17.121e — opt into the shared .subtitle slot from
            tileLayoutStyles. The 2vh row reserves space for the
            status badge directly under the title (was bottom-left
@@ -91,8 +103,28 @@ export class WorkflowNodeAsParent extends LitElement {
            height formula reads this var and subtracts it from the
            body region. AsChild + AsParent both opt into the same
            2vh so the badge sits at the same vertical position
-           relative to the title across the two roles. */
+           relative to the title across the two roles.
+
+           SPEC 17.136 S7 -- the pre-17.30 :host position:static
+           strip-escape (which let the absolute timestamp resolve
+           against the outer parent-identity-strip) retires; the
+           timestamp lives in card-frame's footer-right slot in
+           natural flow now. The shared tileLayoutStyles
+           :host position:relative takes effect again. */
         --subtitle-row-height: 2vh;
+      }
+      /* SPEC §17.136 S7 — card-frame's footer-right slot flows the
+         timestamp in the natural footer row; the shared
+         tileLayoutStyles still pins position:absolute + bottom + right
+         for the unmigrated Workflow/Picture/URL AsChild views (S8-S12
+         retire those; S13 drops the shared absolute rule), so we
+         override here to drop the absolute positioning while leaving
+         the age-color / font-size / tabular-nums / nowrap declarations
+         from tileLayoutStyles intact. */
+      .timestamp {
+        position: static;
+        bottom: auto;
+        right: auto;
       }
       .md-body.is-editable {
         cursor: text;
@@ -158,12 +190,17 @@ export class WorkflowNodeAsParent extends LitElement {
     const dateStyle = value.dateColor ? `--age-color: ${value.dateColor}` : "";
     const bodyClass = empty ? "md-body empty is-editable" : "md-body is-editable";
     const bodyContent = empty ? "" : unsafeHTML(renderMarkdownToHtml(value.text));
-    return html`
-      ${this.titleEditor.renderTitle(
-        "WorkflowNode",
-        renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false),
-      )}
-      <div class="subtitle" data-testid="subtitle">
+    // SPEC §17.136 S7 -- panel-relative header + footer heights
+    // (focused-panel host is ~85vh; card-frame's 22%/12% defaults
+    // would dominate the value-area).
+    const sizing = "--card-header-height: 14%; --card-footer-height: 8%";
+    const titleH1 = this.titleEditor.renderTitle("WorkflowNode", nothing);
+    return html`<card-frame style=${sizing}>
+      <span slot="icons" data-testid="icons-slot"
+        >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}</span
+      >
+      <div slot="title" data-testid="title-slot">${titleH1}</div>
+      <div class="subtitle" slot="subtitle" data-testid="subtitle">
         ${renderStatusBadgePicker(
           this.vm.id,
           status,
@@ -171,16 +208,7 @@ export class WorkflowNodeAsParent extends LitElement {
           this.dispatchStatusChange,
         )}
       </div>
-      ${value.dateIso && !this.editingValue
-        ? html`<time
-            class="timestamp"
-            data-testid="value-date"
-            datetime=${value.dateIso}
-            style=${dateStyle}
-            >${dateLabel}</time
-          >`
-        : nothing}
-      <div class="value-area" data-testid="value-row">
+      <div class="value-area" slot="body" data-testid="value-row">
         ${this.editingValue
           ? this.renderValueEditor(value.text)
           : html`<div
@@ -195,7 +223,17 @@ export class WorkflowNodeAsParent extends LitElement {
               ${bodyContent}
             </div>`}
       </div>
-    `;
+      ${value.dateIso && !this.editingValue
+        ? html`<time
+            class="timestamp"
+            slot="footer-right"
+            data-testid="value-date"
+            datetime=${value.dateIso}
+            style=${dateStyle}
+            >${dateLabel}</time
+          >`
+        : nothing}
+    </card-frame>`;
   }
 
   private renderValueEditor(initial: string) {
