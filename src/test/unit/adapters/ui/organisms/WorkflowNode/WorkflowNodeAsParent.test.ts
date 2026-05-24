@@ -51,16 +51,15 @@ function vmWith(opts: Partial<WorkflowNodeViewModel> = {}): WorkflowNodeViewMode
 }
 
 describe("<workflow-node-as-parent> (§17.117 / §17.121f)", () => {
-  it("\u00a717.121i \u2014 the disabled-switch lives at the LEFT of the title (not in the subtitle); subtitle keeps the status picker; click dispatches VALUE_NODE_DISABLED_CHANGE_EVENT", async () => {
+  it("\u00a717.121i / \u00a717.136 S7 \u2014 the disabled-switch lives in card-frame's `icons` slot (was the title's firstElementChild pre-\u00a717.136 S7), NOT in the subtitle (which carries the status picker); click dispatches VALUE_NODE_DISABLED_CHANGE_EVENT", async () => {
     const el = await mountLitElement<WorkflowNodeAsParent>(
       "workflow-node-as-parent",
       (e) => { e.vm = vmWith({ id: "wf-7" }); },
     );
-    const titleSwitch = el.shadowRoot
-      ?.querySelector('[data-testid="title"]')
-      ?.firstElementChild as HTMLButtonElement | null;
-    expect(titleSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
+    const titleSwitch = el.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]');
     expect(titleSwitch?.getAttribute("role")).toBe("switch");
+    expect(titleSwitch?.closest('[data-testid="icons-slot"]')).not.toBeNull();
+    expect(titleSwitch?.closest('[data-testid="title"]')).toBeNull();
     const subtitle = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="subtitle"]');
     expect(subtitle?.querySelector('[data-testid="status-badge-picker"]')).not.toBeNull();
     expect(subtitle?.querySelector('[data-testid="disabled-switch"]')).toBeNull();
@@ -148,22 +147,23 @@ describe("<workflow-node-as-parent> (§17.117 / §17.121f)", () => {
     expect(badge?.getAttribute("data-status-id")).toBe("do");
   });
 
-  it(":host { position: static } so the bottom-right timestamp escapes one layer outward to <parent-identity-strip> (§17.30 playbook); badge font-size matches the AsChild role (§17.121e)", () => {
+  it("\u00a717.121e / \u00a717.136 S7 \u2014 the timestamp is in card-frame's `footer-right` slot (the pre-\u00a717.30 `:host { position: static }` strip-escape retires); badge font-size still matches AsChild (\u00a717.117); subtitle row height still 2vh (\u00a717.121e)", () => {
     const cssText = (
       WorkflowNodeAsParent.styles as readonly { cssText?: string }[]
     )
       .map((s) => String(s.cssText ?? s))
       .join("\n");
-    // First :host rule from tileLayoutStyles sets position: relative;
-    // the per-view override flips it back to static. We assert the
-    // string contains both rules (the cascade resolves to `static`
-    // because the per-view rule is later in the concatenated styles
-    // list) — defensive against a future refactor that drops the
-    // override. SPEC §17.121e — the override stays in place for the
-    // timestamp's outer-corner escape but the badge no longer
-    // depends on it (the badge now lives inside the in-flow
-    // `.subtitle` slot directly under the title).
-    expect(cssText).toMatch(/:host\s*\{[\s\S]*?position:\s*static/);
+    // §17.136 S7 — the per-view's :host no longer flips position
+    // back to static (the strip-escape retires; timestamp lives in
+    // card-frame's footer-right slot in natural flow). The shared
+    // tileLayoutStyles still declares :host { position: relative }.
+    // The new per-view `.timestamp { position: static; bottom: auto;
+    // right: auto }` override is what overrides the shared absolute
+    // corner-anchor; the shared anchor stays for the unmigrated
+    // AsChild role until S8.
+    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?position:\s*static/);
+    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?bottom:\s*auto/);
+    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?right:\s*auto/);
     // §17.117 — the parent-strip badge size must match the child
     // role's; pin the 1.15vh literal so a future tweak that scales
     // one role asymmetrically fails fast at test-time.

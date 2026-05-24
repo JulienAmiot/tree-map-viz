@@ -16,6 +16,18 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **WorkflowNode AsParent migrated to `<card-frame>` (\u00a717.136, S7)**.
+  The `<workflow-node-as-parent>` per-view wraps its entire render
+  output inside the unified template with the focused-panel sizing
+  (`--card-header-height: 14%; --card-footer-height: 8%`). Routes
+  the disabled switch into `icons`, the inline-editable title into
+  `title` (wrapped via the same `<div slot="title">` pattern S3
+  uses with `InlineTitleEditController`), the \u00a717.121f
+  status-badge picker into `subtitle`, the markdown value-area into
+  `body`, and the \u00a717.18 timestamp into `footer-right`. The
+  pre-\u00a717.30 `:host { position: static }` strip-escape retires
+  (the timestamp lives in card-frame's footer-right slot in
+  natural flow now).
 - **TextNode AsChild migrated to `<card-frame>` (\u00a717.136, S6)**.
   The `<text-node-as-child>` per-view wraps its entire render
   output inside the unified template with the molecule's default
