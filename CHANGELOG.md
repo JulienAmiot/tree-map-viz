@@ -16,6 +16,15 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Deadline-risk warning folded into `<objective-cell>`; CBSN migrated to the molecules (\u00a717.137, A2a)**.
+  The §17.44 deadline-risk warning glyph moves from "after the
+  date" in `renderTargetRow` to "after the target text" inside
+  `<objective-cell>` \u2014 the natural home for A2's split-body
+  layout where target value + warning share one grid cell. CBSN's
+  inline `renderObjectiveRow` (which stamped target-icon +
+  target-text inline pre-A2a) now composes `<objective-cell>` +
+  `<target-date-cell>` the same way BSC's `renderTargetRow` does;
+  the local `renderTargetUnit` helper retires.
 - **`Objective` and `target date` promoted to molecules (\u00a717.137, A1)**.
   Pre-A1 the bullseye glyph + target value + unit + date were stamped
   inline by `renderTargetRow` in BusinessScoreCardNode's value

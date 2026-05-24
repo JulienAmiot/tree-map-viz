@@ -122,6 +122,8 @@ import {
   titleInlineEditStyles,
 } from "../../molecules/inlineTitleEdit.js";
 import { formatValue } from "../../atoms/numberFormat.js";
+import "../../molecules/objective/Objective.js";
+import "../../molecules/objective/TargetDate.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 import {
   InlineUnitEditController,
@@ -327,10 +329,6 @@ const TREND_SLUGS: Record<TrendArrowDirection, string> = {
   "down-right": "arrow-down-right", down: "arrow-down",
 };
 
-function renderTargetUnit(unit: string): TemplateResult | typeof nothing {
-  return unit ? html`&nbsp;${unit}` : nothing;
-}
-
 /**
  * SPEC §17.116 — full-tile warning glyph for Computed* tiles whose
  * strategy could not produce a value (or whose eligible-children set
@@ -444,10 +442,14 @@ function renderNumericValueAreaWithObjective(
 
 function renderObjectiveRow(obj: BusinessScoreCardObjectiveViewModel): TemplateResult {
   return html`<div class="target-row" data-testid="target-row">
-    <span class="target-icon" data-testid="target-icon" aria-hidden="true"></span>
-    <span class="target-text" data-testid="target-text"
-      >${formatValue(obj.targetValue)}${renderTargetUnit(obj.unit)}</span
-    >
+    <objective-cell
+      .targetValue=${obj.targetValue}
+      .unit=${obj.unit}
+      .warningColor=${obj.warningColor}
+    ></objective-cell>${obj.targetDateIso
+      ? html`<span class="target-sep" aria-hidden="true">·</span>
+          <target-date-cell .dateIso=${obj.targetDateIso}></target-date-cell>`
+      : nothing}
   </div>`;
 }
 

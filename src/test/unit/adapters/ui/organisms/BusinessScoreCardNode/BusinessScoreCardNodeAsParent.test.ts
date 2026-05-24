@@ -961,23 +961,20 @@ describe("<business-score-card-as-parent>", () => {
       );
       const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
       expect(row).not.toBeNull();
-      const warn = row?.querySelector<HTMLElement>(
+      // SPEC §17.137 A2a — the §17.44 warning glyph folded into the
+      // <objective-cell> molecule. A2's split-body layout co-locates
+      // the target value + warning in a single grid cell, so the
+      // warning's natural home is now inside the molecule that owns
+      // the target value.
+      const objective = row?.querySelector("objective-cell");
+      expect(objective).not.toBeNull();
+      const warn = objective?.shadowRoot?.querySelector<HTMLElement>(
         '[data-testid="off-track-warning"]',
       );
-      // §17.44 — warning lives inside the target row, after the date,
-      // tinted by the deviation magnitude. SPEC §17.137 A1 keeps the
-      // warning inline in the row (A2 will fold it into
-      // <objective-cell>).
       expect(warn).not.toBeNull();
       expect(warn?.getAttribute("style") ?? "").toMatch(
         /\bcolor:\s*rgb\(220,\s*38,\s*38\)/,
       );
-      const dateCell = row?.querySelector("target-date-cell");
-      expect(dateCell).not.toBeNull();
-      expect(
-        dateCell!.compareDocumentPosition(warn!) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
     });
 
     it("\u00a717.44 — does not render the warning glyph when warningColor is empty", async () => {

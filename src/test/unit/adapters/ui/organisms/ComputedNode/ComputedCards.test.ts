@@ -246,7 +246,15 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(time?.getAttribute("style")).toContain("--age-color: rgb(255, 145, 50)");
     // Timestamp text is now an age phrase, NOT a locale date.
     expect(time?.textContent ?? "").not.toMatch(/\d{4}/);
-    expect(sr.querySelector('[data-testid="target-text"]')?.textContent?.replace(/\s+/g, " ").trim()).toBe("100 %");
+    // SPEC §17.137 A1 — target-text moved into <objective-cell>'s
+    // shadow root (the molecule's render output); reach into it.
+    expect(
+      sr
+        .querySelector("objective-cell")
+        ?.shadowRoot?.querySelector('[data-testid="target-text"]')
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim(),
+    ).toBe("100 %");
     // \u00a717.136 S4 -- timestamp moved to card-frame's footer-right
     // slot (was inside .metric-pane pre-§17.136). The .metric-pane
     // still renders (now as the body slot's content) but no longer

@@ -165,23 +165,15 @@ export function renderTargetRow(
     return nothing;
   }
   const obj = vm.objective;
-  const warning = obj.warningColor
-    ? html`<span
-        class="warning-icon"
-        data-testid="off-track-warning"
-        role="img"
-        aria-label="Trajectory predicts missing the deadline"
-        style=${`color: ${obj.warningColor}`}
-      ><ds-icon name="triangle-alert"></ds-icon></span>`
-    : nothing;
   return html`<div class="target-row" data-testid="target-row">
     <objective-cell
       .targetValue=${obj.targetValue}
       .unit=${obj.unit}
+      .warningColor=${obj.warningColor}
     ></objective-cell>${obj.targetDateIso
       ? html`<span class="target-sep" aria-hidden="true">·</span>
           <target-date-cell .dateIso=${obj.targetDateIso}></target-date-cell>`
-      : nothing}${warning}
+      : nothing}
   </div>`;
 }
 
