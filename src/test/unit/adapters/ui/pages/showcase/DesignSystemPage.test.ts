@@ -455,6 +455,29 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     expect(cbsn?.vm?.computationKind).toBe("WEIGHTED_AVERAGE");
   });
 
+  it("Organisms tier renders Picture + URL in all four positions (\u00a717.137 A5d)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    ($(el, "ds-tier-organisms") as HTMLButtonElement).click();
+    await el.updateComplete;
+    expect($(el, "ds-org-picture-fourup")).toBeTruthy();
+    expect($(el, "ds-org-url-fourup")).toBeTruthy();
+    const picChildPortrait = $(
+      el,
+      "ds-org-picture-aschild-portrait-cell",
+    ).querySelector("picture-node-as-child");
+    expect(picChildPortrait).toBeTruthy();
+    const urlParentPortrait = $(
+      el,
+      "ds-org-url-asparent-portrait-cell",
+    ).querySelector("url-node-as-parent");
+    expect(urlParentPortrait).toBeTruthy();
+  });
+
   it("Organisms tier renders Text + Workflow in all four positions (\u00a717.137 A5c)", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",
