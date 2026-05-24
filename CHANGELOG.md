@@ -16,6 +16,16 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Lucide `weight` + `pencil` swap (\u00a717.136, S0a-followup)**.
+  The child-tile weight-edit corner icon switches from Lucide
+  `dumbbell` to Lucide `weight` (a cast-iron foundry silhouette
+  with U-handle that closes the iconography loop on the same
+  shape the \u00a717.52-polish hand-drawn SVG shipped four years
+  ago), and the focused-card edit-pencil button switches from
+  Lucide `pencil-line` to Lucide `pencil` (single graphite
+  pencil silhouette without the underline-decorated edit
+  cursor variant). Both swaps are pure name-attribute flips;
+  no sizing or behaviour change.
 - **WorkflowNode AsChild migrated to `<card-frame>` (\u00a717.136, S8)**.
   The `<workflow-node-as-child>` per-view wraps its entire render
   output inside the unified template with the molecule's default

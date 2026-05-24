@@ -15,11 +15,11 @@ afterEach(cleanupLitFixtures);
 describe("<ds-icon> atom (\u00a717.131)", () => {
   it("renders the Lucide SVG when name is registered", async () => {
     const el = await mountLitElement<DsIcon>("ds-icon", (e) => {
-      e.name = "dumbbell";
+      e.name = "weight";
     });
     const svg = el.shadowRoot?.querySelector("svg");
     expect(svg).not.toBeNull();
-    expect(svg?.getAttribute("class")).toContain("lucide-dumbbell");
+    expect(svg?.getAttribute("class")).toContain("lucide-weight");
   });
 
   it("inherits currentColor via stroke=currentColor on the Lucide SVG", async () => {
@@ -70,21 +70,28 @@ describe("<ds-icon> atom (\u00a717.131)", () => {
       "arrow-down",
       "ban",
       "check",
-      "dumbbell",
-      "pencil-line",
+      "pencil",
       "plus",
       "sigma",
       "target",
       "triangle-alert",
+      "weight",
       "x",
     ] as const;
     for (const slug of required) {
       expect(ICON_REGISTRY[slug]).toBeDefined();
       expect(ICON_REGISTRY[slug]).toContain("<svg");
     }
-    // §17.136 -- the pre-§17.136 `scale` slug is retired from the
-    // registry; the only weight glyph is `dumbbell`.
+    // §17.136 S0a-followup -- the pre-§17.136 `scale` slug + the
+    // §17.136 S0a first-cut `dumbbell` slug are both retired from
+    // the registry; the only weight glyph is now `weight` (Lucide
+    // cast-iron foundry silhouette). The §17.131 `pencil-line`
+    // variant is also retired in favour of the bare `pencil` slug.
     expect((ICON_REGISTRY as Record<string, string>)["scale"]).toBeUndefined();
+    expect((ICON_REGISTRY as Record<string, string>)["dumbbell"]).toBeUndefined();
+    expect(
+      (ICON_REGISTRY as Record<string, string>)["pencil-line"],
+    ).toBeUndefined();
   });
 
   it("ICON_REGISTRY is frozen so callers cannot mutate it at runtime", () => {

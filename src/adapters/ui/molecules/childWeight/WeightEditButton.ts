@@ -11,13 +11,20 @@
  *     presentation variation selector).
  *   - §17.132: Unicode glyph replaced by `<ds-icon name="scale">`
  *     (Lucide balance-scale SVG, monochrome `currentColor`).
- *   - §17.136 (current ship): switched again on operator instruction
- *     ("Replace the scale by a weight icon from lucide.") to
- *     `<ds-icon name="dumbbell">` so the glyph reads unambiguously
- *     as a weight (the §17.132 `scale` balance picture overlapped
- *     visually with the §17.52a balance-vs-weight design Q&A;
- *     `dumbbell` is the unequivocal weight metaphor). Closes the
- *     iconography loop opened by the §17.52 first-cut dumbbell.
+ *   - §17.136 S0a: switched to `<ds-icon name="dumbbell">` on
+ *     operator instruction ("Replace the scale by a weight icon
+ *     from lucide.") -- the §17.132 `scale` balance picture
+ *     overlapped visually with the §17.52a balance-vs-weight
+ *     design Q&A.
+ *   - §17.136 S0a-followup (current ship): switched again on
+ *     operator follow-up ("Replace the dumbell icone by the
+ *     'weight' icon") to `<ds-icon name="weight">` -- the Lucide
+ *     `weight` slug is a cast-iron foundry-weight silhouette (a
+ *     trapezoidal body with a U-shaped handle on top), which
+ *     mirrors the §17.52-polish cast-iron SVG the kiosk shipped
+ *     before the §17.132 / S0a Lucide swaps. Closes the
+ *     iconography loop on the same shape the operator picked four
+ *     years ago, now sourced from the shared library.
  *
  * Position: bottom-LEFT corner of the tile (mirror of the §17.18
  * bottom-right timestamp). `position: absolute` against the host's
@@ -92,7 +99,7 @@ export class WeightEditButton extends LitElement {
          SPEC 17.132 / 17.136 -- ds-icon defaults to a 1em box, so
          setting font-size here drives the SVG rendered size exactly
          as the Unicode glyph + the pre-17.136 Lucide scale SVG did
-         before the 17.136 dumbbell swap. */
+         before the 17.136 dumbbell / weight swaps. */
       width: clamp(0.85rem, 5cqmin, 1.6rem);
       height: clamp(0.85rem, 5cqmin, 1.6rem);
       font-size: clamp(0.85rem, 5cqmin, 1.6rem);
@@ -129,7 +136,7 @@ export class WeightEditButton extends LitElement {
       title="Edit weight"
       data-testid="weight-edit-button"
       @click=${this.handleClick}
-    ><ds-icon name="dumbbell"></ds-icon></button>`;
+    ><ds-icon name="weight"></ds-icon></button>`;
   }
 
   private handleClick = (e: MouseEvent): void => {

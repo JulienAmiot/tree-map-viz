@@ -124,12 +124,12 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
       "arrow-down",
       "ban",
       "check",
-      "dumbbell",
-      "pencil-line",
+      "pencil",
       "plus",
       "sigma",
       "target",
       "triangle-alert",
+      "weight",
       "x",
     ];
     for (const slug of required) {

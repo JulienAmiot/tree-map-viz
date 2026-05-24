@@ -7,7 +7,7 @@
  * pre-§17.131; full rationale lives in the SPEC entry.
  *
  * Naming: the `name` attribute uses Lucide's own kebab-case slugs
- * (e.g. `dumbbell`, `pencil-line`, `triangle-alert`) so the catalogue
+ * (e.g. `weight`, `pencil`, `triangle-alert`) so the catalogue
  * at https://lucide.dev is a 1-1 reference. Unknown names render
  * `nothing` (no console noise). Adding a new icon = one `?raw`
  * import + one entry in `ICON_REGISTRY` below.
@@ -32,12 +32,12 @@ import arrowUpSvg from "lucide-static/icons/arrow-up.svg?raw";
 import arrowUpRightSvg from "lucide-static/icons/arrow-up-right.svg?raw";
 import banSvg from "lucide-static/icons/ban.svg?raw";
 import checkSvg from "lucide-static/icons/check.svg?raw";
-import dumbbellSvg from "lucide-static/icons/dumbbell.svg?raw";
-import pencilLineSvg from "lucide-static/icons/pencil-line.svg?raw";
+import pencilSvg from "lucide-static/icons/pencil.svg?raw";
 import plusSvg from "lucide-static/icons/plus.svg?raw";
 import sigmaSvg from "lucide-static/icons/sigma.svg?raw";
 import targetSvg from "lucide-static/icons/target.svg?raw";
 import triangleAlertSvg from "lucide-static/icons/triangle-alert.svg?raw";
+import weightSvg from "lucide-static/icons/weight.svg?raw";
 import xSvg from "lucide-static/icons/x.svg?raw";
 
 /** Lucide icons currently used or pre-registered for an upcoming
@@ -50,12 +50,12 @@ export const ICON_REGISTRY: Readonly<Record<string, string>> = Object.freeze({
   "arrow-up-right": arrowUpRightSvg,
   ban: banSvg,
   check: checkSvg,
-  dumbbell: dumbbellSvg,
-  "pencil-line": pencilLineSvg,
+  pencil: pencilSvg,
   plus: plusSvg,
   sigma: sigmaSvg,
   target: targetSvg,
   "triangle-alert": triangleAlertSvg,
+  weight: weightSvg,
   x: xSvg,
 });
 
