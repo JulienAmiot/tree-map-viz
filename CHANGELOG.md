@@ -16,6 +16,17 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **Showcase organisms: BSC migrated to a 4-position grid (\u00a717.137, A5a)**.
+  First of four A5 sub-slices closing the §17.137 plan. The
+  organisms-tier BSC section now stamps the same VM in four
+  positions side-by-side: child portrait (160x240px), child
+  landscape (280x180px), parent portrait (220x320px), and parent
+  landscape (380x220px). The aspect ratio of each stage drives
+  the per-view's `@container (orientation: portrait)` rule
+  (already in place since A2b) so the operator sees how the
+  card's value-area lays out under each combination at a glance.
+  A5b/c/d will extend the same 4-up grid to Computed, Text,
+  Workflow, Picture, and URL kinds.
 - **Typography subsection on the showcase atoms tier (\u00a717.137, A4)**.
   A new `atoms-typography` section opens the atoms tier with a
   data-driven listing of every kiosk text role (title, value,
