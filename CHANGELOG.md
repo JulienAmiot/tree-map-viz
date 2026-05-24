@@ -16,6 +16,15 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **TextNode AsChild migrated to `<card-frame>` (\u00a717.136, S6)**.
+  The `<text-node-as-child>` per-view wraps its entire render
+  output inside the unified template with the molecule's default
+  22%/12% header/footer (small tree-map tile, defaults apply).
+  Slot routing: disabled indicator in `icons` (TextNode has no
+  aggregation flag), title text in `title`, \u00a717.121j placeholder
+  in `subtitle`, \u00a717.27 markdown `.md-body` value-area in `body`,
+  \u00a717.18 timestamp in `footer-right`. Closes out the TextNode
+  kind end-to-end \u2014 both roles now share the same card primitive.
 - **TextNode AsParent migrated to `<card-frame>` (\u00a717.136, S5)**.
   The `<text-node-as-parent>` per-view wraps its entire render
   output inside the unified template with the same focused-panel

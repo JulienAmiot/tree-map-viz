@@ -26,20 +26,17 @@ function vmWith(opts: Partial<TextNodeViewModel> = {}): TextNodeViewModel {
 }
 
 describe("<text-node-as-child>", () => {
-  it("\u00a717.121i \u2014 vm.disabled prepends a .disabled-indicator forbidden-sign glyph at the LEFT of the title, only when disabled (no strike, no value-area dim)", async () => {
+  it("\u00a717.121i / \u00a717.136 S6 \u2014 vm.disabled surfaces a .disabled-indicator forbidden-sign glyph in card-frame's `icons` slot (was the title's firstElementChild pre-\u00a717.136 S6), only when disabled (no strike, no value-area dim)", async () => {
     const enabled = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => { e.vm = vmWith(); });
     expect(enabled.shadowRoot?.querySelector('[data-testid="disabled-indicator"]')).toBeNull();
     expect(enabled.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
     const off = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => { e.vm = vmWith({ disabled: true }); });
-    const title = off.shadowRoot?.querySelector('[data-testid="title"]');
-    const indicator = title?.firstElementChild as HTMLElement | null;
-    expect(indicator?.getAttribute("data-testid")).toBe("disabled-indicator");
-    // SPEC §17.121j — the indicator is a plain inline span (no
-    // child elements / pill chrome) so it never clips against the
-    // 3vh title row's overflow: hidden. §17.133 -- the glyph is now
-    // a `<ds-icon name="ban">` Lucide SVG child of the indicator
-    // span (was an empty span styled by a `::before` pseudo
-    // pre-§17.133).
+    const indicator = off.shadowRoot?.querySelector<HTMLElement>('[data-testid="disabled-indicator"]');
+    expect(indicator).not.toBeNull();
+    expect(indicator?.closest('[data-testid="icons-slot"]')).not.toBeNull();
+    expect(indicator?.closest('[data-testid="title"]')).toBeNull();
+    // SPEC §17.121j / §17.133 — plain inline span hosting the
+    // Lucide `<ds-icon name="ban">` SVG child (no pill chrome).
     expect(indicator?.tagName).toBe("SPAN");
     expect(indicator?.children.length).toBe(1);
     expect(indicator?.firstElementChild?.tagName.toLowerCase()).toBe("ds-icon");
@@ -69,7 +66,7 @@ describe("<text-node-as-child>", () => {
     expect(el.shadowRoot?.querySelector('[data-testid="description"]')).toBeNull();
   });
 
-  it("renders the timestamp in the bottom-right corner with an age-based --age-color (\u00a717.18)", async () => {
+  it("\u00a717.18 / \u00a717.136 S6 \u2014 renders the timestamp in card-frame's `footer-right` slot with an age-based --age-color (was an absolute bottom-right corner-anchor pre-\u00a717.136 S6)", async () => {
     const el = await mountLitElement<TextNodeAsChild>("text-node-as-child", (e) => {
       e.vm = vmWith();
     });
@@ -77,28 +74,24 @@ describe("<text-node-as-child>", () => {
     const ts = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="value-date"]');
     expect(ts).not.toBeNull();
     expect(ts?.getAttribute("datetime")).toBe(dateIso);
-    // §17.18 — the .timestamp rule lives in the shared `tileLayoutStyles`
-    // CSSResult; jsdom doesn't compute shadow-scoped CSS, so we read the
-    // static CSS text directly (same pattern as ChildrenGrid.test.ts).
-    const cssText = (TextNodeAsChild.styles as readonly { cssText?: string }[])
-      .map((s) => String(s.cssText ?? s))
-      .join("\n");
-    // §17.18 / §17.46 — the timestamp sits in the bottom-right corner;
-    // §17.46 trimmed the literals from `0.4rem / 0.6rem` to
-    // `0.2rem / 0.35rem` (matching the reduced host padding) so the
-    // date hugs the same padded inner edge as the §17.46 bigger
-    // value's growth envelope. The regression guard is "bottom-right
-    // corner, not top-right" (the §17.18 contract) -- the literal is
-    // pinned to the post-§17.46 values for the same reason
-    // (a future tweak that sets bottom: 0 or moves it back to the
-    // top fails fast).
-    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?bottom:\s*0\.2rem/);
-    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?right:\s*0\.35rem/);
-    expect(cssText).not.toMatch(/\.timestamp\s*\{[\s\S]*?top:\s*0\.2rem/);
+    expect(ts?.classList.contains("timestamp")).toBe(true);
+    expect(ts?.getAttribute("slot")).toBe("footer-right");
     // §17.18 — inline `--age-color` custom property carries the
     // age-based gradient colour (warm orange → cold pale blue).
     const inlineStyle = ts?.getAttribute("style") ?? "";
     expect(inlineStyle).toMatch(/--age-color:\s*rgb\(/);
+    // §17.136 S6 — the per-view overrides the shared tileLayoutStyles
+    // absolute corner-anchor (still pinned in the shared sheet for the
+    // unmigrated Workflow/Picture/URL AsChild views; S7-S12 retire
+    // those, S13 will drop the shared absolute rule) with
+    // position:static so the slotted timestamp sits in card-frame's
+    // natural footer flow.
+    const cssText = (TextNodeAsChild.styles as readonly { cssText?: string }[])
+      .map((s) => String(s.cssText ?? s))
+      .join("\n");
+    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?position:\s*static/);
+    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?bottom:\s*auto/);
+    expect(cssText).toMatch(/\.timestamp\s*\{[\s\S]*?right:\s*auto/);
   });
 
   it("does not render a Σ badge", async () => {
