@@ -35,6 +35,12 @@ export class NodeView extends LitElement {
   @property({ attribute: "view-role", reflect: true })
   viewRole: NodeRole = "asChild";
 
+  /** SPEC §17.136 S13a -- focused-node parent id, forwarded from the
+      shell through the strip down to whichever AsParent tag the
+      registry dispatches. AsChild tags ignore it. */
+  @property({ attribute: "parent-id" })
+  parentId = "";
+
   static styles = css`
     :host {
       display: contents;
@@ -47,14 +53,9 @@ export class NodeView extends LitElement {
     }
     const tagName = nodeViewRegistry.lookup(this.vm.kind, this.viewRole);
     const tag = unsafeStatic(tagName);
-    // SPEC §17.104-followup / §17.116 — forward `viewRole` to the
-    // rendered tag so per-kind components that share the same tag
-    // across `asParent`/`asChild` (currently the Computed* cards
-    // per `nodeViewRegistry`) can gate role-specific affordances
-    // such as the inline `computation-kind-change` strategy picker.
-    // Tags that don't declare `viewRole` ignore the extra property
-    // assignment — Lit only reacts to `@property` declarations.
-    return staticHtml`<${tag} .vm=${this.vm} .viewRole=${this.viewRole}></${tag}>`;
+    // SPEC §17.104-followup / §17.116 / §17.136 S13a -- forward
+    // viewRole + parentId; AsChild + Computed* tags ignore them.
+    return staticHtml`<${tag} .vm=${this.vm} .viewRole=${this.viewRole} .parentId=${this.parentId}></${tag}>`;
   }
 }
 

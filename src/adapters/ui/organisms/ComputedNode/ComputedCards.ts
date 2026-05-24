@@ -112,6 +112,10 @@ import {
   renderDisabledSwitch,
 } from "../../molecules/disabledToggle.js";
 import {
+  headerActionsStyles,
+  renderHeaderActions,
+} from "../../molecules/headerActions.js";
+import {
   InlineTitleEditController,
   type InlineTitleEditTarget,
   titleInlineEditStyles,
@@ -522,7 +526,7 @@ function renderAsChildSlots(args: {
  * trip the CPD detector at ~25 duplicate lines per class).
  */
 function renderAsParentSlots(args: {
-  readonly host: HTMLElement;
+  readonly host: LitElement;
   readonly titleEditor: InlineTitleEditController;
   readonly vmId: string;
   readonly vmDisabled: boolean;
@@ -531,6 +535,10 @@ function renderAsParentSlots(args: {
   readonly viewKind: string;
   readonly computationKind: ComputationKindName;
   readonly onKindChange: (next: ComputationKindName) => void;
+  /** SPEC §17.136 S13a -- focused-node parent id; fed into the
+      shared `renderHeaderActions` helper for the `header-actions`
+      slot's close-X (omitted when `parentId === ""` -- root focus). */
+  readonly parentId: string;
 }): TemplateResult {
   const titleH1 = args.titleEditor.renderTitle(args.viewKind, nothing);
   return html`
@@ -540,6 +548,9 @@ function renderAsParentSlots(args: {
         : nothing}</span
     >
     <span slot="unit" data-testid="unit-slot">${args.unitChip}</span>
+    <span slot="header-actions"
+      >${renderHeaderActions(args.host, { nodeId: args.vmId, parentId: args.parentId })}</span
+    >
     <div slot="title" data-testid="title-slot">${titleH1}</div>
     <div slot="subtitle" class="subtitle" data-testid="subtitle">
       ${renderStrategyPicker(args.vmId, args.computationKind, args.onKindChange)}
@@ -564,12 +575,19 @@ export class ComputedCard extends LitElement {
   @property({ attribute: "view-role", reflect: true })
   viewRole: NodeRole = "asChild";
 
+  /** SPEC §17.136 S13a -- focused-node parent id; consumed by the
+      AsParent renderer's `header-actions` slot. Forwarded by
+      `<node-view>`. Defaults to `""` (root focus -- no close-X). */
+  @property({ attribute: "parent-id" })
+  parentId = "";
+
   static readonly styles = [
     tileLayoutStyles,
     sharedStyles,
     disabledToggleStyles,
     titleInlineEditStyles,
     unitChipStyles,
+    headerActionsStyles,
   ];
 
   /**
@@ -625,6 +643,7 @@ export class ComputedCard extends LitElement {
         viewKind: "ComputedNode",
         computationKind: this.vm.computationKind,
         onKindChange: this.dispatchKindChange,
+        parentId: this.parentId,
       })}
       <div slot="body">
         ${canCompute
@@ -669,6 +688,10 @@ export class ComputedBusinessScoreCard extends LitElement {
   @property({ attribute: "view-role", reflect: true })
   viewRole: NodeRole = "asChild";
 
+  /** SPEC §17.136 S13a -- see `ComputedCard.parentId`. */
+  @property({ attribute: "parent-id" })
+  parentId = "";
+
   static readonly styles = [
     tileLayoutStyles,
     sharedStyles,
@@ -676,6 +699,7 @@ export class ComputedBusinessScoreCard extends LitElement {
     disabledToggleStyles,
     titleInlineEditStyles,
     unitChipStyles,
+    headerActionsStyles,
   ];
 
   /** SPEC §17.124 — see `ComputedCard.titleEditor`. */
@@ -723,6 +747,7 @@ export class ComputedBusinessScoreCard extends LitElement {
         viewKind: "ComputedBusinessScoreNode",
         computationKind: this.vm.computationKind,
         onKindChange: this.dispatchKindChange,
+        parentId: this.parentId,
       })}
       <div slot="body" class="metric-pane" data-testid="metric-pane">
         ${canCompute

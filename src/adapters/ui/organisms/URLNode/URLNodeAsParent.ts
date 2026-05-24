@@ -68,6 +68,10 @@ import { customElement, property } from "lit/decorators.js";
 import "../../molecules/cardFrame/CardFrame.js";
 import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
 import {
+  headerActionsStyles,
+  renderHeaderActions,
+} from "../../molecules/headerActions.js";
+import {
   InlineTitleEditController,
   type InlineTitleEditTarget,
   titleInlineEditStyles,
@@ -82,6 +86,11 @@ import { renderURLValueArea, urlBodyStyles } from "./urlBody.js";
 export class URLNodeAsParent extends LitElement {
   @property({ attribute: false })
   vm: URLNodeViewModel | null = null;
+
+  /** SPEC §17.136 S13a -- focused-node parent id; consumed by the
+      `header-actions` slot via `renderHeaderActions`. */
+  @property({ attribute: "parent-id" })
+  parentId = "";
 
   private readonly titleEditor = new InlineTitleEditController(this);
   private readonly qr = new QRGenController(this);
@@ -99,6 +108,7 @@ export class URLNodeAsParent extends LitElement {
     urlBodyStyles,
     titleInlineEditStyles,
     disabledToggleStyles,
+    headerActionsStyles,
     css`
       /* SPEC §17.121j / §17.136 S11 -- horizontal flex row holding the QR
          metric-pane (left) and the URL description aside (right).
@@ -218,6 +228,9 @@ export class URLNodeAsParent extends LitElement {
     return html`<card-frame style=${sizing}>
       <span slot="icons" data-testid="icons-slot"
         >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}</span
+      >
+      <span slot="header-actions"
+        >${renderHeaderActions(this, { nodeId: this.vm.id, parentId: this.parentId })}</span
       >
       <div slot="title" data-testid="title-slot">${titleH1}</div>
       <div class="subtitle" slot="subtitle" data-testid="subtitle"></div>

@@ -92,6 +92,10 @@ import "../../atoms/icon/Icon.js";
 import "../../molecules/cardFrame/CardFrame.js";
 import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
 import {
+  headerActionsStyles,
+  renderHeaderActions,
+} from "../../molecules/headerActions.js";
+import {
   INLINE_EDIT_TITLE_EVENT,
   INLINE_EDIT_VALUE_EVENT,
   type InlineEditTitleDetail,
@@ -122,6 +126,12 @@ import {
 export class BusinessScoreCardNodeAsParent extends LitElement {
   @property({ attribute: false })
   vm: BusinessScoreCardNodeViewModel | null = null;
+
+  /** SPEC §17.136 S13a -- focused-node parent id; consumed by the
+      `<card-frame slot="header-actions">` cell via the shared
+      `renderHeaderActions` helper. */
+  @property({ attribute: "parent-id" })
+  parentId = "";
 
   /**
    * SPEC 17.28 -- inline edit lifecycle. `value` is only reachable for
@@ -183,6 +193,7 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
     tileLayoutStyles,
     disabledToggleStyles,
     unitChipStyles,
+    headerActionsStyles,
     css`
       /* SPEC 17.136 S1 -- the per-view's host is the outer wrapper
          for card-frame. The shared tileLayoutStyles still carries
@@ -850,6 +861,9 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
           : nothing}</span
       >
       <span slot="unit" data-testid="unit-slot">${this.unitEditor.renderChip()}</span>
+      <span slot="header-actions"
+        >${renderHeaderActions(this, { nodeId: this.vm.id, parentId: this.parentId })}</span
+      >
       ${this.renderTitle()}
       <div class="subtitle" slot="subtitle" data-testid="subtitle"></div>
       <div
