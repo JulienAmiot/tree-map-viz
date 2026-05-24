@@ -16,6 +16,18 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **URLNode AsParent migrated to `<card-frame>` (\u00a717.136, S11)**.
+  The `<url-node-as-parent>` per-view wraps its entire render output
+  inside the unified template with `--card-header-height: 14%` +
+  `--card-footer-height: 8%` (focused-panel host). Slot routing:
+  disabled switch in `icons`, inline-editable `<h1>` in `title`,
+  empty `.subtitle` placeholder in `subtitle`, the §17.121j
+  split-body row (QR `.metric-pane` LEFT + §17.123 clickable URL
+  `.description` aside RIGHT) in `body`. No timestamp \u2014 URLNode
+  is a snapshot leaf so `footer-right` stays empty (same as
+  PictureNode AsParent). Retired CSS: the `:host` column-flex
+  wrapper + `.title { flex: 0 0 auto }` (card-frame's three-row
+  grid drives the vertical layout now).
 - **PictureNode AsChild migrated to `<card-frame>` (\u00a717.136, S10)**.
   The `<picture-node-as-child>` per-view wraps its entire render
   output inside the unified template with the molecule's default

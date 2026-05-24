@@ -407,5 +407,34 @@ describe("<url-node-as-parent>", () => {
     );
     expect(subtitle).not.toBeNull();
     expect(subtitle?.textContent?.trim()).toBe("");
+    // \u00a717.136 S11 -- subtitle is now routed through card-frame's
+    // `subtitle` named slot.
+    expect(subtitle?.getAttribute("slot")).toBe("subtitle");
+  });
+
+  it("\u00a717.136 S11 \u2014 wraps the entire render output in a single `<card-frame>` with focused-panel `--card-header-height: 14%` + `--card-footer-height: 8%` and routes title / icons / subtitle / body into named slots", async () => {
+    const el = await mountLitElement<URLNodeAsParent>(
+      "url-node-as-parent",
+      (e) => {
+        e.vm = vmWith({ url: "https://example.com/x" });
+      },
+    );
+    await waitForQRSettled(el);
+    const cardFrames = el.shadowRoot?.querySelectorAll("card-frame");
+    expect(cardFrames?.length).toBe(1);
+    const cf = cardFrames?.[0] as HTMLElement;
+    const style = cf.getAttribute("style") ?? "";
+    expect(style).toMatch(/--card-header-height:\s*14%/);
+    expect(style).toMatch(/--card-footer-height:\s*8%/);
+    // Slot routing pins.
+    const titleSlot = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="title-slot"]');
+    expect(titleSlot?.getAttribute("slot")).toBe("title");
+    expect(titleSlot?.querySelector('[data-testid="title"]')).not.toBeNull();
+    const iconsSlot = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="icons-slot"]');
+    expect(iconsSlot?.getAttribute("slot")).toBe("icons");
+    const body = el.shadowRoot?.querySelector<HTMLElement>(".body");
+    expect(body?.getAttribute("slot")).toBe("body");
+    // No timestamp -- URLNode is a snapshot leaf; footer-right empty.
+    expect(el.shadowRoot?.querySelector('[data-testid="value-date"]')).toBeNull();
   });
 });
