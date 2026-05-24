@@ -107,8 +107,19 @@ export function renderPictureValueArea(
   alt: string,
   hasError: boolean,
   onError: (e: Event) => void,
+  /**
+   * SPEC §17.136 S9 — optional slot attribute baked into the outer
+   * `.value-area` div so the value-area can be stamped directly as a
+   * `<card-frame>` slot child. Defaults to `undefined` (no slot
+   * attribute) so the AsChild caller, which still composes the
+   * value-area as a flat sibling pre-S10, keeps its existing DOM
+   * shape. S10 will set `slot="body"` here from the AsChild caller
+   * too and the parameter becomes the canonical entry-point.
+   */
+  slot?: string,
 ): TemplateResult {
-  return html`<div class="value-area" data-testid="value-row">
+  const slotAttr = slot ?? "";
+  return html`<div class="value-area" slot=${slotAttr} data-testid="value-row">
     ${hasError
       ? renderWarningFill("image-load-failed", "Image failed to load")
       : html`<img

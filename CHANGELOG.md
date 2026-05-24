@@ -16,6 +16,19 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **PictureNode AsParent migrated to `<card-frame>` (\u00a717.136, S9)**.
+  The `<picture-node-as-parent>` per-view wraps its entire render
+  output inside the unified template with the focused-panel sizing
+  (`--card-header-height: 14%; --card-footer-height: 8%`). Slot
+  routing: disabled switch in `icons`, inline-editable title in
+  `title` (via `<div slot="title">` wrapper around the
+  `InlineTitleEditController` h1), empty `.subtitle` placeholder
+  in `subtitle`, `.value-area` (image / warning-fill) in `body`.
+  No timestamp \u2014 PictureNode is a snapshot leaf so
+  `footer-right` stays empty. The shared `renderPictureValueArea()`
+  helper grows an optional `slot` trailing parameter so the
+  value-area can be stamped directly as a card-frame slot child
+  (AsChild still calls without it pre-S10).
 - **Lucide `weight` + `pencil` swap (\u00a717.136, S0a-followup)**.
   The child-tile weight-edit corner icon switches from Lucide
   `dumbbell` to Lucide `weight` (a cast-iron foundry silhouette
