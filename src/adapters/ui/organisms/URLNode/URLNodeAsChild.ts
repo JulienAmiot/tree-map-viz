@@ -52,6 +52,7 @@ import { LitElement, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import "../../molecules/cardFrame/CardFrame.js";
+import "../../molecules/childWeight/WeightEditButton.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
@@ -66,6 +67,12 @@ import { renderURLValueArea, urlBodyStyles } from "./urlBody.js";
 export class URLNodeAsChild extends LitElement {
   @property({ attribute: false })
   vm: URLNodeViewModel | null = null;
+
+  /** SPEC §17.136 S13b -- per-child weight forwarded from
+      `<children-grid>` via `<node-view>`; pre-fills the
+      `<weight-edit-button>` in card-frame's footer-left slot. */
+  @property({ type: Number })
+  weight = 1;
 
   static readonly styles = [tileLayoutStyles, urlBodyStyles, disabledToggleStyles];
 
@@ -93,6 +100,11 @@ export class URLNodeAsChild extends LitElement {
       >${this.vm.title}</h2>
       <div class="subtitle" slot="subtitle" data-testid="subtitle"></div>
       ${renderURLValueArea(this.qr.dataUrl, this.vm.title, this.qr.hasError, "body")}
+      <weight-edit-button
+        slot="footer-left"
+        node-id=${this.vm.id}
+        .weight=${this.weight}
+      ></weight-edit-button>
     </card-frame>`;
   }
 }

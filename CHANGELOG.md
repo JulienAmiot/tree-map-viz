@@ -16,6 +16,30 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Weight-edit button moves into `<card-frame slot="footer-left">` (\u00a717.136, S13b-1)**.
+  The per-tile weight-edit affordance retires from its
+  `<children-grid>` corner overlay (where it sat as a sibling of
+  `<node-view>` with an absolute corner anchor) and now lives inside
+  each AsChild's `<card-frame>` footer-left cell. `<node-view>` grows
+  a reactive `weight` property forwarded from the grid down to
+  whichever per-kind AsChild tag the registry dispatches; the AsChild
+  stamps `<weight-edit-button slot="footer-left" node-id=${vm.id}
+  .weight=${weight}>` inside its `<card-frame>`. AsParent tags ignore
+  the property -- a parent node has no parent-relative weight until
+  the operator drills back out. The button's pre-strand absolute
+  corner anchor (`:host { position: absolute; bottom: 0.2rem;
+  left: 0.35rem; z-index: 2 }`) retires; card-frame's three-row grid
+  positions the footer-left cell exactly where the corner overlay used
+  to sit, so the host sits inline as flex content and the inner button
+  keeps its `clamp(0.85rem, 5cqmin, 1.6rem)` sizing. The grid's
+  `.tile > node-view` / `.tile > plus-tile` carve-out (added in
+  \u00a717.52 to stop the absolute button from being forced to fill
+  the tile) collapses back to a single `.tile > *` rule. The grid's
+  long-press path drops its `tile.querySelector("weight-edit-button")`
+  rect-capture (the button now lives two shadow boundaries below the
+  tile) and relies on the popover's pre-existing tile-left-edge
+  fallback; the icon-tap path is unaffected. Visual position
+  unchanged.
 - **URLNode AsChild migrated to `<card-frame>` (\u00a717.136, S12)**.
   The `<url-node-as-child>` per-view wraps its entire render output
   inside the unified template with the molecule's default 22%/12%

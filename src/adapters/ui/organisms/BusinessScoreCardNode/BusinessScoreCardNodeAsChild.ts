@@ -30,6 +30,7 @@ import { customElement, property } from "lit/decorators.js";
 
 import "../../atoms/icon/Icon.js";
 import "../../molecules/cardFrame/CardFrame.js";
+import "../../molecules/childWeight/WeightEditButton.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
@@ -53,6 +54,14 @@ import {
 export class BusinessScoreCardNodeAsChild extends LitElement {
   @property({ attribute: false })
   vm: BusinessScoreCardNodeViewModel | null = null;
+
+  /** SPEC §17.136 S13b -- per-child weight forwarded from
+      `<children-grid>` via `<node-view>`; pre-fills the
+      `<weight-edit-button>` stamped in card-frame's footer-left
+      slot so the popover can seed its slider without a second VM
+      lookup. */
+  @property({ type: Number })
+  weight = 1;
 
   static readonly styles = [
     tileLayoutStyles,
@@ -124,6 +133,11 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
             >${formatAge(dateIso)}</time
           >`
         : nothing}
+      <weight-edit-button
+        slot="footer-left"
+        node-id=${this.vm.id}
+        .weight=${this.weight}
+      ></weight-edit-button>
     </card-frame>`;
   }
 }

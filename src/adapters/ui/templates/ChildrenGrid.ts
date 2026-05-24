@@ -40,7 +40,6 @@ import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import { TreemapController } from "../controllers/TreemapController.js";
-import "../molecules/childWeight/WeightEditButton.js";
 import {
   WEIGHT_EDIT_OPEN_EVENT,
   type WeightEditOpenDetail,
@@ -135,20 +134,15 @@ export class ChildrenGrid extends LitElement {
       transition: top 320ms ease, left 320ms ease, width 320ms ease,
         height 320ms ease;
     }
-    /* SPEC §17.52 -- tighten the pre-existing .tile > * (which
-       forced every direct child to fill the tile) to specifically
-       <node-view> only. The §17.52 weight-edit button sits as a
-       sibling of <node-view> inside the tile wrapper and must NOT
-       inherit width: 100% / height: 100% (it is an absolutely-
-       positioned corner glyph with cqmin-clamped intrinsic size).
-       Plus tile is a different selector below so it picks up the
-       100 / 100 fill rule without ambiguity. */
-    .tile > node-view {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-    .tile > plus-tile {
+    /* SPEC §17.136 S13b -- pre-strand the tile carried a
+       <weight-edit-button> sibling of <node-view> with its own
+       absolute-positioned corner anchor; the button moved into
+       each AsChild's <card-frame slot="footer-left"> cell, so the
+       tile now has exactly one direct child (the <node-view> /
+       <plus-tile>) that fills the tile. The pre-strand .tile >
+       node-view / .tile > plus-tile rules collapse into a single
+       .tile > rule (the §17.52 carve-out is gone). */
+    .tile > * {
       display: block;
       width: 100%;
       height: 100%;
@@ -241,11 +235,11 @@ export class ChildrenGrid extends LitElement {
         @pointercancel=${this.handleTilePointerUp}
         @pointerleave=${this.handleTilePointerUp}
       >
-        <node-view view-role="asChild" .vm=${slot.vm}></node-view>
-        <weight-edit-button
-          node-id=${nodeId}
+        <node-view
+          view-role="asChild"
+          .vm=${slot.vm}
           .weight=${weight}
-        ></weight-edit-button>
+        ></node-view>
       </div>`;
     })}`;
   }
@@ -298,16 +292,24 @@ export class ChildrenGrid extends LitElement {
       // operator releases the long-press) is suppressed by
       // handleTileClick.
       tile.dataset["firedLongPress"] = "true";
-      // SPEC §17.52-polish -- query the weight-edit-button child
-      // on this tile and capture its rect alongside the tile's,
-      // so the popover can sit to the right of the icon without
-      // exceeding the tile width. The button is always rendered
-      // for node tiles (the plus-tile branch never gets here --
-      // its pointerdown handler isn't wired to long-press), so
-      // `?.getBoundingClientRect()` only resolves to `null` in a
-      // unit-fixture mount that omits the button.
-      const iconEl = tile.querySelector<HTMLElement>("weight-edit-button");
-      const iconRect = iconEl?.getBoundingClientRect() ?? null;
+      // SPEC §17.52-polish / §17.136 S13b -- the long-press path
+      // anchors the popover to the tile's left edge rather than
+      // the icon. Pre-§17.136 S13b the button was a direct child
+      // of the tile, and the long-press code captured the icon's
+      // rect so the popover could sit "to the right of the icon".
+      // §17.136 S13b moved the button into each AsChild's
+      // <card-frame slot="footer-left"> cell -- it now lives deep
+      // inside the per-view's shadow root, two boundaries below
+      // the tile, where `tile.querySelector` cannot reach it.
+      // Walking the inner shadow boundaries to find it again
+      // would tightly couple the grid to every AsChild's slot
+      // layout; the popover already handles `iconRect: null` via
+      // a tile-left-edge fallback (see WeightEditPopover §17.52-
+      // polish), so we publish `null` and rely on the fallback.
+      // The icon-tap path is unaffected -- the button's own
+      // click handler still captures its own rect via
+      // `host.getBoundingClientRect()`.
+      const iconRect = null;
       const detail: WeightEditOpenDetail = {
         nodeId: entry.nodeId,
         weight: entry.weight,

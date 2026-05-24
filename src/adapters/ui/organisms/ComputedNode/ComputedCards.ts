@@ -94,6 +94,7 @@ import { customElement, property } from "lit/decorators.js";
 
 import "../../atoms/icon/Icon.js";
 import "../../molecules/cardFrame/CardFrame.js";
+import "../../molecules/childWeight/WeightEditButton.js";
 import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
 import { COMPUTATION_KIND_LABELS } from "../modal/AddChildModal.js";
 import type {
@@ -581,6 +582,13 @@ export class ComputedCard extends LitElement {
   @property({ attribute: "parent-id" })
   parentId = "";
 
+  /** SPEC §17.136 S13b -- per-child weight forwarded from
+      `<children-grid>` via `<node-view>`; pre-fills the
+      `<weight-edit-button>` in card-frame's footer-left slot on
+      the AsChild render branch. AsParent ignores it. */
+  @property({ type: Number })
+  weight = 1;
+
   static readonly styles = [
     tileLayoutStyles,
     sharedStyles,
@@ -675,6 +683,11 @@ export class ComputedCard extends LitElement {
           ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>)
           : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
       </div>
+      <weight-edit-button
+        slot="footer-left"
+        node-id=${this.vm.id}
+        .weight=${this.weight}
+      ></weight-edit-button>
     </card-frame>`;
   }
 }
@@ -691,6 +704,10 @@ export class ComputedBusinessScoreCard extends LitElement {
   /** SPEC §17.136 S13a -- see `ComputedCard.parentId`. */
   @property({ attribute: "parent-id" })
   parentId = "";
+
+  /** SPEC §17.136 S13b -- see `ComputedCard.weight`. */
+  @property({ type: Number })
+  weight = 1;
 
   static readonly styles = [
     tileLayoutStyles,
@@ -788,6 +805,11 @@ export class ComputedBusinessScoreCard extends LitElement {
           : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
       </div>
       ${canCompute ? renderAsParentTimestamp(dateIso, dateColor) : nothing}
+      <weight-edit-button
+        slot="footer-left"
+        node-id=${this.vm.id}
+        .weight=${this.weight}
+      ></weight-edit-button>
     </card-frame>`;
   }
 }

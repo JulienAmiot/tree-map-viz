@@ -37,6 +37,7 @@ import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
 import "../../molecules/cardFrame/CardFrame.js";
+import "../../molecules/childWeight/WeightEditButton.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
@@ -50,6 +51,12 @@ import { fitMarkdownBodyToTile, textBodyStyles } from "./textBody.js";
 export class TextNodeAsChild extends LitElement {
   @property({ attribute: false })
   vm: TextNodeViewModel | null = null;
+
+  /** SPEC §17.136 S13b -- per-child weight forwarded from
+      `<children-grid>` via `<node-view>`; pre-fills the
+      `<weight-edit-button>` in card-frame's footer-left slot. */
+  @property({ type: Number })
+  weight = 1;
 
   /**
    * SPEC §17.27 — re-fits the markdown body whenever the tile is
@@ -145,6 +152,11 @@ export class TextNodeAsChild extends LitElement {
             >${dateLabel}</time
           >`
         : nothing}
+      <weight-edit-button
+        slot="footer-left"
+        node-id=${this.vm.id}
+        .weight=${this.weight}
+      ></weight-edit-button>
     </card-frame>`;
   }
 }
