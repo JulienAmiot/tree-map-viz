@@ -62,8 +62,9 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
       e.vm = vm;
       e.viewRole = "asChild";
     });
-    const childTitle = asChild.shadowRoot?.querySelector('[data-testid="title"]');
-    expect(childTitle?.firstElementChild?.getAttribute("data-testid")).toBe("disabled-indicator");
+    // \u00a717.136 S4 -- disabled indicator moved into card-frame's
+    // `icons` slot, no longer a title descendant. Same data-testid.
+    expect(asChild.shadowRoot?.querySelector('[data-testid="disabled-indicator"]')).not.toBeNull();
     expect(asChild.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
     const asParent = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = vm;
@@ -84,15 +85,14 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     const sr = el.shadowRoot!;
     const title = sr.querySelector('[data-testid="title"]');
     expect(title?.getAttribute("data-view-kind")).toBe("ComputedNode");
-    // SPEC §17.116 — Σ is now a prefix INSIDE the title row, not a chip next to the value.
-    // §17.132 -- Σ badge is now a `<ds-icon name="sigma">` Lucide SVG.
-    expect(title?.querySelector('[data-testid="computed-badge"] ds-icon')?.getAttribute("name")).toBe("sigma");
-    // §17.125: the unit reads as a parenthesised chip in the title
-    // row immediately after the Σ badge. Strip Σ + (EUR) to read the
-    // bare title text.
-    const chip = title?.querySelector('[data-testid="unit-chip"]');
+    // \u00a717.136 S4 -- badge + chip + title text now live in
+    // sibling slots (icons / unit / title), not as descendants of
+    // the title element. Look each up directly. Σ badge stays a
+    // `<ds-icon name="sigma">` Lucide SVG per \u00a717.132.
+    expect(sr.querySelector('[data-testid="computed-badge"] ds-icon')?.getAttribute("name")).toBe("sigma");
+    const chip = sr.querySelector('[data-testid="unit-chip"]');
     expect(chip?.textContent?.trim()).toBe("(EUR)");
-    expect(title?.textContent?.replace(/\u03a3|\(EUR\)/g, "").trim()).toBe("Total revenue");
+    expect(title?.textContent?.trim()).toBe("Total revenue");
     // Value text is the bare number with max 2 decimals (no trailing zero, no inline unit).
     expect(sr.querySelector('[data-testid="value"]')?.getAttribute("data-value-kind")).toBe("numeric");
     expect(sr.querySelector('[data-testid="value"]')?.textContent?.trim()).toBe("42");
@@ -209,8 +209,9 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
       e.vm = vm;
       e.viewRole = "asChild";
     });
-    const childTitle = asChild.shadowRoot?.querySelector('[data-testid="title"]');
-    expect(childTitle?.firstElementChild?.getAttribute("data-testid")).toBe("disabled-indicator");
+    // \u00a717.136 S4 -- disabled indicator moved into card-frame's
+    // `icons` slot, no longer a title descendant. Same data-testid.
+    expect(asChild.shadowRoot?.querySelector('[data-testid="disabled-indicator"]')).not.toBeNull();
     expect(asChild.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
     const asParent = await mountLitElement<ComputedBusinessScoreCard>("computed-business-score-card", (e) => {
       e.vm = vm;
@@ -231,23 +232,29 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     const sr = el.shadowRoot!;
     const title = sr.querySelector('[data-testid="title"]');
     expect(title?.getAttribute("data-view-kind")).toBe("ComputedBusinessScoreNode");
-    // §17.132 -- Σ badge is now a `<ds-icon name="sigma">` Lucide SVG.
-    expect(title?.querySelector('[data-testid="computed-badge"] ds-icon')?.getAttribute("name")).toBe("sigma");
-    const chip = title?.querySelector('[data-testid="unit-chip"]');
+    // \u00a717.136 S4 -- badge + chip moved into sibling slots
+    // (icons / unit), no longer descendants of title. Same data-
+    // testids. Σ badge stays a `<ds-icon name="sigma">` per \u00a717.132.
+    expect(sr.querySelector('[data-testid="computed-badge"] ds-icon')?.getAttribute("name")).toBe("sigma");
+    const chip = sr.querySelector('[data-testid="unit-chip"]');
     expect(chip?.textContent?.trim()).toBe("(%)");
-    expect(title?.textContent?.replace(/\u03a3|\(%\)/g, "").trim()).toBe("Avg score");
+    expect(title?.textContent?.trim()).toBe("Avg score");
     expect(sr.querySelector('[data-testid="value"]')?.textContent?.trim()).toBe("75");
     expect(sr.querySelector(".unit-below")).toBeNull();
     const time = sr.querySelector<HTMLTimeElement>('[data-testid="value-date"]');
     expect(time?.getAttribute("datetime")).toBe("2026-04-23T18:25:43.511Z");
     expect(time?.getAttribute("style")).toContain("--age-color: rgb(255, 145, 50)");
-    // Timestamp text is now an age phrase, NOT a locale date — the exact age depends on `new Date()`,
-    // but the rendered label must NOT match any "YYYY"-style locale date string.
+    // Timestamp text is now an age phrase, NOT a locale date.
     expect(time?.textContent ?? "").not.toMatch(/\d{4}/);
     expect(sr.querySelector('[data-testid="target-text"]')?.textContent?.replace(/\s+/g, " ").trim()).toBe("100 %");
+    // \u00a717.136 S4 -- timestamp moved to card-frame's footer-right
+    // slot (was inside .metric-pane pre-§17.136). The .metric-pane
+    // still renders (now as the body slot's content) but no longer
+    // contains the timestamp.
+    expect(time?.getAttribute("slot")).toBe("footer-right");
     const pane = sr.querySelector('[data-testid="metric-pane"]');
     expect(pane).not.toBeNull();
-    expect(pane?.contains(time!)).toBe(true);
+    expect(pane?.contains(time!)).toBe(false);
     // SPEC §17.121e — the kind-label is back, now living inside the
     // shared `.subtitle` slot directly under the title (mirror of
     // the ComputedCard layout). The cbsnVm helper defaults to

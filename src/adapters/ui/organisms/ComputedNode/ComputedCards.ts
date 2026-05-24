@@ -212,26 +212,6 @@ function renderKindLabel(currentKind: ComputationKindName): TemplateResult {
   >`;
 }
 
-/**
- * SPEC §17.121e — wrap the kind-label / strategy-picker in the
- * shared `.subtitle` row. Centralising the wrapper here keeps both
- * Computed card classes consistent (a single `data-testid="subtitle"`
- * hook for e2e + unit tests) and matches the WorkflowNode views'
- * subtitle pattern.
- */
-function renderSubtitle(
-  vmId: string,
-  currentKind: ComputationKindName,
-  viewRole: NodeRole,
-  onChange: (next: ComputationKindName) => void,
-): TemplateResult {
-  const content =
-    viewRole === "asParent"
-      ? renderStrategyPicker(vmId, currentKind, onChange)
-      : renderKindLabel(currentKind);
-  return html`<div class="subtitle" data-testid="subtitle">${content}</div>`;
-}
-
 const sharedStyles = css`
   /* SPEC §17.121e — both Computed cards opt into the shared
      .subtitle slot from tileLayoutStyles. The 2vh row reserves
@@ -307,56 +287,33 @@ const sharedStyles = css`
     font-size: 3vh;
     color: inherit;
   }
-  /* SPEC 17.136 S3 -- when the per-view is in the AsParent role,
-     the rendered timestamp lives in card-frame's footer-right slot
-     instead of the §17.18 absolute bottom-right corner. Override
-     position:absolute so the slotted timestamp sits in the natural
-     footer flow. AsChild keeps the absolute corner-anchor until
-     S4. */
-  :host([view-role="asParent"]) .timestamp {
+  /* SPEC 17.136 S4 -- the rendered timestamp lives in card-frame's
+     footer-right slot on BOTH roles (S3 scoped this to asParent
+     only; S4 promotes it to both because AsChild now also uses
+     card-frame). Override the shared tileLayoutStyles .timestamp
+     position:absolute / bottom / right so the slotted timestamp
+     sits in card-frame's natural footer flow. */
+  .timestamp {
     position: static;
     bottom: auto;
     right: auto;
   }
 `;
 
-/**
- * CBSN-only overrides — landed in §17.116-followup so the timestamp's
- * "bottom-right of the tile" contract holds visually on the CBSN
- * element. Pre-followup the host was the default `display: block`
- * from `tileLayoutStyles`, which made `.metric-pane` a content-sized
- * block sitting under the title (its bottom hugged the figure, not
- * the tile bottom). Since the `<time class="timestamp">` is parented
- * inside `.metric-pane` (the SPEC §17.30 / §17.45 parity contract
- * relies on that placement so the parent CBSN's timestamp shares
- * its containing block with a child BSC's), the date pinned to the
- * figure's bottom-right rather than the tile's.
- *
- * The fix turns the CBSN host into a column flex container and lets
- * `.metric-pane` grow (`flex: 1 1 auto`) to fill the body below the
- * `.title` row. With the pane now spanning to the tile's bottom
- * edge, the timestamp's `bottom: 0.2rem` offset (declared on
- * `tileLayoutStyles .timestamp`) resolves at the tile's bottom-right
- * — operator-correct without touching the shared timestamp rule or
- * the plain `<computed-card>` layout (which has no metric-pane and
- * keeps the default block layout from `tileLayoutStyles`).
- *
- * `min-height: 0` is the standard flex-item escape hatch for
- * preventing the intrinsic content size of `.value-area` (which
- * declares an explicit `height: calc(100% - 3vh)`) from blocking
- * the flex shrink axis on tiny tiles.
- */
+// SPEC §17.136 S4 — the pre-§17.136 `cbsnHostStyles` flex-column host
+// override + `.metric-pane { flex: 1 1 auto }` rule are RETIRED:
+// card-frame now owns the host's grid layout, so the body slot fills
+// the row between header and footer and the metric-pane already
+// occupies that body row in full. What survives from cbsnHostStyles
+// is the `.value-area { height: 100% }` rule: card-frame strips the
+// title row out of the body slot's height envelope, so the shared
+// `tileLayoutStyles` formula (`calc(100% - 3vh)`) would now under-
+// shoot the body row by 3vh on CBSN (the value-area is nested inside
+// .metric-pane on this class, unlike the plain <computed-card> where
+// it sits at the body root). Pinning the CBSN value-area back to
+// `height: 100%` of its metric-pane parent restores the vertical
+// centering with the standard BSC's value-area.
 const cbsnHostStyles = css`
-  :host { display: flex; flex-direction: column; }
-  .metric-pane { flex: 1 1 auto; min-height: 0; }
-  /* SPEC §17.116-followup-3 — see the docblock at the top of this
-     module for the full rationale. The shared tileLayoutStyles
-     .value-area rule sizes the area to calc(100% - 3vh) of its
-     parent, which on CBSN double-counts the title row because
-     .metric-pane already gives up 3vh to it. Pinning to 100% of
-     the metric-pane makes the CBSN value-area height match the
-     standard BSC's (= host - 3vh) so the value+target column
-     centres at the same vertical position on both tile types. */
   .value-area { height: 100%; }
 `;
 
@@ -395,92 +352,15 @@ function renderWarningFill(value: ComputedValueViewModel): TemplateResult {
   ><ds-icon name="triangle-alert"></ds-icon></div>`;
 }
 
-function renderTitleWithBadge(
-  vmId: string,
-  vmTitle: string,
-  viewKind: string,
-  showBadge: boolean,
-  titlePrefix: TemplateResult | typeof nothing = nothing,
-  unitSlot: TemplateResult | typeof nothing = nothing,
-): TemplateResult {
-  return html`<h2 class="title" data-testid="title" data-view-kind=${viewKind} data-id=${vmId}
-    >${titlePrefix}${showBadge
-      ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated"><ds-icon name="sigma"></ds-icon></span>`
-      : nothing}${unitSlot}${vmTitle}</h2>`;
-}
-
-/**
- * SPEC §17.124 — title-prefix template for the inline-editable
- * Computed* AsParent title. Composes the §17.121i disabled switch
- * (left of title) AND the §17.116 Σ aggregation badge into the
- * single `prefix` slot the {@link InlineTitleEditController}'s
- * `renderTitle(viewKind, prefix)` API exposes. When the operator
- * enters edit mode the controller hides the prefix automatically
- * (renderInlineEditableTitle's `isEditing=true` branch emits the
- * input with no prefix interpolation), so the disabled-switch and
- * Σ glyph disappear during edit and reappear on commit/cancel —
- * same behaviour every other §17.28-pattern AsParent card already
- * exhibits.
- */
-function renderInlineTitlePrefix(
-  host: HTMLElement,
-  vmId: string,
-  vmDisabled: boolean,
-  showBadge: boolean,
-  unitSlot: TemplateResult | typeof nothing,
-): TemplateResult {
-  return html`${renderDisabledSwitch(host, vmId, vmDisabled)}${showBadge
-    ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated"><ds-icon name="sigma"></ds-icon></span>`
-    : nothing}${unitSlot}`;
-}
-
-/**
- * SPEC §17.124 — argument bundle for {@link renderComputedTitleSlot}.
- * Pre-bundling all the per-render context into one object keeps the
- * helper under Sonar's `typescript:S107` 7-parameter ceiling and
- * makes the call sites in both card classes read as a small object
- * literal rather than an 8-positional argument list.
- */
-type ComputedTitleSlotArgs = {
-  readonly host: HTMLElement;
-  readonly titleEditor: InlineTitleEditController;
-  readonly vmId: string;
-  readonly vmTitle: string;
-  readonly viewKind: string;
-  readonly viewRole: NodeRole;
-  readonly vmDisabled: boolean;
-  readonly showBadge: boolean;
-  /** SPEC §17.126 — pre-rendered chip; caller picks the variant
-   *  per role (editable on AsParent, static on AsChild). */
-  readonly unitSlot: TemplateResult | typeof nothing;
-};
-
-/**
- * SPEC §17.124 — shared title-slot renderer for both Computed card
- * classes. Both classes branch identically on `viewRole`: AsParent
- * routes through the inline-edit controller (click-to-edit on the
- * focused panel), AsChild keeps the static `renderTitleWithBadge`
- * path so the tree-map grid's click-to-drill gesture is preserved.
- * Extracting this helper removes the CPD-duplicated branch (the
- * pre-refactor cards each carried a ~13-line ternary) and keeps
- * the per-class render bodies focused on the value-area surface
- * that genuinely differs (BSC objective + timestamp vs plain
- * numeric span).
- */
-function renderComputedTitleSlot(args: ComputedTitleSlotArgs): TemplateResult | typeof nothing {
-  const { host, titleEditor, vmId, vmTitle, viewKind, viewRole, vmDisabled, showBadge, unitSlot } = args;
-  if (viewRole === "asParent") {
-    return titleEditor.renderTitle(
-      viewKind,
-      renderInlineTitlePrefix(host, vmId, vmDisabled, showBadge, unitSlot),
-    );
-  }
-  return renderTitleWithBadge(
-    vmId, vmTitle, viewKind, showBadge,
-    renderDisabledIndicator(vmDisabled),
-    unitSlot,
-  );
-}
+// SPEC §17.136 S4 — the pre-§17.136 helpers `renderTitleWithBadge`,
+// `renderInlineTitlePrefix`, and `renderComputedTitleSlot` (which
+// composed the disabled switch / sigma badge / unit chip into the
+// title's prefix slot for the §17.124 inline-edit AsParent path,
+// and as the title's leading children for the AsChild path) are
+// retired. Card-frame's split layout puts each piece in a dedicated
+// slot (icons / unit), so the prefix-composition machinery is
+// unnecessary and `renderAsParentSlots` / `renderAsChildSlots`
+// replace the call sites with focused-per-role slot fillers.
 
 /**
  * SPEC §17.104 / §17.116-followup — shared
@@ -579,26 +459,57 @@ function renderTrend(obj: BusinessScoreCardObjectiveViewModel): TemplateResult |
  * `datetime=` so assistive tech / e2e tests can read the canonical
  * value; the visible label is the age.
  */
-function renderTimestamp(dateIso: string, dateColor: string): TemplateResult | typeof nothing {
-  if (!dateIso) return nothing;
-  const styleAttr = dateColor ? `--age-color: ${dateColor}` : "";
-  return html`<time class="timestamp" data-testid="value-date" datetime=${dateIso} style=${styleAttr}
-    >${formatAge(dateIso)}</time>`;
-}
-
 /**
- * SPEC §17.136 S3 -- AsParent variant of {@link renderTimestamp} that
- * declares `slot="footer-right"` on the `<time>` element so the
- * slotted timestamp routes to card-frame's footer-right slot. The
- * `:host([view-role="asParent"]) .timestamp` style override pins
- * `position: static` so the slotted element sits in the natural
- * footer flow.
+ * SPEC §17.136 S3 + S4 -- timestamp `<time>` declares
+ * `slot="footer-right"` so card-frame routes it to the footer's
+ * right anchor. The `.timestamp { position: static; ...}` rule
+ * (declared in `sharedStyles` since S4 promoted it to both roles)
+ * overrides the shared `tileLayoutStyles` absolute corner-anchor.
+ * The S3-era `renderTimestamp` helper (which omitted the slot
+ * attribute, sourcing the legacy AsChild flat layout's absolute
+ * positioning) is retired in S4.
  */
 function renderAsParentTimestamp(dateIso: string, dateColor: string): TemplateResult | typeof nothing {
   if (!dateIso) return nothing;
   const styleAttr = dateColor ? `--age-color: ${dateColor}` : "";
   return html`<time slot="footer-right" class="timestamp" data-testid="value-date" datetime=${dateIso} style=${styleAttr}
     >${formatAge(dateIso)}</time>`;
+}
+
+/**
+ * SPEC §17.136 S4 -- shared AsChild slot fillers for the icons +
+ * unit + title + subtitle slots of `<card-frame>`. Mirror of
+ * {@link renderAsParentSlots} but routed to the AsChild contracts:
+ * disabled INDICATOR (no write affordance), static unit chip,
+ * static title h2, static kind-label.
+ */
+function renderAsChildSlots(args: {
+  readonly vmId: string;
+  readonly vmTitle: string;
+  readonly vmDisabled: boolean;
+  readonly showBadge: boolean;
+  readonly unit: string;
+  readonly viewKind: string;
+  readonly computationKind: ComputationKindName;
+}): TemplateResult {
+  return html`
+    <span slot="icons" data-testid="icons-slot"
+      >${renderDisabledIndicator(args.vmDisabled)}${args.showBadge
+        ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated"><ds-icon name="sigma"></ds-icon></span>`
+        : nothing}</span
+    >
+    <span slot="unit" data-testid="unit-slot">${renderUnitChip(args.unit)}</span>
+    <h2
+      class="title"
+      slot="title"
+      data-testid="title"
+      data-view-kind=${args.viewKind}
+      data-id=${args.vmId}
+    >${args.vmTitle}</h2>
+    <div slot="subtitle" class="subtitle" data-testid="subtitle">
+      ${renderKindLabel(args.computationKind)}
+    </div>
+  `;
 }
 
 /**
@@ -723,31 +634,29 @@ export class ComputedCard extends LitElement {
     </card-frame>`;
   }
 
-  /** SPEC 17.136 S3 -- AsChild keeps the pre-§17.136 flat layout
-   *  until S4 migrates it to `<card-frame>`. */
+  /** SPEC 17.136 S4 -- AsChild now also wraps in `<card-frame>`
+   *  (default 22% / 12% header / footer for tree-map tile sizing). */
   private renderAsChild(): TemplateResult {
     if (!this.vm) return html``;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
     const vmDisabled = this.vm.disabled ?? false;
-    const unit = unitFromComputedValue(this.vm.value);
-    return html`
-      ${renderComputedTitleSlot({
-        host: this,
-        titleEditor: this.titleEditor,
+    return html`<card-frame>
+      ${renderAsChildSlots({
         vmId: this.vm.id,
         vmTitle: this.vm.title,
-        viewKind: "ComputedNode",
-        viewRole: this.viewRole,
         vmDisabled,
         showBadge,
-        unitSlot: renderUnitChip(unit),
+        unit: unitFromComputedValue(this.vm.value),
+        viewKind: "ComputedNode",
+        computationKind: this.vm.computationKind,
       })}
-      ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
-      ${canCompute
-        ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>)
-        : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
-    `;
+      <div slot="body">
+        ${canCompute
+          ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>)
+          : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
+      </div>
+    </card-frame>`;
   }
 }
 
@@ -827,29 +736,25 @@ export class ComputedBusinessScoreCard extends LitElement {
     </card-frame>`;
   }
 
-  /** SPEC 17.136 S3 -- AsChild keeps the pre-§17.136 flat layout; S4 migrates it. */
+  /** SPEC 17.136 S4 -- AsChild now also wraps in `<card-frame>`;
+   *  timestamp moves to footer-right slot. */
   private renderAsChild(): TemplateResult {
     if (!this.vm) return html``;
     const { dateIso, dateColor, objective } = this.vm;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
     const vmDisabled = this.vm.disabled ?? false;
-    const unit = unitFromComputedValue(this.vm.value);
-    return html`
-      ${renderComputedTitleSlot({
-        host: this,
-        titleEditor: this.titleEditor,
+    return html`<card-frame>
+      ${renderAsChildSlots({
         vmId: this.vm.id,
         vmTitle: this.vm.title,
-        viewKind: "ComputedBusinessScoreNode",
-        viewRole: this.viewRole,
         vmDisabled,
         showBadge,
-        unitSlot: renderUnitChip(unit),
+        unit: unitFromComputedValue(this.vm.value),
+        viewKind: "ComputedBusinessScoreNode",
+        computationKind: this.vm.computationKind,
       })}
-      ${renderSubtitle(this.vm.id, this.vm.computationKind, this.viewRole, this.dispatchKindChange)}
-      <div class="metric-pane" data-testid="metric-pane">
-        ${canCompute ? renderTimestamp(dateIso, dateColor) : nothing}
+      <div slot="body" class="metric-pane" data-testid="metric-pane">
         ${canCompute
           ? renderNumericValueAreaWithObjective(
               this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>,
@@ -857,7 +762,8 @@ export class ComputedBusinessScoreCard extends LitElement {
             )
           : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
       </div>
-    `;
+      ${canCompute ? renderAsParentTimestamp(dateIso, dateColor) : nothing}
+    </card-frame>`;
   }
 }
 

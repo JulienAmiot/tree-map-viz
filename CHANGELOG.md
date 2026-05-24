@@ -16,6 +16,21 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Computed AsChild migrated to `<card-frame>` (\u00a717.136, S4)**.
+  Both `<computed-card>` and `<computed-business-score-card>`
+  AsChild renders wrap every slot filler inside the unified
+  template with the molecule's default 22%/12% header/footer
+  (small tree-map tile, defaults apply): disabled indicator +
+  sigma badge in `icons`, unit chip in `unit`, title in `title`,
+  read-only kind label in `subtitle`, value-area / warning-fill
+  in `body`, timestamp in `footer-right`. The `footer-left` slot
+  stays empty until S13 cuts over the weight button. The CBSN
+  host-level flex-column override + metric-pane fill rules
+  retire (card-frame's grid layout now owns the host's row
+  sizing); only the `.value-area { height: 100% }` pin survives
+  because the value-area is nested one level deeper on CBSN
+  than on the plain Computed card. Closes out the Computed kind
+  end-to-end \u2014 both roles now share the same card primitive.
 - **Computed AsParent migrated to `<card-frame>` (\u00a717.136, S3)**.
   Both `<computed-card>` and `<computed-business-score-card>`
   AsParent renders wrap every slot filler inside the unified
