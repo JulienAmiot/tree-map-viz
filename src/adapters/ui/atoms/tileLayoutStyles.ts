@@ -187,30 +187,78 @@ export const tileLayoutStyles = css`
        carries no pointer behaviour. */
     pointer-events: auto;
   }
+  /* SPEC 17.137 A2b -- CSS Grid split-body layout. Pre-A2b the
+     value-area was a column flex with .value-row stacked above the
+     .target-row (horizontal row containing the bullseye + target
+     value + unit + date + warning). The operator-locked A2 layout
+     splits the body into two regions:
+       - Landscape: left 50% width = .value-row (value + trend
+         arrow); right 50% width = .target-row split into 25%
+         objective+warning (top) + 25% date (bottom).
+       - Portrait: top 50% height = .value-row; middle 25% height
+         = objective-cell; bottom 25% height = target-date-cell
+         (per the operator's 50/25/25 portrait_pct answer).
+     The grid template lives here on the shared atom so every BSC +
+     CBSN per-view picks it up via tileLayoutStyles without each
+     having to re-declare the rule. The @container query keys on
+     the per-view host's own orientation (container-type: size on
+     :host above) so the layout flips automatically when the host
+     box is taller than wide. */
   .value-area {
-    display: flex;
-    /* SPEC 17.40 -- column flex so the .value and the new .target-row
-       can stack vertically, both centered horizontally. Pre-17.40 the
-       area was a row flex with a single .value child; row vs column
-       does not change the visual for a single child (align-items +
-       justify-content both resolve to centered). For 17.40 we add
-       .target-row as a sibling that sits *under* .value -- column
-       flex stacks them naturally without the per-view needing to
-       restructure its template. */
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
     align-items: center;
-    justify-content: center;
-    /* Fill the rest of the tile below the title row. SPEC §17.121e —
-       the formula subtracts the .subtitle row's height. SPEC §17.121j
-       — the var defaults to 2vh (was 0vh) so the slot is now
-       universally reserved across every kiosk tile, keeping the
-       value-area's top edge aligned at the same y-offset whether or
-       not the per-view fills the subtitle with content. */
+    justify-items: center;
+    /* Fill the rest of the tile below the title row + subtitle. */
     height: calc(100% - 3vh - var(--subtitle-row-height, 2vh));
     text-align: center;
     overflow: hidden;
-    /* Avoid a single very long word forcing horizontal overflow. */
     word-break: break-word;
+  }
+  .value-area > .value-row {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .value-area > .target-row {
+    grid-column: 2;
+    grid-row: 1;
+    /* Sub-grid: split the right column into top 50% (objective-
+       cell) and bottom 50% (target-date-cell). Each molecule's
+       :host is inline-flex so giving it grid placement aligns the
+       glyph + text at the cell's centre. */
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    align-items: center;
+    justify-items: center;
+    height: 100%;
+    width: 100%;
+    /* Pre-A2b .target-row was a horizontal row separated by the
+       middle-dot interpunct; the new vertical split drops the
+       inter-row separator entirely (the grid gap reads as the
+       visual separation). */
+    column-gap: 0;
+    row-gap: 0;
+  }
+  /* SPEC 17.137 A2b -- portrait flip via @container query on the
+     per-view's :host (container-type: size). When the host is
+     taller than wide (e.g. the focused-panel left rail in a
+     landscape kiosk orientation, or any tile in a portrait
+     orientation), the grid flips from 2 columns to 1 column with
+     50% / 25% / 25% rows (operator's 50/25/25 portrait split). */
+  @container (orientation: portrait) {
+    .value-area {
+      grid-template-columns: 1fr;
+      grid-template-rows: 2fr 1fr 1fr;
+    }
+    .value-area > .value-row {
+      grid-column: 1;
+      grid-row: 1;
+    }
+    .value-area > .target-row {
+      grid-column: 1;
+      grid-row: 2 / span 2;
+    }
   }
   /* SPEC 17.41 -- horizontal flex row that holds the .value (and the
      adjacent .sigma badge for computedMean BSCs, when present) plus
@@ -402,36 +450,31 @@ export const tileLayoutStyles = css`
      with a yellow->orange->red tint keyed to the deviation magnitude.
   */
 
+  /* SPEC 17.137 A2b -- the .target-row's CSS Grid placement is
+     declared on .value-area > .target-row above. The remaining
+     rules below govern typography + colour shared by the two
+     molecules <objective-cell> and <target-date-cell> when they
+     sit inside .target-row (font-size clamp matches the value's
+     0.2x ratio so the molecules scale with the figure across
+     every container size). The molecules inherit color +
+     font-size + tabular-nums from this rule via CSS inheritance
+     through the shadow boundary (Lit's open shadow roots pass
+     inherited properties down). */
   .target-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4em;
-    margin-top: 0.4em;
-    /* 0.2 x .value's clamp() -- visually 20 % of the value height at
-       every cqmin level. SPEC §17.46 -- rescaled with the value's
-       42cqmin bump (was 7.2cqmin / 4rem ceil at the 36cqmin / 20rem
-       value rule). The font-size also drives the bullseye icon's
-       width/height through em units so the icon scales in lock-step. */
+    /* 0.2 x .value's clamp() -- visually 20 % of the value height
+       at every cqmin level. SPEC §17.46 rescaled the coefficient
+       with the value's 42cqmin bump. */
     font-size: clamp(0.3rem, 8.4cqmin, 4.4rem);
     line-height: 1.1;
     font-weight: 500;
-    /* Default tile text colour -- intentionally NOT gradient-coloured
-       (the value row carries the colour signal; the target row is
-       supporting context). */
+    /* Default tile text colour -- intentionally NOT gradient-
+       coloured (the value row carries the colour signal; the
+       target row is supporting context). */
     color: color-mix(in srgb, currentColor 80%, transparent);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
-  }
-  .target-row .target-text {
     font-variant-numeric: tabular-nums;
-  }
-  .target-row .target-sep {
-    /* Middle-dot separator between value+unit and date. Slightly
-       muted so it does not draw the eye away from the numbers. */
-    opacity: 0.6;
   }
   /* ----- Bullseye target icon -----
      Uses the Unicode U+25CE "BULLSEYE" glyph (text-style, present in
