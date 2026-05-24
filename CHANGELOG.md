@@ -16,6 +16,17 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **Showcase organisms: Computed + CBSN migrated to 4-position grids (\u00a717.137, A5b)**.
+  Second of four A5 sub-slices. The pre-A5b combined Computed
+  section (one h2, two AsParent-only cells with mismatched
+  stage sizes) splits into two stacked 4-up grids \u2014 one for
+  `<computed-card>` (ComputedNode, SUM strategy) and one for
+  `<computed-business-score-card>` (CBSN, WEIGHTED_AVERAGE).
+  Each variant now stamps in all four positions (child
+  portrait + landscape, parent portrait + landscape) with the
+  `view-role` attribute toggling between rows so the operator
+  sees how the strategy picker (AsParent) versus the read-only
+  badge (AsChild) lay out under each orientation.
 - **Showcase organisms: BSC migrated to a 4-position grid (\u00a717.137, A5a)**.
   First of four A5 sub-slices closing the §17.137 plan. The
   organisms-tier BSC section now stamps the same VM in four
