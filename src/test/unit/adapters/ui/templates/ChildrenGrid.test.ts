@@ -341,12 +341,21 @@ describe("<children-grid>", () => {
   // -- SPEC §17.52 -- child-tile weight edit affordance ----------------
 
   describe("\u00a717.52 \u2014 child-tile weight edit", () => {
-    it("each node tile embeds a <weight-edit-button> with the slot's nodeId + weight", async () => {
-      // SPEC §17.52 -- the corner icon is a per-tile affordance
-      // rendered as a sibling of <node-view> inside the tile
-      // wrapper. The button carries the node-id + the live weight
-      // so the popover can pre-fill the slider without a second
-      // VM lookup.
+    it("\u00a717.136 S13b \u2014 each node tile forwards the slot's weight to its inner <node-view> (which dispatches to whichever AsChild tag renders the <weight-edit-button> in card-frame's footer-left slot)", async () => {
+      // SPEC §17.52 -- the weight-edit-button is the per-tile
+      // affordance that carries the node-id + live weight so the
+      // popover can pre-fill the slider without a second VM
+      // lookup.
+      // SPEC §17.136 S13b -- pre-strand the grid rendered the
+      // button as a direct sibling of <node-view> inside the tile
+      // wrapper; the button has now moved into each AsChild's
+      // <card-frame slot="footer-left"> cell, two shadow
+      // boundaries below the tile. The grid's contract is
+      // therefore narrower: forward the weight to <node-view>;
+      // <node-view> forwards it to the AsChild; the AsChild
+      // stamps a <weight-edit-button> with that weight. This
+      // test pins the grid-level forwarding; per-kind tests pin
+      // the AsChild's slot-fill.
       const el = await mountGrid([
         nodeSlot("uuid-a", "A", 2.5),
         nodeSlot("uuid-b", "B", 0.5),
@@ -357,13 +366,11 @@ describe("<children-grid>", () => {
       await el.updateComplete;
       const tiles = childTilesOf(el);
       expect(tiles).toHaveLength(2);
-      const buttons = tiles.map((t) => t.querySelector("weight-edit-button"));
-      expect(buttons[0]?.getAttribute("node-id")).toBe("uuid-a");
-      expect(buttons[1]?.getAttribute("node-id")).toBe("uuid-b");
-      expect((buttons[0] as HTMLElement & { weight: number }).weight).toBe(
+      const nodeViews = tiles.map((t) => t.querySelector("node-view"));
+      expect((nodeViews[0] as HTMLElement & { weight: number }).weight).toBe(
         2.5,
       );
-      expect((buttons[1] as HTMLElement & { weight: number }).weight).toBe(
+      expect((nodeViews[1] as HTMLElement & { weight: number }).weight).toBe(
         0.5,
       );
       // The tile wrapper publishes the live weight as a data
@@ -372,9 +379,13 @@ describe("<children-grid>", () => {
       // back to the slot list.
       expect(tiles[0]?.dataset["weight"]).toBe("2.5");
       expect(tiles[1]?.dataset["weight"]).toBe("0.5");
+      // SPEC §17.136 S13b -- the grid no longer renders a
+      // <weight-edit-button> as a direct child of the tile.
+      expect(tiles[0]?.querySelector("weight-edit-button")).toBeNull();
+      expect(tiles[1]?.querySelector("weight-edit-button")).toBeNull();
     });
 
-    it("plus tiles do NOT embed a <weight-edit-button> (\u00a74 \u2014 the + has no weight to edit)", async () => {
+    it("plus tiles do NOT embed a <weight-edit-button> (\u00a74 \u2014 the + has no weight to edit) and do NOT forward a weight property to the inner <plus-tile>", async () => {
       const el = await mountGrid([nodeSlot("a", "A"), plusSlot("p")]);
       lastObserver().fire([
         { target: el, rect: { width: 600, height: 300 } },
@@ -561,26 +572,28 @@ describe("<children-grid>", () => {
       );
     });
 
-    it("the .tile > * fill rule narrows to .tile > node-view + .tile > plus-tile so the corner button sizes naturally (\u00a717.52)", () => {
-      // SPEC §17.52 -- the pre-§17.52 `.tile > *` rule forced
-      // every direct child to fill the tile, which would have
-      // forced the absolutely-positioned corner button to width
-      // 100% / height 100%. The §17.52 split keeps the fill rule
-      // for the two intentional fillers (<node-view> + <plus-
-      // tile>) and lets the weight-edit-button auto-size.
+    it("\u00a717.136 S13b \u2014 the .tile > {node-view, plus-tile} pair collapses back to a single .tile > * rule (the §17.52 carve-out for the corner button is gone)", () => {
+      // SPEC §17.52 -- pre-§17.52 the rule was `.tile > *` (every
+      // direct child fills the tile). §17.52 split it into
+      // `.tile > node-view` + `.tile > plus-tile` so the absolute
+      // corner button (a third sibling) could auto-size.
+      // SPEC §17.136 S13b -- the corner button moved into each
+      // AsChild's <card-frame slot="footer-left"> cell, so the
+      // tile is back to one direct child. The carve-out collapses
+      // and the rule re-becomes `.tile > *`.
       const cssText = String(
         (ChildrenGrid.styles as unknown as { cssText?: string }).cssText ??
           ChildrenGrid.styles,
       );
       expect(cssText).toMatch(
+        /\.tile\s*>\s*\*\s*\{[^}]*width:\s*100%/,
+      );
+      expect(cssText).not.toMatch(
         /\.tile\s*>\s*node-view\s*\{[^}]*width:\s*100%/,
       );
-      expect(cssText).toMatch(
+      expect(cssText).not.toMatch(
         /\.tile\s*>\s*plus-tile\s*\{[^}]*width:\s*100%/,
       );
-      // The pre-§17.52 broad selector must be gone (a literal
-      // `.tile > *` would re-trip the corner-button sizing).
-      expect(cssText).not.toMatch(/\.tile\s*>\s*\*\s*\{/);
     });
   });
 });

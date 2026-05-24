@@ -41,6 +41,15 @@ export class NodeView extends LitElement {
   @property({ attribute: "parent-id" })
   parentId = "";
 
+  /** SPEC §17.136 S13b -- per-child weight, forwarded from
+      `<children-grid>` down to whichever AsChild tag the registry
+      dispatches so it can pre-fill its `<weight-edit-button>`'s
+      `.weight` property. AsParent tags ignore it (they don't carry
+      the affordance -- a parent node has no parent-relative weight
+      until the operator drills back out). */
+  @property({ type: Number })
+  weight = 1;
+
   static styles = css`
     :host {
       display: contents;
@@ -53,9 +62,10 @@ export class NodeView extends LitElement {
     }
     const tagName = nodeViewRegistry.lookup(this.vm.kind, this.viewRole);
     const tag = unsafeStatic(tagName);
-    // SPEC §17.104-followup / §17.116 / §17.136 S13a -- forward
-    // viewRole + parentId; AsChild + Computed* tags ignore them.
-    return staticHtml`<${tag} .vm=${this.vm} .viewRole=${this.viewRole} .parentId=${this.parentId}></${tag}>`;
+    // SPEC §17.104-followup / §17.116 / §17.136 S13a / S13b -- forward
+    // viewRole + parentId + weight; AsParent tags ignore weight,
+    // AsChild + Computed* tags ignore parentId.
+    return staticHtml`<${tag} .vm=${this.vm} .viewRole=${this.viewRole} .parentId=${this.parentId} .weight=${this.weight}></${tag}>`;
   }
 }
 

@@ -26,12 +26,15 @@
  *     iconography loop on the same shape the operator picked four
  *     years ago, now sourced from the shared library.
  *
- * Position: bottom-LEFT corner of the tile (mirror of the §17.18
- * bottom-right timestamp). `position: absolute` against the host's
- * `position: relative` (already established by `tileLayoutStyles`
- * for the timestamp's containing block); the host's
- * `overflow: hidden` clips the corner if the icon ever grows past
- * the tile's inner padding.
+ * Position (post-§17.136 S13b): inside each AsChild's
+ * `<card-frame slot="footer-left">` cell. The pre-strand
+ * `position: absolute; bottom: 0.2rem; left: 0.35rem` corner anchor
+ * + `z-index: 2` retire -- the card-frame's three-row grid puts
+ * the footer-left slot exactly where the corner overlay used to
+ * sit (bottom row, left column of the AsChild's host box). The
+ * host now sits inline as flex content; the inner button keeps
+ * its `clamp(0.85rem, 5cqmin, 1.6rem)` sizing so the icon still
+ * scales with the tile.
  *
  * Tap behaviour: dispatches `weight-edit-open` (bubbling + composed
  * so it crosses the children-grid shadow boundary) with the host
@@ -73,20 +76,15 @@ export class WeightEditButton extends LitElement {
 
   static styles = css`
     :host {
-      /* SPEC 17.52 -- corner anchor. Mirrors the 17.18 timestamp's
-         bottom-right anchor on the LEFT side. The 0.2rem / 0.35rem
-         offsets match the host padding shrunk in 17.46 so the icon
-         sits flush with the tile's inner padding edge rather than
-         floating in the padding gap. position: absolute on the
-         host attaches to the per-view's position: relative in
-         tileLayoutStyles. */
-      position: absolute;
-      bottom: 0.2rem;
-      left: 0.35rem;
-      /* The icon's hit target is the surrounding button; we let
-         the inner button drive z-index / pointer-events instead
-         of giving the host its own. */
-      z-index: 2;
+      /* SPEC §17.136 S13b -- the pre-strand absolute corner
+         anchor on the host retires (see file-level docstring
+         for the literal values that left). The button now lives
+         in each AsChild's card-frame footer-left cell, which is
+         already a positioned cell in the molecule's three-row
+         grid; the host sits inline as flex content; the inner
+         button drives the visible size + hit target. line-height
+         + pointer-events stay so the inner button hugs the host
+         box and clicks register. */
       line-height: 0;
       pointer-events: auto;
     }

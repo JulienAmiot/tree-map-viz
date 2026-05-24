@@ -50,19 +50,27 @@ describe("<weight-edit-button> (\u00a717.52)", () => {
     expect(button?.textContent?.trim()).toBe("");
   });
 
-  it("anchors at the tile's bottom-LEFT corner (mirror of the bottom-right timestamp)", async () => {
-    // SPEC §17.52 -- the icon sits at the bottom-LEFT corner;
-    // the date sits at bottom-RIGHT (§17.18). Pin the host's
-    // CSS position so a future refactor that drops the corner
-    // anchor (or accidentally puts the icon at top-left where
-    // the parent's close-X lives) fails fast.
+  it("\u00a717.136 S13b \u2014 the pre-strand corner anchor on the host retires (the button is now slotted into each AsChild's `<card-frame slot=\"footer-left\">` cell, which provides the positioning)", async () => {
+    // SPEC §17.52 -- pre-§17.136 S13b the host carried
+    // `position: absolute; bottom: 0.2rem; left: 0.35rem;
+    // z-index: 2` so the button overlaid the tile's bottom-LEFT
+    // corner. S13b moved the button into each AsChild's
+    // <card-frame slot="footer-left"> cell, which is already a
+    // positioned cell in card-frame's three-row grid -- the
+    // host now sits inline as flex content. Pin the retirement
+    // so a refactor that re-introduces an absolute corner anchor
+    // would surface here.
     const css = (
       WeightEditButton.styles as unknown as { cssText?: string }
     )?.cssText
       ?? String(WeightEditButton.styles);
-    expect(css).toMatch(
-      /:host\s*\{[^}]*position:\s*absolute[^}]*bottom:\s*0\.2rem[^}]*left:\s*0\.35rem/,
-    );
+    expect(css).not.toMatch(/:host\s*\{[^}]*position:\s*absolute/);
+    expect(css).not.toMatch(/:host\s*\{[^}]*bottom:\s*0\.2rem/);
+    expect(css).not.toMatch(/:host\s*\{[^}]*left:\s*0\.35rem/);
+    expect(css).not.toMatch(/:host\s*\{[^}]*z-index:\s*2/);
+    // The inner button still drives the visible size + hit
+    // target -- the clamp + colour rules carry over unchanged.
+    expect(css).toMatch(/button\s*\{[^}]*width:\s*clamp\(0\.85rem,\s*5cqmin,\s*1\.6rem\)/);
   });
 
   it("clicking the button dispatches a bubbling+composed `weight-edit-open` event with nodeId, weight, and an anchorRect", async () => {
