@@ -618,4 +618,49 @@ describe("<computed-card> + <computed-business-score-card> inline unit-chip edit
     await cbsc.updateComplete;
     expect(cbsc.shadowRoot?.querySelector('[data-testid="unit-chip-edit"]')).toBeNull();
   });
+
+  it("\u00a717.136 S13b \u2014 both Computed card classes stamp a `<weight-edit-button slot=\"footer-left\">` carrying the vm.id + the forwarded weight property on the AsChild render branch (AsParent ignores `weight` -- a parent node has no parent-relative weight until the operator drills back out)", async () => {
+    const cc = await mountLitElement<ComputedCard>("computed-card", (e) => {
+      e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" }, "SUM");
+      e.viewRole = "asChild";
+      e.weight = 1.5;
+    });
+    const ccBtn = cc.shadowRoot?.querySelector<HTMLElement & { weight: number }>(
+      "weight-edit-button",
+    );
+    expect(ccBtn).not.toBeNull();
+    expect(ccBtn?.getAttribute("slot")).toBe("footer-left");
+    expect(ccBtn?.getAttribute("node-id")).toBe("c-1");
+    expect(ccBtn?.weight).toBe(1.5);
+
+    const cbsc = await mountLitElement<ComputedBusinessScoreCard>(
+      "computed-business-score-card",
+      (e) => {
+        e.vm = cbsnVm({ kind: "numeric", value: 75, unit: "%" });
+        e.viewRole = "asChild";
+        e.weight = 2.25;
+      },
+    );
+    const cbscBtn = cbsc.shadowRoot?.querySelector<
+      HTMLElement & { weight: number }
+    >("weight-edit-button");
+    expect(cbscBtn).not.toBeNull();
+    expect(cbscBtn?.getAttribute("slot")).toBe("footer-left");
+    expect(cbscBtn?.getAttribute("node-id")).toBe("cbsn-1");
+    expect(cbscBtn?.weight).toBe(2.25);
+
+    // AsParent ignores the weight prop -- no <weight-edit-button>
+    // is stamped on the focused-panel render branch.
+    const ccParent = await mountLitElement<ComputedCard>(
+      "computed-card",
+      (e) => {
+        e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" }, "SUM");
+        e.viewRole = "asParent";
+        e.weight = 1.5;
+      },
+    );
+    expect(
+      ccParent.shadowRoot?.querySelector("weight-edit-button"),
+    ).toBeNull();
+  });
 });

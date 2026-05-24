@@ -16,6 +16,16 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Per-AsChild slot-fill test pins for the §17.136 S13b
+  weight-edit button (\u00a717.136, S13b-2)**. Follow-up slice
+  to S13b-1 (split per the 300-line gate ceiling): each of the
+  6 AsChild test files (BSC, Computed*, Picture, Text, URL,
+  Workflow) gains a contract pin asserting the AsChild stamps a
+  `<weight-edit-button slot="footer-left" node-id=${vm.id}
+  .weight=${weight}>` inside its shadow root. The Computed test
+  additionally pins the AsParent-branch absence (no
+  `<weight-edit-button>` on `renderAsParent()`). No source
+  changes; behaviour-pinning only.
 - **Weight-edit button moves into `<card-frame slot="footer-left">` (\u00a717.136, S13b-1)**.
   The per-tile weight-edit affordance retires from its
   `<children-grid>` corner overlay (where it sat as a sibling of

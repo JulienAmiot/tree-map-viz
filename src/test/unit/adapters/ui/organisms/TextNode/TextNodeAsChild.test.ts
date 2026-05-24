@@ -208,4 +208,21 @@ describe("<text-node-as-child>", () => {
       /\.value\s*\{[\s\S]*?160cqi\s*\/\s*max\(\s*2\s*,\s*var\(\s*--char-count/,
     );
   });
+
+  it("\u00a717.136 S13b \u2014 stamps a `<weight-edit-button slot=\"footer-left\">` carrying the vm.id + the forwarded weight property", async () => {
+    const el = await mountLitElement<TextNodeAsChild>(
+      "text-node-as-child",
+      (e) => {
+        e.vm = vmWith({ id: "t-child-uuid" });
+        e.weight = 3.25;
+      },
+    );
+    const btn = el.shadowRoot?.querySelector<HTMLElement & { weight: number }>(
+      "weight-edit-button",
+    );
+    expect(btn).not.toBeNull();
+    expect(btn?.getAttribute("slot")).toBe("footer-left");
+    expect(btn?.getAttribute("node-id")).toBe("t-child-uuid");
+    expect(btn?.weight).toBe(3.25);
+  });
 });

@@ -320,4 +320,21 @@ describe("<url-node-as-child>", () => {
       ?.getAttribute("src");
     expect(stillSrc).toBe(firstSrc);
   });
+
+  it("\u00a717.136 S13b \u2014 stamps a `<weight-edit-button slot=\"footer-left\">` carrying the vm.id + the forwarded weight property", async () => {
+    const el = await mountLitElement<URLNodeAsChild>(
+      "url-node-as-child",
+      (e) => {
+        e.vm = vmWith({ id: "url-child-uuid" });
+        e.weight = 0.75;
+      },
+    );
+    const btn = el.shadowRoot?.querySelector<HTMLElement & { weight: number }>(
+      "weight-edit-button",
+    );
+    expect(btn).not.toBeNull();
+    expect(btn?.getAttribute("slot")).toBe("footer-left");
+    expect(btn?.getAttribute("node-id")).toBe("url-child-uuid");
+    expect(btn?.weight).toBe(0.75);
+  });
 });

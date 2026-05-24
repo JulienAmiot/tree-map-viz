@@ -232,4 +232,21 @@ describe("<picture-node-as-child>", () => {
       el.shadowRoot?.querySelector('[data-testid="warning-fill"]'),
     ).toBeNull();
   });
+
+  it("\u00a717.136 S13b \u2014 stamps a `<weight-edit-button slot=\"footer-left\">` carrying the vm.id + the forwarded weight property", async () => {
+    const el = await mountLitElement<PictureNodeAsChild>(
+      "picture-node-as-child",
+      (e) => {
+        e.vm = vmWith({ id: "pic-child-uuid" });
+        e.weight = 4.2;
+      },
+    );
+    const btn = el.shadowRoot?.querySelector<HTMLElement & { weight: number }>(
+      "weight-edit-button",
+    );
+    expect(btn).not.toBeNull();
+    expect(btn?.getAttribute("slot")).toBe("footer-left");
+    expect(btn?.getAttribute("node-id")).toBe("pic-child-uuid");
+    expect(btn?.weight).toBe(4.2);
+  });
 });
