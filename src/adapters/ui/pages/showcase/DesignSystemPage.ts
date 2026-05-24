@@ -763,44 +763,23 @@ export class DesignSystemPage extends LitElement {
       )}
       ${this.section("org-picture", "picture image url qr code node child parent svg data anchor runbook", html`
       <h2 data-testid="ds-org-picture">
-        Picture + URL cards (&lt;picture-node-as-*&gt; / &lt;url-node-as-*&gt;)
+        PictureNode (&lt;picture-node-as-parent / -as-child&gt;)
       </h2>
-      <div class="org-cell" data-testid="ds-org-picture-asparent-cell">
-        <div class="stage org-bsc-asparent">
-          <picture-node-as-parent
-            .vm=${samplePictureNodeVM()}
-          ></picture-node-as-parent>
-        </div>
-        <span class="caption">
-          PictureNode AsParent \u2014 inline data-URL SVG so the demo
-          stays offline-safe; only the title is inline-editable
-          (bubbled <code>inline-edit-title</code> is silenced).
-        </span>
-      </div>
-      <div class="org-cell" data-testid="ds-org-picture-aschild-cell">
-        <div class="stage org-bsc-aschild">
-          <picture-node-as-child
-            .vm=${samplePictureNodeVM()}
-          ></picture-node-as-child>
-        </div>
-        <span class="caption">
-          PictureNode AsChild \u2014 same VM rendered as a grid tile.
-        </span>
-      </div>
-      <div class="org-cell" data-testid="ds-org-url-asparent-cell">
-        <div class="stage org-bsc-asparent">
-          <url-node-as-parent .vm=${sampleURLNodeVM()}></url-node-as-parent>
-        </div>
-        <span class="caption">
-          URLNode AsParent \u2014 QR code + clickable URL aside (§17.123).
-        </span>
-      </div>
-      <div class="org-cell" data-testid="ds-org-url-aschild-cell">
-        <div class="stage org-bsc-aschild">
-          <url-node-as-child .vm=${sampleURLNodeVM()}></url-node-as-child>
-        </div>
-        <span class="caption">URLNode AsChild \u2014 compact grid tile.</span>
-      </div>
+      ${this.renderKindFourUp(
+        "picture",
+        () => html`<picture-node-as-child .vm=${samplePictureNodeVM()}></picture-node-as-child>`,
+        () => html`<picture-node-as-parent .vm=${samplePictureNodeVM()}></picture-node-as-parent>`,
+        "Same PictureNode VM (inline data-URL SVG so the demo stays offline-safe) in all four positions. Only the title is inline-editable; bubbled inline-edit-title events are silenced at the showcase host.",
+      )}
+      <h2 data-testid="ds-org-url">
+        URLNode (&lt;url-node-as-parent / -as-child&gt;)
+      </h2>
+      ${this.renderKindFourUp(
+        "url",
+        () => html`<url-node-as-child .vm=${sampleURLNodeVM()}></url-node-as-child>`,
+        () => html`<url-node-as-parent .vm=${sampleURLNodeVM()}></url-node-as-parent>`,
+        "Same URLNode VM in all four positions. AsParent surfaces the QR code + clickable URL aside (\u00a717.123); AsChild stays compact as a grid tile.",
+      )}
         `,
       )}
     `;

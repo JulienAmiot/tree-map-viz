@@ -16,6 +16,18 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **Showcase organisms: Picture + URL migrated to 4-position grids (\u00a717.137, A5d) \u2014 closes the §17.137 plan**.
+  Fourth and final A5 sub-slice. The pre-A5d combined Picture
+  + URL section splits into two stacked 4-up grids \u2014 one for
+  `<picture-node-as-*>` (inline data-URL SVG, offline-safe)
+  and one for `<url-node-as-*>` (\u00a717.123 QR code + clickable
+  URL aside). With this slice, the §17.137 5-strand plan
+  (A1 \u2192 A2 \u2192 A3 \u2192 A4 \u2192 A5) is complete: every card kind
+  appears in all four positions in the showcase, the atoms
+  tier carries a typography subsection on a uniform tile
+  shape, BSC + CBSN tiles use the 50/25/25 split-body layout
+  that adapts to portrait + landscape via container queries,
+  and Objective + target date are reusable molecules.
 - **Showcase organisms: Text + Workflow migrated to 4-position grids (\u00a717.137, A5c)**.
   Third of four A5 sub-slices. The pre-A5c combined Text +
   Workflow section (one h2, four AsParent/AsChild cells)
