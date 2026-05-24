@@ -40,6 +40,60 @@ describe("<picture-node-as-parent>", () => {
     const subtitle = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="subtitle"]');
     expect(subtitle).not.toBeNull();
     expect(subtitle?.textContent?.trim()).toBe("");
+    // \u00a717.136 S9 -- the subtitle slot is now routed through
+    // card-frame's `subtitle` named slot rather than sitting in
+    // the per-view's flat layout. Pin the slot attribute so a
+    // regression that drops the slot routing surfaces here.
+    expect(subtitle?.getAttribute("slot")).toBe("subtitle");
+  });
+
+  it("\u00a717.136 S9 \u2014 the entire render output is wrapped in a single `<card-frame>` with focused-panel header/footer sizing", async () => {
+    const el = await mountLitElement<PictureNodeAsParent>(
+      "picture-node-as-parent",
+      (e) => { e.vm = vmWith(); },
+    );
+    // The per-view's shadow root must contain a `<card-frame>`
+    // as its top-level rendered element; everything else (icons,
+    // title, subtitle, body) hangs off it via named slots.
+    const cardFrames = el.shadowRoot?.querySelectorAll("card-frame");
+    expect(cardFrames?.length).toBe(1);
+    const cf = cardFrames?.[0] as HTMLElement;
+    // SPEC 17.136 S9 -- focused-panel sizing override (same
+    // literals as S1 / S3 / S5 / S7 AsParent migrations); a
+    // regression to the molecule's 22% / 12% defaults would
+    // dominate the value-area, so pin the override.
+    const style = cf.getAttribute("style") ?? "";
+    expect(style).toMatch(/--card-header-height:\s*14%/);
+    expect(style).toMatch(/--card-footer-height:\s*8%/);
+  });
+
+  it("\u00a717.136 S9 \u2014 routes disabled switch into `icons`, inline-editable title into `title`, value-area into `body`; `unit` + `header-actions` + `footer-left` + `footer-right` stay empty (no timestamp on snapshot leaf)", async () => {
+    const el = await mountLitElement<PictureNodeAsParent>(
+      "picture-node-as-parent",
+      (e) => { e.vm = vmWith(); },
+    );
+    const root = el.shadowRoot!;
+    // Disabled switch lives in `slot="icons"` (was inside the
+    // title pre-\u00a717.136 S9 via the renderTitle prefix arg).
+    const iconsSlot = root.querySelector<HTMLElement>('[data-testid="icons-slot"]');
+    expect(iconsSlot).not.toBeNull();
+    expect(iconsSlot?.getAttribute("slot")).toBe("icons");
+    expect(
+      iconsSlot?.querySelector('[data-testid="disabled-switch"]'),
+    ).not.toBeNull();
+    // Title slot wrapper exists + carries the inline-editable
+    // `<h1 data-testid="title">` from InlineTitleEditController.
+    const titleSlot = root.querySelector<HTMLElement>('[data-testid="title-slot"]');
+    expect(titleSlot).not.toBeNull();
+    expect(titleSlot?.getAttribute("slot")).toBe("title");
+    expect(titleSlot?.querySelector('[data-testid="title"]')).not.toBeNull();
+    // Value-area (image / warning-fill) lives in `slot="body"`.
+    const valueRow = root.querySelector<HTMLElement>('[data-testid="value-row"]');
+    expect(valueRow).not.toBeNull();
+    expect(valueRow?.getAttribute("slot")).toBe("body");
+    // No timestamp on a snapshot leaf -- `footer-right` stays
+    // empty until S13's NodeIdentity.dateIso fallback (if any).
+    expect(root.querySelector('[data-testid="value-date"]')).toBeNull();
   });
 
   it("renders title + image with object-fit: cover (same body contract as the child role)", async () => {
