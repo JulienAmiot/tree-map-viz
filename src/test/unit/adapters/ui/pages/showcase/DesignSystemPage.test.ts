@@ -174,6 +174,36 @@ describe("<design-system-page> (\u00a717.127 A1 \u2014 foundation)", () => {
     }
   });
 
+  it("\u00a717.137 A3 \u2014 every atom-tier item lives inside the unified .atom-tile shape (swatch / glyph / icon / pdca all use .atom-tile + a per-content modifier class, so the showcase reads as one tile family)", async () => {
+    const el = await mountLitElement<DesignSystemPage>(
+      "design-system-page",
+      (e) => {
+        e.open = true;
+      },
+    );
+    const sr = el.shadowRoot!;
+    const atomTestidPrefixes = [
+      "ds-token-",
+      "ds-arrow-",
+      "ds-icon-cell-",
+      "ds-pdca-",
+    ];
+    for (const prefix of atomTestidPrefixes) {
+      const tiles = sr.querySelectorAll<HTMLElement>(
+        `[data-testid^='${prefix}']`,
+      );
+      expect(tiles.length).toBeGreaterThan(0);
+      for (const tile of Array.from(tiles)) {
+        expect(tile.classList.contains("atom-tile")).toBe(true);
+      }
+    }
+    expect(sr.querySelectorAll(".atom-grid").length).toBe(4);
+    expect(sr.querySelector(".swatch-grid")).toBeNull();
+    expect(sr.querySelector(".glyph-grid")).toBeNull();
+    expect(sr.querySelector(".icon-grid")).toBeNull();
+    expect(sr.querySelector(".pdca-row")).toBeNull();
+  });
+
   it("Molecules tier renders unit chips, status badges, and disabled affordances (\u00a717.127 A3)", async () => {
     const el = await mountLitElement<DesignSystemPage>(
       "design-system-page",

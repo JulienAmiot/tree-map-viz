@@ -16,6 +16,16 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Showcase atoms unified onto a single `.atom-tile` shape (\u00a717.137, A3)**.
+  Pre-A3 the four atoms-tier sections used four distinct tile
+  shapes (`.swatch`, `.glyph-cell`, `.icon-cell`, `.pdca-badge`)
+  with three different grid widths (180px / 150px / 140px) and
+  the PDCA row was a flex-wrap inline pill row with no tile at
+  all. A3 collapses them onto a shared `.atom-grid` container +
+  `.atom-tile` base with modifier classes
+  (`.atom-tile--swatch / --glyph / --icon / --pdca`) carrying
+  only content-axis differences, so the showcase's atoms tier
+  reads as one consistent tile family.
 - **Split-body CSS Grid layout on BSC + CBSN tiles (\u00a717.137, A2b)**.
   The pre-A2b column-flex stack (`.value-row` above `.target-row`,
   the target row a horizontal row of icon + value + unit + date +
