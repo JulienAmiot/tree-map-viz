@@ -160,7 +160,7 @@ describe("<business-score-card-as-child>", () => {
 
   // -- SPEC §17.40 ----------------------------------------------------
 
-  it("\u00a717.40 — applies the gradient valueColor to .value via --bsc-value-color", async () => {
+  it("\u00a717.40 — applies the gradient valueColor to .current-value via --bsc-value-color (no --char-count plumbing in \u00a717.139 SVG-mono layout)", async () => {
     const vm = makeVm(
       {
         kind: "recordedValue",
@@ -185,14 +185,15 @@ describe("<business-score-card-as-child>", () => {
     expect(value?.getAttribute("style") ?? "").toContain(
       "--bsc-value-color: rgb(250, 204, 21)",
     );
-    // SPEC §17.116-followup-3 — the inline style now also carries
-    // --char-count alongside the gradient colour so the shared
-    // .value font-size cap can shrink long values to fit the tile.
-    // formatValue(50) → "50" (2 chars).
-    expect(value?.getAttribute("style") ?? "").toContain("--char-count: 2");
+    // SPEC \u00a717.139 -- the pre-\u00a717.139 --char-count CSS variable (used by
+    // the retired .value clamp(min(42cqmin, 160cqi/N)) formula) is
+    // no longer needed: SVG viewBox sizing handles the per-text-
+    // length fit natively. The inline style now carries ONLY the
+    // \u00a717.40 gradient colour.
+    expect(value?.getAttribute("style") ?? "").not.toContain("--char-count");
   });
 
-  it("\u00a717.116-followup-3 — .value stamps --char-count equal to the rendered text length across all numeric branches", async () => {
+  it("\u00a717.139 — value glyph renders as an `<svg>` with viewBox width = textLen \xd7 MONO_CHAR_WIDTH (13.2) across all numeric branches; textContent matches the rendered text", async () => {
     const probes: ReadonlyArray<{
       vm: BusinessScoreCardNodeViewModel["value"];
       expected: string;
@@ -209,11 +210,15 @@ describe("<business-score-card-as-child>", () => {
       );
       const value = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="value"]');
       expect(value?.textContent?.trim()).toBe(expected);
-      expect(value?.getAttribute("style") ?? "").toContain(`--char-count: ${expected.length}`);
+      const svg = value?.querySelector("svg");
+      expect(svg).not.toBeNull();
+      const viewBox = svg?.getAttribute("viewBox") ?? "";
+      const expectedWidth = (expected.length * 13.2).toString();
+      expect(viewBox).toBe(`0 0 ${expectedWidth} 22`);
     }
   });
 
-  it("\u00a717.40 — renders the target row with target value, unit, date, and bullseye icon", async () => {
+  it("\u00a717.139 — renders the target row with `.target-value` (target + unit) + `.target-date` (formatted deadline); bullseye target icon is the CSS background of `.target-value`, not a `<ds-icon>` child", async () => {
     const vm = makeVm(
       {
         kind: "recordedValue",
@@ -231,32 +236,32 @@ describe("<business-score-card-as-child>", () => {
       },
     );
 
+    // SPEC \u00a717.139 -- the pre-\u00a717.139 `<objective-cell>` +
+    // `<target-date-cell>` molecules are no longer mounted by BSC
+    // AsChild (they stay alive for BSC AsParent + Computed* AsParent
+    // until a follow-up strand migrates those too). The target row
+    // is a `display: contents` wrapper carrying the testid; the two
+    // cells inside are siblings of `.current-value` at the grid
+    // level.
     const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
     expect(row).not.toBeNull();
-    // SPEC §17.137 A1 — the bullseye + target value + unit moved
-    // into the <objective-cell> molecule's shadow root; the date
-    // moved into <target-date-cell>. The row owns their composition.
-    const objective = row?.querySelector("objective-cell");
-    expect(objective).not.toBeNull();
-    expect(
-      objective?.shadowRoot?.querySelector('[data-testid="target-icon"]'),
-    ).not.toBeNull();
-    const text = objective?.shadowRoot
-      ?.querySelector('[data-testid="target-text"]')
-      ?.textContent?.replace(/\s+/g, " ")
-      .trim();
-    expect(text).toBe("80 %");
-    const dateCell = row?.querySelector("target-date-cell");
-    expect(dateCell).not.toBeNull();
-    const date = dateCell?.shadowRoot?.querySelector(
-      '[data-testid="target-date"]',
-    );
+    expect(row?.querySelector("objective-cell")).toBeNull();
+    expect(row?.querySelector("target-date-cell")).toBeNull();
+    const targetText = row?.querySelector('[data-testid="target-text"]');
+    expect(targetText).not.toBeNull();
+    expect(targetText?.textContent?.replace(/\s+/g, " ").trim()).toBe("80 %");
+    const date = row?.querySelector('[data-testid="target-date"]');
     expect(date).not.toBeNull();
     expect(date?.getAttribute("datetime")).toBe("2026-12-31T00:00:00.000Z");
-    // SPEC §17.116-followup-2 — the visible label uses the
-    // `d MMM yyyy` shape (UTC accessors so the kiosk reads the
-    // calendar date the operator typed regardless of local TZ).
     expect(date?.textContent?.trim()).toBe("31 Dec 2026");
+    // SPEC \u00a717.139 -- `.target-value` carries the bullseye icon as a
+    // CSS background-image (not a DOM child). The shared
+    // `.target-value` rule sets `background-image: url("data:...")`
+    // via the trendArrowBg molecule; the inline style on the
+    // element is empty.
+    const targetValue = row?.querySelector<HTMLElement>(".target-value");
+    expect(targetValue).not.toBeNull();
+    expect(targetValue?.querySelector("ds-icon")).toBeNull();
   });
 
   it("\u00a717.40 — does not render the target row for empty childrenCount n=0", async () => {
@@ -292,19 +297,17 @@ describe("<business-score-card-as-child>", () => {
 
     const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
     expect(row).not.toBeNull();
-    // SPEC §17.137 A2a — the §17.44 warning glyph folded into the
-    // <objective-cell> molecule (was inline after the date pre-A2a;
-    // A2's split-body layout co-locates target value + warning in
-    // a single grid cell, so the warning's natural home is now
-    // inside the molecule that owns the target value).
-    const objective = row?.querySelector("objective-cell");
-    expect(objective).not.toBeNull();
-    const warn = objective?.shadowRoot?.querySelector<HTMLElement>(
+    // SPEC \u00a717.139 -- the warning glyph stays in the target row, but
+    // since the pre-\u00a717.139 `<objective-cell>` molecule no longer
+    // hosts BSC AsChild's target cell, the warning lives directly
+    // inside `.target-value` in the per-view's shadow root (no
+    // nested molecule shadow to traverse).
+    const targetValue = row?.querySelector<HTMLElement>(".target-value");
+    expect(targetValue).not.toBeNull();
+    const warn = targetValue?.querySelector<HTMLElement>(
       '[data-testid="off-track-warning"]',
     );
     expect(warn).not.toBeNull();
-    // §17.44 — inline color tints the glyph on the
-    // yellow → orange → red deviation ramp.
     expect(warn?.getAttribute("style") ?? "").toMatch(
       /\bcolor:\s*rgb\(220,\s*38,\s*38\)/,
     );
@@ -335,13 +338,7 @@ describe("<business-score-card-as-child>", () => {
     ).toBeNull();
   });
 
-  it("\u00a717.41 — renders the trend arrow next to the value when objective.trendArrow is set, with the bucket exposed as data-direction and a monochrome glyph", async () => {
-    // Pin trendArrow="up-right" (on-or-near-track bucket) and assert
-    // the rendered glyph + data-direction + aria-label match the
-    // §17.41 mapping. The arrow must be a direct child of the
-    // .value-row sibling that wraps the .value -- the same structure
-    // every per-view emits so the trend arrow lands visually next
-    // to the figure rather than below it.
+  it("\u00a717.139 — `.current-value` carries `data-direction` for the trend arrow bucket + an aria-label describing the trend; the arrow is a CSS background-image, not a `<ds-icon>` child", async () => {
     const vm = makeVm(
       {
         kind: "recordedValue",
@@ -359,35 +356,33 @@ describe("<business-score-card-as-child>", () => {
       },
     );
 
-    const arrow = el.shadowRoot?.querySelector<HTMLElement>(
-      '[data-testid="trend-arrow"]',
+    const value = el.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="value"]',
     );
-    expect(arrow).not.toBeNull();
-    expect(arrow!.getAttribute("data-direction")).toBe("up-right");
-    // §17.132 -- glyph is now a Lucide `<ds-icon>` (was U+2197 pre-§17.132).
-    expect(arrow!.querySelector("ds-icon")?.getAttribute("name")).toBe(
-      "arrow-up-right",
-    );
-    expect(arrow!.getAttribute("aria-label")?.toLowerCase()).toContain(
+    expect(value).not.toBeNull();
+    expect(value!.getAttribute("data-direction")).toBe("up-right");
+    expect(value!.getAttribute("aria-label")?.toLowerCase()).toContain(
       "on or near schedule",
     );
-    // §17.41 colour policy -- arrow is monochrome (currentColor); no
-    // inline `color:` and no `--bsc-value-color` plumbing.
-    expect(arrow!.getAttribute("style") ?? "").toBe("");
-    // The arrow lives inside the value-row wrapper so it sits
-    // horizontally next to the value (not below it in the column-
-    // flex value-area).
-    expect(arrow!.parentElement?.classList.contains("value-row")).toBe(true);
+    // SPEC \u00a717.139 -- the pre-\u00a717.139 `<ds-icon>` Lucide child is
+    // retired; the trend arrow lives in a CSS `background-image:
+    // url("data:image/svg+xml,...")` rule keyed off the
+    // `data-direction` attribute selector. The CSS data-URI content
+    // is covered by `trendArrowBg.test.ts` (jsdom does not resolve
+    // Constructible Stylesheets through `getComputedStyle`, so a
+    // shadow-root probe is not portable here). The contract this
+    // test holds is "no DOM child carries the glyph any more".
+    expect(value!.querySelector("ds-icon")).toBeNull();
   });
 
   it.each([
-    ["up", "arrow-up", "well ahead"],
-    ["right", "arrow-right", "flat"],
-    ["down-right", "arrow-down-right", "slight regression"],
-    ["down", "arrow-down", "significant regression"],
+    ["up", "well ahead"],
+    ["right", "flat"],
+    ["down-right", "slight regression"],
+    ["down", "significant regression"],
   ] as const)(
-    "\u00a717.41 + \u00a717.132 \u2014 direction %s renders <ds-icon name=%s> with a meaningful aria-label",
-    async (direction, slug, labelFragment) => {
+    "\u00a717.139 \u2014 direction %s stamps data-direction=%s with a meaningful aria-label",
+    async (direction, labelFragment) => {
       const vm = makeVm(
         {
           kind: "recordedValue",
@@ -404,19 +399,18 @@ describe("<business-score-card-as-child>", () => {
           e.vm = vm;
         },
       );
-      const arrow = el.shadowRoot?.querySelector<HTMLElement>(
-        '[data-testid="trend-arrow"]',
+      const value = el.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="value"]',
       );
-      expect(arrow).not.toBeNull();
-      expect(arrow!.getAttribute("data-direction")).toBe(direction);
-      expect(arrow!.querySelector("ds-icon")?.getAttribute("name")).toBe(slug);
-      expect(arrow!.getAttribute("aria-label")?.toLowerCase()).toContain(
+      expect(value).not.toBeNull();
+      expect(value!.getAttribute("data-direction")).toBe(direction);
+      expect(value!.getAttribute("aria-label")?.toLowerCase()).toContain(
         labelFragment,
       );
     },
   );
 
-  it("\u00a717.41 — does NOT render a trend arrow when objective.trendArrow is null (insufficient history / non-recordedValue)", async () => {
+  it("\u00a717.139 — `data-direction` is empty when objective.trendArrow is null (insufficient history / non-recordedValue)", async () => {
     const vm = makeVm(
       {
         kind: "recordedValue",
@@ -433,9 +427,10 @@ describe("<business-score-card-as-child>", () => {
         e.vm = vm;
       },
     );
-    expect(
-      el.shadowRoot?.querySelector('[data-testid="trend-arrow"]'),
-    ).toBeNull();
+    const value = el.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="value"]',
+    );
+    expect(value?.getAttribute("data-direction") ?? "").toBe("");
   });
 
   it("\u00a717.136 S13b \u2014 stamps a `<weight-edit-button slot=\"footer-left\">` carrying the vm.id + the forwarded weight property (the §17.52 corner overlay retires from the grid and lands inside card-frame's footer-left cell)", async () => {
@@ -461,7 +456,7 @@ describe("<business-score-card-as-child>", () => {
     expect(btn?.weight).toBe(2.5);
   });
 
-  it("\u00a717.137 A2b \u2014 the <target-date-cell> branch in renderTargetRow only renders when `objective.targetDateIso` is non-empty (silent on empty/missing date)", async () => {
+  it("\u00a717.139 \u2014 the `.target-date` cell only renders when `objective.targetDateIso` is non-empty; the `.target-value` cell still renders (target value + unit)", async () => {
     const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
       (e) => {
@@ -479,11 +474,11 @@ describe("<business-score-card-as-child>", () => {
     );
     const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
     expect(row).not.toBeNull();
-    expect(row?.querySelector("target-date-cell")).toBeNull();
-    expect(row?.querySelector("objective-cell")).not.toBeNull();
+    expect(row?.querySelector(".target-date")).toBeNull();
+    expect(row?.querySelector(".target-value")).not.toBeNull();
   });
 
-  it("\u00a717.137 A2b \u2014 split-body grid layout: <objective-cell> + <target-date-cell> are direct children of `.target-row`, both inside `.value-area`; the pre-A2b column-flex stack is retired in favour of CSS Grid (value-row on the left/top, target-row on the right/bottom)", async () => {
+  it("\u00a717.139 \u2014 body grid layout: `.current-value` + `.target-value` + `.target-date` are the 3 direct grid items of `.value-area` (the `.target-row` wrapper is `display: contents`, so its children become direct grid children)", async () => {
     const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
       (e) => {
@@ -497,15 +492,24 @@ describe("<business-score-card-as-child>", () => {
     );
     const valueArea = el.shadowRoot?.querySelector<HTMLElement>(".value-area");
     expect(valueArea).not.toBeNull();
+    const currentValue = valueArea?.querySelector<HTMLElement>(".current-value");
     const targetRow = valueArea?.querySelector<HTMLElement>(".target-row");
+    const targetValue = valueArea?.querySelector<HTMLElement>(".target-value");
+    const targetDate = valueArea?.querySelector<HTMLElement>(".target-date");
+    expect(currentValue).not.toBeNull();
     expect(targetRow).not.toBeNull();
+    expect(targetValue).not.toBeNull();
+    expect(targetDate).not.toBeNull();
+    expect(currentValue?.parentElement).toBe(valueArea);
     expect(targetRow?.parentElement).toBe(valueArea);
-    const objective = targetRow?.querySelector<HTMLElement>("objective-cell");
-    const date = targetRow?.querySelector<HTMLElement>("target-date-cell");
-    expect(objective).not.toBeNull();
-    expect(date).not.toBeNull();
-    expect(objective?.parentElement).toBe(targetRow);
-    expect(date?.parentElement).toBe(targetRow);
-    expect(targetRow?.querySelector(".target-sep")).toBeNull();
+    expect(targetValue?.parentElement).toBe(targetRow);
+    expect(targetDate?.parentElement).toBe(targetRow);
+    // SPEC \u00a717.139 -- the pre-\u00a717.139 `<objective-cell>` and
+    // `<target-date-cell>` molecules are NOT mounted by BSC AsChild
+    // (the cells render their text via the shared `svgMonoText`
+    // atom inline). The molecules stay alive for BSC AsParent +
+    // Computed* AsParent for the duration of this strand.
+    expect(valueArea?.querySelector("objective-cell")).toBeNull();
+    expect(valueArea?.querySelector("target-date-cell")).toBeNull();
   });
 });

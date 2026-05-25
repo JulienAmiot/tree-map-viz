@@ -909,8 +909,13 @@ Then(
   "the child tile {string} shows a target row with text containing {string}",
   async ({ page }, nodeId: string, expectedSubstring: string) => {
     // SPEC §17.40 — the per-tile target row carries a bullseye icon
-    // and a `target-text` span with the target value + unit, optionally
-    // followed by a `target-date` time element.
+    // and a `target-text` cell with the target value + unit,
+    // optionally followed by a `target-date` time element. Since
+    // §17.139, on BSC AsChild the bullseye is a CSS background on
+    // `.target-value` (not a `<ds-icon>` child) and the target text
+    // renders as a monospace SVG `<text>` element inside the same
+    // cell; the contract this step asserts (textContent contains the
+    // expected substring) is preserved across the migration.
     const kiosk = new TreeMapPage(page);
     const tile = kiosk.childById(nodeId);
     await expect(tile).toHaveCount(1);
@@ -1217,24 +1222,25 @@ Then(
   "the child tile {string} shows a trend arrow with direction {string}",
   async ({ page }, nodeId: string, expectedDirection: string) => {
     // SPEC §17.41 — every recordedValue BSC with a defined regression
-    // (≥ 2 distinct-timestamp historized entries) renders a small
+    // (≥ 2 distinct-timestamp historized entries) renders a trend
     // arrow at the right of its value. The mapper bakes the bucket
     // into `data-direction` so the e2e step can assert which of the
     // 5 buckets (`up | up-right | right | down-right | down`) the
     // mapper landed on without parsing the rendered Unicode glyph.
     //
-    // The §17.41 colour policy — monochrome `currentColor`, no
-    // gradient tint — is asserted via the absence of any inline
-    // colour-related style on the arrow span (mirrors the §17.40
-    // amendment's check on the warning glyph).
+    // SPEC §17.139 — the pre-§17.139 `<span class="trend-arrow"
+    // data-testid="trend-arrow">` DOM child was retired; the arrow
+    // is now a CSS `background-image` data URI on `.current-value`
+    // and the `data-direction` attribute lives directly on the
+    // `[data-testid="value"]` element (which is `.current-value`).
+    // The colour policy assertion still holds: the §17.40
+    // `--bsc-value-color` is permitted (it tints the value glyph),
+    // but no other `color:` style should leak in.
     const kiosk = new TreeMapPage(page);
     const tile = kiosk.childById(nodeId);
     await expect(tile).toHaveCount(1);
-    const arrow = tile.getByTestId("trend-arrow");
-    await expect(arrow).toHaveCount(1);
-    expect(await arrow.getAttribute("data-direction")).toBe(expectedDirection);
-    const inline = (await arrow.getAttribute("style")) ?? "";
-    expect(inline).not.toMatch(/(?<!-)color:/);
-    expect(inline).not.toMatch(/--bsc-value-color/);
+    const value = tile.getByTestId("value");
+    await expect(value).toHaveCount(1);
+    expect(await value.getAttribute("data-direction")).toBe(expectedDirection);
   },
 );

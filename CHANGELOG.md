@@ -14,6 +14,29 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **BSC AsChild migrated to the SVG-mono 3-cell grid + CSS-background icons — closes the §17.139 plan (§17.139c)**.
+  Third and final slice of the §17.139 migration. `<business-
+  score-card-as-child>` swaps its pre-§17.139
+  `.value-row + .target-row` HTML / `clamp(min(42cqmin,
+  160cqi / N), …)` value-glyph plumbing (with
+  `<objective-cell>` + `<target-date-cell>` molecule children)
+  for a 3-cell CSS-Grid body driven by §17.139a's
+  `renderMonoTextSvg` + §17.139b's `TREND_ARROW_BG` /
+  `TARGET_ICON_BG`. New `.value-area` template: landscape
+  `grid-template-columns: 2fr 1fr` × `1fr 1fr` rows with
+  `.current-value` spanning both rows on the left (67 %
+  width); portrait flip via `@container (orientation:
+  portrait)` to `1fr × 2fr 1fr 1fr`. No JS, no resize
+  observer — pure CSS container queries. Trend arrows + the
+  target bullseye become `background-image` rules keyed off
+  the `.current-value[data-direction="*"]` attribute and the
+  shared `.target-value` rule. The pre-§17.139 `--char-count`
+  inline CSS variable + the `<span class="trend-arrow"><ds-
+  icon>` DOM child both retire. Driven by the operator's
+  `examples/text-fills-container.html` POC layout.
+
 ### Added
 
 - **`trendArrowBg` molecule: CSS-background data URIs for trend + target icons (§17.139b)**.
