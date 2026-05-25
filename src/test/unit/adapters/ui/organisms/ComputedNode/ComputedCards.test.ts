@@ -173,18 +173,12 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(detail.newKind).toBe("MAX");
   });
 
-  it("\u00a717.116-followup-3 — .value stamps --char-count equal to the rendered text length so the shared font-size cap can shrink long values to fit the tile width", async () => {
-    // Probe pairs: numeric value → expected rendered text → expected
-    // --char-count. The shared `.value` clamp reads var(--char-count, 2)
-    // and caps the font-size at 160cqi / max(2, --char-count); we
-    // assert the plumbing (the inline style stamps the right N for the
-    // rendered text). The CSS cap itself is exercised by the e2e
-    // suite (the unit tests run in jsdom, where layout = 0 px).
+  it("\u00a717.142c \u2014 .value renders the number text via renderMonoTextSvg so the SVG viewBox scales the glyph with the cell width regardless of digit count (replaces the pre-\u00a717.142c --char-count plumbing)", async () => {
     const probes: Array<[number, string]> = [
-      [42, "42"],            // 2 chars
-      [1234, "1234"],        // 4 chars
-      [12345.6789, "12345.68"], // 8 chars after formatValue's 2-decimal clamp
-      [-100.5, "-100.5"],    // 6 chars (sign + digits + decimal)
+      [42, "42"],
+      [1234, "1234"],
+      [12345.6789, "12345.68"],
+      [-100.5, "-100.5"],
     ];
     for (const [n, expected] of probes) {
       const el = await mountLitElement<ComputedCard>("computed-card", (e) => {
@@ -192,7 +186,7 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
       });
       const value = el.shadowRoot!.querySelector('[data-testid="value"]');
       expect(value?.textContent?.trim()).toBe(expected);
-      expect(value?.getAttribute("style") ?? "").toContain(`--char-count: ${expected.length}`);
+      expect(value?.querySelector("svg")).not.toBeNull();
     }
   });
 });
@@ -207,7 +201,13 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     // \u00a717.136 S4 -- disabled indicator moved into card-frame's
     // `icons` slot, no longer a title descendant. Same data-testid.
     expect(asChild.shadowRoot?.querySelector('[data-testid="disabled-indicator"]')).not.toBeNull();
-    expect(asChild.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
+    // \u00a717.142c -- CBSN body content now lives inside the
+    // `<card-body data-testid="metric-pane">` molecule (the pre-
+    // \u00a717.142c `<div class="value-area" data-testid="value-row">`
+    // wrapper retires); probe the metric-pane instead. The contract
+    // -- "disabled does not leak into the body layout as a marker"
+    // -- holds the same way (no data-disabled attribute anywhere).
+    expect(asChild.shadowRoot?.querySelector('[data-testid="metric-pane"]')?.hasAttribute("data-disabled")).toBe(false);
     const asParent = await mountLitElement<ComputedBusinessScoreCard>("computed-business-score-card", (e) => {
       e.vm = vm;
       e.viewRole = "asParent";
@@ -215,7 +215,7 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(
       asParent.shadowRoot?.querySelector('[data-testid="disabled-switch"]'),
     ).toBeNull();
-    expect(asParent.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
+    expect(asParent.shadowRoot?.querySelector('[data-testid="metric-pane"]')?.hasAttribute("data-disabled")).toBe(false);
   });
 
   it("\u00a717.125 \u2014 CBSN full surface: \u03a3 title prefix, (unit) chip in the title row, AsChild kind-label in the `.subtitle` slot, value (no inline unit, no trailing zero), no .unit-below, target row, age timestamp, metric-pane wrapper", async () => {
@@ -239,15 +239,17 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     expect(time?.getAttribute("style")).toContain("--age-color: rgb(255, 145, 50)");
     // Timestamp text is now an age phrase, NOT a locale date.
     expect(time?.textContent ?? "").not.toMatch(/\d{4}/);
-    // SPEC §17.137 A1 — target-text moved into <objective-cell>'s
-    // shadow root (the molecule's render output); reach into it.
+    // SPEC \u00a717.142c -- target value now renders directly in
+    // card-body's `aux` slot as an SVG-mono glyph (the unit lives
+    // on the title-prefix chip per \u00a717.125, so the cell shows
+    // the bare number). The pre-\u00a717.142c `<objective-cell>`
+    // molecule's "100 %" projection retires alongside the molecule.
     expect(
       sr
-        .querySelector("objective-cell")
-        ?.shadowRoot?.querySelector('[data-testid="target-text"]')
+        .querySelector('[data-testid="target-row"]')
         ?.textContent?.replace(/\s+/g, " ")
         .trim(),
-    ).toBe("100 %");
+    ).toBe("100");
     // \u00a717.136 S4 -- timestamp moved to card-frame's footer-right
     // slot (was inside .metric-pane pre-§17.136). The .metric-pane
     // still renders (now as the body slot's content) but no longer
@@ -290,50 +292,33 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     }
   });
 
-  it("\u00a717.116 — trend arrow still renders on the numeric branch; timestamp absent when dateIso is empty", async () => {
+  it("\u00a717.142c \u2014 trend arrow renders as a CSS background on `.current-value[data-direction]` (the pre-\u00a717.142c standalone `<span data-testid=\"trend-arrow\"><ds-icon>` retires alongside the value-area grid); timestamp still absent when dateIso is empty", async () => {
     const el = await mountLitElement<ComputedBusinessScoreCard>(
       "computed-business-score-card",
       (e) => { e.vm = cbsnVm({ kind: "numeric", value: 50, unit: "%" }, "COUNT", "", { ...FLAT_OBJ, trendArrow: "up-right" }); },
     );
     const sr = el.shadowRoot!;
     expect(sr.querySelector('[data-testid="value-date"]')).toBeNull();
-    const arrow = sr.querySelector('[data-testid="trend-arrow"]');
-    expect(arrow?.getAttribute("data-direction")).toBe("up-right");
-    // §17.132 -- glyph is now a Lucide `<ds-icon>` (was U+2197 pre-§17.132).
-    expect(arrow?.querySelector("ds-icon")?.getAttribute("name")).toBe(
-      "arrow-up-right",
-    );
+    // \u00a717.142c -- the direction is baked onto the value cell so
+    // the §17.139 TREND_ARROW_BG CSS rule fires the muted Lucide
+    // arrow as a `background-image`. The pre-\u00a717.142c stand-
+    // alone `<span data-testid="trend-arrow">` retires.
+    const value = sr.querySelector('[data-testid="value"]');
+    expect(value?.getAttribute("data-direction")).toBe("up-right");
+    expect(value?.getAttribute("aria-label")).toBe("Trend: on or near schedule");
+    expect(sr.querySelector('[data-testid="trend-arrow"]')).toBeNull();
   });
 
-  it("\u00a717.116-followup-3 — CBSN .value stamps --char-count and the host injects a .value-area { height: 100% } override so the value-area matches the standard BSC vertical alignment", async () => {
+  it("\u00a717.142c \u2014 CBSN .value renders the formatted number text through renderMonoTextSvg (the pre-\u00a717.142c --char-count plumbing + cbsnHostStyles `.value-area { height: 100% }` override retire alongside the value-area grid; the shared <card-body> molecule owns vertical alignment now via align-items: stretch)", async () => {
     const el = await mountLitElement<ComputedBusinessScoreCard>(
       "computed-business-score-card",
       (e) => { e.vm = cbsnVm({ kind: "numeric", value: 1234.56, unit: "kg" }); },
     );
     const sr = el.shadowRoot!;
     const value = sr.querySelector('[data-testid="value"]');
-    // formatValue(1234.56) → "1234.56" (7 chars).
     expect(value?.textContent?.trim()).toBe("1234.56");
-    expect(value?.getAttribute("style") ?? "").toContain("--char-count: 7");
-    // The cbsnHostStyles sheet declares `.value-area { height: 100%; }`
-    // (overriding the shared tileLayoutStyles `calc(100% - 3vh)`); the
-    // override is what makes the CBSN value-area span the metric-pane
-    // in full so the value+target column centres at the same vertical
-    // position as the standard BSC. We assert the rule is present on
-    // the element's host stylesheet — jsdom does not resolve the cqi /
-    // vh units, but the rule presence is the contract that lands the
-    // value-area on the right height envelope. Lit can inject styles
-    // either via constructible `adoptedStyleSheets` or via inline
-    // `<style>` elements depending on the runtime; we collect both.
-    const adopted = (el.shadowRoot as ShadowRoot & {
-      adoptedStyleSheets?: ReadonlyArray<CSSStyleSheet>;
-    }).adoptedStyleSheets ?? [];
-    const inlineSheets = Array.from(sr.querySelectorAll("style")).map((s) => s.textContent ?? "");
-    const cssText = [
-      ...adopted.map((sheet) => Array.from(sheet.cssRules).map((rule) => rule.cssText).join("\n")),
-      ...inlineSheets,
-    ].join("\n");
-    expect(cssText).toMatch(/\.value-area\s*\{\s*height:\s*100%\s*;?\s*\}/);
+    expect(value?.querySelector("svg")).not.toBeNull();
+    expect(sr.querySelector('[data-testid="metric-pane"]')?.tagName.toLowerCase()).toBe("card-body");
   });
 });
 
@@ -665,7 +650,7 @@ describe("<computed-card> + <computed-business-score-card> inline unit-chip edit
     ).toBeNull();
   });
 
-  it("\u00a717.137 A2b \u2014 CBSN's renderObjectiveRow omits the <target-date-cell> branch when `objective.targetDateIso` is empty; <objective-cell> still renders alongside (mirror of BSC's silent-on-empty-date contract)", async () => {
+  it("\u00a717.142c \u2014 CBSN's renderTargetCells skips the `meta` slot's `target-date` when `objective.targetDateIso` is empty; the `aux` slot's `target-row` still renders alongside (mirror of BSC's silent-on-empty-date contract; pre-\u00a717.142c the wrappers were `<objective-cell>` + `<target-date-cell>` shadow-DOM molecules)", async () => {
     const el = await mountLitElement<ComputedBusinessScoreCard>(
       "computed-business-score-card",
       (e) => {
@@ -677,9 +662,15 @@ describe("<computed-card> + <computed-business-score-card> inline unit-chip edit
         );
       },
     );
-    const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
-    expect(row).not.toBeNull();
-    expect(row?.querySelector("target-date-cell")).toBeNull();
-    expect(row?.querySelector("objective-cell")).not.toBeNull();
+    const sr = el.shadowRoot!;
+    expect(sr.querySelector('[data-testid="target-row"]')).not.toBeNull();
+    expect(sr.querySelector('[data-testid="target-date"]')).toBeNull();
+    // The pre-\u00a717.142c `<objective-cell>` + `<target-date-cell>`
+    // shadow-DOM molecules retire on this strand; the cells they
+    // projected are now plain divs inside `<card-body>`'s aux + meta
+    // slots, so the molecule tags must NOT appear anywhere in the
+    // CBSN render tree.
+    expect(sr.querySelector("objective-cell")).toBeNull();
+    expect(sr.querySelector("target-date-cell")).toBeNull();
   });
 });

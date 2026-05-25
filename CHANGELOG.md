@@ -16,6 +16,27 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Computed* both card classes both roles migrate to the shared
+  `<card-body>` skeleton + AsChild title moves to SVG-mono + Computed*
+  AsParent header bumps to 24% (§17.142c)**. Fourth strand of the §17.142
+  plan: both `<computed-card>` (no objective) and `<computed-business-
+  score-card>` (with objective) now render their body content through
+  the shared `<card-body>` molecule on both `asChild` and `asParent`
+  roles. The numeric value glyph migrates to `renderMonoTextSvg` so it
+  scales with the cell width (closes "current value clipped" for
+  Computed parents too); the trend arrow becomes a CSS background on the
+  value cell (mirror of the §17.142a/b BSC pattern, no more standalone
+  `<ds-icon>` DOM child); the CBSN-only target value + target date cells
+  become direct `aux` + `meta` slot children rendered through SVG-mono.
+  The `<objective-cell>` and `<target-date-cell>` shadow-DOM molecules
+  retire as production consumers — every place in the kiosk that used
+  to mount them now renders their cells inline (a follow-up clean-up
+  strand can delete the molecule files themselves once a wider regress
+  pass is done). The AsChild title also migrates to SVG-mono so a long
+  title shrinks instead of overflowing the card-frame title slot, and
+  the focused-panel Computed* header bumps 18% → 24% (mirror of
+  §17.142b's BSC bump) so the title + sigma badge + subtitle strategy
+  picker breathe on the focused panel without cropping.
 - **BSC AsParent migrates to the shared `<card-body>` skeleton + value moves
   to SVG-mono + header bumps to 24% + description shrinks via container-
   query height instead of line-clamp (§17.142b)**. Third strand of the
