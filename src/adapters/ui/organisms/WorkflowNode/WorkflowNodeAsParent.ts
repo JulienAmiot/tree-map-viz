@@ -46,6 +46,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
+import "../../molecules/cardBody/CardBody.js";
 import "../../molecules/cardFrame/CardFrame.js";
 import {
   INLINE_EDIT_VALUE_EVENT,
@@ -200,10 +201,10 @@ export class WorkflowNodeAsParent extends LitElement {
     const dateStyle = value.dateColor ? `--age-color: ${value.dateColor}` : "";
     const bodyClass = empty ? "md-body empty is-editable" : "md-body is-editable";
     const bodyContent = empty ? "" : unsafeHTML(renderMarkdownToHtml(value.text));
-    // SPEC §17.136 S7 -- panel-relative header + footer heights
-    // (focused-panel host is ~85vh; card-frame's 22%/12% defaults
-    // would dominate the value-area).
-    const sizing = "--card-header-height: 18%; --card-footer-height: 8%";
+    // SPEC §17.142d -- header bumps 18% → 24% (mirror §17.142b/c)
+    // so the title + status-badge picker breathe on the focused
+    // panel without cropping.
+    const sizing = "--card-header-height: 24%; --card-footer-height: 8%";
     const titleH1 = this.titleEditor.renderTitle("WorkflowNode", nothing);
     return html`<card-frame style=${sizing}>
       <span slot="icons" data-testid="icons-slot"></span>
@@ -219,10 +220,11 @@ export class WorkflowNodeAsParent extends LitElement {
           this.dispatchStatusChange,
         )}
       </div>
-      <div class="value-area" slot="body" data-testid="value-row">
+      <card-body slot="body" data-layout="lead-only" data-testid="value-row">
         ${this.editingValue
           ? this.renderValueEditor(value.text)
           : html`<div
+              slot="lead"
               class=${bodyClass}
               data-testid="value"
               data-value-kind="textValue"
@@ -233,7 +235,7 @@ export class WorkflowNodeAsParent extends LitElement {
             >
               ${bodyContent}
             </div>`}
-      </div>
+      </card-body>
       ${value.dateIso && !this.editingValue
         ? html`<time
             class="timestamp"
@@ -249,6 +251,7 @@ export class WorkflowNodeAsParent extends LitElement {
 
   private renderValueEditor(initial: string) {
     return html`<textarea
+      slot="lead"
       class="value-edit"
       data-testid="value-edit"
       .value=${initial}

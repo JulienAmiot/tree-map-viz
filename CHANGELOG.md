@@ -16,6 +16,18 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **WorkflowNode both roles migrate to the shared `<card-body>` skeleton
+  + AsParent header bumps to 24% (§17.142d)**. Fifth strand of the
+  §17.142 plan: workflow card tiles now render their markdown body
+  through the §17.142-foundation `<card-body>` molecule with a new
+  `data-layout="lead-only"` variant that collapses the molecule's
+  grid to a single 1fr column / 1fr row track. The shared skeleton
+  now serves single-content kinds (Workflow / Text / Picture / URL)
+  alongside the 3-cell value/objective kinds (BSC / Computed*) without
+  ceding the right column to empty aux + meta cells. AsParent
+  card-header-height bumps 18% → 24% (mirror of §17.142b/c) so the
+  title + status-badge picker breathe on the focused panel without
+  cropping.
 - **Computed* both card classes both roles migrate to the shared
   `<card-body>` skeleton + AsChild title moves to SVG-mono + Computed*
   AsParent header bumps to 24% (§17.142c)**. Fourth strand of the §17.142
