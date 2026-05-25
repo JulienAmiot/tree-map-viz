@@ -1,19 +1,41 @@
 /**
  * `<business-score-card-as-child>` — compact treemap-tile rendering
  * for `BusinessScoreCardNode` (SPEC §5, §17.14, §17.18, §17.136 S2,
- * §17.139). Same fields + timestamp policy as the AsParent role.
+ * §17.139, §17.142a).
  *
- * SPEC §17.136 S2 routes the render into `<card-frame>` slots; SPEC
- * §17.139 swaps the value-area for a 3-cell CSS grid with monospace
- * SVG text (atoms/svgMonoText.ts) + CSS-background trend / target
- * icons (molecules/trendArrowBg.ts). See SPEC §17.139c for the full
- * design rationale.
+ * SPEC §17.142a — migrates the body off the pre-§17.142a per-view
+ * `.value-area` grid onto the shared `<card-body>` molecule. The
+ * three SVG-mono cells (`current-value`, `target-value`, `target-date`)
+ * now sit in the molecule's `lead` / `aux` / `meta` slots and inherit
+ * the §17.142 stretch-alignment + container-query portrait flip "for
+ * free". The pre-§17.142a `.value-area` grid declaration + the
+ * `display: contents` `.target-row` flatten retire here (the wrapper
+ * was a §17.139c workaround against the shared `tileLayoutStyles`
+ * grid rule that no longer applies to AsChild).
+ *
+ * SPEC §17.142a also addresses three concrete §17.141 review items:
+ *   - **"doesn't fill the whole space"** — `<card-body>` cells
+ *     stretch (`align-items: stretch`) so the SVG-mono glyph reaches
+ *     the bottom of its row instead of leaving slack underneath.
+ *   - **"title relatively too big"** — the title text moves into an
+ *     SVG-mono wrapper so it scales with the title slot's width
+ *     (same `<svg width="100%" height="auto">` mechanic the value
+ *     glyph uses); a long title renders as a shorter (squat) SVG
+ *     that fits horizontally, a short title renders as a taller
+ *     SVG. The §17.42 fixed `2vh` font-size on the shared `.title`
+ *     rule was visually too dominant on small child tiles where the
+ *     value glyph also competes for the limited canvas.
+ *   - **"target and date are missing"** — falls out of the migration
+ *     naturally: the new `aux` + `meta` cells render the target
+ *     value + target date as direct grid items, no `display:
+ *     contents` flatten hack needed.
  */
 
 import { LitElement, css, html, nothing, unsafeCSS } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import "../../atoms/icon/Icon.js";
+import "../../molecules/cardBody/CardBody.js";
 import "../../molecules/cardFrame/CardFrame.js";
 import "../../molecules/childWeight/WeightEditButton.js";
 import {
@@ -94,35 +116,20 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
         bottom: auto;
         right: auto;
       }
-      .value-area {
-        grid-template-columns: 2fr 1fr;
-        grid-template-rows: 1fr 1fr;
-        grid-template-areas:
-          "current-value target-value"
-          "current-value target-date";
-        align-items: center;
-        justify-items: stretch;
-      }
-      @container (orientation: portrait) {
-        .value-area {
-          grid-template-columns: 1fr;
-          grid-template-rows: 2fr 1fr 1fr;
-          grid-template-areas: "current-value" "target-value" "target-date";
-        }
-      }
-      /* SPEC §17.140 -- the shared tileLayoutStyles defines a
-         '.value-area > .target-row { display: grid; ... }' rule
-         (specificity 0,2,0) for the pre-§17.139 nested-grid sub-
-         row layout. That selector beats a bare '.target-row'
-         (0,1,0), so we must match its selector shape to win on
-         source order. Without this override the pre-§17.139
-         nested grid fires for AsChild too, .target-value +
-         .target-date reference grid-areas that don't exist in
-         the nested grid, and both collapse onto cell (1,1) --
-         the operator sees the target text and the target date
-         stacked on top of each other. */
-      .value-area > .target-row {
-        display: contents;
+      /* SPEC 17.142a -- title slot hosts an svgMonoText
+         width=100%/height=auto SVG so the title scales with the
+         slot width the same way the value glyph scales with its
+         cell. Wrapper resets the inherited .title rule's 2vh
+         font-size (the shared tileLayoutStyles default) +
+         text-overflow ellipsis (no longer needed -- the SVG
+         viewBox handles long-title fit). */
+      .title {
+        height: 100%;
+        font-size: inherit;
+        line-height: 1;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
       }
       .current-value,
       .target-value,
@@ -135,7 +142,6 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
         background-repeat: no-repeat;
       }
       .current-value {
-        grid-area: current-value;
         color: var(--bsc-value-color, currentColor);
         font-weight: 700;
         background-position: right center;
@@ -157,14 +163,10 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
         background-image: ${unsafeCSS(TREND_ARROW_BG.down)};
       }
       .target-value {
-        grid-area: target-value;
         position: relative;
         background-image: ${unsafeCSS(TARGET_ICON_BG)};
         background-position: left center;
         background-size: auto 80%;
-      }
-      .target-date {
-        grid-area: target-date;
       }
       .target-value > .warning-icon {
         position: absolute;
@@ -213,10 +215,11 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
         data-testid="title"
         data-view-kind="BusinessScoreCardNode"
         data-id=${this.vm.id}
-      >${this.vm.title}</h2>
+      >${renderMonoTextSvg(this.vm.title, { fontWeight: 700 })}</h2>
       <div class="subtitle" slot="subtitle" data-testid="subtitle"></div>
-      <div class="value-area" slot="body" data-testid="value-row">
+      <card-body slot="body" data-testid="value-row">
         <div
+          slot="lead"
           class="current-value"
           data-testid="value"
           data-value-kind=${valueKind}
@@ -229,7 +232,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
               rightPadding: valueText.length * MONO_CHAR_WIDTH * 0.1,
             })}</div>
         ${this.renderTargetCells()}
-      </div>
+      </card-body>
       ${dateIso
         ? html`<time
             class="timestamp"
@@ -254,16 +257,14 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
       return nothing;
     }
     const obj = this.vm.objective;
-    // SPEC §17.141 -- the target cell now renders ONLY the value
-    // (operator feedback: don't write the unit in the target). The
-    // unit already reads as the title-prefix chip via §17.125 +
-    // §17.140, so duplicating it in the target row was redundant
-    // and stole horizontal real estate from the value glyph
-    // (especially on portrait child tiles where the target row is
-    // narrower than the value row).
+    // SPEC §17.141 -- the target cell renders ONLY the bare numeric
+    // value (the unit lives on the title-prefix chip per §17.125).
     const targetText = formatValue(obj.targetValue);
-    return html`<div class="target-row" data-testid="target-row">
-      <div class="target-value" data-testid="target-text">
+    return html`<div
+        slot="aux"
+        class="target-value"
+        data-testid="target-text"
+      >
         ${renderMonoTextSvg(targetText, { leftPadding: 28, fontWeight: 400 })}
         ${obj.warningColor
           ? html`<span
@@ -278,6 +279,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
       </div>
       ${obj.targetDateIso
         ? html`<time
+            slot="meta"
             class="target-date"
             data-testid="target-date"
             datetime=${obj.targetDateIso}
@@ -286,8 +288,7 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
               fontWeight: 400,
             })}</time
           >`
-        : nothing}
-    </div>`;
+        : nothing}`;
   }
 }
 
