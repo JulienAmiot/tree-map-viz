@@ -14,7 +14,32 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Added
+
+- **Shared `<card-body>` 3-cell skeleton (§17.142 foundation)**. New molecule
+  every per-view will route its body content through so the kiosk's card
+  layouts share one visual rhythm — `lead` cell on the left (the focal
+  content), `aux` + `meta` cells stacked on the right (secondary +
+  tertiary content). Container-query portrait flip stacks the three cells
+  vertically when the host is taller than wide. Cells stretch to fill
+  their tracks, fixing the §17.141-review "doesn't fill the whole space"
+  feedback on BSC AsChild. Per-view divergence rides on `--card-body-lead-cols`
+  + `--card-body-gap` custom properties + `part="lead|aux|meta"` shadow-
+  piercing hooks. Foundation only — per-kind migrations land in
+  §17.142a-§17.142e strands one kind at a time.
+
 ### Changed
+
+- **Showcase `dateColor` fixtures now follow the kiosk's age-based rule
+  (§17.142 foundation)**. Operator feedback on the §17.141 design-system
+  review: *"the age is using the gradient color"*. The pre-§17.142
+  showcase view-model builders hand-baked gradient rgb literals on each
+  `dateColor` (the on-track BSC carried the value's green, the off-track
+  BSC carried the warning's orange, etc.) — but the real `viewModelMapper`
+  derives `dateColor` from §17.42's off-white → dark-grey age lerp.
+  Routing every showcase fixture through `dateAgeColor()` against a
+  frozen `SHOWCASE_NOW` realigns the demo with the kiosk's actual rule
+  and keeps the result deterministic across reloads.
 
 - **Edit-modal carries the disabled flag now, AsParent cards lose the inline
   toggle (§17.141)**. Operator-requested follow-up after §17.140. The

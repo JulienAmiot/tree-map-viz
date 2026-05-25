@@ -32,6 +32,7 @@ import type {
   URLNodeViewModel,
   WorkflowNodeViewModel,
 } from "../../molecules/NodeViewModel.js";
+import { dateAgeColor } from "../../atoms/dateAgeColor.js";
 import type { BreadcrumbSegment } from "../../organisms/shell/Breadcrumb.js";
 
 const ALL_COMPUTATION_KINDS = [
@@ -42,6 +43,26 @@ const ALL_COMPUTATION_KINDS = [
   "WEIGHTED_AVERAGE",
   "COUNT",
 ] as const;
+
+/**
+ * SPEC §17.142 — frozen "now" the showcase pretends is current so the
+ * §17.18 / §17.42 `dateAgeColor()` lerp resolves to a stable value
+ * across reloads. Pre-§17.142 every fixture below hand-baked a
+ * `dateColor` rgb literal (the on-track BSC carried the value's
+ * gradient green, the off-track BSC carried an orange close to its
+ * warning color, etc.) — but the kiosk's real mapper computes
+ * `dateColor` from the age-based off-white → dark-grey lerp, NOT
+ * from the value's gradient. The operator's §17.141 review called
+ * out the mismatch directly: "the age is using the gradient color".
+ * Routing every fixture through `dateAgeColor(dateIso, { now:
+ * SHOWCASE_NOW })` realigns the showcase with the kiosk's actual
+ * rule + keeps the result deterministic across CI runs.
+ */
+const SHOWCASE_NOW = new Date("2026-05-25T12:00:00Z");
+
+function showcaseDateColor(iso: string): string {
+  return dateAgeColor(iso, { now: SHOWCASE_NOW });
+}
 
 /**
  * BSC AsParent demo: a "Revenue (USD)" metric with a recorded value
@@ -61,7 +82,7 @@ export function sampleBusinessScoreVMOnTrack(): BusinessScoreCardNodeViewModel {
       dateIso: "2026-05-22",
     },
     dateIso: "2026-05-22",
-    dateColor: "rgb(120, 180, 120)",
+    dateColor: showcaseDateColor("2026-05-22"),
     objective: {
       targetValue: 1_400_000,
       targetDateIso: "2026-06-30",
@@ -107,7 +128,7 @@ export function sampleComputedBSCVM(): ComputedBusinessScoreNodeViewModel {
     computationKind: "WEIGHTED_AVERAGE",
     availableKinds: ALL_COMPUTATION_KINDS,
     dateIso: "2026-05-20",
-    dateColor: "rgb(150, 180, 130)",
+    dateColor: showcaseDateColor("2026-05-20"),
     objective: {
       targetValue: 7,
       targetDateIso: "2026-09-30",
@@ -132,7 +153,7 @@ export function sampleTextNodeVM(): TextNodeViewModel {
     value: {
       text: "Pager noise from monitor X resolved; remove alarm on green.",
       dateIso: "2026-05-22",
-      dateColor: "rgb(120, 180, 120)",
+      dateColor: showcaseDateColor("2026-05-22"),
     },
   };
 }
@@ -150,7 +171,7 @@ export function sampleWorkflowNodeVM(): WorkflowNodeViewModel {
     value: {
       text: "Draft + circulate by EOW.",
       dateIso: "2026-05-21",
-      dateColor: "rgb(150, 200, 150)",
+      dateColor: showcaseDateColor("2026-05-21"),
     },
     status: { id: "do", label: "DO", color: "rgb(59, 130, 246)" },
     availableStatuses: [
@@ -262,7 +283,7 @@ export function sampleBusinessScoreVMOffTrack(): BusinessScoreCardNodeViewModel 
       unit: "%",
     },
     dateIso: "2026-04-30",
-    dateColor: "rgb(220, 140, 60)",
+    dateColor: showcaseDateColor("2026-04-30"),
     objective: {
       targetValue: 99,
       targetDateIso: "2026-12-31",
