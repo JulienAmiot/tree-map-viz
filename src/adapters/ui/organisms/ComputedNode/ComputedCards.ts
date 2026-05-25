@@ -1,98 +1,27 @@
 /**
- * `<computed-card>` + `<computed-business-score-card>` (SPEC §17.104 +
- * §17.116 refresh).
+ * `<computed-card>` + `<computed-business-score-card>` (SPEC §17.104,
+ * §17.116, §17.124, §17.136, §17.142c).
  *
- * §17.116 visual contract:
+ * §17.142c migrates both classes' body content onto the shared
+ * `<card-body>` molecule (`lead`/`aux`/`meta`): numeric value renders
+ * as SVG-mono in `lead` with the trend arrow as a CSS background
+ * keyed by `data-direction` (mirror of BSC AsChild §17.139/§17.140);
+ * CBSN-only target value + target date land in `aux` + `meta` with
+ * the bullseye CSS background + off-track warning glyph. Non-numeric
+ * branches bypass card-body and render `renderWarningFill` directly.
+ * AsChild titles also become SVG-mono so a long title shrinks; the
+ * §17.124 inline-edit `<h1>` on AsParent is unchanged.
  *
- *  - **Σ prefix on the title** — when the strategy produces a numeric
- *    value, the title row is prefixed with a small Σ glyph (was a
- *    chip next to the value pre-§17.116; the chip moved to the title
- *    so the value glyph reads as a bare number on a single line).
- *  - **No computation-kind chrome on the tile** (§17.116-followup-2)
- *    — the pre-§17.104 inline `<select class="kind-dropdown">` was
- *    retired in §17.116c in favour of a static `<div class="kind-
- *    label">` sibling under the title; the followup-2 strand drops
- *    the label too on operator feedback ("remove the computation
- *    text line in a child and a parent"). The Σ prefix already
- *    signals "aggregated value", which is the only piece of the
- *    computation-kind reading the operator needed at a glance; the
- *    exact kind (SUM / AVERAGE / …) belongs to the edit modal.
- *  - **Unit under the value** — the unit moves out of the inline
- *    `<span class="value">` run into a `.unit-below` block sibling.
- *  - **Bottom-right shows age** — the corner timestamp renders the
- *    age in years / months / days (zero components stripped) via
- *    `formatAge`; the locale date is no longer surfaced on the tile.
- *  - **Warning-fill when not computable** — the `empty` and any
- *    `childrenCount` branches of `ComputedValueViewModel` render the
- *    tile's value-area as a full-tile `⚠` glyph in a muted colour
- *    at cqmin-sized scale. Was a small inline glyph or "n
- *    children" / reason text pre-§17.116. SPEC §17.116-followup
- *    dropped the §17.24 PlusTile dashed border + corner-radius on
- *    operator feedback — the glyph alone carries the "cannot
- *    compute" signal at-a-glance.
- *  - **CBSN host is a column flex container** (§17.116-followup) so
- *    `.metric-pane` fills the body below the title and its bottom
- *    edge coincides with the tile's bottom edge. The `<time class=
- *    "timestamp">` is parented inside `.metric-pane` (SPEC §17.30 /
- *    §17.45 parity), so the pane-fills-body rule is what makes
- *    "bottom-right of the tile" land at the actual tile bottom-
- *    right rather than the figure's bottom-right.
- *  - **CBSN value-area matches the standard BSC vertical alignment**
- *    (§17.116-followup-3) — the shared `tileLayoutStyles`
- *    `.value-area` rule sizes the area to `calc(100% - 3vh)` of its
- *    parent (the standard BSC parents it under the host, so that
- *    formula yields `host - 3vh`, i.e. "the body below the title").
- *    On CBSN the `.value-area` is nested one level deeper (inside
- *    `.metric-pane` which already fills `host - 3vh` via the
- *    column-flex rule above), which made the shared `- 3vh` cut
- *    fire twice and leave a 3vh gap at the metric-pane bottom; the
- *    value figure sat visibly higher than the equivalent standard
- *    BSC figure. The `cbsnHostStyles` override below pins the
- *    CBSN value-area to `height: 100%` of its metric-pane parent
- *    so the value+target column centres at the same vertical
- *    position as the standard BSC. The 3vh bottom strip that used
- *    to be "reserved" for the timestamp is no longer required —
- *    the timestamp is absolutely positioned and floats over the
- *    value-area's bottom-right corner (same as the standard BSC
- *    layout it now mirrors).
- *  - **Per-value `--char-count` inline style** (§17.116-followup-3)
- *    — the shared `.value` font-size rule caps at
- *    `160cqi / max(2, --char-count)` so the figure never overflows
- *    the tile horizontally regardless of digit count. The two
- *    Computed* render helpers below stamp the rendered text's
- *    length onto the `.value` element via inline style so the
- *    cap tightens as the number grows wider.
- *
- * The `COMPUTATION_KIND_CHANGE_EVENT` + `ComputationKindChangeDetail`
- * exports are preserved (the wiring lives in `main.ts` and routes to
- * `EditNodeService.editFields`); the dispatch site moves out of this
- * file in §17.116 because no inline kind-change gesture remains. The
- * symbols stay so the §17.116-followup edit-modal patch can hook into
- * the existing handler without churn.
- *
- * SPEC §17.124 — inline title editing on the focused panel.
- * Operator-requested parity: every parent-strip tile across the kiosk
- * (TextNode / BSC / Workflow / Picture / URL since §17.28 / §17.50)
- * lets the operator click the title to inline-edit it; Computed* was
- * the lone outlier carrying a static read-only title. §17.124 mounts
- * the shared `InlineTitleEditController` on BOTH Computed card
- * classes for `viewRole === "asParent"` only — AsChild tiles keep
- * the static `renderTitleWithBadge` path so the click-to-drill
- * gesture on the tree-map grid is preserved (a single-click on a
- * child tile must continue to drill into focus, NOT enter edit
- * mode). The Σ badge moves into the prefix slot of the controller's
- * `renderTitle(viewKind, prefix)` call so the visual chain reads
- * `[disabled-switch][Σ]Title` exactly as today; the only change is
- * that the `<h2>` becomes an editable `<h1>` on the focused panel.
- * The inline-edit input styling is scoped under
- * `:host([view-role="asParent"])` so the AsChild role's 3vh title
- * sizing inherited from `tileLayoutStyles` is left untouched.
+ * The shared `dispatchComputationKindChange` helper keeps both
+ * classes feeding the same `COMPUTATION_KIND_CHANGE_EVENT` payload
+ * routed by `main.ts` to `EditNodeService.editFields`.
  */
 
-import { LitElement, html, css, nothing, type TemplateResult } from "lit";
+import { LitElement, html, css, nothing, unsafeCSS, type TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import "../../atoms/icon/Icon.js";
+import "../../molecules/cardBody/CardBody.js";
 import "../../molecules/cardFrame/CardFrame.js";
 import "../../molecules/childWeight/WeightEditButton.js";
 import { ComputationKind } from "../../../../domain/computation/ComputationKind.js";
@@ -104,7 +33,6 @@ import type {
   ComputedNodeViewModel,
   ComputedValueViewModel,
   NodeRole,
-  TrendArrowDirection,
 } from "../../molecules/NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import {
@@ -121,9 +49,10 @@ import {
   titleInlineEditStyles,
 } from "../../molecules/inlineTitleEdit.js";
 import { formatValue } from "../../atoms/numberFormat.js";
-import "../../molecules/objective/Objective.js";
-import "../../molecules/objective/TargetDate.js";
+import { formatTargetDate } from "../../molecules/objective/TargetDate.js";
+import { MONO_CHAR_WIDTH, renderMonoTextSvg } from "../../atoms/svgMonoText.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
+import { TARGET_ICON_BG, TREND_ARROW_BG } from "../../molecules/trendArrowBg.js";
 import {
   InlineUnitEditController,
   type InlineUnitEditTarget,
@@ -223,12 +152,91 @@ const sharedStyles = css`
      .subtitle slot from tileLayoutStyles. The 2vh row reserves
      space directly under the title for the active computation kind
      (AsChild: a static span.kind-label; AsParent: the
-     select.strategy-picker that fires computation-kind-change).
-     The shared .value-area height formula reads this var and
-     subtracts it from the body region, so the value figure shrinks
-     by exactly the slot we add. */
+     select.strategy-picker that fires computation-kind-change). */
   :host {
     --subtitle-row-height: 2vh;
+  }
+  /* SPEC §17.142c -- AsChild title is SVG-mono; reset shared
+     tileLayoutStyles' 2vh + ellipsis (mirror of BSC AsChild). */
+  :host([view-role="asChild"]) .title {
+    height: 100%;
+    font-size: inherit;
+    line-height: 1;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  /* SPEC §17.142c -- 2fr lead matches §17.142a/b BSC ratio. */
+  .metric-pane {
+    --card-body-lead-cols: 2fr;
+  }
+  .current-value,
+  .target-value,
+  .target-date {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    min-width: 0;
+    background-repeat: no-repeat;
+  }
+  .current-value {
+    color: var(--bsc-value-color, currentColor);
+    font-weight: 700;
+    background-position: right center;
+    background-size: auto 60%;
+  }
+  .current-value[data-direction="up"] {
+    background-image: ${unsafeCSS(TREND_ARROW_BG.up)};
+  }
+  .current-value[data-direction="up-right"] {
+    background-image: ${unsafeCSS(TREND_ARROW_BG["up-right"])};
+  }
+  .current-value[data-direction="right"] {
+    background-image: ${unsafeCSS(TREND_ARROW_BG.right)};
+  }
+  .current-value[data-direction="down-right"] {
+    background-image: ${unsafeCSS(TREND_ARROW_BG["down-right"])};
+  }
+  .current-value[data-direction="down"] {
+    background-image: ${unsafeCSS(TREND_ARROW_BG.down)};
+  }
+  .target-value {
+    position: relative;
+    background-image: ${unsafeCSS(TARGET_ICON_BG)};
+    background-position: left center;
+    background-size: auto 80%;
+  }
+  .target-value > .warning-icon {
+    position: absolute;
+    right: 0.1em;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 60%;
+    aspect-ratio: 1 / 1;
+    color: currentColor;
+    pointer-events: none;
+    user-select: none;
+  }
+  .target-value > .warning-icon > ds-icon {
+    width: 100%;
+    height: 100%;
+  }
+  /* SPEC §17.142c -- full-body warning glyph for non-numeric. */
+  .warning-fill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: color-mix(in srgb, currentColor 55%, transparent);
+  }
+  .warning-fill > ds-icon {
+    width: clamp(2rem, 30cqmin, 8rem);
+    height: clamp(2rem, 30cqmin, 8rem);
   }
   /* SPEC §17.116 — Σ prefix in the title row. Sized at ~0.85em of
      the title's font-size so it reads as a glyph attached to the
@@ -240,10 +248,6 @@ const sharedStyles = css`
     margin-right: 0.25em;
     font-size: 0.95em;
   }
-  /* SPEC §17.30 / §17.45 — pane carries position:relative so the
-     absolute .timestamp (declared on tileLayoutStyles) anchors to
-     the pane's edges, mirroring the v3 BSC asParent layout. */
-  .metric-pane { position: relative; }
   /* SPEC §17.121e — kind-label sits centered inside the .subtitle
      row on the AsChild tile. Reads as a quiet noun-phrase
      descriptor ("Average", "Weighted average"); the .subtitle
@@ -279,20 +283,6 @@ const sharedStyles = css`
     border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
     cursor: pointer;
   }
-  /* SPEC §17.124 — restore AsChild's pre-§17.124 title sizing /
-     colour. The shared titleInlineEditStyles block (mixed into the
-     Computed cards below) pins the title to 2.4vh / off-white for
-     focused-panel emphasis; on Computed* that block fires for
-     BOTH roles because the class is dual-role. The AsChild override
-     here rolls the font-size / colour back to the tile-level
-     defaults so the tree-map grid keeps its 3vh inherited sizing.
-     The .title-edit rules from titleInlineEditStyles stay inert on
-     AsChild (no .title-edit element renders) so no unscoped CSS
-     leaks. */
-  :host([view-role="asChild"]) .title {
-    font-size: 3vh;
-    color: inherit;
-  }
   /* SPEC 17.136 S4 -- the rendered timestamp lives in card-frame's
      footer-right slot on BOTH roles (S3 scoped this to asParent
      only; S4 promotes it to both because AsChild now also uses
@@ -306,27 +296,20 @@ const sharedStyles = css`
   }
 `;
 
-// SPEC §17.136 S4 — the pre-§17.136 `cbsnHostStyles` flex-column host
-// override + `.metric-pane { flex: 1 1 auto }` rule are RETIRED:
-// card-frame now owns the host's grid layout, so the body slot fills
-// the row between header and footer and the metric-pane already
-// occupies that body row in full. What survives from cbsnHostStyles
-// is the `.value-area { height: 100% }` rule: card-frame strips the
-// title row out of the body slot's height envelope, so the shared
-// `tileLayoutStyles` formula (`calc(100% - 3vh)`) would now under-
-// shoot the body row by 3vh on CBSN (the value-area is nested inside
-// .metric-pane on this class, unlike the plain <computed-card> where
-// it sits at the body root). Pinning the CBSN value-area back to
-// `height: 100%` of its metric-pane parent restores the vertical
-// centering with the standard BSC's value-area.
-const cbsnHostStyles = css`
-  .value-area { height: 100%; }
-`;
-
-const TREND_SLUGS: Record<TrendArrowDirection, string> = {
-  up: "arrow-up", "up-right": "arrow-up-right", right: "arrow-right",
-  "down-right": "arrow-down-right", down: "arrow-down",
-};
+// SPEC §17.142c -- mirror of BSC AsChild's trend-arrow contract:
+// direction → screen-reader label baked onto the `.current-value`
+// span carrying the CSS-background arrow (replaces §17.131's
+// standalone `<ds-icon>` child).
+const TREND_ARROW_LABELS = {
+  up: "Trend: well ahead of schedule",
+  "up-right": "Trend: on or near schedule",
+  right: "Trend: flat",
+  "down-right": "Trend: slight regression",
+  down: "Trend: significant regression",
+} as const satisfies Record<
+  NonNullable<BusinessScoreCardObjectiveViewModel["trendArrow"]>,
+  string
+>;
 
 /**
  * SPEC §17.116 — full-tile warning glyph for Computed* tiles whose
@@ -352,6 +335,66 @@ function renderWarningFill(value: ComputedValueViewModel): TemplateResult {
     role="img"
     aria-label="Cannot compute value"
   ><ds-icon name="triangle-alert"></ds-icon></div>`;
+}
+
+/** SPEC §17.142c -- shared `lead` slot filler. SVG-mono value glyph
+ *  with optional trend-arrow CSS background keyed by `data-direction`
+ *  (CBSN only; plain `<computed-card>` passes `objective = null`). */
+function renderLeadValue(
+  value: Extract<ComputedValueViewModel, { kind: "numeric" }>,
+  objective: BusinessScoreCardObjectiveViewModel | null,
+): TemplateResult {
+  const text = formatValue(value.value);
+  const direction = objective?.trendArrow ?? null;
+  const valueColor = objective?.valueColor ?? "";
+  return html`<span
+    slot="lead"
+    class="current-value value"
+    data-testid="value"
+    data-value-kind="numeric"
+    data-direction=${direction ?? ""}
+    aria-label=${direction ? TREND_ARROW_LABELS[direction] : ""}
+    style=${valueColor ? `--bsc-value-color: ${valueColor}` : ""}
+  >${renderMonoTextSvg(text, {
+    rightPadding: text.length * MONO_CHAR_WIDTH * 0.1,
+  })}</span>`;
+}
+
+/** SPEC §17.142c -- CBSN `aux` (target + warning) + `meta` (target
+ *  date) slot fillers; both glyphs render via SVG-mono. */
+function renderTargetCells(
+  objective: BusinessScoreCardObjectiveViewModel,
+): TemplateResult {
+  const targetText = formatValue(objective.targetValue);
+  return html`<div
+      slot="aux"
+      class="target-value"
+      data-testid="target-row"
+    >
+      ${renderMonoTextSvg(targetText, { leftPadding: 28, fontWeight: 400 })}
+      ${objective.warningColor
+        ? html`<span
+            class="warning-icon"
+            data-testid="off-track-warning"
+            role="img"
+            aria-label="Trajectory predicts missing the deadline"
+            style=${`color: ${objective.warningColor}`}
+            ><ds-icon name="triangle-alert"></ds-icon
+          ></span>`
+        : nothing}
+    </div>
+    ${objective.targetDateIso
+      ? html`<time
+          slot="meta"
+          class="target-date"
+          data-testid="target-date"
+          datetime=${objective.targetDateIso}
+          >${renderMonoTextSvg(formatTargetDate(objective.targetDateIso), {
+            leftPadding: 28,
+            fontWeight: 400,
+          })}</time
+        >`
+      : nothing}`;
 }
 
 // SPEC §17.136 S4 — the pre-§17.136 helpers `renderTitleWithBadge`,
@@ -388,84 +431,6 @@ function dispatchComputationKindChange(
   );
 }
 
-/**
- * SPEC §17.116-followup-3 — `--char-count` inline style for a
- * Computed* `.value` element. The shared `.value` font-size rule
- * reads `var(--char-count, 2)` to cap the figure at
- * `160cqi / max(2, --char-count)`, which makes the value glyph
- * shrink as the digit count grows so it never overflows the tile
- * horizontally. Computed* tiles have no per-VM gradient colour
- * (the BSC `valueColor` pipeline does not apply), so the inline
- * style carries `--char-count` only.
- */
-function valueCharCountStyle(text: string): string {
-  return `--char-count: ${text.length}`;
-}
-
-function renderNumericValueArea(
-  value: Extract<ComputedValueViewModel, { kind: "numeric" }>,
-): TemplateResult {
-  const text = formatValue(value.value);
-  return html`<div class="value-area" data-testid="value-row">
-    <div class="value-row">
-      <span
-        class="value"
-        data-testid="value"
-        data-value-kind="numeric"
-        style=${valueCharCountStyle(text)}
-        >${text}</span
-      >
-    </div>
-  </div>`;
-}
-
-function renderNumericValueAreaWithObjective(
-  value: Extract<ComputedValueViewModel, { kind: "numeric" }>,
-  objective: BusinessScoreCardObjectiveViewModel,
-): TemplateResult {
-  const text = formatValue(value.value);
-  return html`<div class="value-area" data-testid="value-row">
-    <div class="value-row">
-      <span
-        class="value"
-        data-testid="value"
-        data-value-kind="numeric"
-        style=${valueCharCountStyle(text)}
-        >${text}</span
-      >
-      ${renderTrend(objective)}
-    </div>
-    ${renderObjectiveRow(objective)}
-  </div>`;
-}
-
-function renderObjectiveRow(obj: BusinessScoreCardObjectiveViewModel): TemplateResult {
-  return html`<div class="target-row" data-testid="target-row">
-    <objective-cell
-      .targetValue=${obj.targetValue}
-      .unit=${obj.unit}
-      .warningColor=${obj.warningColor}
-    ></objective-cell>${obj.targetDateIso
-      ? html`<target-date-cell
-          .dateIso=${obj.targetDateIso}
-        ></target-date-cell>`
-      : nothing}
-  </div>`;
-}
-
-function renderTrend(obj: BusinessScoreCardObjectiveViewModel): TemplateResult | typeof nothing {
-  if (obj.trendArrow === null) return nothing;
-  return html`<span class="trend-arrow" data-testid="trend-arrow" data-direction=${obj.trendArrow}
-    role="img" aria-label="Trend"><ds-icon name=${TREND_SLUGS[obj.trendArrow]}></ds-icon></span>`;
-}
-
-/**
- * SPEC §17.116 — corner timestamp now renders the **age** of the
- * date (years/months/days, zero parts dropped) rather than the
- * locale-formatted calendar date. The ISO is still emitted in
- * `datetime=` so assistive tech / e2e tests can read the canonical
- * value; the visible label is the age.
- */
 /**
  * SPEC §17.136 S3 + S4 -- timestamp `<time>` declares
  * `slot="footer-right"` so card-frame routes it to the footer's
@@ -512,11 +477,53 @@ function renderAsChildSlots(args: {
       data-testid="title"
       data-view-kind=${args.viewKind}
       data-id=${args.vmId}
-    >${args.vmTitle}</h2>
+    >${renderMonoTextSvg(args.vmTitle, { fontWeight: 700 })}</h2>
     <div slot="subtitle" class="subtitle" data-testid="subtitle">
       ${renderKindLabel(args.computationKind)}
     </div>
   `;
+}
+
+/** SPEC §17.142c -- body content for the plain `<computed-card>`
+ *  (no objective). Numeric → single `lead` in card-body; non-numeric
+ *  → warning glyph in a plain wrapper. Both carry `data-testid=
+ *  "value-row"` for the §17.122a disabled-state probe. */
+function renderComputedBody(value: ComputedValueViewModel): TemplateResult {
+  if (value.kind !== "numeric") {
+    return html`<div
+      slot="body"
+      class="warning-body"
+      data-testid="value-row"
+    >${renderWarningFill(value)}</div>`;
+  }
+  return html`<card-body slot="body" data-testid="value-row">
+    ${renderLeadValue(value, null)}
+  </card-body>`;
+}
+
+/** SPEC §17.142c -- body content for CBSN (with objective). Numeric
+ *  → lead + aux + meta in card-body; non-numeric → warning glyph in
+ *  a plain `.metric-pane` wrapper. Both keep `data-testid=
+ *  "metric-pane"` for the §17.136 S3 probe. */
+function renderCbsnBody(
+  value: ComputedValueViewModel,
+  objective: BusinessScoreCardObjectiveViewModel,
+): TemplateResult {
+  if (value.kind !== "numeric") {
+    return html`<div
+      slot="body"
+      class="metric-pane warning-body"
+      data-testid="metric-pane"
+    >${renderWarningFill(value)}</div>`;
+  }
+  return html`<card-body
+    slot="body"
+    class="metric-pane"
+    data-testid="metric-pane"
+  >
+    ${renderLeadValue(value, objective)}
+    ${renderTargetCells(objective)}
+  </card-body>`;
 }
 
 /**
@@ -640,12 +647,11 @@ export class ComputedCard extends LitElement {
     return this.viewRole === "asParent" ? this.renderAsParent() : this.renderAsChild();
   }
 
-  /** SPEC 17.136 S3 -- AsParent path wraps everything in `<card-frame>`. */
+  /** SPEC §17.142c -- header 18% → 24% (mirror §17.142b). */
   private renderAsParent(): TemplateResult {
     if (!this.vm) return html``;
     const showBadge = this.vm.value.kind === "numeric";
-    const canCompute = this.vm.value.kind === "numeric";
-    return html`<card-frame style="--card-header-height: 18%; --card-footer-height: 8%">
+    return html`<card-frame style="--card-header-height: 24%; --card-footer-height: 8%">
       ${renderAsParentSlots({
         host: this,
         titleEditor: this.titleEditor,
@@ -657,20 +663,13 @@ export class ComputedCard extends LitElement {
         onKindChange: this.dispatchKindChange,
         parentId: this.parentId,
       })}
-      <div slot="body">
-        ${canCompute
-          ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>)
-          : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
-      </div>
+      ${renderComputedBody(this.vm.value)}
     </card-frame>`;
   }
 
-  /** SPEC 17.136 S4 -- AsChild now also wraps in `<card-frame>`
-   *  (default 22% / 12% header / footer for tree-map tile sizing). */
   private renderAsChild(): TemplateResult {
     if (!this.vm) return html``;
     const showBadge = this.vm.value.kind === "numeric";
-    const canCompute = this.vm.value.kind === "numeric";
     const vmDisabled = this.vm.disabled ?? false;
     return html`<card-frame>
       ${renderAsChildSlots({
@@ -682,11 +681,7 @@ export class ComputedCard extends LitElement {
         viewKind: "ComputedNode",
         computationKind: this.vm.computationKind,
       })}
-      <div slot="body">
-        ${canCompute
-          ? renderNumericValueArea(this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>)
-          : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
-      </div>
+      ${renderComputedBody(this.vm.value)}
       <weight-edit-button
         slot="footer-left"
         node-id=${this.vm.id}
@@ -716,7 +711,6 @@ export class ComputedBusinessScoreCard extends LitElement {
   static readonly styles = [
     tileLayoutStyles,
     sharedStyles,
-    cbsnHostStyles,
     disabledToggleStyles,
     titleInlineEditStyles,
     unitChipStyles,
@@ -749,14 +743,13 @@ export class ComputedBusinessScoreCard extends LitElement {
     return this.viewRole === "asParent" ? this.renderAsParent() : this.renderAsChild();
   }
 
-  /** SPEC 17.136 S3 -- AsParent path wraps everything in `<card-frame>`;
-   *  timestamp moves out of `.metric-pane` into the footer-right slot. */
+  /** SPEC §17.142c -- header 18% → 24% (mirror §17.142b). */
   private renderAsParent(): TemplateResult {
     if (!this.vm) return html``;
     const { dateIso, dateColor, objective } = this.vm;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
-    return html`<card-frame style="--card-header-height: 18%; --card-footer-height: 8%">
+    return html`<card-frame style="--card-header-height: 24%; --card-footer-height: 8%">
       ${renderAsParentSlots({
         host: this,
         titleEditor: this.titleEditor,
@@ -768,20 +761,11 @@ export class ComputedBusinessScoreCard extends LitElement {
         onKindChange: this.dispatchKindChange,
         parentId: this.parentId,
       })}
-      <div slot="body" class="metric-pane" data-testid="metric-pane">
-        ${canCompute
-          ? renderNumericValueAreaWithObjective(
-              this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>,
-              objective,
-            )
-          : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
-      </div>
+      ${renderCbsnBody(this.vm.value, objective)}
       ${canCompute ? renderAsParentTimestamp(dateIso, dateColor) : nothing}
     </card-frame>`;
   }
 
-  /** SPEC 17.136 S4 -- AsChild now also wraps in `<card-frame>`;
-   *  timestamp moves to footer-right slot. */
   private renderAsChild(): TemplateResult {
     if (!this.vm) return html``;
     const { dateIso, dateColor, objective } = this.vm;
@@ -798,14 +782,7 @@ export class ComputedBusinessScoreCard extends LitElement {
         viewKind: "ComputedBusinessScoreNode",
         computationKind: this.vm.computationKind,
       })}
-      <div slot="body" class="metric-pane" data-testid="metric-pane">
-        ${canCompute
-          ? renderNumericValueAreaWithObjective(
-              this.vm.value as Extract<ComputedValueViewModel, { kind: "numeric" }>,
-              objective,
-            )
-          : html`<div class="value-area" data-testid="value-row">${renderWarningFill(this.vm.value)}</div>`}
-      </div>
+      ${renderCbsnBody(this.vm.value, objective)}
       ${canCompute ? renderAsParentTimestamp(dateIso, dateColor) : nothing}
       <weight-edit-button
         slot="footer-left"
