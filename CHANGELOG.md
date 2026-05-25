@@ -16,6 +16,19 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **`svgMonoText` atom: monospace SVG text scaling foundation (§17.139a)**.
+  First slice of the §17.139 BSC AsChild migration. The new
+  `src/adapters/ui/atoms/svgMonoText.ts` atom exports
+  `MONO_CHAR_WIDTH = 13.2` + a `renderMonoTextSvg(text, opts)`
+  helper returning a Lit template for an `<svg width="100%"
+  height="auto" viewBox="0 0 textLen*13.2 22"
+  preserveAspectRatio="xMinYMid meet">` with the text rendered
+  as a `<text fill="currentColor">` child. The SVG scales
+  itself purely from its viewBox aspect ratio + parent width
+  (no CSS `clamp()` / `cqmin` / `--char-count` plumbing
+  needed). Foundation only; strand B (trendArrowBg molecule) +
+  strand C (BSC AsChild migration) close the §17.139 plan.
+
 - **Showcase organisms: Picture + URL migrated to 4-position grids (\u00a717.137, A5d) \u2014 closes the §17.137 plan**.
   Fourth and final A5 sub-slice. The pre-A5d combined Picture
   + URL section splits into two stacked 4-up grids \u2014 one for
