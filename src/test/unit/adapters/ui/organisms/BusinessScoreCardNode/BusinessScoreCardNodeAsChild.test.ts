@@ -102,8 +102,8 @@ describe("<business-score-card-as-child>", () => {
     expect(el.shadowRoot?.querySelector('[data-testid="computed-badge"] ds-icon')?.getAttribute("name")).toBe("sigma");
     const chip = el.shadowRoot?.querySelector('[data-testid="unit-chip"]');
     expect(chip).not.toBeNull();
-    expect(chip?.textContent?.trim()).toBe("(%)");
-    expect(title?.textContent?.replace(/\u03a3|\(%\)/g, "").trim()).toBe("Sales");
+    expect(chip?.textContent?.trim()).toBe("%");
+    expect(title?.textContent?.replace(/\u03a3|%/g, "").trim()).toBe("Sales");
     expect(el.shadowRoot?.querySelector('[data-testid="value"]')?.textContent?.trim()).toBe("50");
     expect(el.shadowRoot?.querySelector(".unit-below")).toBeNull();
   });
@@ -193,7 +193,7 @@ describe("<business-score-card-as-child>", () => {
     expect(value?.getAttribute("style") ?? "").not.toContain("--char-count");
   });
 
-  it("\u00a717.139 — value glyph renders as an `<svg>` with viewBox width = textLen \xd7 MONO_CHAR_WIDTH (13.2) across all numeric branches; textContent matches the rendered text", async () => {
+  it("\u00a717.139 / \u00a717.140 \u2014 value glyph renders as an `<svg>` with viewBox width = textLen \xd7 MONO_CHAR_WIDTH (13.2) \xd7 1.1 across all numeric branches (the \u00a717.140 10% right padding gives the trend-arrow background room to breathe before reaching the value text); textContent matches the rendered text", async () => {
     const probes: ReadonlyArray<{
       vm: BusinessScoreCardNodeViewModel["value"];
       expected: string;
@@ -213,8 +213,9 @@ describe("<business-score-card-as-child>", () => {
       const svg = value?.querySelector("svg");
       expect(svg).not.toBeNull();
       const viewBox = svg?.getAttribute("viewBox") ?? "";
-      const expectedWidth = (expected.length * 13.2).toString();
-      expect(viewBox).toBe(`0 0 ${expectedWidth} 22`);
+      const textWidth = expected.length * 13.2;
+      const rightPad = textWidth * 0.1;
+      expect(viewBox).toBe(`0 0 ${textWidth + rightPad} 22`);
     }
   });
 

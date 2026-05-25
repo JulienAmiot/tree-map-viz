@@ -26,10 +26,12 @@
  *    rebuilding the value-area), reusing the §17.28 inline-edit
  *    pattern with a new `INLINE_EDIT_UNIT_EVENT`.
  *
- * The chip is rendered with parentheses baked into the template
- * text (`(USD)` rather than a `(`/`)` pseudo-element pair) so the
- * unit text reads correctly to screen readers without a custom
- * `aria-label` — the parens are part of the chip's accessible name.
+ * SPEC §17.140 — the chip text is the bare unit (`USD` / `%` /
+ * `EUR`), no longer wrapped in parentheses (operator feedback:
+ * the parens read as visual noise on the dense title row;
+ * dropping them keeps the chip as a quiet annotation while still
+ * pairing the unit with the title text via proximity + the
+ * §17.125 0.7em desaturated colour).
  *
  * The chip styling is opt-in via {@link unitChipStyles} which view
  * modules mix into their static `styles` array. Sizing follows the
@@ -68,7 +70,7 @@ import type {
  */
 export function renderUnitChip(unit: string): TemplateResult | typeof nothing {
   if (!unit) return nothing;
-  return html`<span class="unit-chip" data-testid="unit-chip">(${unit})</span>`;
+  return html`<span class="unit-chip" data-testid="unit-chip">${unit}</span>`;
 }
 
 /**
@@ -210,7 +212,7 @@ export class InlineUnitEditController implements ReactiveController {
       tabindex="0"
       title="Click to edit unit"
       @click=${this.start}
-    >(${target.unit})</span>`;
+    >${target.unit}</span>`;
   }
 
   private readonly stopBubble = (e: Event): void => e.stopPropagation();

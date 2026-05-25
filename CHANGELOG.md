@@ -14,7 +14,39 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- **§17.139 BSC AsChild target / date overlap bug (§17.140)**.
+  The shared `tileLayoutStyles` declares a
+  `.value-area > .target-row { display: grid; ... }` rule whose
+  specificity (`0,2,0`) beat the §17.139c override
+  `.target-row { display: contents }` (`0,1,0`); the inner
+  `.target-value` + `.target-date` referenced grid-areas that
+  didn't exist in the nested grid and both collapsed onto cell
+  `(1,1)` → operator saw the target text and the target date
+  stacked on top of each other. Fixed by matching the
+  selector shape (`.value-area > .target-row { display:
+  contents }`) so source order wins on equal specificity.
+
 ### Changed
+
+- **BSC AsChild + shell polish on the operator's §17.139 review (§17.140)**.
+  Six batched follow-ups: (a) target / date overlap bug above;
+  (b) `(unit)` parens dropped from the title-prefix chip — the
+  chip now reads the bare unit (`USD` / `%` / `EUR`) since the
+  parens read as visual noise on the dense title row; (c)
+  `<card-frame>` footer height shrinks from `12 %` to
+  `1.4em` so the timestamp + weight icon don't claim a tile-
+  relative band, freeing the body row for the value glyph; (d)
+  trend-arrow + bullseye stroke bumped from Lucide's default
+  `2` to `3.5` so the muted `#9aa3b4` arrows read at-a-glance;
+  (e) `<weight-edit-button>` hit rect roughly doubled
+  (`2rem 12cqmin 3.4rem` × `1.4rem 8cqmin 2.4rem`) while the
+  inner icon stays the same visual size; (f) the SVG viewBox
+  for the `.current-value` cell gains 10 % right whitespace
+  (new `rightPadding` option on `renderMonoTextSvg`) so the
+  value text has visual clearance before the right-edge trend
+  arrow background.
 
 - **BSC AsChild migrated to the SVG-mono 3-cell grid + CSS-background icons — closes the §17.139 plan (§17.139c)**.
   Third and final slice of the §17.139 migration. `<business-

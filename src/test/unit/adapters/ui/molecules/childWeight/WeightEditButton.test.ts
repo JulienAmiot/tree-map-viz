@@ -69,8 +69,15 @@ describe("<weight-edit-button> (\u00a717.52)", () => {
     expect(css).not.toMatch(/:host\s*\{[^}]*left:\s*0\.35rem/);
     expect(css).not.toMatch(/:host\s*\{[^}]*z-index:\s*2/);
     // The inner button still drives the visible size + hit
-    // target -- the clamp + colour rules carry over unchanged.
-    expect(css).toMatch(/button\s*\{[^}]*width:\s*clamp\(0\.85rem,\s*5cqmin,\s*1\.6rem\)/);
+    // target. SPEC §17.140 widened the clamp from the pre-§17.140
+    // single-square `clamp(0.85rem, 5cqmin, 1.6rem)` to a wider
+    // hit-rect (`clamp(2rem, 12cqmin, 3.4rem)` wide × `clamp(1.4rem,
+    // 8cqmin, 2.4rem)` tall) so the operator's tap lands more
+    // forgivingly; the `font-size` clamp keeps the icon at the
+    // pre-§17.140 visual size.
+    expect(css).toMatch(/button\s*\{[^}]*width:\s*clamp\(2rem,\s*12cqmin,\s*3\.4rem\)/);
+    expect(css).toMatch(/button\s*\{[^}]*height:\s*clamp\(1\.4rem,\s*8cqmin,\s*2\.4rem\)/);
+    expect(css).toMatch(/button\s*\{[^}]*font-size:\s*clamp\(0\.85rem,\s*5cqmin,\s*1\.6rem\)/);
   });
 
   it("clicking the button dispatches a bubbling+composed `weight-edit-open` event with nodeId, weight, and an anchorRect", async () => {

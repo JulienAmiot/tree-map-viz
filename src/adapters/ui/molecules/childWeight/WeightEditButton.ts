@@ -89,20 +89,21 @@ export class WeightEditButton extends LitElement {
       pointer-events: auto;
     }
     button {
-      /* SPEC 17.52 -- size in cqmin so the icon scales with the
-         tile (visible on 1/12 floor tiles, comfortable on giant
-         single-child layouts). The clamp floor (0.85rem) keeps
-         the touch target legible on small tiles; the ceiling
-         (1.6rem) prevents typographic blow-out on giant layouts.
-         SPEC 17.132 / 17.136 -- ds-icon defaults to a 1em box, so
-         setting font-size here drives the SVG rendered size exactly
-         as the Unicode glyph + the pre-17.136 Lucide scale SVG did
-         before the 17.136 dumbbell / weight swaps. */
-      width: clamp(0.85rem, 5cqmin, 1.6rem);
-      height: clamp(0.85rem, 5cqmin, 1.6rem);
+      /* SPEC 17.52 / 17.140 -- size in cqmin so the icon scales
+         with the tile (visible on 1/12 floor tiles, comfortable
+         on giant single-child layouts). The font-size clamp drives
+         the icon's visual size; the width / height add lateral
+         padding around the icon so the clickable surface is bigger
+         than the glyph itself (operator feedback: the reactive
+         area of the weight icon should be larger). The button is
+         now ~2.4em wide x 1.8em tall in cqmin space -- about
+         double the pre-17.140 hit target -- while the icon stays
+         at the same 1em size it had before. */
+      width: clamp(2rem, 12cqmin, 3.4rem);
+      height: clamp(1.4rem, 8cqmin, 2.4rem);
       font-size: clamp(0.85rem, 5cqmin, 1.6rem);
       line-height: 1;
-      padding: 0;
+      padding: 0 0.25em;
       margin: 0;
       background: transparent;
       color: color-mix(in srgb, currentColor 60%, transparent);
