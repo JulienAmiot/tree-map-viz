@@ -31,4 +31,15 @@ describe("trendArrowBg (SPEC §17.139)", () => {
     expect(TARGET_ICON_BG).toContain("%239aa3b4");
     expect(TARGET_ICON_BG.toLowerCase()).not.toContain("currentcolor");
   });
+
+  it("\u00a717.140 \u2014 bakes a thicker `stroke-width=\"3.5\"` into every data URI (Lucide's default 2 reads thin on the muted `#9aa3b4` tint when used as a CSS background; the operator wanted the arrow stroke far bigger)", () => {
+    const STROKE_3_5_ENCODED = encodeURIComponent('stroke-width="3.5"');
+    const STROKE_2_ENCODED = encodeURIComponent('stroke-width="2"');
+    for (const bg of Object.values(TREND_ARROW_BG)) {
+      expect(bg).toContain(STROKE_3_5_ENCODED);
+      expect(bg).not.toContain(STROKE_2_ENCODED);
+    }
+    expect(TARGET_ICON_BG).toContain(STROKE_3_5_ENCODED);
+    expect(TARGET_ICON_BG).not.toContain(STROKE_2_ENCODED);
+  });
 });

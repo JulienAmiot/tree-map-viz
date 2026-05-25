@@ -91,7 +91,7 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
     // `<ds-icon name="sigma">` Lucide SVG per \u00a717.132.
     expect(sr.querySelector('[data-testid="computed-badge"] ds-icon')?.getAttribute("name")).toBe("sigma");
     const chip = sr.querySelector('[data-testid="unit-chip"]');
-    expect(chip?.textContent?.trim()).toBe("(EUR)");
+    expect(chip?.textContent?.trim()).toBe("EUR");
     expect(title?.textContent?.trim()).toBe("Total revenue");
     // Value text is the bare number with max 2 decimals (no trailing zero, no inline unit).
     expect(sr.querySelector('[data-testid="value"]')?.getAttribute("data-value-kind")).toBe("numeric");
@@ -237,7 +237,7 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
     // testids. Σ badge stays a `<ds-icon name="sigma">` per \u00a717.132.
     expect(sr.querySelector('[data-testid="computed-badge"] ds-icon')?.getAttribute("name")).toBe("sigma");
     const chip = sr.querySelector('[data-testid="unit-chip"]');
-    expect(chip?.textContent?.trim()).toBe("(%)");
+    expect(chip?.textContent?.trim()).toBe("%");
     expect(title?.textContent?.trim()).toBe("Avg score");
     expect(sr.querySelector('[data-testid="value"]')?.textContent?.trim()).toBe("75");
     expect(sr.querySelector(".unit-below")).toBeNull();

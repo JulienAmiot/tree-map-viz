@@ -24,7 +24,7 @@ import type { BusinessScoreCardNodeViewModel } from "../../molecules/NodeViewMod
 import { formatAge } from "../../atoms/ageFormat.js";
 import { formatValue } from "../../atoms/numberFormat.js";
 import { formatTargetDate } from "../../molecules/objective/TargetDate.js";
-import { renderMonoTextSvg } from "../../atoms/svgMonoText.js";
+import { MONO_CHAR_WIDTH, renderMonoTextSvg } from "../../atoms/svgMonoText.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 import {
   TARGET_ICON_BG,
@@ -110,7 +110,18 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
           grid-template-areas: "current-value" "target-value" "target-date";
         }
       }
-      .target-row {
+      /* SPEC §17.140 -- the shared tileLayoutStyles defines a
+         '.value-area > .target-row { display: grid; ... }' rule
+         (specificity 0,2,0) for the pre-§17.139 nested-grid sub-
+         row layout. That selector beats a bare '.target-row'
+         (0,1,0), so we must match its selector shape to win on
+         source order. Without this override the pre-§17.139
+         nested grid fires for AsChild too, .target-value +
+         .target-date reference grid-areas that don't exist in
+         the nested grid, and both collapse onto cell (1,1) --
+         the operator sees the target text and the target date
+         stacked on top of each other. */
+      .value-area > .target-row {
         display: contents;
       }
       .current-value,
@@ -212,7 +223,11 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
           data-direction=${direction ?? ""}
           aria-label=${direction ? TREND_ARROW_LABELS[direction] : ""}
           style=${valueColor ? `--bsc-value-color: ${valueColor}` : ""}
-        >${valueText === null ? nothing : renderMonoTextSvg(valueText)}</div>
+        >${valueText === null
+          ? nothing
+          : renderMonoTextSvg(valueText, {
+              rightPadding: valueText.length * MONO_CHAR_WIDTH * 0.1,
+            })}</div>
         ${this.renderTargetCells()}
       </div>
       ${dateIso

@@ -44,16 +44,28 @@ import type { TrendArrowDirection } from "./NodeViewModel.js";
  * read at the same weight independent of the host's CSS colour. */
 const ICON_STROKE_COLOR = "#9aa3b4";
 
+/** SPEC §17.140 — Lucide's default `stroke-width="2"` reads thin
+ * on the muted `#9aa3b4` tint when used as a CSS background
+ * (especially against a high-luminance tile background). The
+ * operator feedback was *"make the stroke of the arrow of the
+ * trend far bigger"*; bumping to 3.5 thickens the glyph enough
+ * to read at-a-glance on every tile size without losing the
+ * arrow shape (Lucide arrows still resolve to a recognisable
+ * direction up to ~stroke-width 4 on a 24×24 viewBox). The
+ * same bump applies to the bullseye target glyph for visual
+ * consistency. */
+const ICON_STROKE_WIDTH = "3.5";
+
 /** Wraps the Lucide raw SVG into a CSS `url(data:image/svg+xml,...)`
  * background-image value, with the stroke recoloured to the
- * `--muted` static token (see file docblock). `encodeURIComponent`
- * handles every special char (`#`, `<`, `>`, `"`, `&`) the data
- * URI's URL component must escape. */
+ * `--muted` static token (see file docblock) and the stroke-width
+ * thickened per §17.140. `encodeURIComponent` handles every special
+ * char (`#`, `<`, `>`, `"`, `&`) the data URI's URL component must
+ * escape. */
 function bgUrl(rawSvg: string): string {
-  const recoloured = rawSvg.replaceAll(
-    'stroke="currentColor"',
-    `stroke="${ICON_STROKE_COLOR}"`,
-  );
+  const recoloured = rawSvg
+    .replaceAll('stroke="currentColor"', `stroke="${ICON_STROKE_COLOR}"`)
+    .replaceAll('stroke-width="2"', `stroke-width="${ICON_STROKE_WIDTH}"`);
   return `url("data:image/svg+xml,${encodeURIComponent(recoloured)}")`;
 }
 

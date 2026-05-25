@@ -59,6 +59,13 @@ export interface MonoTextOptions {
    * The text's `x` is anchored at this value; the viewBox width
    * grows by the same amount. Defaults to 0 (no leading padding). */
   leftPadding?: number;
+  /** Empty viewBox space on the right of the text. The viewBox
+   * width grows by this amount; `xMinYMid meet` keeps the text
+   * anchored at the left so the extra room appears as trailing
+   * whitespace (useful when a CSS background icon sits on the
+   * right edge of the cell — SPEC §17.140 — and the text needs
+   * visual clearance before reaching the icon). Defaults to 0. */
+  rightPadding?: number;
   /** SVG `font-weight` attribute on `<text>`. Defaults to 700 to
    * match the kiosk's value-glyph weight. */
   fontWeight?: number;
@@ -79,8 +86,9 @@ export function renderMonoTextSvg(
   opts: MonoTextOptions = {},
 ): TemplateResult {
   const leftPadding = opts.leftPadding ?? 0;
+  const rightPadding = opts.rightPadding ?? 0;
   const fontWeight = opts.fontWeight ?? 700;
-  const vbWidth = leftPadding + text.length * MONO_CHAR_WIDTH;
+  const vbWidth = leftPadding + text.length * MONO_CHAR_WIDTH + rightPadding;
   const vbHeight = MONO_VIEWBOX_FONT_SIZE;
   return html`<svg
     class="mono-text"

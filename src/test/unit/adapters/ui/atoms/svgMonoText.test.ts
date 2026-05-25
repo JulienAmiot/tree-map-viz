@@ -41,6 +41,23 @@ describe("svgMonoText (SPEC §17.139)", () => {
     expect(text?.getAttribute("x")).toBe("28");
   });
 
+  it("\u00a717.140 \u2014 adds `rightPadding` to the viewBox width WITHOUT shifting the text (xMinYMid meet keeps the glyph anchored at the left, so the extra room reads as trailing whitespace before a CSS background icon on the right edge)", () => {
+    const svg = renderToHost(renderMonoTextSvg("99.6", { rightPadding: 10 }));
+    expect(svg.getAttribute("viewBox")).toBe(
+      `0 0 ${4 * MONO_CHAR_WIDTH + 10} ${MONO_VIEWBOX_FONT_SIZE}`,
+    );
+    expect(svg.querySelector("text")?.getAttribute("x")).toBe("0");
+  });
+
+  it("\u00a717.140 \u2014 `leftPadding` + `rightPadding` compose: viewBox width = leftPadding + text.length*MONO_CHAR_WIDTH + rightPadding", () => {
+    const svg = renderToHost(
+      renderMonoTextSvg("42", { leftPadding: 28, rightPadding: 5 }),
+    );
+    expect(svg.getAttribute("viewBox")).toBe(
+      `0 0 ${28 + 2 * MONO_CHAR_WIDTH + 5} ${MONO_VIEWBOX_FONT_SIZE}`,
+    );
+  });
+
   it("renders the text content with `fill=\"currentColor\"` so the surrounding CSS color (e.g. `--bsc-value-color`) cascades into the SVG glyph paint", () => {
     const svg = renderToHost(renderMonoTextSvg("42"));
     const text = svg.querySelector("text");
