@@ -254,9 +254,14 @@ export class BusinessScoreCardNodeAsChild extends LitElement {
       return nothing;
     }
     const obj = this.vm.objective;
-    const targetText = obj.unit
-      ? `${formatValue(obj.targetValue)} ${obj.unit}`
-      : formatValue(obj.targetValue);
+    // SPEC §17.141 -- the target cell now renders ONLY the value
+    // (operator feedback: don't write the unit in the target). The
+    // unit already reads as the title-prefix chip via §17.125 +
+    // §17.140, so duplicating it in the target row was redundant
+    // and stole horizontal real estate from the value glyph
+    // (especially on portrait child tiles where the target row is
+    // narrower than the value row).
+    const targetText = formatValue(obj.targetValue);
     return html`<div class="target-row" data-testid="target-row">
       <div class="target-value" data-testid="target-text">
         ${renderMonoTextSvg(targetText, { leftPadding: 28, fontWeight: 400 })}

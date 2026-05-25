@@ -109,11 +109,13 @@ export type EditNodeModalPayload =
       readonly kind: "TextNode";
       readonly title?: string;
       readonly weight?: number;
+      readonly disabled?: boolean;
     }
   | {
       readonly kind: "Workflow";
       readonly title?: string;
       readonly weight?: number;
+      readonly disabled?: boolean;
       readonly statusId?: string;
     }
   | {
@@ -121,6 +123,7 @@ export type EditNodeModalPayload =
       readonly title?: string;
       readonly description?: string;
       readonly weight?: number;
+      readonly disabled?: boolean;
       readonly unit?: string;
       readonly objective?: {
         readonly initialValue: number;
@@ -143,6 +146,7 @@ export type EditNodeModalPayload =
       readonly kind: "PictureNode";
       readonly title?: string;
       readonly weight?: number;
+      readonly disabled?: boolean;
       readonly imageUrl?: string;
     }
   /**
@@ -162,6 +166,7 @@ export type EditNodeModalPayload =
       readonly kind: "URLNode";
       readonly title?: string;
       readonly weight?: number;
+      readonly disabled?: boolean;
       readonly url?: string;
     }
   /**
@@ -181,6 +186,7 @@ export type EditNodeModalPayload =
       readonly title?: string;
       readonly description?: string;
       readonly weight?: number;
+      readonly disabled?: boolean;
     }
   /**
    * SPEC §17.94 / §17.95 — `ComputedNode` variant. Description +
@@ -195,6 +201,7 @@ export type EditNodeModalPayload =
       readonly title?: string;
       readonly description?: string;
       readonly weight?: number;
+      readonly disabled?: boolean;
       readonly computationKindName?: string;
     }
   /**
@@ -211,6 +218,7 @@ export type EditNodeModalPayload =
       readonly title?: string;
       readonly description?: string;
       readonly weight?: number;
+      readonly disabled?: boolean;
       readonly unit?: string;
       readonly objective?: {
         readonly initialValue: number;
@@ -227,12 +235,14 @@ export type EditNodeTarget =
       readonly kind: "TextNode";
       readonly title: string;
       readonly weight: number;
+      readonly disabled?: boolean;
     }
   | {
       readonly nodeId: string;
       readonly kind: "Workflow";
       readonly title: string;
       readonly weight: number;
+      readonly disabled?: boolean;
       readonly statusId: string;
     }
   | {
@@ -241,6 +251,7 @@ export type EditNodeTarget =
       readonly title: string;
       readonly description: string;
       readonly weight: number;
+      readonly disabled?: boolean;
       readonly unit: string;
       readonly objective: {
         readonly initialValue: number;
@@ -254,6 +265,7 @@ export type EditNodeTarget =
       readonly kind: "PictureNode";
       readonly title: string;
       readonly weight: number;
+      readonly disabled?: boolean;
       readonly imageUrl: string;
     }
   | {
@@ -261,6 +273,7 @@ export type EditNodeTarget =
       readonly kind: "URLNode";
       readonly title: string;
       readonly weight: number;
+      readonly disabled?: boolean;
       readonly url: string;
     }
   | {
@@ -269,6 +282,7 @@ export type EditNodeTarget =
       readonly title: string;
       readonly description: string;
       readonly weight: number;
+      readonly disabled?: boolean;
       /**
        * Read-only `[min, max]` bounds rendered for context. Editable
        * via this modal is **not** supported (the application service's
@@ -284,6 +298,7 @@ export type EditNodeTarget =
       readonly title: string;
       readonly description: string;
       readonly weight: number;
+      readonly disabled?: boolean;
       /** Canonical `ComputationKind.name` (e.g. `"SUM"`); pre-fills the dropdown. */
       readonly computationKindName: string;
     }
@@ -293,6 +308,7 @@ export type EditNodeTarget =
       readonly title: string;
       readonly description: string;
       readonly weight: number;
+      readonly disabled?: boolean;
       readonly unit: string;
       readonly objective: {
         readonly initialValue: number;
@@ -361,6 +377,15 @@ export class EditNodeModal extends LitElement {
 
   @state()
   private weight = "";
+
+  /** SPEC §17.141 -- `ValueNode.disabled` flag, surfaced as a
+   * checkbox at the top of the form (replaces the §17.122 /
+   * §17.133 inline parent-card toggle button). The state is a
+   * `boolean` because the underlying control is a native
+   * `<input type="checkbox">` whose `.checked` is the only
+   * canonical truth — no `String(...)` round-trip needed. */
+  @state()
+  private disabled = false;
 
   @state()
   private unit = "";
@@ -490,6 +515,23 @@ export class EditNodeModal extends LitElement {
     .field-row .field {
       flex: 1 1 12rem;
       min-width: 0;
+    }
+    /* SPEC §17.141 -- universal disabled-flag row. The label
+       carries both the checkbox and its caption on a single
+       horizontal line so the affordance reads as a single
+       compound control. Reused for every kind (the flag rides
+       CommonEdit in the application layer). */
+    .disabled-field {
+      flex-direction: row;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+    .disabled-field input[type="checkbox"] {
+      width: 1.1rem;
+      height: 1.1rem;
+      margin: 0;
+      cursor: pointer;
     }
     input,
     textarea,
@@ -689,6 +731,7 @@ export class EditNodeModal extends LitElement {
       ${wantsDescription ? this.renderDescriptionField() : nothing}
       ${kind === "Workflow" ? this.renderWorkflowStatusField() : nothing}
       ${this.renderWeightField()}
+      ${this.renderDisabledField()}
       ${wantsBscFields ? this.renderUnitField() : nothing}
       ${wantsBscFields ? this.renderObjectiveFields() : nothing}
       ${kind === "PictureNode" ? this.renderImageUrlField() : nothing}
@@ -697,6 +740,36 @@ export class EditNodeModal extends LitElement {
       ${wantsComputationKind ? this.renderComputationKindField() : nothing}
     `;
   }
+
+  /** SPEC §17.141 -- universal disabled-flag checkbox row,
+   * rendered for every kind right after the weight control (the
+   * disabled flag rides `CommonEdit` in the application layer, so
+   * every kind that reaches this modal honours it). The pre-§17.141
+   * affordance was a `<button role="switch">` rendered inline on
+   * each AsParent organism's icons slot; retiring the inline switch
+   * keeps the parent identity strip uncluttered and routes the
+   * write through the same modal-confirm seam the other fields
+   * use. */
+  private renderDisabledField() {
+    return html`
+      <div class="field-row" data-testid="disabled-row">
+        <label class="field disabled-field">
+          <input
+            data-testid="field-disabled"
+            type="checkbox"
+            .checked=${this.disabled}
+            @change=${this.handleDisabledInput}
+          />
+          <span>Disabled (parked, excluded from aggregation)</span>
+        </label>
+      </div>
+    `;
+  }
+
+  private readonly handleDisabledInput = (e: Event): void => {
+    const input = e.currentTarget as HTMLInputElement;
+    this.disabled = input.checked;
+  };
 
   private renderWeightField() {
     return html`
@@ -1013,9 +1086,16 @@ export class EditNodeModal extends LitElement {
     // the canonical entry point for renames) is the only path that
     // mutates the node's identity.title.
     const weight = this.parseOptionalWeight();
+    // SPEC §17.141 -- `disabled` rides every payload as the
+    // application layer's `CommonEdit.disabled` slot. Always
+    // sending the current state mirrors how weight is sent;
+    // `EditNodeService.applyCommonEdits` short-circuits a no-op
+    // `setDisabled` at the value-node level so a confirm-without-
+    // toggle stays cheap.
+    const disabled = this.disabled;
     switch (this.editTarget.kind) {
       case "TextNode":
-        return { kind: "TextNode", ...weight };
+        return { kind: "TextNode", ...weight, disabled };
       case "PictureNode":
         return this.buildPicturePayload(weight);
       case "Workflow":
@@ -1051,7 +1131,7 @@ export class EditNodeModal extends LitElement {
   private buildPicturePayload(weight: { weight?: number }): EditNodeModalPayload | null {
     const imageUrl = this.imageUrl.trim();
     if (imageUrl.length === 0) return null;
-    return { kind: "PictureNode", ...weight, imageUrl };
+    return { kind: "PictureNode", ...weight, disabled: this.disabled, imageUrl };
   }
 
   /**
@@ -1070,6 +1150,7 @@ export class EditNodeModal extends LitElement {
     return {
       kind: "Workflow",
       ...weight,
+      disabled: this.disabled,
       ...(trimmed === "" ? {} : { statusId: trimmed }),
     };
   }
@@ -1084,7 +1165,7 @@ export class EditNodeModal extends LitElement {
   private buildURLPayload(weight: { weight?: number }): EditNodeModalPayload | null {
     const url = this.url.trim();
     if (url.length === 0) return null;
-    return { kind: "URLNode", ...weight, url };
+    return { kind: "URLNode", ...weight, disabled: this.disabled, url };
   }
 
   /**
@@ -1114,6 +1195,7 @@ export class EditNodeModal extends LitElement {
       kind: "BusinessScoreCardNode",
       description,
       ...weight,
+      disabled: this.disabled,
       unit,
       objective: { initialValue, targetValue, targetDate },
     };
@@ -1135,6 +1217,7 @@ export class EditNodeModal extends LitElement {
       kind: "StrictRangeNode",
       description: this.description.trim(),
       ...weight,
+      disabled: this.disabled,
     };
   }
 
@@ -1153,6 +1236,7 @@ export class EditNodeModal extends LitElement {
       kind: "ComputedNode",
       description: this.description.trim(),
       ...weight,
+      disabled: this.disabled,
       ...(computationKindName === "" ? {} : { computationKindName }),
     };
   }
@@ -1188,6 +1272,7 @@ export class EditNodeModal extends LitElement {
       kind: "ComputedBusinessScoreNode",
       description: this.description.trim(),
       ...weight,
+      disabled: this.disabled,
       unit,
       objective: { initialValue, targetValue, targetDate },
       ...(computationKindName === "" ? {} : { computationKindName }),
@@ -1227,6 +1312,13 @@ export class EditNodeModal extends LitElement {
   private seedFromTarget(target: EditNodeTarget): void {
     // SPEC §17.50 -- no `formTitle` to seed; title is edited inline.
     this.weight = String(target.weight);
+    // SPEC §17.141 -- disabled flag rides as a universal field
+    // (every value-node kind carries it via `ValueNode.disabled`).
+    // The target's `disabled` is typed optional so legacy fixtures
+    // that pre-date the §17.141 modal contract stay valid; default
+    // to `false` when absent (the kiosk's runtime path always
+    // populates the field through `buildEditTarget` in main.ts).
+    this.disabled = target.disabled ?? false;
     this.resetKindSpecificFields();
     this.applyKindSpecificSeed(target);
   }

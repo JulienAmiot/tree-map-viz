@@ -1,14 +1,17 @@
 /**
  * `<card-frame>` — shared header / body / footer layout molecule
- * (SPEC §17.136 S0b, refined §17.140). 3-row CSS grid: header
- * (panel-relative via `--card-header-height`, default 22%) with
- * `icons` + `unit` + `title` + `header-actions` title-row sub-slots
- * and a `subtitle` below; body (1fr, overflow:hidden) for kind-
- * specific shrink-to-fit content; footer (`--card-footer-height`,
- * default `1.4em` per §17.140 — sized to the inline content rather
- * than a tile-relative percentage) with `footer-left` +
- * `footer-right` anchored via space-between. Empty slots collapse
- * so each kind fills only what it carries.
+ * (SPEC §17.136 S0b, refined §17.140, §17.141). 3-row CSS grid:
+ * header (panel-relative via `--card-header-height`, default
+ * `28%` per §17.141 — the pre-§17.141 `22%` clipped the Workflow
+ * PDCA status pill on small child tiles where the title row +
+ * subtitle row don't fit in 22% of the tile height) with
+ * `icons` + `unit` + `title` + `header-actions` title-row sub-
+ * slots and a `subtitle` below; body (1fr, overflow:hidden) for
+ * kind-specific shrink-to-fit content; footer
+ * (`--card-footer-height`, default `1.4em` per §17.140 — sized to
+ * the inline content rather than a tile-relative percentage) with
+ * `footer-left` + `footer-right` anchored via space-between. Empty
+ * slots collapse so each kind fills only what it carries.
  */
 
 import { LitElement, css, html } from "lit";
@@ -26,7 +29,7 @@ export class CardFrame extends LitElement {
          weight icon do not need that much vertical real estate)
          and the freed space falls into the 1fr body row where
          the SVG-mono value glyph can grow. */
-      grid-template-rows: var(--card-header-height, 22%) 1fr var(--card-footer-height, 1.4em);
+      grid-template-rows: var(--card-header-height, 28%) 1fr var(--card-footer-height, 1.4em);
       width: 100%;
       height: 100%;
       min-height: 0;

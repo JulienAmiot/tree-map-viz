@@ -219,7 +219,7 @@ describe("<business-score-card-as-child>", () => {
     }
   });
 
-  it("\u00a717.139 — renders the target row with `.target-value` (target + unit) + `.target-date` (formatted deadline); bullseye target icon is the CSS background of `.target-value`, not a `<ds-icon>` child", async () => {
+  it("\u00a717.139 / \u00a717.141 \u2014 renders the target row with `.target-value` (bare target value, no unit per \u00a717.141) + `.target-date` (formatted deadline); bullseye target icon is the CSS background of `.target-value`, not a `<ds-icon>` child", async () => {
     const vm = makeVm(
       {
         kind: "recordedValue",
@@ -250,7 +250,9 @@ describe("<business-score-card-as-child>", () => {
     expect(row?.querySelector("target-date-cell")).toBeNull();
     const targetText = row?.querySelector('[data-testid="target-text"]');
     expect(targetText).not.toBeNull();
-    expect(targetText?.textContent?.replace(/\s+/g, " ").trim()).toBe("80 %");
+    // SPEC §17.141 — target text is the bare value, no unit suffix
+    // (the unit lives on the title-prefix chip per §17.125 + §17.140).
+    expect(targetText?.textContent?.replace(/\s+/g, " ").trim()).toBe("80");
     const date = row?.querySelector('[data-testid="target-date"]');
     expect(date).not.toBeNull();
     expect(date?.getAttribute("datetime")).toBe("2026-12-31T00:00:00.000Z");
@@ -457,7 +459,7 @@ describe("<business-score-card-as-child>", () => {
     expect(btn?.weight).toBe(2.5);
   });
 
-  it("\u00a717.139 \u2014 the `.target-date` cell only renders when `objective.targetDateIso` is non-empty; the `.target-value` cell still renders (target value + unit)", async () => {
+  it("\u00a717.139 / \u00a717.141 \u2014 the `.target-date` cell only renders when `objective.targetDateIso` is non-empty; the `.target-value` cell still renders (bare target value, no unit per \u00a717.141)", async () => {
     const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
       (e) => {

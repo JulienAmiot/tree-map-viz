@@ -82,6 +82,82 @@ async function setInput(
   await el.updateComplete;
 }
 
+/**
+ * SPEC §17.141 — universal `disabled` checkbox.
+ *
+ * The disabled flag rides every kind tag (it lives on `CommonEdit`
+ * in the application layer's `EditNodePayload` union). The modal
+ * surfaces it as a single checkbox rendered right after the
+ * weight control, regardless of kind. The §17.122 / §17.133
+ * inline parent-card switch is retired in the same strand —
+ * AsParent organisms no longer render `data-testid="disabled-
+ * switch"`, so the modal is now the only write surface for the
+ * flag (parity with how every other field is edited).
+ */
+describe("<edit-node-modal> \u00a717.141 disabled checkbox", () => {
+  it("renders a `[data-testid=\"field-disabled\"]` checkbox for every kind (TextNode + BSC sampled here; the row sits inside `[data-testid=\"disabled-row\"]`)", async () => {
+    for (const target of [textTarget, bscTarget]) {
+      const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+        e.editTarget = target;
+        e.open = true;
+      });
+      const row = el.shadowRoot?.querySelector('[data-testid="disabled-row"]');
+      expect(row).not.toBeNull();
+      const checkbox = row?.querySelector<HTMLInputElement>('[data-testid="field-disabled"]');
+      expect(checkbox).not.toBeNull();
+      expect(checkbox?.type).toBe("checkbox");
+    }
+  });
+
+  it("seeds the checkbox from `target.disabled` (defaulting to false when the field is absent) and unticks on a fresh modal open", async () => {
+    const enabledTarget: EditNodeTarget = { ...textTarget };
+    const enabledEl = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+      e.editTarget = enabledTarget;
+      e.open = true;
+    });
+    const enabledBox = fieldOf(enabledEl, "field-disabled") as HTMLInputElement;
+    expect(enabledBox.checked).toBe(false);
+
+    const disabledTarget: EditNodeTarget = { ...textTarget, disabled: true };
+    const disabledEl = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+      e.editTarget = disabledTarget;
+      e.open = true;
+    });
+    const disabledBox = fieldOf(disabledEl, "field-disabled") as HTMLInputElement;
+    expect(disabledBox.checked).toBe(true);
+  });
+
+  it("flipping the checkbox + Confirm sends `disabled: true` on the dispatched payload (TextNode kind sampled; every kind shares the same `CommonEdit.disabled` seam)", async () => {
+    const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+      e.editTarget = textTarget;
+      e.open = true;
+    });
+    const handler = vi.fn();
+    el.addEventListener(EDIT_NODE_CONFIRM_EVENT, handler);
+    const box = fieldOf(el, "field-disabled") as HTMLInputElement;
+    box.checked = true;
+    box.dispatchEvent(new Event("change", { bubbles: true }));
+    await el.updateComplete;
+    confirmBtn(el).click();
+    expect(handler).toHaveBeenCalledTimes(1);
+    const detail = (
+      handler.mock.calls[0]![0] as CustomEvent<EditNodeConfirmDetail>
+    ).detail;
+    expect(detail.payload.disabled).toBe(true);
+  });
+
+  it("re-seeds the checkbox when `editTarget` swaps mid-open (enabled \u2192 disabled), so a stale tick from a prior session never leaks into a fresh form", async () => {
+    const el = await mountLitElement<EditNodeModal>("edit-node-modal", (e) => {
+      e.editTarget = textTarget;
+      e.open = true;
+    });
+    expect((fieldOf(el, "field-disabled") as HTMLInputElement).checked).toBe(false);
+    el.editTarget = { ...bscTarget, disabled: true };
+    await el.updateComplete;
+    expect((fieldOf(el, "field-disabled") as HTMLInputElement).checked).toBe(true);
+  });
+});
+
 describe("<edit-node-modal>", () => {
   it("renders nothing when open=false (no panel, no backdrop)", async () => {
     const el = await mountLitElement<EditNodeModal>("edit-node-modal");
@@ -169,6 +245,7 @@ describe("<edit-node-modal>", () => {
       expect(detail.payload).toEqual({
         kind: "TextNode",
         weight: 5,
+        disabled: false,
       });
       // SPEC §17.50 -- explicit guard: payload must not carry a title.
       expect(
@@ -499,6 +576,7 @@ describe("<edit-node-modal>", () => {
       expect(ev.detail.payload).toEqual({
         kind: "PictureNode",
         weight: 2.5,
+        disabled: false,
         imageUrl: "https://example.com/new.png",
       });
     });
@@ -604,6 +682,7 @@ describe("<edit-node-modal>", () => {
       expect(evt.detail.payload).toEqual({
         kind: "Workflow",
         weight: 2,
+        disabled: false,
         statusId: "check",
       });
     });
@@ -738,6 +817,7 @@ describe("<edit-node-modal>", () => {
       expect(ev.detail.payload).toEqual({
         kind: "URLNode",
         weight: 2.5,
+        disabled: false,
         url: "https://example.com/new",
       });
     });
@@ -913,6 +993,7 @@ describe("<edit-node-modal>", () => {
       expect(ev.detail.payload).toEqual({
         kind: "StrictRangeNode",
         weight: 2,
+        disabled: false,
         description: "p99 budget revised",
       });
     });
@@ -1061,6 +1142,7 @@ describe("<edit-node-modal>", () => {
       expect(ev.detail.payload).toEqual({
         kind: "ComputedNode",
         weight: 3,
+        disabled: false,
         description: "Velocity (rolling)",
         computationKindName: "AVERAGE",
       });

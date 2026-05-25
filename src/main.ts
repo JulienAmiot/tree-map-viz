@@ -540,6 +540,7 @@ function buildEditTarget(node: Node): EditNodeTarget | null {
       kind: "PictureNode",
       title: node.title,
       weight: node.weight.value,
+      disabled: node.disabled,
       imageUrl: node.imageUrl,
     };
   }
@@ -552,6 +553,7 @@ function buildEditTarget(node: Node): EditNodeTarget | null {
       kind: "Workflow",
       title: node.title,
       weight: node.weight.value,
+      disabled: node.disabled,
       statusId: node.statusId,
     };
   }
@@ -569,11 +571,18 @@ function buildEditTarget(node: Node): EditNodeTarget | null {
       kind: "URLNode",
       title: node.title,
       weight: node.weight.value,
+      disabled: node.disabled,
       url: node.url,
     };
   }
   if (node instanceof TextNode) {
-    return { nodeId: node.id, kind: "TextNode", title: node.title, weight: node.weight.value };
+    return {
+      nodeId: node.id,
+      kind: "TextNode",
+      title: node.title,
+      weight: node.weight.value,
+      disabled: node.disabled,
+    };
   }
   // SPEC §17.77 / §17.94 — StrictRangeNode branch surfaces the
   // structural `[min, max]` bounds (read-only in the modal) plus
@@ -602,6 +611,7 @@ function buildEditTarget(node: Node): EditNodeTarget | null {
       title: node.title,
       description: node.getDescription(),
       weight: node.weight.value,
+      disabled: node.disabled,
       bounds: { min: Number(range.minimalValue), max: Number(range.maximalValue) },
     };
   }
@@ -620,6 +630,7 @@ function buildEditTarget(node: Node): EditNodeTarget | null {
       title: node.title,
       description: node.getDescription(),
       weight: node.weight.value,
+      disabled: node.disabled,
       unit: node.unit,
       objective: {
         initialValue: 0,
@@ -641,6 +652,7 @@ function buildEditTarget(node: Node): EditNodeTarget | null {
       title: node.title,
       description: node.getDescription(),
       weight: node.weight.value,
+      disabled: node.disabled,
       computationKindName: node.computationKind.name,
     };
   }
@@ -652,6 +664,7 @@ function buildEditTarget(node: Node): EditNodeTarget | null {
       title: node.title,
       description: node.getDescription(),
       weight: node.weight.value,
+      disabled: node.disabled,
       unit: node.unit,
       objective: {
         initialValue: 0,
@@ -866,8 +879,13 @@ function toAppAddChildPayload(payload: AddChildModalPayload, clock: Clock): AddC
  * migration already pinned the kind at load).
  */
 function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
+  // SPEC §17.141 -- forward the `disabled` checkbox state through
+  // every kind tag (it rides `CommonEdit` on the application
+  // layer's `EditNodePayload` union). Read once at the top so the
+  // per-kind returns below don't repeat the lookup.
+  const disabled = payload.disabled;
   if (payload.kind === "TextNode") {
-    return { kind: "TextNode", title: payload.title, weight: payload.weight };
+    return { kind: "TextNode", title: payload.title, weight: payload.weight, disabled };
   }
   if (payload.kind === "PictureNode") {
     // SPEC §17.119 — modal-side "PictureNode" → application
@@ -881,6 +899,7 @@ function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
       kind: "Picture",
       title: payload.title,
       weight: payload.weight,
+      disabled,
       imageUrl: payload.imageUrl,
     };
   }
@@ -893,6 +912,7 @@ function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
       kind: "Workflow",
       title: payload.title,
       weight: payload.weight,
+      disabled,
       statusId: payload.statusId,
     };
   }
@@ -906,6 +926,7 @@ function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
       kind: "URL",
       title: payload.title,
       weight: payload.weight,
+      disabled,
       url: payload.url,
     };
   }
@@ -921,6 +942,7 @@ function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
       title: payload.title,
       description: payload.description,
       weight: payload.weight,
+      disabled,
     };
   }
   if (payload.kind === "ComputedNode") {
@@ -939,6 +961,7 @@ function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
       title: payload.title,
       description: payload.description,
       weight: payload.weight,
+      disabled,
       computationKind,
     };
   }
@@ -955,6 +978,7 @@ function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
       title: payload.title,
       description: payload.description,
       weight: payload.weight,
+      disabled,
       unit: payload.unit,
       objective: payload.objective
         ? { value: payload.objective.targetValue, at: payload.objective.targetDate }
@@ -967,6 +991,7 @@ function toAppEditPayload(payload: EditNodeModalPayload): EditNodePayload {
     title: payload.title,
     description: payload.description,
     weight: payload.weight,
+    disabled,
     unit: payload.unit,
     objective: payload.objective
       ? { value: payload.objective.targetValue, at: payload.objective.targetDate }

@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import "../../../../../../adapters/ui/organisms/TextNode/TextNodeAsParent.js";
 import { TextNodeAsParent } from "../../../../../../adapters/ui/organisms/TextNode/TextNodeAsParent.js";
 import type { TextNodeViewModel } from "../../../../../../adapters/ui/molecules/NodeViewModel.js";
-import { VALUE_NODE_DISABLED_CHANGE_EVENT, type ValueNodeDisabledChangeDetail } from "../../../../../../adapters/ui/molecules/disabledToggle.js";
 import {
   cleanupLitFixtures,
   mountLitElement,
@@ -32,33 +31,15 @@ describe("<text-node-as-parent>", () => {
     expect(subtitle?.textContent?.trim()).toBe("");
   });
 
-  it("\u00a717.121i / \u00a717.122a / \u00a717.136 S5 \u2014 renders a `.disabled-switch` toggle button in card-frame's `icons` slot (was the title's firstElementChild pre-\u00a717.136 S5), with aria-checked = !disabled (checked means ENABLED, knob right; unchecked means DISABLED, knob left)", async () => {
+  it("\u00a717.141 \u2014 the \u00a717.121i / \u00a717.122a / \u00a717.136 S5 inline `.disabled-switch` toggle is no longer rendered on the AsParent card; the disabled flag is now edited through the edit-modal's checkbox (operator feedback: parent identity strip stays uncluttered).", async () => {
     const active = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith(); });
-    const activeSwitch = active.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]');
-    expect(activeSwitch?.getAttribute("role")).toBe("switch");
-    expect(activeSwitch?.getAttribute("aria-checked")).toBe("true");
-    expect(activeSwitch?.closest('[data-testid="icons-slot"]')).not.toBeNull();
-    expect(activeSwitch?.closest('[data-testid="title"]')).toBeNull();
+    expect(
+      active.shadowRoot?.querySelector('[data-testid="disabled-switch"]'),
+    ).toBeNull();
     const off = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith({ disabled: true }); });
-    const offSwitch = off.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]');
-    expect(offSwitch?.getAttribute("data-testid")).toBe("disabled-switch");
-    expect(offSwitch?.getAttribute("aria-checked")).toBe("false");
-  });
-
-  it("\u00a717.121i \u2014 click on the switch flips the boolean and dispatches a bubbling, composed VALUE_NODE_DISABLED_CHANGE_EVENT", async () => {
-    const el = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith({ id: "node-x" }); });
-    const received: ValueNodeDisabledChangeDetail[] = [];
-    el.addEventListener(VALUE_NODE_DISABLED_CHANGE_EVENT, (ev) => {
-      received.push((ev as CustomEvent<ValueNodeDisabledChangeDetail>).detail);
-    });
-    el.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]')?.click();
-    expect(received).toEqual([{ nodeId: "node-x", disabled: true }]);
-    const off = await mountLitElement<TextNodeAsParent>("text-node-as-parent", (e) => { e.vm = vmWith({ id: "node-y", disabled: true }); });
-    off.addEventListener(VALUE_NODE_DISABLED_CHANGE_EVENT, (ev) => {
-      received.push((ev as CustomEvent<ValueNodeDisabledChangeDetail>).detail);
-    });
-    off.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]')?.click();
-    expect(received).toEqual([{ nodeId: "node-x", disabled: true }, { nodeId: "node-y", disabled: false }]);
+    expect(
+      off.shadowRoot?.querySelector('[data-testid="disabled-switch"]'),
+    ).toBeNull();
   });
 
   it("renders Title + the latest text value (\u00a717.14 — no description in the tile)", async () => {
