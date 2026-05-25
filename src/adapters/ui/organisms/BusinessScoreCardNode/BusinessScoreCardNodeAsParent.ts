@@ -85,10 +85,11 @@
  *     context they need to interpret the figure they came to see.
  */
 
-import { LitElement, css, html, nothing, type PropertyValues } from "lit";
+import { LitElement, css, html, nothing, unsafeCSS, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 
 import "../../atoms/icon/Icon.js";
+import "../../molecules/cardBody/CardBody.js";
 import "../../molecules/cardFrame/CardFrame.js";
 import { disabledToggleStyles } from "../../molecules/disabledToggle.js";
 import {
@@ -108,19 +109,42 @@ import {
 import type { BusinessScoreCardNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { formatValue } from "../../atoms/numberFormat.js";
+import { formatTargetDate } from "../../molecules/objective/TargetDate.js";
+import { MONO_CHAR_WIDTH, renderMonoTextSvg } from "../../atoms/svgMonoText.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
+import { TARGET_ICON_BG, TREND_ARROW_BG } from "../../molecules/trendArrowBg.js";
 import {
   InlineUnitEditController,
   type InlineUnitEditTarget,
   unitChipStyles,
   unitFromBscValue,
 } from "../../molecules/unitChip.js";
-import {
-  renderTargetRow,
-  renderTrendArrow,
-  renderValueTemplate,
-  timestampForValue,
-} from "./valueTemplate.js";
+import { timestampForValue } from "./valueTemplate.js";
+
+// SPEC §17.142b -- duplicates §17.142a's AsChild local helpers
+// (`TREND_ARROW_LABELS`, `valueTextOf`, `dataValueKindOf`). Kept
+// in-file rather than extracted to a shared module to avoid
+// touching the §17.142a-merged AsChild in this strand (a
+// follow-up refactor strand can hoist both copies into one).
+const TREND_ARROW_LABELS = {
+  up: "Trend: well ahead of schedule",
+  "up-right": "Trend: on or near schedule",
+  right: "Trend: flat",
+  "down-right": "Trend: slight regression",
+  down: "Trend: significant regression",
+} as const satisfies Record<NonNullable<BusinessScoreCardNodeViewModel["objective"]["trendArrow"]>, string>;
+
+function valueTextOf(vm: BusinessScoreCardNodeViewModel): string | null {
+  const v = vm.value;
+  if (v.kind === "computedMean") return formatValue(v.mean);
+  if (v.kind === "recordedValue") return formatValue(v.value);
+  return v.n === 0 ? null : `${v.n} children`;
+}
+
+function dataValueKindOf(vm: BusinessScoreCardNodeViewModel): string {
+  const v = vm.value;
+  return v.kind === "childrenCount" && v.n === 0 ? "childrenCount-empty" : v.kind;
+}
 
 @customElement("business-score-card-as-parent")
 export class BusinessScoreCardNodeAsParent extends LitElement {
@@ -203,8 +227,11 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
          column title/body split is retired -- card-frame now drives
          the layout. */
       .title {
-        /* SPEC 17.42 -- focused-panel title is bright off-white
-           regardless of board. */
+        /* SPEC 17.42 -- focused-panel title is bright off-white.
+           §17.142b -- font-size stays at 2.4vh; an SVG-mono title
+           would overflow vertically on the wide AsParent slot
+           (AsChild kept the §17.142a SVG-mono migration because
+           its title slot is narrow). */
         color: rgb(245, 245, 245);
         font-size: 2.4vh;
       }
@@ -385,15 +412,20 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
       .description {
         margin: 0;
         padding-left: 0.6rem;
-        font-size: 1.5vh;
+        /* SPEC 17.142b -- font-size shrinks with the container's
+           height (cqh = 1% of host height) so a long description
+           in a short panel still fits without the pre-§17.142b
+           -webkit-line-clamp:8 hard-truncate. Clamp floors at
+           0.8vh + ceilings at 1.5vh (the pre-§17.142b fixed size,
+           so a roomy panel reads identically). Closes the §17.141
+           "description should shrink rather than line-clamp"
+           review item. */
+        font-size: clamp(0.8vh, 4cqh, 1.5vh);
         line-height: 1.35;
         color: color-mix(in srgb, currentColor 65%, transparent);
         font-style: italic;
         white-space: pre-line;
         overflow: hidden;
-        display: -webkit-box;
-        -webkit-line-clamp: 8;
-        -webkit-box-orient: vertical;
         flex-grow: 0;
         flex-shrink: 0;
         flex-basis: 50%;
@@ -480,13 +512,71 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
           transform: translateY(50cqh);
         }
       }
-      .value-area {
-        /* Override the shared height:calc(100% - 3vh) -- with the
-           flex column on the metric-pane, value-area fills whatever
-           vertical space the metric-pane has. */
-        height: auto;
-        flex: 1 1 auto;
-        min-height: 0;
+      /* SPEC 17.142b -- the metric-pane IS the <card-body>
+         molecule; --card-body-lead-cols: 2fr matches AsChild's
+         landscape ratio (value glyph 2/3, target column 1/3). */
+      .metric-pane {
+        --card-body-lead-cols: 2fr;
+      }
+      .current-value,
+      .target-value,
+      .target-date {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        width: 100%;
+        min-width: 0;
+        background-repeat: no-repeat;
+      }
+      .current-value {
+        color: var(--bsc-value-color, currentColor);
+        font-weight: 700;
+        background-position: right center;
+        background-size: auto 60%;
+      }
+      .current-value[data-direction="up"] {
+        background-image: ${unsafeCSS(TREND_ARROW_BG.up)};
+      }
+      .current-value[data-direction="up-right"] {
+        background-image: ${unsafeCSS(TREND_ARROW_BG["up-right"])};
+      }
+      .current-value[data-direction="right"] {
+        background-image: ${unsafeCSS(TREND_ARROW_BG.right)};
+      }
+      .current-value[data-direction="down-right"] {
+        background-image: ${unsafeCSS(TREND_ARROW_BG["down-right"])};
+      }
+      .current-value[data-direction="down"] {
+        background-image: ${unsafeCSS(TREND_ARROW_BG.down)};
+      }
+      .target-value {
+        position: relative;
+        justify-content: flex-start;
+        background-image: ${unsafeCSS(TARGET_ICON_BG)};
+        background-position: left center;
+        background-size: auto 80%;
+      }
+      .target-date {
+        justify-content: flex-start;
+      }
+      .target-value > .warning-icon {
+        position: absolute;
+        right: 0.1em;
+        top: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 60%;
+        aspect-ratio: 1 / 1;
+        color: currentColor;
+        pointer-events: none;
+        user-select: none;
+      }
+      .target-value > .warning-icon > ds-icon {
+        width: 100%;
+        height: 100%;
       }
       .title.is-editable,
       .value.is-editable {
@@ -849,11 +939,12 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
     const description = this.vm.description.trim();
     const hasDescription = description.length > 0;
     const showBadge = this.vm.value.kind === "computedMean";
-    // SPEC §17.136 S1 -- panel-relative header + footer heights.
-    // AsParent uses smaller fractions than the card-frame defaults
-    // (22% / 12%) because the focused-panel host is ~85vh tall and
-    // a 22% header would dominate the metric.
-    const sizing = "--card-header-height: 18%; --card-footer-height: 8%";
+    // SPEC §17.136 S1 / §17.142b -- panel-relative header + footer
+    // heights. §17.142b bumps header 18% → 24% on the operator's
+    // §17.141 "header still cropped" review item (still under the
+    // card-frame 28% default since the focused panel is much taller
+    // than a child tile).
+    const sizing = "--card-header-height: 24%; --card-footer-height: 8%";
     return html`<card-frame style=${sizing}>
       <span slot="icons" data-testid="icons-slot"
         >${showBadge
@@ -872,19 +963,10 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
         data-has-description=${hasDescription ? "true" : "false"}
         data-entering=${this.bodyEntering ? "true" : "false"}
       >
-        <div class="metric-pane" data-testid="metric-pane">
-          <div class="value-area" data-testid="value-row">
-            <div class="value-row">
-              ${this.renderValue()}
-              ${this.editingField !== "value"
-                ? renderTrendArrow(this.vm)
-                : nothing}
-            </div>
-            ${this.editingField !== "value"
-              ? renderTargetRow(this.vm)
-              : nothing}
-          </div>
-        </div>
+        <card-body
+          class="metric-pane"
+          data-testid="metric-pane"
+        >${this.renderMetricCells()}</card-body>
         ${hasDescription
           ? html`<aside class="description" data-testid="description">
               ${this.vm.description}
@@ -944,94 +1026,122 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
   }
 
   /**
-   * SPEC 17.28 -- value content. The `recordedValue` branch is the
-   * only one editable inline (the other branches derive from children).
-   * For `recordedValue`, the value `<span>` becomes a click-to-edit
-   * affordance; the input swap preserves the unit (still rendered as
-   * a sibling) so the operator only changes the number.
+   * SPEC §17.142b -- routes the metric-pane's body content into
+   * <card-body>'s `lead` / `aux` / `meta` slots. Edit mode swaps
+   * the lead cell to the stepper wrapper + hides aux/meta so the
+   * input has the full metric-pane width. Static mode mirrors the
+   * §17.142a AsChild shape: SVG-mono value glyph with trend-arrow
+   * CSS background in `lead`, target value + warning in `aux`
+   * (carrying the `data-testid="target-row"` hook the e2e steps
+   * consume), target date in `meta`.
    */
-  private renderValue() {
+  private renderMetricCells() {
     if (!this.vm) return nothing;
     const v = this.vm.value;
-    // SPEC 17.40 -- the gradient colour is applied via the shared
-    // --bsc-value-color custom property; mirrors the inline style
-    // valueTemplate.ts uses on its own .value span. Empty `colorStyle`
-    // (degenerate / non-numeric branch) leaves the attribute blank
-    // so the .value falls back to currentColor.
-    const colorStyle = this.vm.objective.valueColor
-      ? `--bsc-value-color: ${this.vm.objective.valueColor}`
-      : "";
     if (this.editingField === "value" && v.kind === "recordedValue") {
-      // SPEC §17.50 -- block-level wrapper instead of an inline
-      // `<span class="value">`. The wrapper inherits the static
-      // value's `data-testid` / `data-value-kind` so unit + e2e
-      // selectors keep working; the layout escape (display: flex,
-      // align-self: stretch, sane editor font-size) lives in the
-      // `.value-edit-wrapper` rule above.
-      // SPEC §17.51 -- two custom \u2212 / + buttons flank the input.
-      // The buttons swallow `mousedown` (preventDefault) so the
-      // input keeps focus while the operator presses-and-holds them
-      // (without the swallow the browser would shift focus to the
-      // button on every press, which fires the input's `blur`
-      // handler and would commit-and-reopen on every step). The
-      // pointer lifecycle is wired through a single helper to keep
-      // the press-and-hold cadence (200 ms initial \u2192 50 ms
-      // accelerated past 1.5 s) in one place.
-      return html`<div
-        class="value-edit-wrapper"
-        data-testid="value"
-        data-value-kind="recordedValue"
+      return this.renderValueEditor(v.value);
+    }
+    const valueText = valueTextOf(this.vm);
+    const valueKind = dataValueKindOf(this.vm);
+    const valueColor = this.vm.objective.valueColor;
+    const direction = this.vm.objective.trendArrow;
+    const isClickToEdit = v.kind === "recordedValue";
+    const classes = isClickToEdit
+      ? "current-value value is-editable"
+      : "current-value value";
+    const ariaLabel = direction ? TREND_ARROW_LABELS[direction] : "";
+    const leadCell = html`<span
+      slot="lead"
+      class=${classes}
+      data-testid="value"
+      data-value-kind=${valueKind}
+      data-direction=${direction ?? ""}
+      aria-label=${ariaLabel}
+      role=${isClickToEdit ? "button" : nothing}
+      tabindex=${isClickToEdit ? "0" : nothing}
+      title=${isClickToEdit ? "Click to edit value" : nothing}
+      style=${valueColor ? `--bsc-value-color: ${valueColor}` : ""}
+      @click=${isClickToEdit ? this.startValueEdit : nothing}
+    >${valueText === null
+      ? nothing
+      : renderMonoTextSvg(valueText, {
+          rightPadding: valueText.length * MONO_CHAR_WIDTH * 0.1,
+        })}</span>`;
+    if (v.kind === "childrenCount" && v.n === 0) return leadCell;
+    const obj = this.vm.objective;
+    return html`${leadCell}<div
+        slot="aux"
+        class="target-value"
+        data-testid="target-row"
       >
-        <button
-          class="value-stepper value-stepper--minus"
-          data-testid="value-step-down"
-          type="button"
-          aria-label="Decrement value"
-          title="Decrement value"
-          @mousedown=${(e: MouseEvent) => e.preventDefault()}
-          @pointerdown=${(e: PointerEvent) => this.startValueStep(e, -1)}
-          @pointerup=${this.stopValueStep}
-          @pointercancel=${this.stopValueStep}
-          @pointerleave=${this.stopValueStep}
-        ></button>
-        <input
-          class="value-edit"
-          data-testid="value-edit"
-          type="number"
-          step="any"
-          .value=${String(v.value)}
-          @keydown=${(e: KeyboardEvent) => this.handleValueKey(e)}
-          @blur=${(e: FocusEvent) =>
-            this.commitValue(e.target as HTMLInputElement)}
-        />
-        <button
-          class="value-stepper value-stepper--plus"
-          data-testid="value-step-up"
-          type="button"
-          aria-label="Increment value"
-          title="Increment value"
-          @mousedown=${(e: MouseEvent) => e.preventDefault()}
-          @pointerdown=${(e: PointerEvent) => this.startValueStep(e, 1)}
-          @pointerup=${this.stopValueStep}
-          @pointercancel=${this.stopValueStep}
-          @pointerleave=${this.stopValueStep}
-        ></button>
-      </div>`;
-    }
-    if (v.kind === "recordedValue") {
-      return html`<span
-        class="value is-editable"
-        data-testid="value"
-        data-value-kind="recordedValue"
-        role="button"
-        tabindex="0"
-        title="Click to edit value"
-        style=${colorStyle}
-        @click=${this.startValueEdit}
-        >${formatValue(v.value)}</span
-      >`;
-    }
-    return renderValueTemplate(this.vm);
+        ${renderMonoTextSvg(formatValue(obj.targetValue), { leftPadding: 28, fontWeight: 400 })}
+        ${obj.warningColor
+          ? html`<span
+              class="warning-icon"
+              data-testid="off-track-warning"
+              role="img"
+              aria-label="Trajectory predicts missing the deadline"
+              style=${`color: ${obj.warningColor}`}
+              ><ds-icon name="triangle-alert"></ds-icon
+            ></span>`
+          : nothing}
+      </div>
+      ${obj.targetDateIso
+        ? html`<time
+            slot="meta"
+            class="target-date"
+            data-testid="target-date"
+            datetime=${obj.targetDateIso}
+            >${renderMonoTextSvg(formatTargetDate(obj.targetDateIso), {
+              leftPadding: 28,
+              fontWeight: 400,
+            })}</time
+          >`
+        : nothing}`;
+  }
+
+  private renderValueEditor(currentValue: number) {
+    return html`<div
+      slot="lead"
+      class="value-edit-wrapper"
+      data-testid="value"
+      data-value-kind="recordedValue"
+    >
+      <button
+        class="value-stepper value-stepper--minus"
+        data-testid="value-step-down"
+        type="button"
+        aria-label="Decrement value"
+        title="Decrement value"
+        @mousedown=${(e: MouseEvent) => e.preventDefault()}
+        @pointerdown=${(e: PointerEvent) => this.startValueStep(e, -1)}
+        @pointerup=${this.stopValueStep}
+        @pointercancel=${this.stopValueStep}
+        @pointerleave=${this.stopValueStep}
+      ></button>
+      <input
+        class="value-edit"
+        data-testid="value-edit"
+        type="number"
+        step="any"
+        .value=${String(currentValue)}
+        @keydown=${(e: KeyboardEvent) => this.handleValueKey(e)}
+        @blur=${(e: FocusEvent) =>
+          this.commitValue(e.target as HTMLInputElement)}
+      />
+      <button
+        class="value-stepper value-stepper--plus"
+        data-testid="value-step-up"
+        type="button"
+        aria-label="Increment value"
+        title="Increment value"
+        @mousedown=${(e: MouseEvent) => e.preventDefault()}
+        @pointerdown=${(e: PointerEvent) => this.startValueStep(e, 1)}
+        @pointerup=${this.stopValueStep}
+        @pointercancel=${this.stopValueStep}
+        @pointerleave=${this.stopValueStep}
+      ></button>
+    </div>`;
   }
 
   private startTitleEdit = (): void => {

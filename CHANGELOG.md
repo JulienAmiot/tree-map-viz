@@ -16,6 +16,24 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **BSC AsParent migrates to the shared `<card-body>` skeleton + value moves
+  to SVG-mono + header bumps to 24% + description shrinks via container-
+  query height instead of line-clamp (§17.142b)**. Third strand of the
+  §17.142 plan: the focused-panel BSC's metric-pane is now a `<card-body>`
+  molecule whose `lead` cell hosts the SVG-mono current value (so long
+  values scale instead of clipping), `aux` cell hosts the target value +
+  off-track warning, `meta` cell hosts the target date. The outer
+  `.body` flex layout stays untouched so the §17.45 entering animation
+  (metric-pane 100%→50%, description fade + slide-in) continues to
+  fire on focus swap. Three of the operator's §17.141 design-system
+  review items close: *"header still cropped at 18%"* (header bumps to
+  24%, still under the card-frame 28% default since the focused panel
+  is much taller than a child tile), *"current value clipped"* (SVG-
+  mono value scales horizontally with its cell), *"description should
+  shrink rather than line-clamp"* (font-size now scales with the
+  container's height via `clamp(0.8vh, 4cqh, 1.5vh)`, so a long
+  description in a short panel naturally shrinks instead of hard-
+  truncating after 8 lines).
 - **BSC AsChild migrates to the shared `<card-body>` skeleton + title moves
   to SVG-mono (§17.142a)**. Second strand of the §17.142 plan: business-score
   card child tiles now render their body through the §17.142-foundation
