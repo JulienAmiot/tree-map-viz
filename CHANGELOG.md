@@ -68,6 +68,26 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **Kiosk font flipped to `ui-monospace` (\u00a717.138)**.
+  Operator-requested kiosk-wide flip from the pre-\u00a717.138
+  `system-ui` sans stack to a layered monospace stack starting
+  with the CSS-generic `ui-monospace` keyword
+  (`ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo,
+  Consolas, "Liberation Mono", monospace`). The `--font` CSS
+  variable on `:root` is now the single source of truth: the
+  three shadow roots that previously hardcoded a sans stack
+  (`<tree-map-screen>`, every modal frame via the shared
+  `modalFrameStyles`, `<design-system-page>`) refactor to
+  `font: 1rem/1.4 var(--font)` so any future face swap is a
+  one-line edit. The showcase Typography subsection collapses
+  its per-role `fontFamily` strings onto a shared `MONO_STACK`
+  constant so every role tile renders in the same monospace
+  face the kiosk uses globally. Sample SVG demo content
+  (topology-diagram data-URL in `showcaseSeed.ts`, the
+  "Obeya wall" demo Picture in `sampleViewModels.ts`) flips to
+  the same monospace stack too, per the operator's "flip" call
+  on the SVG demo scope.
+
 - **Showcase atoms unified onto a single `.atom-tile` shape (\u00a717.137, A3)**.
   Pre-A3 the four atoms-tier sections used four distinct tile
   shapes (`.swatch`, `.glyph-cell`, `.icon-cell`, `.pdca-badge`)

@@ -85,11 +85,11 @@ const TOPOLOGY_SVG =
   "<line x1='160' y1='180' x2='260' y2='100'/><line x1='160' y1='180' x2='260' y2='260'/>" +
   "<line x1='340' y1='100' x2='440' y2='180'/><line x1='340' y1='260' x2='440' y2='180'/>" +
   "</g>" +
-  "<g fill='%23e2e8f0' font-family='sans-serif' font-size='14' text-anchor='middle'>" +
+  "<g fill='%23e2e8f0' font-family='ui-monospace, Menlo, Consolas, monospace' font-size='14' text-anchor='middle'>" +
   "<text x='120' y='184'>ingest</text><text x='300' y='104'>stream</text>" +
   "<text x='300' y='264'>batch</text><text x='480' y='184'>serve</text>" +
   "</g>" +
-  "<text x='300' y='340' fill='%2394a3b8' font-family='sans-serif' font-size='18' text-anchor='middle'>" +
+  "<text x='300' y='340' fill='%2394a3b8' font-family='ui-monospace, Menlo, Consolas, monospace' font-size='18' text-anchor='middle'>" +
   "Cluster Topology" +
   "</text></svg>";
 

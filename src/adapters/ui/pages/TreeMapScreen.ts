@@ -263,8 +263,11 @@ export class TreeMapScreen extends LitElement {
       height: 100%;
       position: relative;
       color: var(--text, #e8ecf4);
-      font: 1rem/1.4 system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-        sans-serif;
+      /* §17.138 — read the kiosk font from the :root --font variable
+         (defined in src/index.css). Pre-§17.138 this rule inlined a
+         sans-serif stack that diverged from the body font on every
+         shadow-root flip. */
+      font: 1rem/1.4 var(--font);
       /* SPEC §17.36 — shared panel aesthetic for the parent-identity-strip
          and every child tile. Defined once here so both elements (each in
          its own shadow root) read from the same source of truth, the

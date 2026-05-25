@@ -9,7 +9,15 @@
   --ring: color-mix(in srgb, var(--accent) 50%, transparent);
   --space: clamp(0.75rem, 1.2vw, 1.5rem);
   --radius: clamp(10px, 1.2vw, 20px);
-  --font: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* §17.138 — kiosk-wide flip from system-ui sans to ui-monospace. The
+     ui-monospace CSS generic picks the OS's own UI-monospace face (SF Mono
+     on macOS, Cascadia on Win11, etc.) in modern browsers; the named stack
+     after it covers older browsers + edge cases that don't recognise the
+     ui-monospace keyword. Every shadow root in the kiosk now reads its
+     own font through `font: 1rem/1.4 var(--font)` so flipping this one
+     variable is the single point of edit for any future font swap. */
+  --font: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
 }
 
 *,

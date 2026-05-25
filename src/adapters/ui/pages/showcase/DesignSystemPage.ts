@@ -92,6 +92,15 @@ const COLOR_TOKENS: readonly { name: string; value: string; usage: string }[] =
     { name: "--accent", value: "#5b8cff", usage: "Focus / active accent" },
   ] as const;
 
+/** §17.138 — the kiosk's font-family stack, mirroring `--font` from
+ * `src/index.css`. Every typography-role tile inlines this string so
+ * the showcase's per-role samples render in the same monospace face
+ * the kiosk uses globally (the flip from system-ui sans to
+ * ui-monospace lands as part of this strand). */
+const MONO_STACK =
+  'ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, ' +
+  '"Liberation Mono", monospace';
+
 /** SPEC §17.137 A4 — typography roles surfaced on the atoms tier so
  * the operator can read every font-size + font-weight + semantic
  * meaning at a glance. The `sample` field is the literal string the
@@ -100,7 +109,10 @@ const COLOR_TOKENS: readonly { name: string; value: string; usage: string }[] =
  * explains where each role lands across the kiosk. The CSS class
  * for each tile (`.typography-tile--<id>`) inlines the role's
  * font-size + font-weight + style + family directly so the
- * showcase tile matches the kiosk's real rendering of that role. */
+ * showcase tile matches the kiosk's real rendering of that role.
+ * §17.138 update — every role now points at the same `MONO_STACK`
+ * since the kiosk-wide flip to ui-monospace; only size / weight /
+ * style vary across roles. */
 const TYPOGRAPHY_ROLES: readonly {
   id: string;
   label: string;
@@ -111,13 +123,13 @@ const TYPOGRAPHY_ROLES: readonly {
   fontFamily: string;
   meaning: string;
 }[] = [
-  { id: "title",       label: "Tile / panel title",   sample: "Quarterly revenue",         fontSize: "1.05rem", fontWeight: "700", fontStyle: "normal", fontFamily: "system-ui",                              meaning: "Identifies the card. 2vh on child tiles, 2.4vh on the focused parent (system-ui, 700 \u2014 bold)." },
-  { id: "value",       label: "Figure / value",       sample: "75 %",                      fontSize: "2rem",    fontWeight: "700", fontStyle: "normal", fontFamily: "system-ui",                              meaning: "The big at-a-glance number. clamp(1.5rem, 42cqmin, 22rem) \u2014 fills the tile body, bold (700)." },
-  { id: "subtitle",    label: "Subtitle / status",    sample: "PLAN \u00b7 DO \u00b7 CHECK",          fontSize: "0.92rem", fontWeight: "600", fontStyle: "normal", fontFamily: "system-ui",                              meaning: "Sits directly under the title. 1.4vh, weight 600 \u2014 surfaces the active state (PDCA badge, computation kind)." },
-  { id: "target",      label: "Target / objective",   sample: "\u25CE  100 %",                  fontSize: "0.95rem", fontWeight: "500", fontStyle: "normal", fontFamily: "system-ui",                              meaning: "Supporting context next to the figure. clamp(0.3rem, 8.4cqmin, 4.4rem), weight 500 \u2014 never bold, never gradient-coloured." },
-  { id: "timestamp",   label: "Timestamp / age",      sample: "2 months ago",              fontSize: "0.78rem", fontWeight: "400", fontStyle: "normal", fontFamily: "ui-monospace, Consolas, Menlo, monospace", meaning: "Bottom-right age strip. 1.15vh, tabular-nums, age-coloured (off-white \u2192 dark-grey by days)." },
-  { id: "description", label: "Description (parent)", sample: "Sourced from BI warehouse", fontSize: "0.92rem", fontWeight: "400", fontStyle: "italic", fontFamily: "system-ui",                              meaning: "Italic, muted. 1.5vh \u2014 only on the focused-panel parent, line-clamped at 8 lines." },
-  { id: "code",        label: "Code / monospace",     sample: "const x = 42;",             fontSize: "0.82rem", fontWeight: "400", fontStyle: "normal", fontFamily: "ui-monospace, Consolas, Menlo, monospace", meaning: "Source snippets, color tokens, file paths. ui-monospace family \u2014 only in the showcase (kiosk itself is sans)." },
+  { id: "title",       label: "Tile / panel title",   sample: "Quarterly revenue",         fontSize: "1.05rem", fontWeight: "700", fontStyle: "normal", fontFamily: MONO_STACK, meaning: "Identifies the card. 2vh on child tiles, 2.4vh on the focused parent (weight 700 \u2014 bold)." },
+  { id: "value",       label: "Figure / value",       sample: "75 %",                      fontSize: "2rem",    fontWeight: "700", fontStyle: "normal", fontFamily: MONO_STACK, meaning: "The big at-a-glance number. clamp(1.5rem, 42cqmin, 22rem) \u2014 fills the tile body, bold (700)." },
+  { id: "subtitle",    label: "Subtitle / status",    sample: "PLAN \u00b7 DO \u00b7 CHECK",          fontSize: "0.92rem", fontWeight: "600", fontStyle: "normal", fontFamily: MONO_STACK, meaning: "Sits directly under the title. 1.4vh, weight 600 \u2014 surfaces the active state (PDCA badge, computation kind)." },
+  { id: "target",      label: "Target / objective",   sample: "\u25CE  100 %",                  fontSize: "0.95rem", fontWeight: "500", fontStyle: "normal", fontFamily: MONO_STACK, meaning: "Supporting context next to the figure. clamp(0.3rem, 8.4cqmin, 4.4rem), weight 500 \u2014 never bold, never gradient-coloured." },
+  { id: "timestamp",   label: "Timestamp / age",      sample: "2 months ago",              fontSize: "0.78rem", fontWeight: "400", fontStyle: "normal", fontFamily: MONO_STACK, meaning: "Bottom-right age strip. 1.15vh, tabular-nums, age-coloured (off-white \u2192 dark-grey by days)." },
+  { id: "description", label: "Description (parent)", sample: "Sourced from BI warehouse", fontSize: "0.92rem", fontWeight: "400", fontStyle: "italic", fontFamily: MONO_STACK, meaning: "Italic, muted. 1.5vh \u2014 only on the focused-panel parent, line-clamped at 8 lines." },
+  { id: "code",        label: "Code / monospace",     sample: "const x = 42;",             fontSize: "0.82rem", fontWeight: "400", fontStyle: "normal", fontFamily: MONO_STACK, meaning: "Source snippets, color tokens, file paths. Same monospace stack as every other kiosk role since \u00a717.138 \u2014 retained as a semantic role for code samples." },
 ] as const;
 
 /** Trend arrows — mirrored from `BSC valueTemplate.ts#TREND_ARROW_SLUGS`
@@ -339,7 +351,7 @@ export class DesignSystemPage extends LitElement {
     statusBadgeStyles,
     disabledToggleStyles,
     css`
-    :host { position: fixed; inset: 0; z-index: 250; display: none; pointer-events: none; color: var(--text, #e8ecf4); background: var(--bg, #0c0f14); font: 1rem/1.4 system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    :host { position: fixed; inset: 0; z-index: 250; display: none; pointer-events: none; color: var(--text, #e8ecf4); background: var(--bg, #0c0f14); font: 1rem/1.4 var(--font); }
     :host([open]) { display: block; pointer-events: auto; overflow: auto; }
     .topbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 1.25rem; padding: 0.85rem 1.25rem; background: color-mix(in srgb, currentColor 6%, var(--bg, #0c0f14)); border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
     .brand { color: var(--text, #e8ecf4); font-weight: 700; }

@@ -179,7 +179,8 @@ const DEMO_PICTURE_DATA_URL =
       "<rect x='14' y='58' width='90' height='128' rx='6' fill='#243042'/>" +
       "<rect x='114' y='58' width='90' height='128' rx='6' fill='#2c3a50'/>" +
       "<rect x='214' y='58' width='92' height='128' rx='6' fill='#5b8cff'/>" +
-      "<text x='160' y='34' fill='#e8ecf4' font-family='system-ui' " +
+      "<text x='160' y='34' fill='#e8ecf4' " +
+      "font-family='ui-monospace, Menlo, Consolas, monospace' " +
       "font-size='14' text-anchor='middle'>Obeya wall</text>" +
       "</svg>",
   );

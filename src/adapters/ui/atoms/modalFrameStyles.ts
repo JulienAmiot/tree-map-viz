@@ -97,8 +97,8 @@ export const modalFrameStyles = css`
     display: none;
     pointer-events: none;
     color: var(--text, #e8ecf4);
-    font: 1rem/1.4 system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-      sans-serif;
+    /* §17.138 — read the kiosk font from :root's --font. */
+    font: 1rem/1.4 var(--font);
   }
   /* §17.29 — flex-centre the panel while honouring its content-driven
      intrinsic size. Pre-§17.29 the host was display:block and the
