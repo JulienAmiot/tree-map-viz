@@ -14,6 +14,28 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **BSC AsChild migrates to the shared `<card-body>` skeleton + title moves
+  to SVG-mono (§17.142a)**. Second strand of the §17.142 plan: business-score
+  card child tiles now render their body through the §17.142-foundation
+  `<card-body>` molecule (`.current-value` → `lead`, `.target-value` →
+  `aux`, `.target-date` → `meta`), and the title text switches to the
+  same `renderMonoTextSvg(...)` helper the value glyph already uses so
+  the title scales with the title-slot width instead of the viewport
+  height. Three of the operator's §17.141 design-system review items
+  close as a direct consequence: (a) *"doesn't fill the whole space"* —
+  the molecule's stretched grid cells let the SVG-mono glyph reach the
+  bottom of its row; (b) *"target and date are missing"* — the new
+  `aux` + `meta` cells render as direct grid items, no `display:
+  contents` flatten against the now-irrelevant pre-§17.142 shared
+  grid; (c) *"title relatively too big"* — long titles render as
+  shorter (squat) SVGs, short titles render taller. The fourth review
+  item (*"age uses gradient color"*) already closed in the §17.142
+  foundation strand. Per-view migrations continue in §17.142b (BSC
+  AsParent) → §17.142c (Computed* both roles) → §17.142d (Text +
+  Workflow) → §17.142e (Picture + URL).
+
 ### Added
 
 - **Shared `<card-body>` 3-cell skeleton (§17.142 foundation)**. New molecule

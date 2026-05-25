@@ -219,7 +219,7 @@ describe("<business-score-card-as-child>", () => {
     }
   });
 
-  it("\u00a717.139 / \u00a717.141 \u2014 renders the target row with `.target-value` (bare target value, no unit per \u00a717.141) + `.target-date` (formatted deadline); bullseye target icon is the CSS background of `.target-value`, not a `<ds-icon>` child", async () => {
+  it("\u00a717.142a \u2014 renders `.target-value` (bare target value per \u00a717.141) + `.target-date` (formatted deadline) as direct slot children of `<card-body>` (no `.target-row` wrapper; the bullseye is a CSS background of `.target-value`, not a `<ds-icon>` child)", async () => {
     const vm = makeVm(
       {
         kind: "recordedValue",
@@ -232,55 +232,45 @@ describe("<business-score-card-as-child>", () => {
     );
     const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
-      (e) => {
-        e.vm = vm;
-      },
+      (e) => { e.vm = vm; },
     );
 
-    // SPEC \u00a717.139 -- the pre-\u00a717.139 `<objective-cell>` +
-    // `<target-date-cell>` molecules are no longer mounted by BSC
-    // AsChild (they stay alive for BSC AsParent + Computed* AsParent
-    // until a follow-up strand migrates those too). The target row
-    // is a `display: contents` wrapper carrying the testid; the two
-    // cells inside are siblings of `.current-value` at the grid
-    // level.
-    const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
-    expect(row).not.toBeNull();
-    expect(row?.querySelector("objective-cell")).toBeNull();
-    expect(row?.querySelector("target-date-cell")).toBeNull();
-    const targetText = row?.querySelector('[data-testid="target-text"]');
+    // SPEC §17.142a -- the §17.139c `.target-row` wrapper retires;
+    // the target value + date are now direct children of <card-body>
+    // in the `aux` + `meta` slots respectively. The pre-§17.142a
+    // `[data-testid="target-row"]` hook retires too -- callers that
+    // need the target cells reach for `[data-testid="target-text"]`
+    // + `[data-testid="target-date"]` directly.
+    expect(el.shadowRoot?.querySelector('[data-testid="target-row"]')).toBeNull();
+    const targetText = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="target-text"]');
     expect(targetText).not.toBeNull();
-    // SPEC §17.141 — target text is the bare value, no unit suffix
-    // (the unit lives on the title-prefix chip per §17.125 + §17.140).
+    expect(targetText?.getAttribute("slot")).toBe("aux");
     expect(targetText?.textContent?.replace(/\s+/g, " ").trim()).toBe("80");
-    const date = row?.querySelector('[data-testid="target-date"]');
+    const date = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="target-date"]');
     expect(date).not.toBeNull();
+    expect(date?.getAttribute("slot")).toBe("meta");
     expect(date?.getAttribute("datetime")).toBe("2026-12-31T00:00:00.000Z");
     expect(date?.textContent?.trim()).toBe("31 Dec 2026");
-    // SPEC \u00a717.139 -- `.target-value` carries the bullseye icon as a
-    // CSS background-image (not a DOM child). The shared
-    // `.target-value` rule sets `background-image: url("data:...")`
-    // via the trendArrowBg molecule; the inline style on the
-    // element is empty.
-    const targetValue = row?.querySelector<HTMLElement>(".target-value");
-    expect(targetValue).not.toBeNull();
-    expect(targetValue?.querySelector("ds-icon")).toBeNull();
+    // SPEC §17.139 -- `.target-value` carries the bullseye icon as
+    // a CSS background-image (not a DOM child).
+    expect(targetText?.querySelector("ds-icon")).toBeNull();
+    // SPEC §17.139 -- pre-§17.139 <objective-cell> + <target-date-
+    // cell> molecules no longer mount on BSC AsChild.
+    expect(el.shadowRoot?.querySelector("objective-cell")).toBeNull();
+    expect(el.shadowRoot?.querySelector("target-date-cell")).toBeNull();
   });
 
-  it("\u00a717.40 — does not render the target row for empty childrenCount n=0", async () => {
+  it("\u00a717.40 / \u00a717.142a \u2014 does not render the target cells for empty childrenCount n=0", async () => {
     const vm = makeVm({ kind: "childrenCount", n: 0 });
     const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
-      (e) => {
-        e.vm = vm;
-      },
+      (e) => { e.vm = vm; },
     );
-    expect(
-      el.shadowRoot?.querySelector('[data-testid="target-row"]'),
-    ).toBeNull();
+    expect(el.shadowRoot?.querySelector('[data-testid="target-text"]')).toBeNull();
+    expect(el.shadowRoot?.querySelector('[data-testid="target-date"]')).toBeNull();
   });
 
-  it("\u00a717.44 — renders the deadline-risk warning glyph inside the target row, after the target date, tinted by warningColor", async () => {
+  it("\u00a717.44 / \u00a717.142a \u2014 renders the deadline-risk warning glyph inside `.target-value` (the aux cell), tinted by warningColor", async () => {
     const vm = makeVm(
       {
         kind: "recordedValue",
@@ -293,30 +283,15 @@ describe("<business-score-card-as-child>", () => {
     );
     const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
-      (e) => {
-        e.vm = vm;
-      },
+      (e) => { e.vm = vm; },
     );
 
-    const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
-    expect(row).not.toBeNull();
-    // SPEC \u00a717.139 -- the warning glyph stays in the target row, but
-    // since the pre-\u00a717.139 `<objective-cell>` molecule no longer
-    // hosts BSC AsChild's target cell, the warning lives directly
-    // inside `.target-value` in the per-view's shadow root (no
-    // nested molecule shadow to traverse).
-    const targetValue = row?.querySelector<HTMLElement>(".target-value");
+    const targetValue = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="target-text"]');
     expect(targetValue).not.toBeNull();
-    const warn = targetValue?.querySelector<HTMLElement>(
-      '[data-testid="off-track-warning"]',
-    );
+    const warn = targetValue?.querySelector<HTMLElement>('[data-testid="off-track-warning"]');
     expect(warn).not.toBeNull();
-    expect(warn?.getAttribute("style") ?? "").toMatch(
-      /\bcolor:\s*rgb\(220,\s*38,\s*38\)/,
-    );
-    expect(warn?.getAttribute("aria-label")?.toLowerCase()).toContain(
-      "deadline",
-    );
+    expect(warn?.getAttribute("style") ?? "").toMatch(/\bcolor:\s*rgb\(220,\s*38,\s*38\)/);
+    expect(warn?.getAttribute("aria-label")?.toLowerCase()).toContain("deadline");
   });
 
   it("\u00a717.44 — does not render the warning glyph when warningColor is empty", async () => {
@@ -459,60 +434,70 @@ describe("<business-score-card-as-child>", () => {
     expect(btn?.weight).toBe(2.5);
   });
 
-  it("\u00a717.139 / \u00a717.141 \u2014 the `.target-date` cell only renders when `objective.targetDateIso` is non-empty; the `.target-value` cell still renders (bare target value, no unit per \u00a717.141)", async () => {
+  it("\u00a717.142a \u2014 the `.target-date` cell only renders when `objective.targetDateIso` is non-empty; the `.target-value` cell still renders (bare target value per \u00a717.141)", async () => {
     const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
       (e) => {
         e.vm = makeVm(
-          {
-            kind: "recordedValue",
-            value: 50,
-            unit: "%",
-            dateIso: "2026-04-23T18:25:43.511Z",
-          },
+          { kind: "recordedValue", value: 50, unit: "%", dateIso: "2026-04-23T18:25:43.511Z" },
           undefined,
           { targetDateIso: "" },
         );
       },
     );
-    const row = el.shadowRoot?.querySelector('[data-testid="target-row"]');
-    expect(row).not.toBeNull();
-    expect(row?.querySelector(".target-date")).toBeNull();
-    expect(row?.querySelector(".target-value")).not.toBeNull();
+    expect(el.shadowRoot?.querySelector('[data-testid="target-text"]')).not.toBeNull();
+    expect(el.shadowRoot?.querySelector('[data-testid="target-date"]')).toBeNull();
   });
 
-  it("\u00a717.139 \u2014 body grid layout: `.current-value` + `.target-value` + `.target-date` are the 3 direct grid items of `.value-area` (the `.target-row` wrapper is `display: contents`, so its children become direct grid children)", async () => {
+  it("\u00a717.142a \u2014 body migrates to `<card-body>`: `.current-value` slots into `lead`, `.target-value` into `aux`, `.target-date` into `meta`; no `.value-area` grid; the pre-\u00a717.142a `<objective-cell>` / `<target-date-cell>` molecules stay un-mounted", async () => {
     const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
       "business-score-card-as-child",
       (e) => {
-        e.vm = makeVm({
-          kind: "recordedValue",
-          value: 75,
-          unit: "%",
-          dateIso: "2026-04-23T18:25:43.511Z",
-        });
+        e.vm = makeVm({ kind: "recordedValue", value: 75, unit: "%", dateIso: "2026-04-23T18:25:43.511Z" });
       },
     );
-    const valueArea = el.shadowRoot?.querySelector<HTMLElement>(".value-area");
-    expect(valueArea).not.toBeNull();
-    const currentValue = valueArea?.querySelector<HTMLElement>(".current-value");
-    const targetRow = valueArea?.querySelector<HTMLElement>(".target-row");
-    const targetValue = valueArea?.querySelector<HTMLElement>(".target-value");
-    const targetDate = valueArea?.querySelector<HTMLElement>(".target-date");
-    expect(currentValue).not.toBeNull();
-    expect(targetRow).not.toBeNull();
-    expect(targetValue).not.toBeNull();
-    expect(targetDate).not.toBeNull();
-    expect(currentValue?.parentElement).toBe(valueArea);
-    expect(targetRow?.parentElement).toBe(valueArea);
-    expect(targetValue?.parentElement).toBe(targetRow);
-    expect(targetDate?.parentElement).toBe(targetRow);
-    // SPEC \u00a717.139 -- the pre-\u00a717.139 `<objective-cell>` and
-    // `<target-date-cell>` molecules are NOT mounted by BSC AsChild
-    // (the cells render their text via the shared `svgMonoText`
-    // atom inline). The molecules stay alive for BSC AsParent +
-    // Computed* AsParent for the duration of this strand.
-    expect(valueArea?.querySelector("objective-cell")).toBeNull();
-    expect(valueArea?.querySelector("target-date-cell")).toBeNull();
+    // SPEC §17.142a -- the per-view's body is now a <card-body>
+    // mounted as `slot="body"` of <card-frame>. The pre-§17.142a
+    // `.value-area` host div is retired -- the molecule's shadow
+    // root carries the 3-cell grid + container-query portrait flip.
+    const cardBody = el.shadowRoot?.querySelector<HTMLElement>("card-body");
+    expect(cardBody).not.toBeNull();
+    expect(cardBody?.getAttribute("slot")).toBe("body");
+    expect(el.shadowRoot?.querySelector(".value-area")).toBeNull();
+    // SPEC §17.142a -- each cell content carries the matching
+    // `slot=` attribute so the molecule routes it to the right cell.
+    const currentValue = cardBody?.querySelector<HTMLElement>(".current-value");
+    const targetValue = cardBody?.querySelector<HTMLElement>(".target-value");
+    const targetDate = cardBody?.querySelector<HTMLElement>(".target-date");
+    expect(currentValue?.getAttribute("slot")).toBe("lead");
+    expect(targetValue?.getAttribute("slot")).toBe("aux");
+    expect(targetDate?.getAttribute("slot")).toBe("meta");
+    // Direct children of <card-body>, no intervening wrapper.
+    expect(currentValue?.parentElement).toBe(cardBody);
+    expect(targetValue?.parentElement).toBe(cardBody);
+    expect(targetDate?.parentElement).toBe(cardBody);
+    expect(el.shadowRoot?.querySelector("objective-cell")).toBeNull();
+    expect(el.shadowRoot?.querySelector("target-date-cell")).toBeNull();
+  });
+
+  it("\u00a717.142a \u2014 title renders as an SVG-mono text so the title scales with the title-slot width (fixes the \u00a717.141 'title relatively too big' review item: pre-\u00a717.142a the shared `.title { font-size: 2vh }` rule dominated small child tiles)", async () => {
+    const el = await mountLitElement<BusinessScoreCardNodeAsChild>(
+      "business-score-card-as-child",
+      (e) => {
+        e.vm = makeVm({ kind: "recordedValue", value: 75, unit: "%", dateIso: "2026-04-23T18:25:43.511Z" });
+      },
+    );
+    const title = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="title"]');
+    expect(title).not.toBeNull();
+    const titleSvg = title?.querySelector("svg");
+    expect(titleSvg).not.toBeNull();
+    // §17.139 viewBox formula: textLen \xd7 MONO_CHAR_WIDTH (13.2) wide.
+    // "Sales" = 5 chars \xd7 13.2 = 66.
+    expect(titleSvg?.getAttribute("viewBox")).toBe("0 0 66 22");
+    expect(titleSvg?.getAttribute("width")).toBe("100%");
+    expect(titleSvg?.getAttribute("height")).toBe("auto");
+    // textContent of the SVG still surfaces the title string so
+    // pre-§17.142a tests asserting `title.textContent` keep passing.
+    expect(title?.textContent?.trim()).toBe("Sales");
   });
 });
