@@ -74,4 +74,25 @@ describe("<card-body> (\u00a717.142 shared 3-cell body skeleton)", () => {
     expect(css).toMatch(/@container\s*\(\s*orientation:\s*portrait\s*\)/);
     expect(css).toMatch(/var\(\s*--card-body-gap\s*,\s*0\s*\)/);
   });
+
+  it("\u00a717.142d \u2014 `data-layout=\"lead-only\"` collapses the grid to a single 1fr column / 1fr row track and hides the aux + meta cells so single-content kinds (Workflow / Text / Picture / URL) get the full body width", async () => {
+    const css = (
+      CardBody.styles as unknown as { cssText?: string }
+    )?.cssText ?? String(CardBody.styles);
+    expect(css).toMatch(/:host\(\[data-layout="lead-only"\]\)\s*\{[^}]*grid-template-columns:\s*1fr/);
+    expect(css).toMatch(/:host\(\[data-layout="lead-only"\]\)\s*\{[^}]*grid-template-rows:\s*1fr/);
+    expect(css).toMatch(/:host\(\[data-layout="lead-only"\]\)\s*\{[^}]*grid-template-areas:\s*"lead"/);
+    expect(css).toMatch(/:host\(\[data-layout="lead-only"\]\)\s*\.cell--aux[\s\S]*display:\s*none/);
+    expect(css).toMatch(/:host\(\[data-layout="lead-only"\]\)\s*\.cell--meta[\s\S]*display:\s*none/);
+  });
+
+  it("\u00a717.142d \u2014 a `<card-body data-layout=\"lead-only\">` mount keeps all three slot wrappers in the DOM so a future variant flip can re-show the aux + meta cells without rewiring the cell template", async () => {
+    const el = await mountLitElement<CardBody>("card-body", (e) => {
+      e.setAttribute("data-layout", "lead-only");
+    });
+    const root = el.shadowRoot;
+    for (const r of CELL_REGIONS) {
+      expect(root?.querySelector(`[data-testid="${r}"]`)).not.toBeNull();
+    }
+  });
 });

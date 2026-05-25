@@ -1,22 +1,35 @@
 /**
- * `<card-body>` — shared 3-cell layout molecule for the **body** slot
- * of every `<card-frame>` (SPEC §17.142). Companion to the §17.136
- * `<card-frame>` (header / body / footer): the frame gives every kind
- * a consistent title / footer skeleton; this molecule brings the same
- * consistency to the **body** region so BSC, Computed*, Text,
- * Workflow, Picture, URL, and future kinds share one visual rhythm.
+ * `<card-body>` — shared body skeleton molecule for every `<card-frame>`
+ * (SPEC §17.142 foundation + §17.142d refresh). Companion to the
+ * §17.136 `<card-frame>` (header / body / footer): the frame gives
+ * every kind a consistent title / footer skeleton; this molecule
+ * brings the same consistency to the body region so BSC, Computed*,
+ * Text, Workflow, Picture, URL, and future kinds share one visual
+ * rhythm.
  *
- * Landscape layout (host wider than tall — `2fr 1fr` columns):
- *     [   lead   ][ aux  ]      lead spans both rows on the left
- *     [   lead   ][ meta ]      aux + meta stack on the right
+ * Two layout variants, picked via `data-layout`:
  *
- * Portrait layout (host taller than wide — picked up via the
- * `@container (orientation: portrait)` rule below; the host carries
- * `container-type: size` so the flip resolves against its own aspect
- * ratio, NOT a viewport media query):
- *     [   lead  ]   (2fr — top half)
- *     [   aux   ]   (1fr — middle band)
- *     [   meta  ]   (1fr — bottom band)
+ * **Default ("split")** — 3-cell grid for kinds carrying a value
+ * + objective columns (BSC + Computed* + CBSN):
+ *
+ *     Landscape (`2fr 1fr` columns):
+ *         [   lead   ][ aux  ]      lead spans both rows on left
+ *         [   lead   ][ meta ]      aux + meta stack on right
+ *
+ *     Portrait (`@container (orientation: portrait)` flip, host
+ *     carries `container-type: size`):
+ *         [   lead  ]   (2fr top half)
+ *         [   aux   ]   (1fr middle band)
+ *         [   meta  ]   (1fr bottom band)
+ *
+ * **Lead-only (`data-layout="lead-only"`)** — single column for
+ * kinds with one content area (WorkflowNode / TextNode / PictureNode
+ * / URLNode). The `aux` + `meta` cells render with `display: none`
+ * so the lead spans the full body width AND height; the molecule's
+ * outer grid drops to a single 1fr column / 1fr row track. Slotted
+ * `aux` / `meta` content (if any) is dropped from the visible
+ * layout but still in the DOM, so a future strand can flip the
+ * variant per-VM without ABI churn.
  *
  * Cells stretch to fill their tracks (`align-items: stretch;
  * justify-items: stretch`) so a `width="100%" height="auto"` SVG-mono
@@ -28,8 +41,7 @@
  * (default `2fr`) for kinds wanting a 3:1 or 1:1 split, `--card-body-
  * gap` (default `0`) for kinds wanting visible separators, and
  * `part="lead|aux|meta"` for kinds wanting shadow-piercing colour /
- * border overrides on a specific cell (WorkflowNode's PDCA-coloured
- * aux cell is the canonical example).
+ * border overrides on a specific cell.
  */
 
 import { LitElement, css, html } from "lit";
@@ -70,6 +82,22 @@ export class CardBody extends LitElement {
           "aux"
           "meta";
       }
+    }
+    /* SPEC §17.142d -- lead-only variant for single-content kinds
+       (Workflow / Text / Picture / URL). Single 1fr column / 1fr
+       row track; aux + meta cells drop out of the visible layout
+       so the lead fills the entire body. The slot wrappers stay
+       in the DOM (display: none rather than removing the slots
+       wholesale) so a future variant flip lands without rewiring
+       the cell template. */
+    :host([data-layout="lead-only"]) {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr;
+      grid-template-areas: "lead";
+    }
+    :host([data-layout="lead-only"]) .cell--aux,
+    :host([data-layout="lead-only"]) .cell--meta {
+      display: none;
     }
     .cell {
       display: flex;
