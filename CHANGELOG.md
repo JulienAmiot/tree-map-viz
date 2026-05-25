@@ -16,6 +16,20 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Added
 
+- **`trendArrowBg` molecule: CSS-background data URIs for trend + target icons (§17.139b)**.
+  Second slice of the §17.139 BSC AsChild migration. The new
+  `src/adapters/ui/molecules/trendArrowBg.ts` molecule exports
+  `TREND_ARROW_BG[direction]` (5 Lucide arrows — up / up-right
+  / right / down-right / down) + `TARGET_ICON_BG` (Lucide
+  bullseye target), each as a CSS `url(data:image/svg+xml,...)`
+  background-image value. The `#9aa3b4` muted stroke colour is
+  baked into every data URI because CSS `background-image`
+  cannot inherit `currentColor` (the kiosk's value-glyph keeps
+  its colour-as-severity signal per §17.40; the supporting
+  icons stay monochrome). Foundation only; strand C wires
+  both consts into the BSC AsChild `.current-value` +
+  `.target-value` cells.
+
 - **`svgMonoText` atom: monospace SVG text scaling foundation (§17.139a)**.
   First slice of the §17.139 BSC AsChild migration. The new
   `src/adapters/ui/atoms/svgMonoText.ts` atom exports
