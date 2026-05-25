@@ -90,7 +90,7 @@ import { customElement, property, state } from "lit/decorators.js";
 
 import "../../atoms/icon/Icon.js";
 import "../../molecules/cardFrame/CardFrame.js";
-import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
+import { disabledToggleStyles } from "../../molecules/disabledToggle.js";
 import {
   headerActionsStyles,
   renderHeaderActions,
@@ -853,10 +853,10 @@ export class BusinessScoreCardNodeAsParent extends LitElement {
     // AsParent uses smaller fractions than the card-frame defaults
     // (22% / 12%) because the focused-panel host is ~85vh tall and
     // a 22% header would dominate the metric.
-    const sizing = "--card-header-height: 14%; --card-footer-height: 8%";
+    const sizing = "--card-header-height: 18%; --card-footer-height: 8%";
     return html`<card-frame style=${sizing}>
       <span slot="icons" data-testid="icons-slot"
-        >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}${showBadge
+        >${showBadge
           ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="Computed value"><ds-icon name="sigma"></ds-icon></span>`
           : nothing}</span
       >

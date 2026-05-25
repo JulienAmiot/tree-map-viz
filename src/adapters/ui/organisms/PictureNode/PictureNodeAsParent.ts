@@ -3,7 +3,7 @@
  * `PictureNode` (SPEC §17.119, §17.136 S9).
  *
  * §17.136 S9 -- the entire render output is wrapped in a `<card-frame>`
- * molecule with inline `--card-header-height: 14%` +
+ * molecule with inline `--card-header-height: 18%` (§17.141) +
  * `--card-footer-height: 8%` overrides (same focused-panel ratio
  * S1 / S3 / S5 / S7 use; the molecule's 22 % / 12 % defaults would
  * dominate the ~85 vh focused-panel host). Slot routing (same shape
@@ -48,7 +48,7 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 
 import "../../molecules/cardFrame/CardFrame.js";
-import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
+import { disabledToggleStyles } from "../../molecules/disabledToggle.js";
 import {
   headerActionsStyles,
   renderHeaderActions,
@@ -115,12 +115,10 @@ export class PictureNodeAsParent extends LitElement {
     // (focused-panel host is ~85vh; card-frame's 22% / 12% defaults
     // would dominate the value-area). Same literals as S1 / S3 / S5
     // / S7 AsParent migrations.
-    const sizing = "--card-header-height: 14%; --card-footer-height: 8%";
+    const sizing = "--card-header-height: 18%; --card-footer-height: 8%";
     const titleH1 = this.titleEditor.renderTitle("PictureNode", nothing);
     return html`<card-frame style=${sizing}>
-      <span slot="icons" data-testid="icons-slot"
-        >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}</span
-      >
+      <span slot="icons" data-testid="icons-slot"></span>
       <span slot="header-actions"
         >${renderHeaderActions(this, { nodeId: this.vm.id, parentId: this.parentId })}</span
       >

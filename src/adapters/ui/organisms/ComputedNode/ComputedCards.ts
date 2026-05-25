@@ -110,7 +110,6 @@ import { formatAge } from "../../atoms/ageFormat.js";
 import {
   disabledToggleStyles,
   renderDisabledIndicator,
-  renderDisabledSwitch,
 } from "../../molecules/disabledToggle.js";
 import {
   headerActionsStyles,
@@ -521,19 +520,23 @@ function renderAsChildSlots(args: {
 }
 
 /**
- * SPEC §17.136 S3 -- shared AsParent slot fillers for the icons + unit
- * + title + subtitle slots of `<card-frame>`. Both Computed card
- * classes feed identical pieces (disabled switch + sigma badge into
- * `icons`, editable unit chip into `unit`, inline-editable title h1
- * into `title`, strategy picker into `subtitle`); centralising avoids
- * duplication across the two AsParent renderers (would otherwise
- * trip the CPD detector at ~25 duplicate lines per class).
+ * SPEC §17.136 S3 / §17.141 -- shared AsParent slot fillers for
+ * the icons + unit + title + subtitle slots of `<card-frame>`.
+ * Both Computed card classes feed identical pieces (sigma badge
+ * into `icons`, editable unit chip into `unit`, inline-editable
+ * title h1 into `title`, strategy picker into `subtitle`);
+ * centralising avoids duplication across the two AsParent
+ * renderers (would otherwise trip the CPD detector at ~25
+ * duplicate lines per class). §17.141 retired the disabled
+ * switch from the icons slot (operator feedback: parent cards
+ * no longer carry the inline toggle; the edit-modal exposes a
+ * checkbox for the same field). The `vmDisabled` arg therefore
+ * goes away with the call.
  */
 function renderAsParentSlots(args: {
   readonly host: LitElement;
   readonly titleEditor: InlineTitleEditController;
   readonly vmId: string;
-  readonly vmDisabled: boolean;
   readonly showBadge: boolean;
   readonly unitChip: TemplateResult | typeof nothing;
   readonly viewKind: string;
@@ -547,7 +550,7 @@ function renderAsParentSlots(args: {
   const titleH1 = args.titleEditor.renderTitle(args.viewKind, nothing);
   return html`
     <span slot="icons" data-testid="icons-slot"
-      >${renderDisabledSwitch(args.host, args.vmId, args.vmDisabled)}${args.showBadge
+      >${args.showBadge
         ? html`<span class="computed-badge" data-testid="computed-badge" aria-label="aggregated"><ds-icon name="sigma"></ds-icon></span>`
         : nothing}</span
     >
@@ -642,13 +645,11 @@ export class ComputedCard extends LitElement {
     if (!this.vm) return html``;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
-    const vmDisabled = this.vm.disabled ?? false;
-    return html`<card-frame style="--card-header-height: 14%; --card-footer-height: 8%">
+    return html`<card-frame style="--card-header-height: 18%; --card-footer-height: 8%">
       ${renderAsParentSlots({
         host: this,
         titleEditor: this.titleEditor,
         vmId: this.vm.id,
-        vmDisabled,
         showBadge,
         unitChip: this.unitEditor.renderChip(),
         viewKind: "ComputedNode",
@@ -755,13 +756,11 @@ export class ComputedBusinessScoreCard extends LitElement {
     const { dateIso, dateColor, objective } = this.vm;
     const showBadge = this.vm.value.kind === "numeric";
     const canCompute = this.vm.value.kind === "numeric";
-    const vmDisabled = this.vm.disabled ?? false;
-    return html`<card-frame style="--card-header-height: 14%; --card-footer-height: 8%">
+    return html`<card-frame style="--card-header-height: 18%; --card-footer-height: 8%">
       ${renderAsParentSlots({
         host: this,
         titleEditor: this.titleEditor,
         vmId: this.vm.id,
-        vmDisabled,
         showBadge,
         unitChip: this.unitEditor.renderChip(),
         viewKind: "ComputedBusinessScoreNode",

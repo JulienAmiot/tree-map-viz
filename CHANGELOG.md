@@ -14,21 +14,29 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
-### Fixed
-
-- **§17.139 BSC AsChild target / date overlap bug (§17.140)**.
-  The shared `tileLayoutStyles` declares a
-  `.value-area > .target-row { display: grid; ... }` rule whose
-  specificity (`0,2,0`) beat the §17.139c override
-  `.target-row { display: contents }` (`0,1,0`); the inner
-  `.target-value` + `.target-date` referenced grid-areas that
-  didn't exist in the nested grid and both collapsed onto cell
-  `(1,1)` → operator saw the target text and the target date
-  stacked on top of each other. Fixed by matching the
-  selector shape (`.value-area > .target-row { display:
-  contents }`) so source order wins on equal specificity.
-
 ### Changed
+
+- **Edit-modal carries the disabled flag now, AsParent cards lose the inline
+  toggle (§17.141)**. Operator-requested follow-up after §17.140. The
+  pre-§17.141 `<button role="switch">` toggle at the left of the focused
+  parent card's title row retires across all 6 AsParent organisms
+  (`BusinessScoreCardNodeAsParent`, `TextNodeAsParent`, `URLNodeAsParent`,
+  `PictureNodeAsParent`, `WorkflowNodeAsParent`, both Computed cards). In
+  its place the `<edit-node-modal>` form gains a universal "Disabled
+  (parked, excluded from aggregation)" checkbox, rendered right after the
+  weight control for every kind (the flag rides `CommonEdit` in the
+  application layer, so every kind that reaches the modal honours it).
+  The AsChild read-side `.disabled-indicator` glyph on tree-map tiles is
+  unchanged — operators still get a calm "this card is parked" badge at a
+  glance.
+- **Card-frame header grows so the Workflow PDCA pill fits (§17.141)**.
+  Operator feedback on §17.140: "Increase the size of the header so that
+  the status button appears fully (in child and parent card)". The pre-
+  §17.141 `--card-header-height` default `22%` clipped the subtitle row
+  on small child tiles when the value carried a status pill; bumping the
+  default to `28%` (and the AsParent focused-panel override from `14%` to
+  `18%`) gives the subtitle room without forcing a viewport-scaled
+  switch.
 
 - **BSC AsChild + shell polish on the operator's §17.139 review (§17.140)**.
   Six batched follow-ups: (a) target / date overlap bug above;
@@ -68,6 +76,27 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
   inline CSS variable + the `<span class="trend-arrow"><ds-
   icon>` DOM child both retire. Driven by the operator's
   `examples/text-fills-container.html` POC layout.
+
+### Fixed
+
+- **BSC AsChild target cell drops the unit suffix (§17.141)**. Operator
+  feedback on §17.140: "Don't write the unit in the target". The
+  pre-§17.141 `.target-value` cell stamped the unit (`"80 %"` /
+  `"100 EUR"`) but the §17.125 title-prefix chip already carries the unit
+  on the same tile, so duplicating it in the narrow `.target-value` cell
+  stole horizontal real estate from the value glyph for no information
+  gain. The cell now renders the bare numeric target.
+- **§17.139 BSC AsChild target / date overlap bug (§17.140)**.
+  The shared `tileLayoutStyles` declares a
+  `.value-area > .target-row { display: grid; ... }` rule whose
+  specificity (`0,2,0`) beat the §17.139c override
+  `.target-row { display: contents }` (`0,1,0`); the inner
+  `.target-value` + `.target-date` referenced grid-areas that
+  didn't exist in the nested grid and both collapsed onto cell
+  `(1,1)` → operator saw the target text and the target date
+  stacked on top of each other. Fixed by matching the
+  selector shape (`.value-area > .target-row { display:
+  contents }`) so source order wins on equal specificity.
 
 ### Added
 

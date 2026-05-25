@@ -59,22 +59,24 @@ describe("<card-frame> (\u00a717.136 S0b)", () => {
     }
   });
 
-  it("locks the operator-pinned CSS contract: header height panel-relative, footer height content-sized (\u00a717.140), body clips overflow, footer anchors at edges", async () => {
-    // §17.136 / §17.140 -- one test, multiple regex pins so a
-    // refactor that breaks any one of them fails immediately
-    // rather than getting masked by the others: (1) header
-    // height stays panel-relative via `--card-header-height`
-    // with a 22% default + 1fr body; (2) §17.140 shrinks the
-    // footer-row to inline content (`--card-footer-height`
-    // default `1.4em`) so the timestamp + weight icon don't
-    // claim a tile-relative percentage; (3) body clips overflow
-    // + min-height: 0 so kind-specific shrink-to-fit lives
+  it("locks the operator-pinned CSS contract: header height panel-relative, footer height content-sized (\u00a717.140), body clips overflow, footer anchors at edges (\u00a717.141 default header bump 22% \u2192 28%)", async () => {
+    // §17.136 / §17.140 / §17.141 -- one test, multiple regex
+    // pins so a refactor that breaks any one of them fails
+    // immediately rather than getting masked by the others: (1)
+    // header height stays panel-relative via
+    // `--card-header-height` with a 28% default (§17.141 bumped
+    // from 22% so the Workflow PDCA status pill fits on small
+    // child tiles) + 1fr body; (2) §17.140 shrinks the footer-
+    // row to inline content (`--card-footer-height` default
+    // `1.4em`) so the timestamp + weight icon don't claim a
+    // tile-relative percentage; (3) body clips overflow +
+    // min-height: 0 so kind-specific shrink-to-fit lives
     // inside a known box; (4) footer is space-between so left
     // + right anchor at the edges even when one side is empty.
     const css = (
       CardFrame.styles as unknown as { cssText?: string }
     )?.cssText ?? String(CardFrame.styles);
-    expect(css).toMatch(/var\(\s*--card-header-height\s*,\s*22%\s*\)/);
+    expect(css).toMatch(/var\(\s*--card-header-height\s*,\s*28%\s*\)/);
     expect(css).toMatch(/var\(\s*--card-footer-height\s*,\s*1\.4em\s*\)/);
     expect(css).toMatch(/grid-template-rows[^;]*1fr/);
     expect(css).toMatch(/\.body\s*\{[^}]*min-height:\s*0[^}]*overflow:\s*hidden/);

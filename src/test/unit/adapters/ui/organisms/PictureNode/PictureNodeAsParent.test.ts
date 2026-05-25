@@ -58,12 +58,15 @@ describe("<picture-node-as-parent>", () => {
     const cardFrames = el.shadowRoot?.querySelectorAll("card-frame");
     expect(cardFrames?.length).toBe(1);
     const cf = cardFrames?.[0] as HTMLElement;
-    // SPEC 17.136 S9 -- focused-panel sizing override (same
-    // literals as S1 / S3 / S5 / S7 AsParent migrations); a
-    // regression to the molecule's 22% / 12% defaults would
-    // dominate the value-area, so pin the override.
+    // SPEC §17.136 S9 / §17.141 -- focused-panel sizing override
+    // (same literals as the S1 / S3 / S5 / S7 AsParent
+    // migrations). §17.141 bumped the override from 14% to 18%
+    // so the Workflow PDCA pill (and the parent disabled-toggle
+    // checkbox in the matching edit-modal) fit fully without
+    // dominating the value-area. A regression to the molecule's
+    // 28% / 1.4em defaults would dominate the value-area.
     const style = cf.getAttribute("style") ?? "";
-    expect(style).toMatch(/--card-header-height:\s*14%/);
+    expect(style).toMatch(/--card-header-height:\s*18%/);
     expect(style).toMatch(/--card-footer-height:\s*8%/);
   });
 
@@ -78,9 +81,13 @@ describe("<picture-node-as-parent>", () => {
     const iconsSlot = root.querySelector<HTMLElement>('[data-testid="icons-slot"]');
     expect(iconsSlot).not.toBeNull();
     expect(iconsSlot?.getAttribute("slot")).toBe("icons");
+    // SPEC §17.141 — the pre-§17.141 disabled-switch is no longer
+    // rendered on the AsParent card (the disabled flag is now a
+    // checkbox in the edit-modal). The icons slot stays present
+    // but empty for this kind.
     expect(
       iconsSlot?.querySelector('[data-testid="disabled-switch"]'),
-    ).not.toBeNull();
+    ).toBeNull();
     // Title slot wrapper exists + carries the inline-editable
     // `<h1 data-testid="title">` from InlineTitleEditController.
     const titleSlot = root.querySelector<HTMLElement>('[data-testid="title-slot"]');

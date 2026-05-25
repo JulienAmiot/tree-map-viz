@@ -4,7 +4,7 @@
  *
  * Layout (post-§17.136 S5 — `<card-frame>` molecule drives the grid):
  *   - The entire render output is now wrapped in a single `<card-frame>`
- *     molecule with inline `--card-header-height: 14%` +
+ *     molecule with inline `--card-header-height: 18%` (§17.141) +
  *     `--card-footer-height: 8%` overrides (same focused-panel ratio
  *     S1 / S3 use; the molecule's 22 % / 12 % defaults would dominate
  *     the ~85 vh focused-panel host).
@@ -45,7 +45,7 @@ import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
 import "../../molecules/cardFrame/CardFrame.js";
-import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
+import { disabledToggleStyles } from "../../molecules/disabledToggle.js";
 import {
   headerActionsStyles,
   renderHeaderActions,
@@ -246,11 +246,9 @@ export class TextNodeAsParent extends LitElement {
     // SPEC §17.136 S5 -- panel-relative header + footer heights
     // (focused-panel host is ~85vh; card-frame's 22% / 12% defaults
     // would dominate the value-area).
-    const sizing = "--card-header-height: 14%; --card-footer-height: 8%";
+    const sizing = "--card-header-height: 18%; --card-footer-height: 8%";
     return html`<card-frame style=${sizing}>
-      <span slot="icons" data-testid="icons-slot"
-        >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}</span
-      >
+      <span slot="icons" data-testid="icons-slot"></span>
       <span slot="header-actions"
         >${renderHeaderActions(this, { nodeId: this.vm.id, parentId: this.parentId })}</span
       >

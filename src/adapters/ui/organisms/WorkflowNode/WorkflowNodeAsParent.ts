@@ -9,7 +9,7 @@
  * / `appendValue`) and adds the §17.117 status badge.
  *
  * §17.136 S7 — the entire render output is wrapped in a `<card-frame>`
- * molecule with inline `--card-header-height: 14% +
+ * molecule with inline `--card-header-height: 18%` (§17.141) +
  * --card-footer-height: 8%` overrides (focused-panel host is ~85vh;
  * the molecule's 22%/12% defaults would dominate). Slot routing
  * (same shape as S1 / S3 / S5): `icons` carries the §17.121i disabled
@@ -64,7 +64,7 @@ import type { WorkflowNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 import { fitMarkdownBodyToTile, textBodyStyles } from "../TextNode/textBody.js";
-import { disabledToggleStyles, renderDisabledSwitch } from "../../molecules/disabledToggle.js";
+import { disabledToggleStyles } from "../../molecules/disabledToggle.js";
 import {
   headerActionsStyles,
   renderHeaderActions,
@@ -203,12 +203,10 @@ export class WorkflowNodeAsParent extends LitElement {
     // SPEC §17.136 S7 -- panel-relative header + footer heights
     // (focused-panel host is ~85vh; card-frame's 22%/12% defaults
     // would dominate the value-area).
-    const sizing = "--card-header-height: 14%; --card-footer-height: 8%";
+    const sizing = "--card-header-height: 18%; --card-footer-height: 8%";
     const titleH1 = this.titleEditor.renderTitle("WorkflowNode", nothing);
     return html`<card-frame style=${sizing}>
-      <span slot="icons" data-testid="icons-slot"
-        >${renderDisabledSwitch(this, this.vm.id, this.vm.disabled ?? false)}</span
-      >
+      <span slot="icons" data-testid="icons-slot"></span>
       <span slot="header-actions"
         >${renderHeaderActions(this, { nodeId: this.vm.id, parentId: this.parentId })}</span
       >

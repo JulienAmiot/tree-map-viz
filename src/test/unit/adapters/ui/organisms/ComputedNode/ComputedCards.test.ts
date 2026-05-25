@@ -35,46 +35,41 @@ function cbsnVm(
 }
 
 describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
-  it("\u00a717.121i \u2014 the enable/disable switch renders ONLY in the AsParent role (AsChild tree-map tiles never surface the write affordance) and lives at the LEFT of the title", async () => {
-    const asParent = await mountLitElement<ComputedCard>("computed-card", (e) => {
+  it("\u00a717.141 \u2014 neither role renders the pre-\u00a717.141 inline disabled-switch anymore (the disabled flag is now a checkbox in the edit-modal); AsChild still surfaces the read-side `.disabled-indicator` glyph when the VM is disabled", async () => {
+    const enabledAsParent = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" });
       e.viewRole = "asParent";
     });
-    // \u00a717.136 S3 -- the disabled switch moved out of the title's
-    // first-child slot into card-frame's `icons` slot. Look it up by
-    // data-testid; on AsParent it still exists, on AsChild it must
-    // not (the §17.121i role-gating contract is unchanged).
-    const parentSwitch = asParent.shadowRoot
-      ?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]');
-    expect(parentSwitch?.getAttribute("role")).toBe("switch");
-    const asChild = await mountLitElement<ComputedCard>("computed-card", (e) => {
+    expect(
+      enabledAsParent.shadowRoot?.querySelector('[data-testid="disabled-switch"]'),
+    ).toBeNull();
+    const enabledAsChild = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = computedVm({ kind: "numeric", value: 42, unit: "EUR" });
       e.viewRole = "asChild";
     });
-    expect(asChild.shadowRoot?.querySelector('[data-testid="disabled-switch"]')).toBeNull();
-    // Enabled VM => no AsChild indicator either.
-    expect(asChild.shadowRoot?.querySelector('[data-testid="disabled-indicator"]')).toBeNull();
+    expect(
+      enabledAsChild.shadowRoot?.querySelector('[data-testid="disabled-switch"]'),
+    ).toBeNull();
+    expect(
+      enabledAsChild.shadowRoot?.querySelector('[data-testid="disabled-indicator"]'),
+    ).toBeNull();
   });
 
-  it("\u00a717.121i / \u00a717.122a \u2014 a disabled VM surfaces the forbidden-sign glyph in the AsChild role (`.disabled-indicator` prepended to the title); the AsParent role keeps the same switch but its aria-checked flips to false (knob LEFT, red pill, cross glyph)", async () => {
+  it("\u00a717.121i / \u00a717.122a / \u00a717.141 \u2014 a disabled VM surfaces the read-side forbidden-sign glyph in the AsChild role (`.disabled-indicator`); the AsParent role no longer renders an inline write affordance (the operator toggles it via the edit-modal's checkbox per \u00a717.141)", async () => {
     const vm = { ...computedVm({ kind: "numeric", value: 42, unit: "EUR" }), disabled: true };
     const asChild = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = vm;
       e.viewRole = "asChild";
     });
-    // \u00a717.136 S4 -- disabled indicator moved into card-frame's
-    // `icons` slot, no longer a title descendant. Same data-testid.
     expect(asChild.shadowRoot?.querySelector('[data-testid="disabled-indicator"]')).not.toBeNull();
     expect(asChild.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
     const asParent = await mountLitElement<ComputedCard>("computed-card", (e) => {
       e.vm = vm;
       e.viewRole = "asParent";
     });
-    // \u00a717.136 S3 -- switch lives in card-frame's `icons` slot now,
-    // not as a title firstElementChild. Same aria-checked contract.
-    const parentSwitch = asParent.shadowRoot
-      ?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]');
-    expect(parentSwitch?.getAttribute("aria-checked")).toBe("false");
+    expect(
+      asParent.shadowRoot?.querySelector('[data-testid="disabled-switch"]'),
+    ).toBeNull();
     expect(asParent.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });
 
@@ -203,7 +198,7 @@ describe("<computed-card> (\u00a717.104 + \u00a717.116)", () => {
 });
 
 describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
-  it("\u00a717.121i / \u00a717.122a \u2014 a disabled VM surfaces the forbidden-sign glyph at the left of the title (AsChild: `.disabled-indicator`, AsParent: `.disabled-switch` with aria-checked=false \u2014 knob LEFT, red pill, cross glyph); mirror of the ComputedCard role-gating rule", async () => {
+  it("\u00a717.121i / \u00a717.122a / \u00a717.141 \u2014 a disabled VM surfaces the read-side forbidden-sign glyph at the left of the title in the AsChild role; the AsParent role no longer renders an inline write affordance (the operator toggles it via the edit-modal's checkbox per \u00a717.141); mirror of the ComputedCard role-gating rule", async () => {
     const vm = { ...cbsnVm({ kind: "numeric", value: 42, unit: "EUR" }), disabled: true };
     const asChild = await mountLitElement<ComputedBusinessScoreCard>("computed-business-score-card", (e) => {
       e.vm = vm;
@@ -217,11 +212,9 @@ describe("<computed-business-score-card> (\u00a717.104 + \u00a717.116)", () => {
       e.vm = vm;
       e.viewRole = "asParent";
     });
-    // \u00a717.136 S3 -- switch lives in card-frame's `icons` slot now,
-    // not as a title firstElementChild. Same aria-checked contract.
-    const parentSwitch = asParent.shadowRoot
-      ?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]');
-    expect(parentSwitch?.getAttribute("aria-checked")).toBe("false");
+    expect(
+      asParent.shadowRoot?.querySelector('[data-testid="disabled-switch"]'),
+    ).toBeNull();
     expect(asParent.shadowRoot?.querySelector('[data-testid="value-row"]')?.hasAttribute("data-disabled")).toBe(false);
   });
 

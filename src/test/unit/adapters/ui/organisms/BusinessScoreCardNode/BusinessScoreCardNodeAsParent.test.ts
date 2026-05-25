@@ -164,7 +164,6 @@ describe("<business-score-card-as-parent>", () => {
     );
 
     const value = el.shadowRoot?.querySelector('[data-testid="value"]');
-    const title = el.shadowRoot?.querySelector('[data-testid="title"]');
     const badge = el.shadowRoot?.querySelector('[data-testid="computed-badge"]');
     // §17.116: value text is the bare number, max 2 decimals, no inline unit.
     expect(value?.textContent?.trim()).toBe("87.42");

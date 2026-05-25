@@ -9,7 +9,6 @@ import {
   type InlineEditValueDetail,
 } from "../../../../../../adapters/ui/molecules/inlineEditEvents.js";
 import type { WorkflowNodeViewModel } from "../../../../../../adapters/ui/molecules/NodeViewModel.js";
-import { VALUE_NODE_DISABLED_CHANGE_EVENT, type ValueNodeDisabledChangeDetail } from "../../../../../../adapters/ui/molecules/disabledToggle.js";
 import {
   WORKFLOW_STATUS_CHANGE_EVENT,
   type WorkflowStatusChangeDetail,
@@ -51,24 +50,16 @@ function vmWith(opts: Partial<WorkflowNodeViewModel> = {}): WorkflowNodeViewMode
 }
 
 describe("<workflow-node-as-parent> (§17.117 / §17.121f)", () => {
-  it("\u00a717.121i / \u00a717.136 S7 \u2014 the disabled-switch lives in card-frame's `icons` slot (was the title's firstElementChild pre-\u00a717.136 S7), NOT in the subtitle (which carries the status picker); click dispatches VALUE_NODE_DISABLED_CHANGE_EVENT", async () => {
+  it("\u00a717.141 \u2014 the \u00a717.121i / \u00a717.136 S7 inline disabled-switch is no longer rendered on the AsParent card (operator feedback: disabled is now a checkbox in the edit-modal); the subtitle still carries the status picker", async () => {
     const el = await mountLitElement<WorkflowNodeAsParent>(
       "workflow-node-as-parent",
       (e) => { e.vm = vmWith({ id: "wf-7" }); },
     );
-    const titleSwitch = el.shadowRoot?.querySelector<HTMLButtonElement>('[data-testid="disabled-switch"]');
-    expect(titleSwitch?.getAttribute("role")).toBe("switch");
-    expect(titleSwitch?.closest('[data-testid="icons-slot"]')).not.toBeNull();
-    expect(titleSwitch?.closest('[data-testid="title"]')).toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('[data-testid="disabled-switch"]'),
+    ).toBeNull();
     const subtitle = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="subtitle"]');
     expect(subtitle?.querySelector('[data-testid="status-badge-picker"]')).not.toBeNull();
-    expect(subtitle?.querySelector('[data-testid="disabled-switch"]')).toBeNull();
-    const received: ValueNodeDisabledChangeDetail[] = [];
-    el.addEventListener(VALUE_NODE_DISABLED_CHANGE_EVENT, (ev) => {
-      received.push((ev as CustomEvent<ValueNodeDisabledChangeDetail>).detail);
-    });
-    titleSwitch?.click();
-    expect(received).toEqual([{ nodeId: "wf-7", disabled: true }]);
   });
 
   it("renders Title + markdown value + inline status picker with the parent-role data-view-kind hook (§17.121f swaps the static badge for an editable <select>)", async () => {
