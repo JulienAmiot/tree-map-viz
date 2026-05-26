@@ -14,6 +14,18 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **Edit affordance icon flips from `pencil` to `settings` (§17.144)**.
+  The gear glyph on every AsParent's top-right edit button replaces the
+  pencil that has lived there since §17.136 S0a-followup. The affordance
+  opens `<edit-node-modal>`, which exposes configuration fields (weight,
+  objective, computation kind, unit, status, disabled flag, …) — the
+  Lucide `settings` cog reads more truly as "configure" than the
+  `pencil` did as "edit text". The behaviour, `aria-label`, dispatched
+  event, and the modal it opens are unchanged; only the SVG inside the
+  button switches.
+
 ### Removed
 
 - **Retired `<objective-cell>` + `<target-date-cell>` Lit elements +

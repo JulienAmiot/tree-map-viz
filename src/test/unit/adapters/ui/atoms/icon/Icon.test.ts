@@ -70,8 +70,8 @@ describe("<ds-icon> atom (\u00a717.131)", () => {
       "arrow-down",
       "ban",
       "check",
-      "pencil",
       "plus",
+      "settings",
       "sigma",
       "target",
       "triangle-alert",
@@ -85,12 +85,19 @@ describe("<ds-icon> atom (\u00a717.131)", () => {
     // §17.136 S0a-followup -- the pre-§17.136 `scale` slug + the
     // §17.136 S0a first-cut `dumbbell` slug are both retired from
     // the registry; the only weight glyph is now `weight` (Lucide
-    // cast-iron foundry silhouette). The §17.131 `pencil-line`
-    // variant is also retired in favour of the bare `pencil` slug.
+    // cast-iron foundry silhouette). The §17.131 `pencil-line` and
+    // the §17.136 S0a-followup `pencil` slugs are both retired in
+    // favour of the §17.144 `settings` gear glyph (operator-requested
+    // semantic re-pin: the affordance opens the node-edit modal which
+    // exposes configuration fields, so a gear reads more truly than
+    // a pencil).
     expect((ICON_REGISTRY as Record<string, string>)["scale"]).toBeUndefined();
     expect((ICON_REGISTRY as Record<string, string>)["dumbbell"]).toBeUndefined();
     expect(
       (ICON_REGISTRY as Record<string, string>)["pencil-line"],
+    ).toBeUndefined();
+    expect(
+      (ICON_REGISTRY as Record<string, string>)["pencil"],
     ).toBeUndefined();
   });
 

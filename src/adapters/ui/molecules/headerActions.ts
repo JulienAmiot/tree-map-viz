@@ -111,7 +111,7 @@ export function renderHeaderActions(
       aria-label="Edit this node"
       title="Edit this node"
       @click=${onPencil}
-    ><ds-icon name="pencil"></ds-icon></button>
+    ><ds-icon name="settings"></ds-icon></button>
     ${hasClose
       ? html`<button
           class="header-action close-x"
