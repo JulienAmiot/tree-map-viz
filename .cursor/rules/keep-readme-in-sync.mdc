@@ -1,49 +1,74 @@
 ---
-description: Keep README.md in sync with user-observable feature changes
+description: Keep README.md in sync with every modification; README is the exhaustive feature inventory, written without internal paragraph numbers and without referencing the implementation log
 alwaysApply: true
 ---
 
-# Keep `README.md` in sync with feature changes
+# Keep `README.md` in sync, every time
 
-`README.md` is the project's **high-level functional spec** (companion to
-`docs/SPEC.md`, which holds the exhaustive as-built log). When a strand
-changes user-observable behaviour, `README.md` must be updated in the same
-commit.
+`README.md` is the **high-level functional spec** of the kiosk — the
+exhaustive list of what the product does, in a shape a first-time reader
+of the repo can absorb in one pass. It is the operator-facing answer to
+"what is shipped today". Treat it as a living document that travels
+with every modification.
 
 ## Trigger
 
-Update `README.md` when a strand adds, removes, or modifies anything in:
+Update `README.md` in the **same commit** as any modification — code,
+config, docs, scripts. If the modification leaves the feature
+inventory unchanged (e.g. a pure refactor), re-read the README, confirm
+every shipped feature is still listed accurately, and only then leave
+it untouched.
 
-- **§2 Core features** — the kiosk's behaviour, node kinds, animations,
-  routing, import/export, version handling.
-- **§3 Architecture at a glance** — the Lit custom-element table, the
-  hexagonal layer map, or any new top-level directory under `src/`.
-- **§4 Tech stack** — adding/removing a runtime or build-time dependency.
-- **§5 Development** — adding/renaming an npm script the user is expected
-  to run.
-- **§7 Documentation map** — new docs or renamed/retired ones.
+## Hard constraints
 
-## Skip when
+Apply on every edit, with no exceptions:
 
-- Pure internal refactor that doesn't change user-visible behaviour or the
-  public surface (`src/main.ts` composition + the Lit element catalogue).
-- Planning-only strands (NO TS code; SPEC §17.80 / §17.82 / §17.94 pattern).
-- `sonar.projectVersion` bumps, leak-baseline resets, lint-config tweaks.
+- **No paragraph / strand numbers.** Drop every `§X.Y` reference, every
+  "see strand 17.x", every "round-7 design" pointer. The README must
+  read as if the implementation log does not exist.
+- **No references to `docs/SPEC.md`.** Neither in prose ("see SPEC for…"),
+  nor as anchor links, nor in the documentation map. The README stands
+  alone.
+- **List every feature, every time.** The Core features section is an
+  exhaustive inventory — every shipped node kind, every aggregation
+  strategy, every editing affordance, every shell entry, every
+  animation, every modal. When a feature lands, its line is added
+  here; when a feature retires, its line is removed here. Do not
+  defer.
+- **What, not how.** Each feature is one concise line that names the
+  capability — not a tutorial, not a click-path. The README answers
+  "what does the kiosk do?", not "how do I use feature X?".
+- **Concise.** One paragraph or one bullet per feature. No SPEC-style
+  rationale narration. No forward-looking roadmap paragraphs (those
+  rot the moment the strand ships).
+- **Follow the existing structure.** Section order, section headings,
+  the architecture table, the tech-stack table, the development
+  scripts list, the engineering principles, the documentation map —
+  same skeleton across every modification.
 
 ## Procedure
 
-1. Edit the relevant section(s) of `README.md` in the **same commit** as
-   the feature change. Do NOT defer to a follow-up.
-2. Keep the README **functional**, not implementation-detail (those go in
-   `docs/SPEC.md`).
-3. If a new Lit custom element ships, add a row to the §3 table.
-4. If a new npm script ships, add a line under §5.
+1. Read the current `README.md` before editing the affected section.
+2. For every modification, decide which inventory bullet it touches:
+   - **New node kind / new modal / new shell entry / new animation** →
+     add a bullet under the matching Core features subsection AND a row
+     to the Lit custom-element table.
+   - **Renamed / re-icon'd affordance** → update the bullet's wording
+     and the table row's role description.
+   - **Retired feature / molecule / element** → delete the bullet and
+     the table row in the same commit; nothing about retired features
+     should linger.
+   - **New / renamed npm script** → update the Development section's
+     script list.
+   - **New / removed runtime or build-time dependency** → update the
+     Tech stack table.
+3. Re-scan the file end-to-end before committing: confirm zero `§`,
+   zero `SPEC.md`, no how-to instructions, no stale forward-looking
+   roadmap, and every shipped feature accounted for.
 
-## Example
+## Skip when
 
-A strand that adds a `<my-new-modal>` Lit element accessible from the
-burger menu:
-
-- `docs/SPEC.md` — append the full as-built row in the §17.0 table.
-- `README.md` — add `<my-new-modal>` to the §3 table AND mention the new
-  burger-menu entry under §2 (Core features → Editing).
+There is **no skip carve-out**. Even pure-internal refactors must
+trigger the README re-read. If after the re-read nothing changes,
+that is the proof the README was already accurate — but the re-read
+itself is not optional.
