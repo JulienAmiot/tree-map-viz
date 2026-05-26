@@ -58,15 +58,15 @@ describe("<picture-node-as-parent>", () => {
     const cardFrames = el.shadowRoot?.querySelectorAll("card-frame");
     expect(cardFrames?.length).toBe(1);
     const cf = cardFrames?.[0] as HTMLElement;
-    // SPEC §17.136 S9 / §17.141 -- focused-panel sizing override
-    // (same literals as the S1 / S3 / S5 / S7 AsParent
-    // migrations). §17.141 bumped the override from 14% to 18%
-    // so the Workflow PDCA pill (and the parent disabled-toggle
-    // checkbox in the matching edit-modal) fit fully without
-    // dominating the value-area. A regression to the molecule's
-    // 28% / 1.4em defaults would dominate the value-area.
+    // SPEC §17.136 S9 / §17.141 / §17.142e -- focused-panel sizing
+    // override (same literals as the §17.142 AsParent migrations
+    // for BSC / Computed* / Workflow). §17.141 bumped 14% -> 18% so
+    // the Workflow PDCA pill fit; §17.142e bumps 18% -> 24% so the
+    // §17.142 parent-strip title (rendered via the §17.142a/b
+    // SVG-mono atom) no longer clips its descenders against the
+    // header / body boundary on the focused-panel host.
     const style = cf.getAttribute("style") ?? "";
-    expect(style).toMatch(/--card-header-height:\s*18%/);
+    expect(style).toMatch(/--card-header-height:\s*24%/);
     expect(style).toMatch(/--card-footer-height:\s*8%/);
   });
 

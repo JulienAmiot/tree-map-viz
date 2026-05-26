@@ -129,19 +129,20 @@ function renderURLBody(
   alt: string,
   hasError: boolean,
 ): TemplateResult | typeof nothing {
-  // SPEC §17.120 — three exclusive states: (a) generation rejected →
-  // warning glyph fallback; (b) generation still pending → no body
-  // (the value-area renders empty until the async promise resolves);
-  // (c) success → QR image. Flattened from a nested ternary to keep
-  // Sonar S3358 happy without changing semantics.
+  // §17.120 -- three exclusive states: (a) rejected -> warning glyph
+  // fallback in the `lead` slot; (b) still pending -> nothing (the
+  // lead cell renders empty until the async promise resolves);
+  // (c) success -> QR image slotted into `lead`.
   if (hasError) {
     return renderWarningFill(
       "qr-generation-failed",
       "QR code could not be generated",
+      "lead",
     );
   }
   if (qrDataUrl !== null) {
     return html`<img
+      slot="lead"
       class="qr-img"
       data-testid="qr-image"
       data-value-kind="url"
@@ -161,13 +162,12 @@ export function renderURLValueArea(
   hasError: boolean,
   slot?: string,
 ): TemplateResult {
-  // §17.136 S12 -- AsChild stamps the value-area directly as a
-  // card-frame `body`-slot child to avoid an extra wrapper div;
-  // AsParent (S11) still wraps the value-area inside `.metric-pane`
-  // so it omits the slot arg. The reflected slot attribute is "" when
-  // the arg is absent, which the browser treats the same as no
-  // slot (default-slot membership).
-  return html`<div class="value-area" data-testid="value-row" slot=${slot ?? nothing}>
+  // §17.142e -- both roles now wrap the value-area in <card-body
+  // data-layout="lead-only">: the single-column variant of the shared
+  // 3-cell grid (the `aux` + `meta` cells are display:none on lead-
+  // only). The QR image / warning-fill lives in the `lead` slot,
+  // sized 100%/100% by their own per-view CSS.
+  return html`<card-body data-layout="lead-only" data-testid="value-row" slot=${slot ?? nothing}>
     ${renderURLBody(qrDataUrl, alt, hasError)}
-  </div>`;
+  </card-body>`;
 }

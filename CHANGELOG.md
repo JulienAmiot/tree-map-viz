@@ -16,6 +16,33 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ### Changed
 
+- **TextNode + PictureNode + URLNode (both roles each) migrate to the
+  shared `<card-body>` skeleton + AsParent header bumps to 24% (§17.142e)**.
+  Sixth and final strand of the §17.142 plan: the three remaining single-
+  content kinds adopt the §17.142d `data-layout="lead-only"` variant of the
+  shared `<card-body>` molecule, so every kiosk-visible card kind now
+  composes its body through one consistent skeleton end-to-end. TextNode's
+  markdown body (`.md-body`) moves into the molecule's `lead` slot on both
+  roles; the focused-panel textarea editor (active while
+  `editingField === "value"`) takes the same `slot="lead"` attribute so
+  inline-edit composes through the same cell. PictureNode's `<img class=
+  "picture-img">` and the warning-fill fallback (on image load failure)
+  both compose into the `lead` slot through the shared
+  `renderPictureValueArea` helper. URLNode mirrors PictureNode through the
+  shared `renderURLValueArea` helper: the QR `<img class="qr-img">` and
+  the warning-fill fallback (on QR generation failure) both go into the
+  `lead` slot. The shared `renderWarningFill(reason, ariaLabel, slot?)`
+  atom gains an optional trailing `slot?` parameter so the fallback can be
+  stamped directly as a `<card-body>` slot child without a structural
+  wrapper. AsParent card-header-height bumps `18% → 24%` on all three
+  kinds (mirror of §17.142b/c/d) so the title row reads consistently
+  across all six AsParent kinds (BSC, Computed*, CBSN, Workflow, Text,
+  Picture, URL). The pre-§17.142e `data-testid="value-row"` hook is
+  preserved on the new `<card-body>` so AsChild disabled-state probes
+  continue to resolve end-to-end. Closes the §17.142 plan; a follow-up
+  cleanup strand can now retire the dead `<objective-cell>` +
+  `<target-date-cell>` molecule files and the `.value-area` rule in
+  `tileLayoutStyles` once the e2e selectors are re-routed.
 - **WorkflowNode both roles migrate to the shared `<card-body>` skeleton
   + AsParent header bumps to 24% (§17.142d)**. Fifth strand of the
   §17.142 plan: workflow card tiles now render their markdown body

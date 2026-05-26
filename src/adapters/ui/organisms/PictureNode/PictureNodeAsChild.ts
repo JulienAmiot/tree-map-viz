@@ -56,6 +56,7 @@ import {
 import type { PictureNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 
+import "../../molecules/cardBody/CardBody.js";
 import { ImageErrorController } from "./imageErrorController.js";
 import { pictureBodyStyles, renderPictureValueArea } from "./pictureBody.js";
 

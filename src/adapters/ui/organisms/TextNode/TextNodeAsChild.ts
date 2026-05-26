@@ -36,6 +36,7 @@ import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
+import "../../molecules/cardBody/CardBody.js";
 import "../../molecules/cardFrame/CardFrame.js";
 import "../../molecules/childWeight/WeightEditButton.js";
 import {
@@ -133,15 +134,16 @@ export class TextNodeAsChild extends LitElement {
         data-id=${this.vm.id}
       >${this.vm.title}</h2>
       <div class="subtitle" slot="subtitle" data-testid="subtitle"></div>
-      <div class="value-area" slot="body" data-testid="value-row">
+      <card-body slot="body" data-layout="lead-only" data-testid="value-row">
         <div
+          slot="lead"
           class=${empty ? "md-body empty" : "md-body"}
           data-testid="value"
           data-value-kind="textValue"
         >
           ${empty ? "" : unsafeHTML(renderMarkdownToHtml(value.text))}
         </div>
-      </div>
+      </card-body>
       ${value.dateIso
         ? html`<time
             class="timestamp"

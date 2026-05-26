@@ -412,7 +412,7 @@ describe("<url-node-as-parent>", () => {
     expect(subtitle?.getAttribute("slot")).toBe("subtitle");
   });
 
-  it("\u00a717.136 S11 / \u00a717.141 \u2014 wraps the entire render output in a single `<card-frame>` with focused-panel `--card-header-height: 18%` (\u00a717.141 bump from 14%) + `--card-footer-height: 8%` and routes title / icons / subtitle / body into named slots", async () => {
+  it("\u00a717.136 S11 / \u00a717.141 / \u00a717.142e \u2014 wraps the entire render output in a single `<card-frame>` with focused-panel `--card-header-height: 24%` (\u00a717.142e bump from \u00a717.141's 18%, mirror of BSC/Computed*/Workflow AsParents) + `--card-footer-height: 8%` and routes title / icons / subtitle / body into named slots", async () => {
     const el = await mountLitElement<URLNodeAsParent>(
       "url-node-as-parent",
       (e) => {
@@ -424,7 +424,7 @@ describe("<url-node-as-parent>", () => {
     expect(cardFrames?.length).toBe(1);
     const cf = cardFrames?.[0] as HTMLElement;
     const style = cf.getAttribute("style") ?? "";
-    expect(style).toMatch(/--card-header-height:\s*18%/);
+    expect(style).toMatch(/--card-header-height:\s*24%/);
     expect(style).toMatch(/--card-footer-height:\s*8%/);
     // Slot routing pins.
     const titleSlot = el.shadowRoot?.querySelector<HTMLElement>('[data-testid="title-slot"]');
