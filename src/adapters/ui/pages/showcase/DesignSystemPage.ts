@@ -1026,7 +1026,7 @@ export class DesignSystemPage extends LitElement {
       </div>
         `,
       )}
-      ${this.section("atoms-icons", "icon library lucide ds-icon svg open source attribution license weight cast iron foundry pencil crayon target triangle alert warning sigma ban forbidden check times x arrow trend plus", html`
+      ${this.section("atoms-icons", "icon library lucide ds-icon svg open source attribution license weight cast iron foundry settings cog gear target triangle alert warning sigma ban forbidden check times x arrow trend plus", html`
       <h2 data-testid="ds-atoms-icons">Icon library &mdash; Lucide (&lt;ds-icon&gt;)</h2>
       <div class="atom-grid">
         ${Object.keys(ICON_REGISTRY).sort((a, b) => a.localeCompare(b)).map(
