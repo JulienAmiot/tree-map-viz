@@ -1,0 +1,66 @@
+---
+description: Verify the session-start preflight (Docker Desktop + tgv-sonarqube + Vite dev server) is healthy and recover gaps before doing meaningful work
+alwaysApply: true
+---
+
+# Session-start preflight verification
+
+The `.cursor/hooks.json` `sessionStart` hook (script:
+`.cursor/hooks/session-preflight.ps1`) fires once per session and kicks
+off three background services so the operator never has to chase them
+manually:
+
+1. **Docker Desktop** — launched only if the daemon isn't already
+   responding to `docker ps`.
+2. **`tgv-sonarqube` container** — spawned via the
+   `.cursor/hooks/start-sonar.ps1` helper, which polls `docker ps` for
+   up to 2 min before running `npm run sonar:up`.
+3. **Vite dev server** — `npm run dev` is started in a detached hidden
+   PowerShell if port `5173` isn't already in the `Listen` state
+   (covers both v4 and v6 loopback — Vite binds to `::1` by default on
+   Windows).
+
+The hook is **fire-and-forget**: it returns within ~1 s even when
+Docker needs 30–60 s to boot. That means services may still be
+warming up when you start working. Verify health before doing
+sonar/preview-dependent work and recover anything that's missing.
+
+## Verification (when relevant)
+
+When a task actually needs one of the three services, run the
+matching check first. Don't burn time on `docker ps` for
+planning-only / pure-domain-test turns.
+
+```powershell
+# Docker daemon (gate for sonar)
+docker ps                                                    # exit 0 = ready
+
+# tgv-sonarqube container (only meaningful once Docker is up)
+docker ps --filter "name=tgv-sonarqube" --format "{{.Names}}" # lists name if up
+
+# Vite dev server (covers v4 + v6 listeners)
+Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue
+```
+
+## Recovering gaps
+
+- **Docker daemon down** → `Start-Process 'C:\Program Files\Docker\Docker\Docker Desktop.exe'`, then wait ~30–60 s.
+- **Sonar container down** → `npm run sonar:up` (idempotent; safe to
+  rerun even when partially up).
+- **Dev server down** → `Start-Process powershell -ArgumentList '-NoProfile','-WindowStyle','Hidden','-Command',"Set-Location '<repo>'; npm run dev" -WindowStyle Hidden`.
+
+If Docker Desktop isn't installed at the standard path the hook
+records `Docker Desktop not found` in the log; surface that to the
+operator instead of silently failing.
+
+## Logs
+
+All preflight output lands under `.cursor/hooks/logs/` (gitignored via
+the project-wide `*.log` rule):
+
+- `preflight.log` — main hook trace
+- `sonar-up.log` — helper script trace + `npm run sonar:up` output
+- `dev-server.log` — Vite stdout/stderr
+
+When a gate-time issue shows up (sonar unreachable, preview blank),
+tail those logs before re-running the preflight manually.
