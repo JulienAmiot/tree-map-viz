@@ -172,41 +172,24 @@ describe("<text-node-as-child>", () => {
     expect(value?.textContent).toContain("<script>");
   });
 
-  it("\u00a717.46 \u2014 the shared tileLayoutStyles bumps the value's cqmin coefficient and trims the host padding + timestamp font-size", () => {
-    // \u00a717.46 -- tile typography refresh (operator feedback:
+  it("\u00a717.46 / \u00a717.142f \u2014 the shared tileLayoutStyles trims the host padding + timestamp font-size; the pre-\u00a717.142f `.value` font-size clamp + cqmin coefficient retired alongside the `.value-area` grid (every kind now sizes its value glyph via `renderMonoTextSvg` instead)", () => {
+    // 17.46 -- tile typography refresh (operator feedback:
     // "the figure should be bigger and the date smaller; less
-    // padding"). Pin the new literals at the CSS-text level so a
-    // future tweak that inadvertently reverts one of the three
-    // related properties out of sync (host padding, timestamp size,
-    // value coefficient) fails fast at test-time. The TextNode child
-    // role inherits the shared rules; pinning here covers every
-    // per-view that imports tileLayoutStyles (the sibling tests in
-    // the BSC suite + TextNodeAsParent suite all read the same
-    // CSSResult chain).
+    // padding"). The shared :host padding + .timestamp font-size
+    // bits survived the 17.142 <card-body> migration because they
+    // apply to every kind in every role. The .value font-size
+    // clamp is gone from this atom: per-view CSS now drives the
+    // value glyph dimensions through renderMonoTextSvg's viewBox-
+    // based scaling instead of a cqmin clamp on a CSS .value rule.
     const cssText = (TextNodeAsChild.styles as readonly { cssText?: string }[])
       .map((s) => String(s.cssText ?? s))
       .join("\n");
-    // Host padding trimmed from 0.4rem 0.6rem to 0.2rem 0.35rem.
     expect(cssText).toMatch(/:host\s*\{[\s\S]*?padding:\s*0\.2rem\s+0\.35rem/);
-    // Timestamp font-size shrunk from 1.4vh to 1.15vh.
     expect(cssText).toMatch(
       /\.timestamp\s*\{[\s\S]*?font-size:\s*1\.15vh/,
     );
-    // Value cqmin coefficient bumped from 36cqmin to 42cqmin (§17.46);
-    // §17.116-followup-3 nested the cqmin cap inside a min() with a
-    // per-character width cap (160cqi / max(2, var(--char-count, 2)))
-    // so long values shrink to fit the tile width. The 1.5rem floor +
-    // 22rem ceiling + 42cqmin height cap survive the followup-3
-    // change unchanged; we pin those three literals individually so a
-    // future tweak that drops any one of them out of the rule fails
-    // fast at test-time.
-    expect(cssText).toMatch(/\.value\s*\{[\s\S]*?font-size:\s*clamp\(/);
-    expect(cssText).toMatch(/\.value\s*\{[\s\S]*?42cqmin/);
-    expect(cssText).toMatch(/\.value\s*\{[\s\S]*?1\.5rem/);
-    expect(cssText).toMatch(/\.value\s*\{[\s\S]*?22rem/);
-    expect(cssText).toMatch(
-      /\.value\s*\{[\s\S]*?160cqi\s*\/\s*max\(\s*2\s*,\s*var\(\s*--char-count/,
-    );
+    expect(cssText).not.toMatch(/\.value\s*\{[\s\S]*?font-size:\s*clamp\(/);
+    expect(cssText).not.toMatch(/\.value-area\s*\{/);
   });
 
   it("\u00a717.136 S13b \u2014 stamps a `<weight-edit-button slot=\"footer-left\">` carrying the vm.id + the forwarded weight property", async () => {

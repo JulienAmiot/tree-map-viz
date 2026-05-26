@@ -14,6 +14,29 @@ sonar-leak reset) lives in [`docs/SPEC.md`](docs/SPEC.md).
 
 ## [Unreleased]
 
+### Removed
+
+- **Retired `<objective-cell>` + `<target-date-cell>` Lit elements +
+  the `.value-area` family of CSS rules + dead `valueTemplate.ts`
+  helpers (§17.142f)**. Follow-up cleanup strand to the §17.142 plan:
+  every per-view migration left its dead code in place (so the
+  strand diffs stayed small); §17.142f formalises the retirement
+  with actual file deletions. Two Lit element files retire wholesale
+  (`Objective.ts` + `TargetDate.ts` — last production consumer was
+  the pre-§17.142b BSC AsParent). The `formatTargetDate` helper
+  hoists from the deleted `TargetDate.ts` to a new atom
+  `targetDateFormat.ts`, and the three live consumers (BSC AsChild /
+  AsParent / Computed*) update their import path. The shared
+  `tileLayoutStyles.ts` atom drops the `.value-area` grid + the
+  `.value-row` / `.target-row` / `.target-icon` / `.trend-arrow` /
+  `.value` rules + the `@container (orientation: portrait)` flip
+  block (every kind now drives its body layout through the shared
+  `<card-body>` molecule's own grid); the atom shrinks from 616
+  lines to 296. `valueTemplate.ts` shrinks from 282 lines to 41 —
+  only `timestampForValue(vm)` survives because both BSC views
+  still consume it. Zero behaviour change — every retired rule /
+  helper had zero remaining live consumers before this strand.
+
 ### Changed
 
 - **TextNode + PictureNode + URLNode (both roles each) migrate to the

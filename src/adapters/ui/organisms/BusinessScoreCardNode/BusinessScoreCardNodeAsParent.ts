@@ -109,7 +109,7 @@ import {
 import type { BusinessScoreCardNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { formatAge } from "../../atoms/ageFormat.js";
 import { formatValue } from "../../atoms/numberFormat.js";
-import { formatTargetDate } from "../../molecules/objective/TargetDate.js";
+import { formatTargetDate } from "../../atoms/targetDateFormat.js";
 import { MONO_CHAR_WIDTH, renderMonoTextSvg } from "../../atoms/svgMonoText.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 import { TARGET_ICON_BG, TREND_ARROW_BG } from "../../molecules/trendArrowBg.js";

@@ -1,37 +1,40 @@
 /**
- * Shared CSS for the four per-(kind × role) view elements (SPEC §17.14).
+ * Shared CSS for every per-(kind × role) view element (SPEC §17.14,
+ * refined through §17.142f).
  *
- * The contract that every tile must satisfy:
+ * Scope post-§17.142f -- the atom carries ONLY the rules that are
+ * still common across every kiosk-visible tile after the §17.142
+ * `<card-body>` migration:
  *
- *  - **Title row**: top of the tile, **fixed `3vh` height**, font-size also
- *    `vh`-relative so titles are visually consistent across tiles regardless
- *    of how big or small a given tile is. The "3 %" comes straight from the
- *    user requirement; bumping the constant is a one-line change.
- *  - **Timestamp**: absolutely-positioned in the **bottom-right corner**
- *    (SPEC §17.18 — moved from top-right so the title row keeps the full
- *    tile width and the date sits below the figure where the eye lands
- *    after reading the value). Rendered by the per-role element (the
- *    BSC value template tells callers via `timestampForValue()` whether
- *    to show one). Sized in `vh` so it stays readable at any tile size;
- *    the *colour* is set per-tile via the `--age-color` custom property
- *    (bright off-white → dark-grey lerp by age in days; see
- *    `dateAgeColor.ts` and §17.42 for the simplification from the
- *    per-board fresh-colour design).
- *  - **Value box**: takes the rest of the tile (`flex: 1`) and centers a
- *    big value glyph. Font-size is `cqmin`-driven so the value fills the
- *    *tile* (container query — independent of the title's `vh` scale),
- *    clamped between a readable floor and a ceiling that doesn't blow
- *    out the largest tiles. The clamp coefficient was bumped to
- *    `36cqmin` in §17.17 so the figure is the biggest possible while
- *    still fitting up to a 4-digit number on a square tile.
- *  - **Unit**: 1/3 of the value's font-size via `font-size: calc(1em / 3)`
- *    on a nested `<span class="unit">`. Because `em` resolves against
- *    the parent's computed font-size, the ratio holds whatever the
- *    `cqmin`-clamped value lands at.
+ *  - **`:host`** -- block-level sizing, container-query root, the
+ *    §17.46 inner-padding refresh.
+ *  - **`.title`** -- 3vh row, drill-into FLIP custom-property hooks
+ *    (`--drill-title-color` / `--drill-title-font-size`), ellipsis
+ *    overflow.
+ *  - **`.timestamp`** -- absolute bottom-right placement, the §17.42
+ *    `--age-color` lerp, tabular-nums.
+ *  - **`.subtitle`** -- universal-alignment 2vh row (the §17.121j
+ *    contract: every kind keeps the slot even when empty so the
+ *    value-area lines up across the wall).
+ *  - **`.warning-fill`** -- full-tile fallback glyph shared by every
+ *    kind that can fail to produce a value (Computed* + PictureNode
+ *    + URLNode through the §17.142e `renderWarningFill(..., "lead")`
+ *    refresh).
+ *  - **`.warning-icon`** -- per-objective deadline-risk glyph
+ *    (§17.44) shared by BSC + Computed* per-views.
  *
- * Each element imports this `tileLayoutStyles` constant and concats it
- * into its own `static styles`. The shared constant means a layout
- * tweak is a single-file change instead of a four-way grep.
+ * Pre-§17.142f this atom also owned the `.value-area` CSS-grid +
+ * `.value-row` / `.target-row` / `.target-icon` / `.trend-arrow` /
+ * `.value` rules driving the §17.137 A2b BSC + Computed* split-body
+ * layout. The §17.142 strand series migrated every kind onto the
+ * shared `<card-body>` molecule (which owns the grid + cell
+ * alignment + orientation flip from its own shadow root); the
+ * per-view stamps `.current-value`, `.target-value`, `.target-date`
+ * directly as slot children rendered through `renderMonoTextSvg`
+ * with the §17.139 CSS-background trend / bullseye glyphs. Those
+ * rules now live in each per-view's local `static styles` (which
+ * was already where most of them ended up by §17.142b/c), so the
+ * shared atom is much smaller.
  */
 
 import { css } from "lit";
@@ -187,214 +190,39 @@ export const tileLayoutStyles = css`
        carries no pointer behaviour. */
     pointer-events: auto;
   }
-  /* SPEC 17.137 A2b -- CSS Grid split-body layout. Pre-A2b the
-     value-area was a column flex with .value-row stacked above the
-     .target-row (horizontal row containing the bullseye + target
-     value + unit + date + warning). The operator-locked A2 layout
-     splits the body into two regions:
-       - Landscape: left 50% width = .value-row (value + trend
-         arrow); right 50% width = .target-row split into 25%
-         objective+warning (top) + 25% date (bottom).
-       - Portrait: top 50% height = .value-row; middle 25% height
-         = objective-cell; bottom 25% height = target-date-cell
-         (per the operator's 50/25/25 portrait_pct answer).
-     The grid template lives here on the shared atom so every BSC +
-     CBSN per-view picks it up via tileLayoutStyles without each
-     having to re-declare the rule. The @container query keys on
-     the per-view host's own orientation (container-type: size on
-     :host above) so the layout flips automatically when the host
-     box is taller than wide. */
-  .value-area {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr;
-    align-items: center;
-    justify-items: center;
-    /* Fill the rest of the tile below the title row + subtitle. */
-    height: calc(100% - 3vh - var(--subtitle-row-height, 2vh));
-    text-align: center;
-    overflow: hidden;
-    word-break: break-word;
-  }
-  .value-area > .value-row {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .value-area > .target-row {
-    grid-column: 2;
-    grid-row: 1;
-    /* Sub-grid: split the right column into top 50% (objective-
-       cell) and bottom 50% (target-date-cell). Each molecule's
-       :host is inline-flex so giving it grid placement aligns the
-       glyph + text at the cell's centre. */
-    display: grid;
-    grid-template-rows: 1fr 1fr;
-    align-items: center;
-    justify-items: center;
-    height: 100%;
-    width: 100%;
-    /* Pre-A2b .target-row was a horizontal row separated by the
-       middle-dot interpunct; the new vertical split drops the
-       inter-row separator entirely (the grid gap reads as the
-       visual separation). */
-    column-gap: 0;
-    row-gap: 0;
-  }
-  /* SPEC 17.137 A2b -- portrait flip via @container query on the
-     per-view's :host (container-type: size). When the host is
-     taller than wide (e.g. the focused-panel left rail in a
-     landscape kiosk orientation, or any tile in a portrait
-     orientation), the grid flips from 2 columns to 1 column with
-     50% / 25% / 25% rows (operator's 50/25/25 portrait split). */
-  @container (orientation: portrait) {
-    .value-area {
-      grid-template-columns: 1fr;
-      grid-template-rows: 2fr 1fr 1fr;
-    }
-    .value-area > .value-row {
-      grid-column: 1;
-      grid-row: 1;
-    }
-    .value-area > .target-row {
-      grid-column: 1;
-      grid-row: 2 / span 2;
-    }
-  }
-  /* SPEC 17.41 -- horizontal flex row that holds the .value (and the
-     adjacent .sigma badge for computedMean BSCs, when present) plus
-     the new .trend-arrow. The row is centered as a unit inside
-     .value-area, so for BSCs that show an arrow the value+arrow
-     combo sits at the area horizontal center. The value alone is
-     no longer the sole-centered glyph -- a small visual shift the
-     operator gets in exchange for the trend signal landing right
-     next to the figure (the §17.39 strip-full-width centering
-     invariant therefore now applies to the value+arrow combo, NOT
-     the value alone; the existing e2e check uses BSCs without arrow
-     to keep the assertion unambiguous). */
-  .value-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* gap is em-relative so it scales with the value's font-size. */
-    gap: 0.3em;
-    flex-wrap: nowrap;
-    max-width: 100%;
-    min-width: 0;
-  }
-  .value {
-    font-weight: 700;
-    line-height: 1.05;
-    /* SPEC §17.17 — "the figure should be the biggest possible". The
-       cqmin coefficient was bumped from 18 → 36 in §17.17. SPEC
-       §17.46 amends to 42cqmin on operator feedback: with the
-       §17.46 host-padding trim the figure has more canvas to grow
-       into, and the date moved to the smaller 1.15vh size, so the
-       figure can take more of the visual weight without crowding
-       either edge.
-
-       SPEC §17.116-followup-3 — pre-followup-3 the rule was a flat
-       clamp(1.5rem, 42cqmin, 22rem) which honoured ONLY the tile
-       height envelope (cqmin = min(width, height)); long values
-       overflowed the tile horizontally because white-space: nowrap
-       prevented wrap and the cqmin coefficient was tuned for a
-       4-digit fit (≈ k = 0.42 → per-char budget ≈ 1/(0.6·N) of
-       cqmin > 0.42 for N ≤ 4) — operator-reported failures
-       happened on longer values (e.g. "12345.6789", "1 234 567 %",
-       SUM aggregates on many-child tiles). The followup-3 adds a
-       width-axis cap: 160cqi / N, where N is the rendered text
-       length passed in via --char-count and 160 ≈ 1 / (0.55 × 0.9)
-       — i.e. "fit ≈ 90 % of container width at 0.55em average
-       glyph width". min() picks the tighter of the height-axis
-       (42cqmin) and width-axis (160cqi / N) caps so whichever
-       dimension is more restrictive drives the font-size. The
-       clamp's 1.5rem floor + 22rem ceiling preserve the §17.46
-       readability + blow-out envelope on the smallest / largest
-       tiles. The --char-count fallback of 2 is chosen so a tile
-       whose per-view forgets to set the property still picks a
-       sane width cap (160 / 2 = 80cqi, which is wider than the
-       42cqmin height cap on every square / tall tile, so the
-       fallback is effectively the legacy "no width cap" behaviour
-       on the typical-tile path).
-
-       The .target-row + .trend-arrow coefficients keep their 0.2× /
-       0.4× ratios against the 42cqmin height-axis cap because the
-       target row is content-sized and never the limiting factor;
-       the operator's "fit" feedback applied to the value glyph
-       only. */
-    font-size: clamp(
-      1.5rem,
-      min(42cqmin, calc(160cqi / max(2, var(--char-count, 2)))),
-      22rem
-    );
-    /* SPEC §17.116 — the value glyph must never wrap on any tile.
-       The §17.116c refresh moves the unit out of the inline .value
-       run into a .unit-below block sibling, so the value's text run
-       becomes a bare number that can sit on a single line at every
-       cqmin level. white-space: nowrap is the belt that keeps a
-       multi-digit value on one line when the tile is narrow;
-       word-break: keep-all defeats any UA-default break opportunity
-       between digit clusters. Lands here in §17.116b (foundations)
-       so the rule is in place before §17.116c rewires Computed*
-       tiles to stop emitting the inline .unit chip. The §17.116-
-       followup-3 width-axis cap above means the long-value
-       overflow that nowrap on its own could not prevent is now
-       defused at the font-size axis instead — the text run still
-       sits on a single line, but the line is sized to fit. */
-    white-space: nowrap;
-    word-break: keep-all;
-    /* SPEC 17.40 -- when the mapper bakes a gradient colour for the
-       BSC's current value (red -> orange -> yellow -> green along the
-       min -> target progress), the per-view sets --bsc-value-color on
-       the .value element inline; the rule here picks it up. The
-       fallback currentColor preserves the default tile-text colour
-       for non-BSC tiles, BSCs without a gradable value (childrenCount
-       n=0), and unit fixtures that omit the inline style. */
-    color: var(--bsc-value-color, currentColor);
-  }
-  .value.empty::before {
-    content: "";
-  }
-  /* SPEC §17.125 — the .unit-below block sibling under the value
-     retired (was a §17.116c / §17.116d artefact). The unit now
-     surfaces as a parenthesised chip at the head of the title
-     row via the shared unitChipStyles rule on the .unit-chip
-     element. The scan order on the tile becomes
-     "title(unit) → value → timestamp", one row shorter than the
-     §17.116d layout. See src/adapters/ui/molecules/unitChip.ts for
-     the helper + styles consumed by BSC + CBSN views. */
-  /* SPEC §17.116 — the computation-kind label rule retired in
-     §17.116-followup-2 on operator feedback ("remove the
-     computation text line in a child and a parent"). The pre-
-     followup-2 .kind-label rule (1.4vh small-caps block under
-     the title rendering the active ComputationKind verb) had
-     no remaining consumers across the per-view modules after
-     ComputedCards.ts dropped the <div class="kind-label">
-     emission. The Σ-prefix on the title already signals
-     "aggregated value", which is the only piece of the
-     computation-kind reading the operator needed at-a-glance;
-     the exact kind (SUM / AVERAGE / …) belongs to the edit
-     modal. */
-  /* SPEC §17.116 — full-tile warning glyph for Computed* nodes that
-     cannot produce a value (strategy threw EmptyChildrenError, OR
-     produced a non-finite number, OR has no eligible child). The
-     visual contract is a huge centred ⚠ glyph in a calm muted
-     colour, rendered INSIDE the existing .value-area so the title
-     row still reads as the tile's identity; the warning is the
-     value-area's content and fills it edge-to-edge.
-
-     SPEC §17.116-followup — the dashed border + 8 px corner-radius
-     framing the §17.24 PlusTile uses are retired here on operator
-     feedback ("remove the dashed line of the warning"): the glyph
-     alone carries the "cannot compute" signal at-a-glance, and
-     stripping the border lets the warning surface read as part of
-     the tile rather than an inset card-in-a-card.
-
-     A separate .warning-fill class (rather than reusing the §17.40
-     ".value.empty" rule) keeps the §17.40 "empty value area"
-     contract intact for BSC "childrenCount n=0" tiles, which the
-     operator's §17.116 instruction did NOT cover (BSC empty stays
-     literally empty per the v3 design). Lands in §17.116b (dormant
-     until §17.116c wires the Computed* card to render it). */
+  /* SPEC 17.142f -- the .value-area grid, .value-row / .target-row
+     layout rules, .target-icon + .trend-arrow glyph rules, .value
+     font-size clamp + colour token, the portrait container-query
+     flip block, and the adjacent .unit-below / .kind-label
+     retirement notes all RETIRED here. Pre-17.142f they served the
+     17.137 A2b CSS-Grid split-body layout the BSC + Computed*
+     views drove through this atom. The 17.142 strand series
+     migrated every kiosk-visible card kind onto the shared
+     <card-body> molecule (Workflow / Text / Picture / URL through
+     the data-layout="lead-only" single-column variant; BSC +
+     Computed* + CBSN through the default 3-cell lead / aux / meta
+     grid); the molecule owns the grid + orientation flip + cell
+     alignment from its own shadow root, and the per-view stamps
+     .current-value, .target-value, .target-date directly as slot
+     children rendered through renderMonoTextSvg with the 17.139
+     CSS-background trend / bullseye glyphs. The shared atom keeps
+     the bits that are STILL common across every per-view (:host
+     sizing, .title, .timestamp, .subtitle, .warning-fill,
+     .warning-icon) -- everything else was already living in the
+     per-view's local static styles. */
+  /* SPEC 17.116 + 17.119 + 17.120 + 17.142e -- full-cell warning
+     glyph mounted by the shared renderWarningFill(reason, ariaLabel,
+     slot?) atom (17.142e refresh adds the optional slot? arg so the
+     fallback can stamp itself directly as a <card-body> slot child
+     without a wrapper). Three failure-mode origins emit this
+     fallback: Computed* (renderWarningFill(value) local helper,
+     strategy returned null / non-finite / empty children),
+     PictureNode (<img> error event), URLNode (qrcode lib rejected
+     the URL). The visual is a huge centred Lucide triangle-alert
+     SVG glyph in a muted colour that fills the parent cell edge-
+     to-edge. SPEC 17.116-followup retired the original dashed-
+     border framing on operator feedback ("remove the dashed line of
+     the warning"). */
   .warning-fill {
     position: relative;
     display: flex;
@@ -422,175 +250,19 @@ export const tileLayoutStyles = css`
      the Σ glyph into the title-prefix [data-testid="computed-badge"]
      render. */
 
-  /* ------------------------------------------------------------------
-     SPEC 17.40 + 17.44 -- BSC objective row + off-track warning.
-     ------------------------------------------------------------------
-     The .target-row sits under .value inside .value-area (column flex)
-     and shows the operator-set "target value, unit, and target date"
-     in a compact small line. The 0.2-of-value height the operator
-     asked for is achieved by mirroring .value's clamp() coefficients
-     scaled by 0.2 -- (1.5rem -> 0.3rem; 36cqmin -> 7.2cqmin; 20rem
-     -> 4rem). The ratio holds at every tile size because the same
-     cqmin axis drives both clamps; no CSS variable plumbing needed.
-
-     The .target-row's bullseye + text + date stay at currentColor
-     (the default tile text) -- the gradient pop is reserved for the
-     .value itself (red->orange->yellow->green, 17.40) and the
-     .warning-icon at the row's right end (yellow->orange->red, 17.44).
-     The two coloured surfaces answer two operator questions: the
-     value "how good is the current reading?", the warning "and how
-     badly is the trend missing the deadline?". The supporting text
-     stays neutral so the eye lands on the colour signals first.
-
-     The .warning-icon (17.44) sits at the right end of the
-     .target-row, after .target-date, em-scaled to the row's font-size
-     so it stays in proportion with the bullseye on the left. Pre-17.44
-     it was absolutely positioned at the tile's bottom-left in plain
-     currentColor; the 17.44 amendment moves it into the target row
-     with a yellow->orange->red tint keyed to the deviation magnitude.
-  */
-
-  /* SPEC 17.137 A2b -- the .target-row's CSS Grid placement is
-     declared on .value-area > .target-row above. The remaining
-     rules below govern typography + colour shared by the two
-     molecules <objective-cell> and <target-date-cell> when they
-     sit inside .target-row (font-size clamp matches the value's
-     0.2x ratio so the molecules scale with the figure across
-     every container size). The molecules inherit color +
-     font-size + tabular-nums from this rule via CSS inheritance
-     through the shadow boundary (Lit's open shadow roots pass
-     inherited properties down). */
-  .target-row {
-    /* 0.2 x .value's clamp() -- visually 20 % of the value height
-       at every cqmin level. SPEC §17.46 rescaled the coefficient
-       with the value's 42cqmin bump. */
-    font-size: clamp(0.3rem, 8.4cqmin, 4.4rem);
-    line-height: 1.1;
-    font-weight: 500;
-    /* Default tile text colour -- intentionally NOT gradient-
-       coloured (the value row carries the colour signal; the
-       target row is supporting context). */
-    color: color-mix(in srgb, currentColor 80%, transparent);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-variant-numeric: tabular-nums;
-  }
-  /* ----- Bullseye target icon -----
-     Uses the Unicode U+25CE "BULLSEYE" glyph (text-style, present in
-     every modern system symbol font: Segoe UI Symbol on Windows,
-     Apple Symbols on macOS / iOS, Noto Sans Symbols on Android).
-     Rendering it as ::before content keeps the icon proportional to
-     the .target-row font-size (1em wide), avoids a per-icon SVG
-     asset, and inherits currentColor so the operator's "monocolor,
-     same tint as default tile text" requirement holds without any
-     extra paint property.
-
-     Falls back to a CSS-drawn ring on the sliver of devices missing
-     U+25CE (none of the kiosk targets, but defensible) via the
-     pseudo-element's inherited line-height and a thin border on the
-     host span -- the worst case is a plain circle, still clearly
-     "target marker" alongside the value. */
-  /* SPEC 17.133 -- the U+25CE bullseye glyph that used to ride a
-     ::before pseudo on .target-icon is now a ds-icon name=target
-     Lucide SVG child mounted by renderTargetRow() in
-     valueTemplate.ts. The wrapping span keeps its 1.05em square
-     + flex centring so the SVG lands at the same visual size on
-     every tile. */
-  .target-icon {
-    flex: 0 0 auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.05em;
-    height: 1.05em;
-    line-height: 1;
-    align-self: center;
-    color: currentColor;
-  }
-  .target-icon > ds-icon {
-    width: 100%;
-    height: 100%;
-  }
-
-  /* ----- Trend arrow (SPEC 17.41) -----
-     Sits in .value-row to the right of the .value, scaled at ~40 %
-     of the value's clamp range (similar coefficient ratio the target-
-     row uses against the value -- 0.4 / 1.0 = 40 %, vs the target row's
-     0.2 / 1.0 = 20 %). The clamp's small-tile floor (0.6rem) keeps the
-     glyph legible on the smallest 1/12 floor tiles; the large-tile
-     ceiling (8rem) prevents typographic blow-out on giant single-child
-     layouts. cqmin scales identically to .value's clamp so the arrow
-     stays in proportion at every container size.
-
-     Colour: currentColor -- monochrome mirroring the bullseye and
-     warning glyphs (§17.40 amendment policy: the colour-as-severity
-     signal stays on the value glyph alone; the arrow's *direction*
-     carries its own at-a-glance signal without needing a hue scale).
-
-     The data-direction attribute is inert -- it is published by the
-     per-view as a stable e2e hook so a Playwright test can assert
-     which bucket the mapper landed on without parsing the rendered
-     glyph. CSS does NOT style by data-direction (the glyph itself
-     differs per bucket; we use the Unicode code-point to render,
-     not a CSS rotation). */
-  .trend-arrow {
-    flex: 0 0 auto;
-    /* 0.4 x .value's clamp() -- visually 40 % of the value height at
-       every cqmin level. SPEC §17.46 -- rescaled with the value's
-       42cqmin bump (was 14.4cqmin / 8rem ceil at the 36cqmin / 20rem
-       value rule). The same cqmin axis drives both clamps so the
-       ratio holds at every tile size. */
-    font-size: clamp(0.6rem, 16.8cqmin, 8.8rem);
-    line-height: 1;
-    /* Kerning fix for the diagonal arrows (\u2197, \u2198) which sit
-       slightly above the baseline in most system fonts; -0.05em
-       optical correction lands them visually centered on the value's
-       cap height. */
-    margin-bottom: -0.05em;
-    color: currentColor;
-    user-select: none;
-    pointer-events: none;
-  }
-
-  /* ----- Deadline-risk warning icon (SPEC 17.44) -----
-     Uses the U+26A0 "WARNING SIGN" code-point with U+FE0E text-style
-     selector forcing monochrome text presentation (otherwise modern
-     systems render the colour-emoji yellow-and-black variant which
-     would lock us out of the per-element inline color the mapper
-     paints from vm.objective.warningColor).
-
-     Position: inline at the right end of the .target-row, after the
-     .target-date. Pre-17.44 the glyph was absolutely positioned at
-     bottom-left of the tile in plain currentColor; the 17.44
-     amendment moves it into the target row so the trajectory-risk
-     signal sits next to the deadline it concerns, and the
-     yellow->orange->red tint keyed to the deviation magnitude lets
-     the operator decode "how badly the trend is missing" at a
-     glance instead of the binary "is it missing?" the 17.40
-     amendment offered.
-
-     Scale: 1em (matches the .target-row font-size) so the warning
-     reads proportional to the bullseye on the left. Optional
-     -0.1em margin-left tightens the glyph against .target-date for
-     a balanced row visual; .target-row's gap rule already provides
-     the baseline 0.4em separation, so the negative margin only
-     trims that gap to about 0.3em (matches the bullseye -> text
-     gap on the row's left edge).
-
-     Colour: currentColor fallback; the per-element inline style
-     (color: rgb(...)) baked by valueTemplate from vm.objective
-     .warningColor takes precedence and paints the glyph on the
-     17.44 yellow->orange->red ramp. The fallback keeps the rule
-     readable under unit fixtures that omit the inline style. */
-  /* SPEC 17.133 -- the U+26A0 warning glyph that used to ride a
-     ::before pseudo on .warning-icon is now a ds-icon
-     name=triangle-alert Lucide SVG child mounted by
-     renderTargetRow() in valueTemplate.ts. The wrapping span keeps
-     its inline-flex centring + the inline color style baked by the
-     mapper from vm.objective.warningColor (17.44 yellow -> orange
-     -> red severity ramp); the SVG inherits the wrapper colour via
-     Lucide stroke=currentColor. */
+  /* SPEC 17.44 + 17.133 -- deadline-risk warning icon. The glyph is
+     a <ds-icon name="triangle-alert"> Lucide SVG child mounted by
+     each per-view that emits a .warning-icon span (BSC + Computed*
+     AsChild + AsParent, on the off-track objective branch). inline-
+     flex centring + the inline color style baked by the mapper from
+     vm.objective.warningColor (17.44 yellow -> orange -> red
+     severity ramp) drive the visual; the SVG inherits the wrapper
+     colour via Lucide stroke=currentColor. Pre-17.142f the
+     .target-row typography rule + the .target-icon / .trend-arrow
+     glyph rules sat above this one as inputs to the 17.137 A2b
+     layout; the 17.142 <card-body> migration moved those concerns
+     into per-view CSS, but .warning-icon stayed shared because the
+     warning glyph is identical across kinds. */
   .warning-icon {
     flex: 0 0 auto;
     display: inline-flex;
