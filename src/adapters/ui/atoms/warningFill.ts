@@ -46,8 +46,19 @@ import "./icon/Icon.js";
 export function renderWarningFill(
   reason: string,
   ariaLabel: string,
+  /**
+   * SPEC §17.142e — optional `slot` attribute baked onto the
+   * `.warning-fill` wrapper so the atom can be stamped directly as a
+   * `<card-body>` slot child (e.g. `slot="lead"` on the single-column
+   * Picture/URL variants) without a structural wrapper. Defaults to
+   * `undefined`; existing callers that compose the fill as a flat
+   * sibling keep their pre-§17.142e DOM shape unchanged.
+   */
+  slot?: string,
 ): TemplateResult {
+  const slotAttr = slot ?? "";
   return html`<div
+    slot=${slotAttr}
     class="warning-fill"
     data-testid="warning-fill"
     data-reason=${reason}

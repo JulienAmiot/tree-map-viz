@@ -108,21 +108,21 @@ export function renderPictureValueArea(
   hasError: boolean,
   onError: (e: Event) => void,
   /**
-   * SPEC §17.136 S9 — optional slot attribute baked into the outer
-   * `.value-area` div so the value-area can be stamped directly as a
-   * `<card-frame>` slot child. Defaults to `undefined` (no slot
-   * attribute) so the AsChild caller, which still composes the
-   * value-area as a flat sibling pre-S10, keeps its existing DOM
-   * shape. S10 will set `slot="body"` here from the AsChild caller
-   * too and the parameter becomes the canonical entry-point.
+   * SPEC §17.136 S9 — slot attribute baked into the outer
+   * `<card-body>` so the value-area can be stamped directly as a
+   * `<card-frame>` slot child. §17.142e migrates the wrapper from a
+   * bare `.value-area` div to a `<card-body data-layout="lead-only">`
+   * molecule (single-column variant of the shared 3-cell grid); the
+   * image / warning-fill goes into the `lead` slot.
    */
   slot?: string,
 ): TemplateResult {
   const slotAttr = slot ?? "";
-  return html`<div class="value-area" slot=${slotAttr} data-testid="value-row">
+  return html`<card-body slot=${slotAttr} data-layout="lead-only" data-testid="value-row">
     ${hasError
-      ? renderWarningFill("image-load-failed", "Image failed to load")
+      ? renderWarningFill("image-load-failed", "Image failed to load", "lead")
       : html`<img
+          slot="lead"
           class="picture-img"
           data-testid="picture-image"
           data-value-kind="imageUrl"
@@ -133,5 +133,5 @@ export function renderPictureValueArea(
           referrerpolicy="no-referrer"
           @error=${onError}
         />`}
-  </div>`;
+  </card-body>`;
 }

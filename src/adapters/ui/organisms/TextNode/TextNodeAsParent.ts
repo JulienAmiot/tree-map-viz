@@ -44,6 +44,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { renderMarkdownToHtml } from "../../atoms/markdownToHtml.js";
+import "../../molecules/cardBody/CardBody.js";
 import "../../molecules/cardFrame/CardFrame.js";
 import { disabledToggleStyles } from "../../molecules/disabledToggle.js";
 import {
@@ -246,7 +247,7 @@ export class TextNodeAsParent extends LitElement {
     // SPEC §17.136 S5 -- panel-relative header + footer heights
     // (focused-panel host is ~85vh; card-frame's 22% / 12% defaults
     // would dominate the value-area).
-    const sizing = "--card-header-height: 18%; --card-footer-height: 8%";
+    const sizing = "--card-header-height: 24%; --card-footer-height: 8%";
     return html`<card-frame style=${sizing}>
       <span slot="icons" data-testid="icons-slot"></span>
       <span slot="header-actions"
@@ -254,10 +255,11 @@ export class TextNodeAsParent extends LitElement {
       >
       ${this.renderTitle()}
       <div class="subtitle" slot="subtitle" data-testid="subtitle"></div>
-      <div class="value-area" slot="body" data-testid="value-row">
+      <card-body slot="body" data-layout="lead-only" data-testid="value-row">
         ${this.editingField === "value"
           ? this.renderValueEditor(value.text)
           : html`<div
+              slot="lead"
               class=${empty ? "md-body empty is-editable" : "md-body is-editable"}
               data-testid="value"
               data-value-kind="textValue"
@@ -268,7 +270,7 @@ export class TextNodeAsParent extends LitElement {
             >
               ${empty ? "" : unsafeHTML(renderMarkdownToHtml(value.text))}
             </div>`}
-      </div>
+      </card-body>
       ${value.dateIso && this.editingField !== "value"
         ? html`<time
             class="timestamp"
@@ -322,6 +324,7 @@ export class TextNodeAsParent extends LitElement {
   /** SPEC 17.28 -- multi-line markdown source editor. */
   private renderValueEditor(initial: string) {
     return html`<textarea
+      slot="lead"
       class="value-edit"
       data-testid="value-edit"
       .value=${initial}

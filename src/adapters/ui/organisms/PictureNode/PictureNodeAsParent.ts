@@ -61,6 +61,7 @@ import {
 import type { PictureNodeViewModel } from "../../molecules/NodeViewModel.js";
 import { tileLayoutStyles } from "../../atoms/tileLayoutStyles.js";
 
+import "../../molecules/cardBody/CardBody.js";
 import { ImageErrorController } from "./imageErrorController.js";
 import { pictureBodyStyles, renderPictureValueArea } from "./pictureBody.js";
 
@@ -115,7 +116,7 @@ export class PictureNodeAsParent extends LitElement {
     // (focused-panel host is ~85vh; card-frame's 22% / 12% defaults
     // would dominate the value-area). Same literals as S1 / S3 / S5
     // / S7 AsParent migrations.
-    const sizing = "--card-header-height: 18%; --card-footer-height: 8%";
+    const sizing = "--card-header-height: 24%; --card-footer-height: 8%";
     const titleH1 = this.titleEditor.renderTitle("PictureNode", nothing);
     return html`<card-frame style=${sizing}>
       <span slot="icons" data-testid="icons-slot"></span>
