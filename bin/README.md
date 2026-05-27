@@ -1,8 +1,11 @@
 # `bin/` — operational scripts
 
-This folder holds operational scripts that don't belong in `src/` (they don't ship with the kiosk runtime). The only resident today is the **XRay import pipeline** that ties Cucumber `.feature` files to Jira `Test` issues under `HE-2570`.
+This folder holds operational scripts that don't belong in `src/` (they don't ship with the kiosk runtime). Two pipelines live here today:
 
-For the spec context, see `docs/SPEC.md` sec.15.7 (XRay workflow), sec.15.9 (issue key map), and sec.17.8 (DT-10 as-built log).
+1. **XRay import pipeline** (`xray-import.{ps1,sh}`) — ties Cucumber `.feature` files to Jira `Test` issues under `HE-2570`. One-way: source → Jira Test.
+2. **XRay export-execution pipeline** (`xray-export-execution.{ps1,sh,mjs}`) — round-trips `npm run test:e2e` results back into Jira as **Test Execution** issues, grouped per Test Plan, with failure screenshots auto-attached as evidence (see §17.148). Dry-run by default; `--live` / `-Live` actually POSTs.
+
+For the spec context, see `docs/SPEC.md` sec.15.7 (XRay workflow), sec.15.9 (issue key map), sec.17.8 (DT-10 as-built log), and sec.17.148 (Test-Execution scaffold).
 
 ---
 
@@ -113,6 +116,73 @@ So once a small feature file has been through one successful import, every subse
 
 ---
 
-## Why two scripts, not one Node.js script?
+## `xray-export-execution.ps1` / `xray-export-execution.sh` / `xray-export-execution.mjs`
 
-`docs/SPEC.md` sec.15.7 explicitly calls for a PowerShell primary + Bash sibling so each environment runs a script native to it (no Node bootstrap on a fresh CI runner; no bash-on-Windows requirement for local dev). The duplication is small (~150 LoC each) and the two are easy to keep in sync because they speak only to the XRay REST API.
+The Test-Execution sibling of `xray-import`. Where `xray-import` ships *Tests* into Jira, this script ships *Test results* into Jira.
+
+### What it does
+
+1. Reads the Cucumber JSON written by `playwright-bdd`'s `cucumberReporter("json")` at `src/test/e2e/test-results/cucumber.json` (configured in `src/test/e2e/playwright.config.ts`).
+2. Splits scenarios per Test Plan (the routing table is the operator's Q2 "tp-by-feature" choice — `layout/` + `shell/` → `HE-2587`, `modal/` → `HE-2580`, everything else → `HE-2585`). Updating the table is the only thing needed when new top-level feature dirs land.
+3. For each Test Plan group, builds an XRay `info` JSON describing the Test Execution issue (summary, description, `testPlanKey`, `testEnvironments`) and POSTs `info` + the cucumber subset to `POST /api/v2/import/execution/cucumber/multipart`.
+4. Failure screenshots are auto-attached: Playwright's `screenshot: "only-on-failure"` setting captures them on every failed scenario, the cucumber-json reporter base64-embeds them in the JSON, and XRay surfaces them inline on the matching Test result.
+
+### Scope today — dry-run-only (the `--live` gate)
+
+Per §17.148 Q3 (operator picked "scaffold-only"), the scripts default to **dry-run** and the `--live` / `-Live` switch is **gated behind a pre-flight check**: if any scenario still carries an unresolved `@HE-????` placeholder, the live POST refuses to fire. This makes the scaffold safe to ship now without polluting Jira with duplicate Tests, and lets the §17.149 follow-up (`feature/xray-pairing-by-summary`) land scenario-level Test keys cleanly before this script becomes useful in live mode.
+
+Until then, dry-run mode is the supported mode. It surfaces:
+
+- the per-group split (which scenarios go to which Test Plan),
+- the `info` JSON that *would* be POSTed,
+- the per-group pass / fail / skipped counts,
+- the inferred per-branch execution key (whether a fresh issue would be created vs an existing one updated).
+
+### Local usage
+
+```powershell
+# Windows -- run e2e and then dry-run the export
+npm run test:e2e:xray
+# Or call the .ps1 directly if you already have a cucumber.json
+powershell -NoProfile -File bin\xray-export-execution.ps1
+```
+
+```bash
+# Linux / macOS / git-bash
+npm run test:e2e:xray
+# Or call the .sh directly
+bash bin/xray-export-execution.sh
+```
+
+The cross-platform npm wrapper (`bin/xray-export-execution.mjs`) just dispatches to `powershell` on Windows and `bash` elsewhere; flags pass through unchanged.
+
+### Environment
+
+Same `.env` precedence as `xray-import` (`%USERPROFILE%\.tree-map-viz\.env` → `<repo>\.env` → shell). Only `XRAY_CLIENT_ID` + `XRAY_CLIENT_SECRET` are required, and only in `--live` mode (dry-run never touches the network).
+
+| Variable | Required | Default | Notes |
+|---|---|---|---|
+| `XRAY_CLIENT_ID` | live only | — | shared with `xray-import` |
+| `XRAY_CLIENT_SECRET` | live only | — | shared with `xray-import` |
+| `XRAY_PROJECT_KEY` | no | `HE` | |
+| `XRAY_BASE_URL` | no | `https://xray.cloud.getxray.app` | |
+| `XRAY_EXECUTION_KEY_<BRANCH>` | no | — | Per-branch update-shared key (Q1). Set after the first `--live` creates an issue so subsequent runs update the same Jira issue instead of churning new ones. `<BRANCH>` is the branch name uppercased with non-alphanumeric runs collapsed to `_` (e.g. `feature/foo-bar` → `XRAY_EXECUTION_KEY_FEATURE_FOO_BAR`). |
+
+### Flags
+
+| PowerShell flag | Bash flag | Purpose |
+|---|---|---|
+| `-CucumberReport <path>` | `--cucumber-report <path>` | Override the input cucumber JSON. |
+| `-Branch <name>` | `--branch <name>` | Override branch detection. |
+| `-CommitSha <sha>` | `--commit <sha>` | Override the short SHA in the summary. |
+| `-Environment <name>` | `--environment <name>` | Override the XRay test-environment label. Default: `CI` when `$CI` set, else `local`. |
+| `-ProjectKey <key>` | `--project-key <key>` | Override the Jira project. |
+| `-BaseUrl <url>` | `--base-url <url>` | Override the XRay base URL. |
+| `-Live` | `--live` | Actually POST. Refuses if any scenario carries `@HE-????`. |
+
+### Deferred follow-ups (intentionally NOT in this strand)
+
+- **§17.149** — pair each scenario by *summary* (not by source-line index) when round-tripping new Test keys back from `xray-import`. Once this lands and the next clean import gives every scenario a real `@HE-XXXX` tag, the `--live` gate here unblocks naturally.
+- **CI wiring** — `.github/workflows/xray-import.yml` does NOT yet invoke this script. It will, once `--live` is usable.
+- **fixVersion linkage** — `info.fields.fixVersions` is left unset. Once a Jira version exists for the running semver, we'll auto-populate it from `package.json#version`.
+- **Test Execution attachments beyond the inline embedding** — Playwright trace.zip uploads (Q4 option B) are deliberately skipped. The inline failure screenshot is enough for now.
