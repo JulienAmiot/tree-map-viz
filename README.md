@@ -245,6 +245,7 @@ npm run test:coverage    # writes coverage/lcov.info for Sonar
 
 npm run test:e2e         # playwright-bdd against the built bundle
 npm run test:e2e:headed  # same, but in headed Chromium
+npm run test:e2e:xray    # run e2e then dry-run-export the results to XRay
 
 npm run lint             # tsc --noEmit
 npm run lint:rules       # eslint .

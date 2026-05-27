@@ -13,6 +13,7 @@
     "check:version-bump": "node bin/check-version-bump.mjs",
     "test:e2e": "bddgen -c src/test/e2e/playwright.config.ts && playwright test -c src/test/e2e/playwright.config.ts",
     "test:e2e:headed": "bddgen -c src/test/e2e/playwright.config.ts && playwright test -c src/test/e2e/playwright.config.ts --headed",
+    "test:e2e:xray": "npm run test:e2e && node bin/xray-export-execution.mjs",
     "lint": "tsc --noEmit",
     "lint:rules": "eslint .",
     "sonar:up": "docker compose -f docker-compose.sonar.yml up -d",
