@@ -207,6 +207,7 @@ function Rewrite-Placeholders([string] $content, [string[]] $newKeys) {
 $totalCreated = 0
 $totalUpdated = 0
 $rewrittenFiles = @()
+$failedFiles   = @()
 
 foreach ($f in $features) {
     Write-Host "[$($f.Name)]"
@@ -235,7 +236,27 @@ foreach ($f in $features) {
 
     if (-not $jwt) { $jwt = Get-XrayJwt }
 
-    $resp = Invoke-XrayImport -featurePath $f.FullName -jwt $jwt
+    # Per-file try/catch lets a single rejected file (e.g. non-coverable epic
+    # tag, malformed Gherkin) be reported without aborting the remaining
+    # files in the same run. The operator gets one pass that discovers
+    # every bad tag instead of N round-trips.
+    try {
+        $resp = Invoke-XrayImport -featurePath $f.FullName -jwt $jwt
+    } catch {
+        $errBody = $null
+        if ($_.Exception.Response) {
+            try {
+                $stream = $_.Exception.Response.GetResponseStream()
+                $reader = New-Object System.IO.StreamReader($stream)
+                $errBody = $reader.ReadToEnd()
+            } catch { $errBody = $null }
+        }
+        $message = if ($errBody) { $errBody } else { $_.Exception.Message }
+        Write-Warning "  POST failed: $message"
+        $failedFiles += [pscustomobject]@{ Path = $f.FullName; Error = $message }
+        Write-Host ""
+        continue
+    }
 
     $returnedTests = @()
     if ($resp -and $resp.PSObject.Properties.Match('updatedOrCreatedTests').Count -gt 0 -and $null -ne $resp.updatedOrCreatedTests) {
@@ -273,4 +294,15 @@ Write-Host "=========================================="
 Write-Host "Created : $totalCreated"
 Write-Host "Updated : $totalUpdated"
 Write-Host "Files rewritten : $($rewrittenFiles.Count)"
+Write-Host "Files failed    : $($failedFiles.Count)"
 if ($DryRun) { Write-Host "Mode    : DRY-RUN (no network, no file writes)" -ForegroundColor Yellow }
+
+if ($failedFiles.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Failed files:" -ForegroundColor Red
+    foreach ($ff in $failedFiles) {
+        Write-Host "  - $($ff.Path)" -ForegroundColor Red
+        Write-Host "      $($ff.Error)" -ForegroundColor DarkRed
+    }
+    exit 1
+}

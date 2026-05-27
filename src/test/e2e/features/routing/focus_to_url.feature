@@ -1,4 +1,4 @@
-@HE-2588 @component:routing @phase:10
+@HE-2570 @component:routing @phase:10
 Feature: Every focus change reflects in the URL hash (§17.35)
 
   SPEC §9 + §17.11 + §17.20 + §17.32: the URL hash

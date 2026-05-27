@@ -124,6 +124,7 @@ get_jwt() {
 total_created=0
 total_updated=0
 files_rewritten=0
+failed_files=()
 
 for feature in "${FEATURES[@]}"; do
     name=$(basename "$feature")
@@ -155,11 +156,25 @@ for feature in "${FEATURES[@]}"; do
 
     if [[ -z "$JWT" ]]; then get_jwt; fi
 
-    # POST the file as multipart
-    resp=$(curl -sS -X POST \
+    # POST the file as multipart. Capture the HTTP status separately so we
+    # can detect XRay rejections (e.g. non-coverable epic tag) and continue
+    # to the next file with a useful diagnostic, rather than treating an
+    # error body as a silent count-mismatch.
+    http_resp=$(curl -sS -X POST \
+        -w '\n__HTTP_STATUS__:%{http_code}' \
         -H "Authorization: Bearer $JWT" \
         -F "file=@$feature;type=text/plain" \
-        "$BASE_URL/api/v1/import/feature?projectKey=$PROJECT_KEY")
+        "$BASE_URL/api/v1/import/feature?projectKey=$PROJECT_KEY") || true
+    http_status="${http_resp##*__HTTP_STATUS__:}"
+    resp="${http_resp%$'\n'__HTTP_STATUS__:*}"
+
+    if [[ "$http_status" != "200" && "$http_status" != "201" ]]; then
+        err_msg=$(echo "$resp" | jq -r '.error // .message // "(no error field)"' 2>/dev/null || echo "$resp")
+        echo "  POST failed (HTTP $http_status): $err_msg" >&2
+        failed_files+=("$feature -- HTTP $http_status: $err_msg")
+        echo ""
+        continue
+    fi
 
     # extract returned keys (in response order)
     mapfile -t returned < <(echo "$resp" | jq -r '.updatedOrCreatedTests[]?.key // empty')
@@ -219,6 +234,16 @@ echo "=========================================="
 echo "Created : $total_created"
 echo "Updated : $total_updated"
 echo "Files rewritten : $files_rewritten"
+echo "Files failed    : ${#failed_files[@]}"
 if [[ "$DRY_RUN" -eq 1 ]]; then
     echo "Mode    : DRY-RUN (no network, no file writes)"
+fi
+
+if [[ ${#failed_files[@]} -gt 0 ]]; then
+    echo ""
+    echo "Failed files:" >&2
+    for ff in "${failed_files[@]}"; do
+        echo "  - $ff" >&2
+    done
+    exit 1
 fi

@@ -88,13 +88,21 @@ Requires `curl` and `jq` on `PATH`. Optional flags: `--features-path <DIR>`, `--
 | `@HE-????` (placeholder) | XRay creates a new Test; placeholder rewritten to the new key | (no longer present) |
 | `@HE-1234` (real key) | XRay updates the existing `HE-1234` Test in place; tag untouched | Same — keep updating in place |
 
-So once `app_boots.feature` has been through one successful import, every subsequent run is a pure update — no new Test issues, no file rewrites, no churn in `git`.
+So once a small feature file has been through one successful import, every subsequent run is a pure update — no new Test issues, no file rewrites, no churn in `git`.
+
+> **Known caveat (see `docs/SPEC.md` sec.17.147)** — the per-file response → source pairing assumes XRay returns newly created Test keys in scenario source order. This holds reliably for files with ≤3-4 scenarios but breaks down for larger files. Until the pairing strategy is fixed (planned follow-up), **avoid re-running this script against multi-scenario files that have already had an initial successful import**, or you will accrete duplicate Test issues in Jira each run.
+
+### Error handling
+
+- Per-file failures (XRay rejects the POST — e.g. non-coverable feature-level tag, malformed Gherkin) are **logged and skipped**, the next file is attempted, and a summary at the end lists every file that failed. The script exits non-zero if any file failed, so CI catches the issue.
+- The bash sibling captures the HTTP status from `curl` explicitly so 4xx/5xx responses don't get silently mis-parsed as count mismatches.
 
 ### Troubleshooting
 
 - **"XRAY_CLIENT_ID and XRAY_CLIENT_SECRET must be set"** — Task A hasn't been completed yet. See `docs/SPEC.md` sec.15.5 (Task A = `HE-2586`).
 - **TLS / handshake failures on Windows PowerShell 5.1** — the script already forces TLS 1.2; if you still hit this, your .NET Framework patch level is below 4.6 (rare on supported Windows versions).
-- **"placeholder count != new keys"** warning — XRay returned a different number of created tests than the source has placeholders. The script leaves the file untouched in this case so you can investigate. Re-run after manually fixing the source.
+- **"POST failed: … is not a coverable issue"** — the feature-level `@HE-XXXX` tag points at an issue type that XRay won't link Tests to (e.g. custom "Development Task", or XRay-internal types like "Test Execution"). Repoint that tag at an Epic / Story / standard Task and re-run. The OBEYA Epic `HE-2570` is the safe default cover.
+- **"placeholder count != new keys"** warning — XRay returned a different number of created tests than the source has placeholders. Most often: the file's line-1 tag is a `@HE-????` placeholder, which XRay correctly ignores (feature-level tags aren't Tests). The script leaves the file untouched so you can investigate; replace the line-1 placeholder with a real cover key (e.g. `HE-2570`) and re-run.
 - **Multiple feature files at once** — both scripts process them per-file (not zipped) for clean response→source attribution. Per-file is also what lets the placeholder-counting precondition match exactly.
 
 ---

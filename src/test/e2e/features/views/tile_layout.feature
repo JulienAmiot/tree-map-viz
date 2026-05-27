@@ -66,7 +66,7 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     Then every child tile has a visible border
     And every child tile has a non-transparent background
 
-  @HE-2592 @priority:high
+  @HE-???? @priority:high
   Scenario: Parent panel and child tiles share the same panel surface (§17.36)
     # SPEC §17.36 — the parent-identity-strip and every child tile read
     # from the same screen-level CSS custom properties:
