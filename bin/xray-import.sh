@@ -6,7 +6,10 @@
 # (see docs/SPEC.md sec.15.7, sec.17.8). Use this on Linux/macOS and
 # in CI; use the PowerShell sibling for local Windows dev.
 #
-# Required env (or .env at repo root):
+# Required env, or .env at:
+#   1. $HOME/.tree-map-viz/.env  (user-scoped, preferred -- survives
+#                                  repo reset; the right home for secrets)
+#   2. <repo-root>/.env          (legacy fallback)
 #   XRAY_CLIENT_ID
 #   XRAY_CLIENT_SECRET
 # Optional env:
@@ -27,8 +30,13 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 REPO_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 
 # --- .env loader (best-effort; explicit env wins) ----------------------------
-ENV_FILE="$REPO_ROOT/.env"
-if [[ -f "$ENV_FILE" ]]; then
+# Load user-scoped first, then repo-root as legacy fallback. The
+# `[[ -z "${!key:-}" ]]` check below means the FIRST source to set a
+# key wins — so user-scoped takes precedence over repo-root, and
+# shell env vars (already set) take precedence over both.
+load_dotenv() {
+    local file="$1"
+    [[ -f "$file" ]] || return 0
     while IFS='=' read -r key val || [[ -n "$key" ]]; do
         # skip blanks and comments
         [[ -z "${key// }" || "${key:0:1}" == "#" ]] && continue
@@ -39,8 +47,10 @@ if [[ -f "$ENV_FILE" ]]; then
         if [[ -z "${!key:-}" ]]; then
             export "$key=$val"
         fi
-    done < "$ENV_FILE"
-fi
+    done < "$file"
+}
+load_dotenv "$HOME/.tree-map-viz/.env"
+load_dotenv "$REPO_ROOT/.env"
 
 # --- parse flags -------------------------------------------------------------
 FEATURES_PATH="$REPO_ROOT/src/test/e2e/features"
@@ -93,7 +103,7 @@ get_jwt() {
             echo "[dry-run] XRAY_CLIENT_ID / XRAY_CLIENT_SECRET not set -- skipping auth."
             return 0
         fi
-        echo "XRAY_CLIENT_ID and XRAY_CLIENT_SECRET must be set (env or .env). See bin/README.md." >&2
+        echo "XRAY_CLIENT_ID and XRAY_CLIENT_SECRET must be set (env, \$HOME/.tree-map-viz/.env, or <repo>/.env). See bin/README.md." >&2
         exit 2
     fi
     local body
