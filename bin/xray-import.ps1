@@ -19,8 +19,13 @@
 
   Credentials and target project come from environment variables
   (XRAY_CLIENT_ID, XRAY_CLIENT_SECRET, XRAY_PROJECT_KEY, XRAY_BASE_URL).
-  If a `.env` file exists at the repo root it is sourced first; explicit
-  shell env vars and -Param flags override `.env` values.
+  Two `.env` locations are sourced (in this precedence order, first
+  win basis — explicit shell env vars and -Param flags override both):
+
+    1. `$env:USERPROFILE\.tree-map-viz\.env` (user-scoped, preferred —
+       survives `git clean` + repo reset; the right home for secrets).
+    2. `<repo-root>\.env` (legacy fallback — kept so pre-existing
+       setups still work; can be removed once you've migrated).
 
 .PARAMETER FeaturesPath
   Folder to scan for `.feature` files (recursive). Defaults to
@@ -76,6 +81,7 @@ function Import-DotEnv([string] $path) {
         }
     }
 }
+Import-DotEnv (Join-Path $env:USERPROFILE ".tree-map-viz\.env")
 Import-DotEnv (Join-Path $RepoRoot ".env")
 
 # --- Resolve effective config ------------------------------------------------
@@ -119,7 +125,7 @@ function Get-XrayJwt {
             Write-Host "[dry-run] XRAY_CLIENT_ID / XRAY_CLIENT_SECRET not set -- skipping auth." -ForegroundColor Yellow
             return $null
         }
-        throw "XRAY_CLIENT_ID and XRAY_CLIENT_SECRET must be set (env or .env). See bin/README.md."
+        throw "XRAY_CLIENT_ID and XRAY_CLIENT_SECRET must be set (env, `$env:USERPROFILE\.tree-map-viz\.env`, or `<repo>\.env`). See bin/README.md."
     }
     $body = @{ client_id = $ClientId; client_secret = $ClientSecret } | ConvertTo-Json -Compress
     $resp = Invoke-RestMethod `
