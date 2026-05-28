@@ -148,7 +148,7 @@ if (-not $CommitSha) {
     try { $CommitSha = (& git -C $RepoRoot rev-parse --short HEAD).Trim() } catch { $CommitSha = "unknown" }
 }
 if (-not $Environment) {
-    if ($env:CI) { $Environment = "CI" } else { $Environment = "local" }
+    if ($env:CI) { $Environment = "CI" } else { $Environment = "" }
 }
 if (-not $ReuseTag) {
     $ReuseTag = $env:XRAY_TEST_EXEC_REUSE_TAG
@@ -257,7 +257,7 @@ function Find-ExistingTestExecution([string] $jwt, [string] $reuseTag, [string] 
     if (-not $reuseTag) { return $null }
     $label = Get-ReuseTagLabel -reuseTag $reuseTag -tpKey $tpKey
     if (-not $label) { return $null }
-    $jql   = "labels = `"$label`""
+    $jql   = "labels = \`"$label\`""
     $query = "{ getTestExecutions(jql: `"$jql`", limit: 5) { results { jira(fields: [`"key`", `"summary`"]) } } }"
     $body  = @{ query = $query } | ConvertTo-Json -Compress
     try {
@@ -309,39 +309,98 @@ function New-InfoPayload {
         "Source       : src/test/e2e/test-results/cucumber.json"
     ) -join "`n"
 
+    # Precedence: explicit reuse-lookup result > XRAY_EXECUTION_KEY_<BRANCH>.
+    $existingKey = $null
+    if ($reuseExecutionKey)   { $existingKey = $reuseExecutionKey }
+    elseif ($perBranchKey)    { $existingKey = $perBranchKey }
+
+    # XRay's cucumber multipart endpoint distinguishes CREATE vs UPDATE
+    # by the presence of `testExecutionKey`. On UPDATE we MUST omit
+    # `summary` and `issuetype` because their presence causes XRay to
+    # interpret the request as a CREATE and spawn a new Test Execution
+    # issue even when `testExecutionKey` is also set. `project` IS
+    # required by the API even for UPDATE (otherwise 400 "fields in
+    # info file is required and should contain project field").
     $fields = [ordered]@{
         project     = @{ key = $ProjectKey }
-        summary     = $summary
         description = $description
-        issuetype   = @{ name = "Test Execution" }
     }
-    if ($reuseTag) {
-        # Per-(reuseTag, tpKey) label so the next run's GraphQL lookup
-        # uniquely resolves THIS group's Test Execution issue.
+    if (-not $existingKey) {
+        $fields["summary"]   = $summary
+        $fields["issuetype"] = @{ name = "Test Execution" }
+    }
+    if ($reuseTag -and -not $existingKey) {
+        # Per-(reuseTag, tpKey) label attached on CREATE so the next
+        # run's GraphQL lookup uniquely resolves THIS group's Test
+        # Execution issue. On UPDATE the label is already attached.
         $fields["labels"] = @(Get-ReuseTagLabel -reuseTag $reuseTag -tpKey $testPlanKey)
     }
     $info = [ordered]@{
         fields = $fields
-        xrayFields = [ordered]@{
-            testPlanKey      = $testPlanKey
-            testEnvironments = @($Environment)
-        }
     }
-    # Precedence: explicit reuse-lookup result > XRAY_EXECUTION_KEY_<BRANCH>.
-    if ($reuseExecutionKey) {
-        $info["testExecutionKey"] = $reuseExecutionKey
-    } elseif ($perBranchKey) {
-        $info["testExecutionKey"] = $perBranchKey
+    if (-not $existingKey) {
+        $xrayFields = [ordered]@{
+            testPlanKey = $testPlanKey
+        }
+        if ($Environment) {
+            $xrayFields["environments"] = @($Environment)
+        }
+        $info["xrayFields"] = $xrayFields
+    }
+    if ($existingKey) {
+        $info["testExecutionKey"] = $existingKey
     }
     return $info
 }
 
-# --- POST the multipart payload to XRay --------------------------------------
-function Invoke-XrayExportGroup($info, $cucumberSubset) {
+# --- POST the cucumber results to XRay ---------------------------------------
+# XRay v2 has two cucumber-import endpoints with different semantics:
+#   CREATE: POST /api/v2/import/execution/cucumber/multipart
+#       expects multipart body with `info` + `results` parts; XRay creates
+#       a new Test Execution issue with the metadata from `info` and links
+#       the cucumber `results` to it. The `testExecutionKey` field in the
+#       info file is NOT supported here despite some older docs claiming
+#       otherwise -- XRay always interprets a multipart request as CREATE.
+#   UPDATE: POST /api/v2/import/execution/cucumber/{testExecKey}
+#       expects the raw cucumber JSON in the body (NOT multipart, NOT
+#       wrapped in any envelope); XRay attaches the results to the
+#       existing Test Execution issue. The `info` payload is irrelevant
+#       here -- the issue already exists with its summary / labels /
+#       Test Plan / environments from the original CREATE.
+function Invoke-XrayExportGroup($info, $cucumberSubset, $existingKey) {
     $jwt = Get-XrayJwt
-    $infoJson  = $info | ConvertTo-Json -Depth 8 -Compress
     $resultJson = ($cucumberSubset | ConvertTo-Json -Depth 64 -Compress)
 
+    if ($existingKey) {
+        # UPDATE path -- raw cucumber JSON, target Test Execution identified
+        # by injecting an `@<existingKey>` feature-level tag into every
+        # feature in the subset. XRay Cloud does NOT honor a `?testExecKey=`
+        # query parameter on the cucumber endpoint (only XRay Server / DC
+        # does); the canonical Cloud mechanism is to add the Test Execution
+        # key as a feature-level @-tag, which XRay's tag-prefix-driven
+        # router then routes to the existing Test Execution issue.
+        # See: https://community.atlassian.com/forums/App-Central-questions/XRay-import-cucumber-results-to-an-existing-test-execution-issue
+        $tagged = $cucumberSubset | ForEach-Object {
+            $feat = $_.PSObject.Copy()
+            $existingTags = @()
+            if ($feat.PSObject.Properties["tags"] -and $feat.tags) {
+                $existingTags = @($feat.tags)
+            }
+            $execTag = [PSCustomObject]@{ name = "@$existingKey"; line = 1 }
+            $feat | Add-Member -NotePropertyName tags -NotePropertyValue (@($execTag) + $existingTags) -Force
+            $feat
+        }
+        $taggedJson = ConvertTo-Json -InputObject $tagged -Depth 64 -Compress
+        return Invoke-RestMethod `
+            -Method Post `
+            -Uri "$BaseUrl/api/v2/import/execution/cucumber" `
+            -Headers @{ Authorization = "Bearer $jwt" } `
+            -ContentType "application/json" `
+            -Body $taggedJson
+    }
+
+    # CREATE path -- multipart body with info + results.
+    $infoJson = $info | ConvertTo-Json -Depth 8 -Compress
     $boundary = [System.Guid]::NewGuid().ToString()
     $LF       = "`r`n"
     $body     = (
@@ -351,7 +410,7 @@ function Invoke-XrayExportGroup($info, $cucumberSubset) {
         "",
         $infoJson,
         "--$boundary",
-        "Content-Disposition: form-data; name=`"result`"; filename=`"cucumber.json`"",
+        "Content-Disposition: form-data; name=`"results`"; filename=`"cucumber.json`"",
         "Content-Type: application/json; charset=utf-8",
         "",
         $resultJson,
@@ -482,14 +541,20 @@ foreach ($tpKey in ($grouped.Keys | Sort-Object)) {
         Write-Host (($info | ConvertTo-Json -Depth 8) -split "`n" | ForEach-Object { "    $_" } | Out-String)
         Write-Host "  --- end info JSON ---"
     } else {
-        Write-Host "  Posting to $BaseUrl/api/v2/import/execution/cucumber/multipart ..."
+        if ($reuseKey) {
+            Write-Host "  Posting to $BaseUrl/api/v2/import/execution/cucumber (with injected @$reuseKey feature tag) ..."
+        } else {
+            Write-Host "  Posting to $BaseUrl/api/v2/import/execution/cucumber/multipart ..."
+        }
         try {
-            $resp = Invoke-XrayExportGroup -info $info -cucumberSubset $features
+            $resp = Invoke-XrayExportGroup -info $info -cucumberSubset $features -existingKey $reuseKey
             $issueKey = $null
             if ($resp.PSObject.Properties["key"]) { $issueKey = $resp.key }
             elseif ($resp.PSObject.Properties["testExecIssue"] -and $resp.testExecIssue.PSObject.Properties["key"]) {
                 $issueKey = $resp.testExecIssue.key
             }
+            elseif ($resp.PSObject.Properties["id"]) { $issueKey = $resp.id }
+            if ($reuseKey -and -not $issueKey) { $issueKey = $reuseKey }
             Write-Host "  Test Execution: $issueKey" -ForegroundColor Green
         } catch {
             Write-Host "  POST failed: $($_.Exception.Message)" -ForegroundColor Red

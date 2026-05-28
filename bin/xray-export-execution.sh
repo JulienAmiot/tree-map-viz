@@ -90,7 +90,7 @@ if [[ -z "$COMMIT_SHA" ]]; then
     COMMIT_SHA="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 fi
 if [[ -z "$ENVIRONMENT" ]]; then
-    if [[ -n "${CI:-}" ]]; then ENVIRONMENT="CI"; else ENVIRONMENT="local"; fi
+    if [[ -n "${CI:-}" ]]; then ENVIRONMENT="CI"; else ENVIRONMENT=""; fi
 fi
 
 # Per-branch reused Test Execution key (Q1 update-shared).
@@ -202,7 +202,7 @@ find_existing_test_execution() {
     label="$(reuse_tag_label "$reuse_tag" "$tp_key")"
     [[ -z "$label" ]] && return 0
     local jql query resp
-    jql="labels = \"$label\""
+    jql="labels = \\\"$label\\\""
     query=$(jq -nc --arg jql "$jql" \
         '{ query: ("{ getTestExecutions(jql: \"" + $jql + "\", limit: 5) { results { jira(fields: [\"key\", \"summary\"]) } } }") }')
     resp=$(curl -sS -X POST "$BASE_URL/api/v2/graphql" \
@@ -253,7 +253,6 @@ build_info_json() {
         --arg description "$description" \
         --arg tp "$tp_key" \
         --arg env "$ENVIRONMENT" \
-        --arg key "$key_to_use" \
         --arg label "$label" \
         '{
             fields: {
@@ -263,12 +262,11 @@ build_info_json() {
                 issuetype:   { name: "Test Execution" }
             },
             xrayFields: {
-                testPlanKey:      $tp,
-                testEnvironments: [ $env ]
+                testPlanKey: $tp
             }
         }
-        | if ($label | length) > 0 then .fields += { labels: [ $label ] } else . end
-        | if ($key   | length) > 0 then . + { testExecutionKey: $key } else . end'
+        | if ($env   | length) > 0 then .xrayFields += { environments: [ $env ] } else . end
+        | if ($label | length) > 0 then .fields += { labels: [ $label ] } else . end'
 }
 
 GRAND_SCEN=0
@@ -354,18 +352,40 @@ for tp_key in "${TP_KEYS[@]}"; do
         echo "  --- end info JSON ---"
     else
         jwt="$(get_jwt)"
-        echo "  Posting to $BASE_URL/api/v2/import/execution/cucumber/multipart ..."
-        result_file="$(mktemp)"
-        info_file="$(mktemp)"
-        echo "$subset"    > "$result_file"
-        echo "$info_json" > "$info_file"
-        resp="$(curl -fsS -X POST "$BASE_URL/api/v2/import/execution/cucumber/multipart" \
-            -H "Authorization: Bearer $jwt" \
-            -F "info=@$info_file;type=application/json" \
-            -F "result=@$result_file;type=application/json")"
-        rm -f "$result_file" "$info_file"
-        issue_key="$(echo "$resp" | jq -r '.key // .testExecIssue.key // ""')"
-        echo "  Test Execution: $issue_key"
+        if [[ -n "$reuse_key" ]]; then
+            # UPDATE path -- XRay Cloud's cucumber endpoint does NOT honor a
+            # `?testExecKey=` query parameter (only XRay Server / DC does).
+            # The canonical Cloud mechanism is to inject the existing Test
+            # Execution key as a feature-level @-tag in the cucumber JSON;
+            # XRay's tag-prefix-driven router then routes the results into
+            # the existing Test Execution issue.
+            # See: https://community.atlassian.com/forums/App-Central-questions/XRay-import-cucumber-results-to-an-existing-test-execution-issue
+            echo "  Posting to $BASE_URL/api/v2/import/execution/cucumber (with injected @$reuse_key feature tag) ..."
+            tagged="$(echo "$subset" | jq --arg key "@$reuse_key" \
+                '[ .[] | .tags = ([{name: $key, line: 1}] + (.tags // [])) ]')"
+            resp="$(curl -fsS -X POST "$BASE_URL/api/v2/import/execution/cucumber" \
+                -H "Authorization: Bearer $jwt" \
+                -H "Content-Type: application/json" \
+                --data-binary "$tagged")"
+            issue_key="$(echo "$resp" | jq -r '.key // .testExecIssue.key // ""')"
+            if [[ -z "$issue_key" ]]; then issue_key="$reuse_key"; fi
+            echo "  Test Execution: $issue_key"
+        else
+            # CREATE path -- multipart with info + results.
+            echo "  Posting to $BASE_URL/api/v2/import/execution/cucumber/multipart ..."
+            result_file="$(mktemp)"
+            info_file="$(mktemp)"
+            echo "$subset"    > "$result_file"
+            echo "$info_json" > "$info_file"
+            resp="$(curl -fsS -X POST "$BASE_URL/api/v2/import/execution/cucumber/multipart" \
+                -H "Authorization: Bearer $jwt" \
+                -F "info=@$info_file;type=application/json" \
+                -F "results=@$result_file;type=application/json")"
+
+            rm -f "$result_file" "$info_file"
+            issue_key="$(echo "$resp" | jq -r '.key // .testExecIssue.key // ""')"
+            echo "  Test Execution: $issue_key"
+        fi
     fi
     echo
 done
