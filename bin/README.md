@@ -18,8 +18,10 @@ Two siblings with identical behaviour. Use whichever matches your environment.
 For each `.feature` file under `src/test/e2e/features/`:
 
 1. **Authenticate** against XRay Cloud via `POST /api/v2/authenticate`.
-2. **POST** the file to `/api/v1/import/feature?projectKey=HE` as `multipart/form-data`.
-3. **Round-trip** the returned `@HE-XXXX` Test issue keys back into the source — each `@HE-????` placeholder, in source order, is replaced by the matching newly created key.
+2. **Auto-default feature-level placeholders**: any `@HE-????` that appears BEFORE the `Feature:` keyword is rewritten to `@HE-2570` (the OBEYA Epic cover; configurable via `-FeatureLevelCoverDefault` / `--feature-level-cover-default`). This is saved to disk BEFORE the POST so XRay establishes the cover link from the first run. (SPEC §17.149 bug-fix 2 — feature-level placeholders are not scenarios, so they don't belong in the placeholder-vs-new-keys budget check.)
+3. **POST** the file to `/api/v1/import/feature?projectKey=HE` as `multipart/form-data`.
+4. **Pair returned keys to scenarios by summary**: the script calls XRay's GraphQL `getTests(jql:"key in (...)")` to fetch each returned Test's summary, then matches each `@HE-????` to its scenario title (the `Scenario:` header immediately below the placeholder). Falls back to source-position pairing for any scenario whose title can't be matched. (SPEC §17.149 bug-fix 1 — replaces the source-position pairing that scrambled on >3-scenario files in §17.147.)
+5. **Round-trip** the paired keys back into the source — each `@HE-????` placeholder is replaced by its summary-matched (or position-fallback) key.
 
 Already-real keys (`@HE-1234`) are **not** rewritten — they're sent through unchanged so XRay updates the existing Test issue in place. This is what makes re-runs idempotent.
 
@@ -35,7 +37,7 @@ Both scripts read these from the shell first, then from two `.env` candidate pat
 | `XRAY_CLIENT_ID` | yes | — | Task A — Jira Cloud admin → XRay → API Keys |
 | `XRAY_CLIENT_SECRET` | yes | — | Task A (only shown once at creation) |
 | `XRAY_PROJECT_KEY` | no | `HE` | per spec sec.15.1 |
-| `XRAY_BASE_URL` | no | `https://xray.cloud.getxray.app` | XRay Cloud REST root |
+| `XRAY_BASE_URL` | no | `https://xray.cloud.getxray.app` | XRay Cloud REST + GraphQL root |
 
 `.env.example` at the repo root is the template. Copy it to **`%USERPROFILE%\.tree-map-viz\.env`** (or `$HOME/.tree-map-viz/.env` on Linux/macOS) and fill in the values:
 
@@ -68,7 +70,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File bin\xray-import.ps1
 
 The script targets **Windows PowerShell 5.1+** (so it runs on stock Windows without installing PowerShell 7). It forces TLS 1.2 explicitly because 5.1 still defaults to TLS 1.0 in some configurations.
 
-Optional flags: `-FeaturesPath <DIR>`, `-ProjectKey <KEY>`, `-BaseUrl <URL>`.
+Optional flags: `-FeaturesPath <DIR>`, `-ProjectKey <KEY>`, `-BaseUrl <URL>`, `-FeatureLevelCoverDefault <KEY>` (defaults to `HE-2570`; see §17.149).
 
 ### Local usage — Linux / macOS
 
@@ -82,7 +84,7 @@ export XRAY_CLIENT_SECRET=...
 bash bin/xray-import.sh
 ```
 
-Requires `curl` and `jq` on `PATH`. Optional flags: `--features-path <DIR>`, `--project-key <KEY>`, `--base-url <URL>`.
+Requires `curl` and `jq` on `PATH`. Optional flags: `--features-path <DIR>`, `--project-key <KEY>`, `--base-url <URL>`, `--feature-level-cover-default <KEY>` (defaults to `HE-2570`; see §17.149).
 
 ### Idempotency — what re-running does
 
@@ -93,19 +95,21 @@ Requires `curl` and `jq` on `PATH`. Optional flags: `--features-path <DIR>`, `--
 
 So once a small feature file has been through one successful import, every subsequent run is a pure update — no new Test issues, no file rewrites, no churn in `git`.
 
-> **Known caveat (see `docs/SPEC.md` sec.17.147)** — the per-file response → source pairing assumes XRay returns newly created Test keys in scenario source order. This holds reliably for files with ≤3-4 scenarios but breaks down for larger files. Until the pairing strategy is fixed (planned follow-up), **avoid re-running this script against multi-scenario files that have already had an initial successful import**, or you will accrete duplicate Test issues in Jira each run.
+> **§17.147 caveat resolved by §17.149** — the source-position pairing that previously scrambled on >3-scenario files has been replaced by GraphQL summary-lookup pairing. Multi-scenario files (e.g. `add_child_modal.feature` with 27 scenarios) round-trip correctly on the first import and stay idempotent on re-runs. The script still falls back to source-position pairing if the GraphQL call fails or a scenario title doesn't match any returned Test summary; a `WARN: N scenario(s) paired by source-position` line is logged per file when that happens.
 
 ### Error handling
 
 - Per-file failures (XRay rejects the POST — e.g. non-coverable feature-level tag, malformed Gherkin) are **logged and skipped**, the next file is attempted, and a summary at the end lists every file that failed. The script exits non-zero if any file failed, so CI catches the issue.
 - The bash sibling captures the HTTP status from `curl` explicitly so 4xx/5xx responses don't get silently mis-parsed as count mismatches.
+- The GraphQL summary lookup is a best-effort enrichment: if it fails (5xx, JWT expired between calls, GraphQL endpoint unavailable), the script logs a single warning and falls back to source-position pairing for the whole file. The original POST is never retried.
 
 ### Troubleshooting
 
 - **"XRAY_CLIENT_ID and XRAY_CLIENT_SECRET must be set"** — Task A hasn't been completed yet. See `docs/SPEC.md` sec.15.5 (Task A = `HE-2586`).
 - **TLS / handshake failures on Windows PowerShell 5.1** — the script already forces TLS 1.2; if you still hit this, your .NET Framework patch level is below 4.6 (rare on supported Windows versions).
-- **"POST failed: … is not a coverable issue"** — the feature-level `@HE-XXXX` tag points at an issue type that XRay won't link Tests to (e.g. custom "Development Task", or XRay-internal types like "Test Execution"). Repoint that tag at an Epic / Story / standard Task and re-run. The OBEYA Epic `HE-2570` is the safe default cover.
-- **"placeholder count != new keys"** warning — XRay returned a different number of created tests than the source has placeholders. Most often: the file's line-1 tag is a `@HE-????` placeholder, which XRay correctly ignores (feature-level tags aren't Tests). The script leaves the file untouched so you can investigate; replace the line-1 placeholder with a real cover key (e.g. `HE-2570`) and re-run.
+- **"POST failed: … is not a coverable issue"** — the feature-level `@HE-XXXX` tag points at an issue type that XRay won't link Tests to (e.g. custom "Development Task", or XRay-internal types like "Test Execution"). Repoint that tag at an Epic / Story / standard Task and re-run. The OBEYA Epic `HE-2570` is the safe default cover (and is now applied automatically by §17.149's feature-level auto-default when the source has `@HE-????` on the feature line).
+- **"scenario-level placeholders (N) != new keys (M)"** warning — XRay returned a different number of created Tests than the source has scenario-level placeholders. Investigate why; e.g. a scenario tag is duplicated, or XRay deduplicated by an existing tag we missed. The script leaves the scenario tags untouched so you can fix the source and re-run.
+- **"N scenario(s) paired by source-position (title match unavailable)"** warning — the GraphQL summary lookup either failed entirely or returned summaries that don't exactly match the source `Scenario:` titles. Source-position pairing was used as fallback. Inspect Jira: the most common cause is XRay normalising the scenario title (e.g. trimming `§17.18` annotations) when creating the Test. Either edit the scenario title in the source to match what XRay records, or accept the position-fallback (it's correct as long as XRay returned the keys in the same order).
 - **Multiple feature files at once** — both scripts process them per-file (not zipped) for clean response→source attribution. Per-file is also what lets the placeholder-counting precondition match exactly.
 
 ---
@@ -127,11 +131,11 @@ The Test-Execution sibling of `xray-import`. Where `xray-import` ships *Tests* i
 3. For each Test Plan group, builds an XRay `info` JSON describing the Test Execution issue (summary, description, `testPlanKey`, `testEnvironments`) and POSTs `info` + the cucumber subset to `POST /api/v2/import/execution/cucumber/multipart`.
 4. Failure screenshots are auto-attached: Playwright's `screenshot: "only-on-failure"` setting captures them on every failed scenario, the cucumber-json reporter base64-embeds them in the JSON, and XRay surfaces them inline on the matching Test result.
 
-### Scope today — dry-run-only (the `--live` gate)
+### Scope today — dry-run default, `--live` unblocked once placeholders are resolved
 
-Per §17.148 Q3 (operator picked "scaffold-only"), the scripts default to **dry-run** and the `--live` / `-Live` switch is **gated behind a pre-flight check**: if any scenario still carries an unresolved `@HE-????` placeholder, the live POST refuses to fire. This makes the scaffold safe to ship now without polluting Jira with duplicate Tests, and lets the §17.149 follow-up (`feature/xray-pairing-by-summary`) land scenario-level Test keys cleanly before this script becomes useful in live mode.
+Per §17.148 Q3 (operator picked "scaffold-only"), the scripts default to **dry-run** and the `--live` / `-Live` switch is **gated behind a pre-flight check**: if any scenario still carries an unresolved `@HE-????` placeholder, the live POST refuses to fire. §17.149 has landed the pairing-bug fix in `xray-import`, so a clean re-import of all `.feature` files (`bin/xray-import.{ps1,sh}` without `--dry-run`) now leaves every scenario with a real `@HE-XXXX` key — at which point `xray-export-execution --live` becomes safe to use.
 
-Until then, dry-run mode is the supported mode. It surfaces:
+Dry-run mode (default) surfaces:
 
 - the per-group split (which scenarios go to which Test Plan),
 - the `info` JSON that *would* be POSTed,
@@ -180,9 +184,9 @@ Same `.env` precedence as `xray-import` (`%USERPROFILE%\.tree-map-viz\.env` → 
 | `-BaseUrl <url>` | `--base-url <url>` | Override the XRay base URL. |
 | `-Live` | `--live` | Actually POST. Refuses if any scenario carries `@HE-????`. |
 
-### Deferred follow-ups (intentionally NOT in this strand)
+### Deferred follow-ups (intentionally NOT in §17.148)
 
-- **§17.149** — pair each scenario by *summary* (not by source-line index) when round-tripping new Test keys back from `xray-import`. Once this lands and the next clean import gives every scenario a real `@HE-XXXX` tag, the `--live` gate here unblocks naturally.
-- **CI wiring** — `.github/workflows/xray-import.yml` does NOT yet invoke this script. It will, once `--live` is usable.
+- **§17.149** ✅ — **landed**. Summary-lookup pairing in `xray-import` now leaves every scenario with a real `@HE-XXXX` key, which unblocks the `xray-export-execution` `--live` gate.
+- **CI wiring** — `.github/workflows/xray-import.yml` does NOT yet invoke `xray-export-execution`. The PR-gate workflow (§17.150) is the planned home for the export step.
 - **fixVersion linkage** — `info.fields.fixVersions` is left unset. Once a Jira version exists for the running semver, we'll auto-populate it from `package.json#version`.
 - **Test Execution attachments beyond the inline embedding** — Playwright trace.zip uploads (Q4 option B) are deliberately skipped. The inline failure screenshot is enough for now.
