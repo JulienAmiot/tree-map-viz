@@ -13,20 +13,29 @@
 #   XRAY_CLIENT_ID
 #   XRAY_CLIENT_SECRET
 # Optional env:
-#   XRAY_PROJECT_KEY        (default: HE)
-#   XRAY_BASE_URL           (default: https://xray.cloud.getxray.app)
-#   XRAY_EXECUTION_KEY_<BRANCH>  per-branch reuse (Q1 update-shared)
+#   XRAY_PROJECT_KEY              (default: HE)
+#   XRAY_BASE_URL                 (default: https://xray.cloud.getxray.app)
+#   XRAY_EXECUTION_KEY_<BRANCH>   per-branch reuse (Q1 update-shared)
+#   XRAY_TEST_EXEC_REUSE_TAG      §17.150 PR-scoped reuse tag (e.g. "PR #123").
+#                                 When set, the script labels each created
+#                                 Test Execution with `tmv-e2e-<slug>-<tp>`
+#                                 and runs a GraphQL `getTestExecutions`
+#                                 lookup by that label so subsequent runs
+#                                 UPDATE the same issue rather than CREATE
+#                                 a new one.
 #
 # Flags:
 #   --cucumber-report <PATH>  Override the cucumber.json path.
 #   --branch <NAME>           Override the detected branch.
 #   --commit <SHA>            Override the detected commit SHA.
 #   --environment <NAME>      Override the test environment label.
+#   --reuse-tag <TAG>         Override $XRAY_TEST_EXEC_REUSE_TAG. See above.
 #   --live                    Actually POST. Pre-flight refuses if any
 #                             scenario still carries an @HE-???? placeholder
-#                             (the §17.149 pairing-bug follow-up will fix
-#                             that). Without this flag the script is a
-#                             dry-run and never touches the network.
+#                             (the §17.149 pairing-bug follow-up fixed
+#                             this in the import script). Without this
+#                             flag the script is a dry-run and never
+#                             touches the network.
 #
 # Exit 0 on success (dry-run or live), non-zero on any error.
 
@@ -55,6 +64,7 @@ BRANCH=""
 COMMIT_SHA=""
 ENVIRONMENT=""
 LIVE=0
+REUSE_TAG="${XRAY_TEST_EXEC_REUSE_TAG:-}"
 PROJECT_KEY="${XRAY_PROJECT_KEY:-HE}"
 BASE_URL="${XRAY_BASE_URL:-https://xray.cloud.getxray.app}"
 
@@ -64,10 +74,11 @@ while [[ $# -gt 0 ]]; do
         --branch)          BRANCH="$2";          shift 2 ;;
         --commit)          COMMIT_SHA="$2";      shift 2 ;;
         --environment)     ENVIRONMENT="$2";     shift 2 ;;
+        --reuse-tag)       REUSE_TAG="$2";       shift 2 ;;
         --project-key)     PROJECT_KEY="$2";     shift 2 ;;
         --base-url)        BASE_URL="$2";        shift 2 ;;
         --live)            LIVE=1;               shift   ;;
-        -h|--help)         sed -n '1,32p' "$0" | sed 's/^# //;s/^#//'; exit 0 ;;
+        -h|--help)         sed -n '1,40p' "$0" | sed 's/^# //;s/^#//'; exit 0 ;;
         *) echo "Unknown flag: $1" >&2; exit 2 ;;
     esac
 done
@@ -123,6 +134,7 @@ echo "[xray-export-execution] BaseUrl    : $BASE_URL"
 echo "[xray-export-execution] Branch     : $BRANCH"
 echo "[xray-export-execution] Commit     : $COMMIT_SHA"
 echo "[xray-export-execution] Environment: $ENVIRONMENT"
+echo "[xray-export-execution] ReuseTag   : ${REUSE_TAG:-<unset>}"
 echo "[xray-export-execution] Source     : $CUCUMBER_REPORT"
 echo "[xray-export-execution] Features   : $(jq 'length' "$CUCUMBER_REPORT")"
 if [[ "$LIVE" -eq 1 ]]; then
@@ -170,14 +182,51 @@ get_jwt() {
     echo "$JWT"
 }
 
+# --- §17.150 reuse-tag helpers -----------------------------------------------
+reuse_tag_label() {
+    local reuse_tag="$1"
+    local tp_key="$2"
+    [[ -z "$reuse_tag" ]] && return 0
+    local combined slug
+    combined="${reuse_tag}-${tp_key}"
+    slug="$(echo -n "$combined" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+    echo "tmv-e2e-$slug"
+}
+
+find_existing_test_execution() {
+    local jwt="$1"
+    local reuse_tag="$2"
+    local tp_key="$3"
+    [[ -z "$reuse_tag" || -z "$jwt" ]] && return 0
+    local label
+    label="$(reuse_tag_label "$reuse_tag" "$tp_key")"
+    [[ -z "$label" ]] && return 0
+    local jql query resp
+    jql="labels = \"$label\""
+    query=$(jq -nc --arg jql "$jql" \
+        '{ query: ("{ getTestExecutions(jql: \"" + $jql + "\", limit: 5) { results { jira(fields: [\"key\", \"summary\"]) } } }") }')
+    resp=$(curl -sS -X POST "$BASE_URL/api/v2/graphql" \
+        -H "Authorization: Bearer $jwt" \
+        -H "Content-Type: application/json" \
+        -d "$query" 2>/dev/null) || return 0
+    echo "$resp" | jq -r '.data.getTestExecutions.results[0]?.jira.key // empty' 2>/dev/null || true
+}
+
 build_info_json() {
     local tp_key="$1"
     local scenarios="$2"
     local passed="$3"
     local failed="$4"
+    local reuse_tag="$5"
+    local reuse_key="$6"
     local timestamp
     timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    local summary="E2E run -- $BRANCH@$COMMIT_SHA -- $timestamp -- $tp_key"
+    local summary
+    if [[ -n "$reuse_tag" ]]; then
+        summary="E2E run -- $reuse_tag -- $tp_key"
+    else
+        summary="E2E run -- $BRANCH@$COMMIT_SHA -- $timestamp -- $tp_key"
+    fi
     local description
     description=$'Automated XRay Test Execution import.\n\n'
     description+="Branch       : $BRANCH"$'\n'
@@ -185,16 +234,27 @@ build_info_json() {
     description+="Environment  : $ENVIRONMENT"$'\n'
     description+="Test Plan    : $tp_key"$'\n'
     description+="Scenarios    : $scenarios (passed: $passed, failed: $failed)"$'\n'
+    description+="Reuse Tag    : ${reuse_tag:-<none>}"$'\n'
     description+="Source       : src/test/e2e/test-results/cucumber.json"
 
-    local info
-    info="$(jq -n \
+    local label
+    label="$(reuse_tag_label "$reuse_tag" "$tp_key")"
+    # Precedence for testExecutionKey: explicit reuse-lookup result > PER_BRANCH_KEY.
+    local key_to_use=""
+    if [[ -n "$reuse_key" ]]; then
+        key_to_use="$reuse_key"
+    elif [[ -n "$PER_BRANCH_KEY" ]]; then
+        key_to_use="$PER_BRANCH_KEY"
+    fi
+
+    jq -n \
         --arg project "$PROJECT_KEY" \
         --arg summary "$summary" \
         --arg description "$description" \
         --arg tp "$tp_key" \
         --arg env "$ENVIRONMENT" \
-        --arg key "$PER_BRANCH_KEY" \
+        --arg key "$key_to_use" \
+        --arg label "$label" \
         '{
             fields: {
                 project:     { key: $project },
@@ -207,8 +267,8 @@ build_info_json() {
                 testEnvironments: [ $env ]
             }
         }
-        | if ($key | length) > 0 then . + { testExecutionKey: $key } else . end')"
-    echo "$info"
+        | if ($label | length) > 0 then .fields += { labels: [ $label ] } else . end
+        | if ($key   | length) > 0 then . + { testExecutionKey: $key } else . end'
 }
 
 GRAND_SCEN=0
@@ -264,14 +324,29 @@ for tp_key in "${TP_KEYS[@]}"; do
     GRAND_SKIP=$((GRAND_SKIP + skip_count))
 
     echo "=== Group: $tp_key ($feat_count feature(s), $scen_count scenarios) ==="
-    if [[ -n "$PER_BRANCH_KEY" ]]; then
-        echo "  testExecutionKey : $PER_BRANCH_KEY (UPDATE mode)"
+    reuse_key=""
+    if [[ "$LIVE" -eq 1 && -n "$REUSE_TAG" ]]; then
+        jwt="$(get_jwt)"
+        reuse_key="$(find_existing_test_execution "$jwt" "$REUSE_TAG" "$tp_key")"
+        reuse_label="$(reuse_tag_label "$REUSE_TAG" "$tp_key")"
+        if [[ -n "$reuse_key" ]]; then
+            echo "  reuse lookup     : found $reuse_key via label '$reuse_label' (UPDATE)"
+        else
+            echo "  reuse lookup     : no existing Test Execution for '$REUSE_TAG' + $tp_key (CREATE, label '$reuse_label' attached for next run)"
+        fi
+    fi
+    if [[ -n "$reuse_key" ]]; then
+        echo "  testExecutionKey : $reuse_key (UPDATE via reuse-tag)"
+    elif [[ -n "$PER_BRANCH_KEY" ]]; then
+        echo "  testExecutionKey : $PER_BRANCH_KEY (UPDATE via XRAY_EXECUTION_KEY_<BRANCH>)"
+    elif [[ -n "$REUSE_TAG" ]]; then
+        echo "  testExecutionKey : <unset> (would CREATE; labelled for reuse on next run)"
     else
         echo "  testExecutionKey : <unset> (would CREATE a new Test Execution issue)"
     fi
     echo "  scenarios        : passed=$pass_count, failed=$fail_count, skipped=$skip_count"
 
-    info_json="$(build_info_json "$tp_key" "$scen_count" "$pass_count" "$fail_count")"
+    info_json="$(build_info_json "$tp_key" "$scen_count" "$pass_count" "$fail_count" "$REUSE_TAG" "$reuse_key")"
 
     if [[ "$LIVE" -eq 0 ]]; then
         echo "  --- info JSON (would POST) ---"

@@ -171,6 +171,7 @@ Same `.env` precedence as `xray-import` (`%USERPROFILE%\.tree-map-viz\.env` → 
 | `XRAY_PROJECT_KEY` | no | `HE` | |
 | `XRAY_BASE_URL` | no | `https://xray.cloud.getxray.app` | |
 | `XRAY_EXECUTION_KEY_<BRANCH>` | no | — | Per-branch update-shared key (Q1). Set after the first `--live` creates an issue so subsequent runs update the same Jira issue instead of churning new ones. `<BRANCH>` is the branch name uppercased with non-alphanumeric runs collapsed to `_` (e.g. `feature/foo-bar` → `XRAY_EXECUTION_KEY_FEATURE_FOO_BAR`). |
+| `XRAY_TEST_EXEC_REUSE_TAG` | no | — | §17.150 PR-scoped reuse tag (e.g. `"PR #123"`). When set, the script (a) labels each created Test Execution with `tmv-e2e-<slug>-<tp_key>` and (b) runs a GraphQL `getTestExecutions` lookup by that label so subsequent runs **update the same Jira issue** rather than create a new one. Takes precedence over `XRAY_EXECUTION_KEY_<BRANCH>`. The PR-gate workflow (`.github/workflows/e2e-pr-gate.yml`) sets this automatically from `github.event.pull_request.number`. |
 
 ### Flags
 
@@ -180,13 +181,40 @@ Same `.env` precedence as `xray-import` (`%USERPROFILE%\.tree-map-viz\.env` → 
 | `-Branch <name>` | `--branch <name>` | Override branch detection. |
 | `-CommitSha <sha>` | `--commit <sha>` | Override the short SHA in the summary. |
 | `-Environment <name>` | `--environment <name>` | Override the XRay test-environment label. Default: `CI` when `$CI` set, else `local`. |
+| `-ReuseTag <tag>` | `--reuse-tag <tag>` | Override `$XRAY_TEST_EXEC_REUSE_TAG`. See the env-var row above. |
 | `-ProjectKey <key>` | `--project-key <key>` | Override the Jira project. |
 | `-BaseUrl <url>` | `--base-url <url>` | Override the XRay base URL. |
 | `-Live` | `--live` | Actually POST. Refuses if any scenario carries `@HE-????`. |
 
-### Deferred follow-ups (intentionally NOT in §17.148)
+### CI integration — PR-gate workflow (§17.150)
 
-- **§17.149** ✅ — **landed**. Summary-lookup pairing in `xray-import` now leaves every scenario with a real `@HE-XXXX` key, which unblocks the `xray-export-execution` `--live` gate.
-- **CI wiring** — `.github/workflows/xray-import.yml` does NOT yet invoke `xray-export-execution`. The PR-gate workflow (§17.150) is the planned home for the export step.
+`.github/workflows/e2e-pr-gate.yml` is the **required status check** that branch protection enforces on `master`. It triggers on every `pull_request` (`opened` / `synchronize` / `reopened`) and runs:
+
+1. `npm ci` + `playwright install --with-deps chromium`
+2. `npm run lint` + `npm run lint:rules`
+3. `npm test` (unit suite)
+4. `npm run test:e2e` ← **gating step**: failure marks the `pr-gate` check red and blocks the merge.
+5. Upload `src/test/e2e/test-results/` as a GHA artifact (traces, only-on-failure screenshots, and the `cucumber.json` with embedded base64 screenshots). Visible from the PR's *Checks* tab, 30-day retention.
+6. `bash bin/xray-export-execution.sh --live --reuse-tag "PR #<N>"` — runs even when e2e failed (failures are exactly what we want recorded in Jira). The `--reuse-tag "PR #<N>"` triggers the §17.150 GraphQL `getTestExecutions` lookup, so every push to the same PR **updates the same per-Test-Plan Test Execution issue** instead of creating a new one. With the Q2 `tp-by-feature` routing, each PR ends up with at most three Test Execution issues in Jira (`HE-2587`, `HE-2580`, `HE-2585`).
+
+Concurrency is `cancel-in-progress: true` per PR — a new push cancels the in-flight run. xray-export failures do **not** mark the gate red (only the e2e step does); secrets-missing fork PRs fall back to dry-run automatically.
+
+Required repo secrets (already provisioned for `xray-import.yml`): `XRAY_CLIENT_ID`, `XRAY_CLIENT_SECRET`.
+
+To enforce the gate, configure `master` branch protection so `pr-gate` is a required status check. Recipe (review the JSON before applying):
+
+```bash
+gh api -X PUT repos/<owner>/<repo>/branches/master/protection \
+  -F required_status_checks.strict=true \
+  -F 'required_status_checks.contexts[]=pr-gate' \
+  -F enforce_admins=false \
+  -F required_pull_request_reviews.required_approving_review_count=0 \
+  -F restrictions= --input -
+```
+
+### Deferred follow-ups (intentionally NOT in §17.148 / §17.150)
+
+- **§17.149** ✅ — **landed**. Summary-lookup pairing in `xray-import` now leaves every scenario with a real `@HE-XXXX` key, which unblocked the `xray-export-execution` `--live` gate.
+- **§17.150** ✅ — **landed**. PR-gate workflow + per-PR Test Execution reuse via GraphQL `getTestExecutions` label lookup.
 - **fixVersion linkage** — `info.fields.fixVersions` is left unset. Once a Jira version exists for the running semver, we'll auto-populate it from `package.json#version`.
-- **Test Execution attachments beyond the inline embedding** — Playwright trace.zip uploads (Q4 option B) are deliberately skipped. The inline failure screenshot is enough for now.
+- **Test Execution attachments beyond the inline embedding** — Playwright trace.zip uploads (Q4 option B) are deliberately skipped. The inline failure screenshot is enough for the Jira evidence; the trace.zip is still available as a GHA artifact for deep debugging.

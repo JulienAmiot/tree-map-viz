@@ -1,0 +1,141 @@
+# Tree Map Viz — PR gate for E2E + Test Execution upload (SPEC §17.150)
+#
+# Runs on every pull_request event targeting `master`. The job's outcome is
+# the **required status check** that branch protection enforces — when the
+# E2E step fails, the PR is blocked from merging.
+#
+# Pipeline (steps run in order; xray-export still fires even when e2e fails
+# so the failure is recorded in Jira with screenshots as evidence):
+#
+#   1. checkout (PR head SHA)
+#   2. setup Node 20 + npm ci + playwright chromium
+#   3. lint (tsc) + architectural rules
+#   4. unit tests
+#   5. e2e (**this is the gating step — failure blocks the PR**)
+#   6. upload Playwright `test-results/` (traces, videos, only-on-failure
+#      screenshots, and the cucumber.json with embedded base64 screenshots)
+#      as a GHA artifact whenever e2e ran (30-day retention; visible from
+#      the PR's Checks tab; operator pick: "yes-artifacts" per the §17.150
+#      AskQuestion answer). The HTML report is **not** uploaded — the
+#      playwright config (src/test/e2e/playwright.config.ts) only enables
+#      the `list` + cucumber-JSON reporters, so there is no
+#      `playwright-report/` directory to publish.
+#   7. xray-export-execution --live with `--reuse-tag "PR #<N>"` so the
+#      same Test Execution is updated on every push to the same PR
+#      (per-PR reuse via the §17.150 GraphQL `getTestExecutions` lookup).
+#      Per-Test-Plan grouping (Q2 tp-by-feature) means each PR has up to
+#      3 Test Execution issues in Jira (HE-2587 / HE-2580 / HE-2585).
+#
+# Required repo secrets (already provisioned for .github/workflows/xray-import.yml):
+#   XRAY_CLIENT_ID
+#   XRAY_CLIENT_SECRET
+# Both produced by Task A (HE-2586). See bin/README.md.
+#
+# Branch protection: configure `master` so the `pr-gate` job is a required
+# status check. The §17.150 commit documents the `gh api` recipe for this;
+# see the bin/README.md `## CI integration` section.
+
+name: e2e-pr-gate
+
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch: {}
+
+# Cancel an in-flight run when a newer commit lands on the same PR — saves
+# CI minutes without changing the gate semantics (the final run is always
+# the one whose status counts).
+concurrency:
+  group: e2e-pr-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  pr-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          # On pull_request events, default $GITHUB_REF is the merge ref —
+          # check out the actual PR head SHA so the e2e run + Jira evidence
+          # reflect what the operator wrote, not the synthetic merge result.
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers (chromium only)
+        run: npx playwright install --with-deps chromium
+
+      - name: Install jq (xray-export-execution.sh dependency)
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -y && sudo apt-get install -y jq
+          fi
+
+      - name: Lint (tsc) and architectural rules
+        run: |
+          npm run lint
+          npm run lint:rules
+
+      - name: Unit tests
+        run: npm test
+
+      - name: E2E (Playwright + playwright-bdd) — PR-gating step
+        id: e2e
+        run: npm run test:e2e
+
+      # Upload artifacts whenever e2e actually ran (the failure case is the
+      # interesting one to investigate; the success case is still useful for
+      # operators tracking flaky regressions). `test-results/` contains the
+      # cucumber.json (with embedded base64 failure screenshots), Playwright
+      # traces, and only-on-failure screenshots / videos.
+      - name: Upload Playwright test-results (traces, screenshots, cucumber.json)
+        if: always() && (steps.e2e.outcome == 'success' || steps.e2e.outcome == 'failure')
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results-pr-${{ github.event.pull_request.number || github.run_id }}
+          path: src/test/e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      # xray-export-execution runs even when e2e failed — failed scenarios
+      # are exactly what we want recorded as Jira Test Execution evidence
+      # (the embedded `embeddings` PNG attaches to the matching Test).
+      # The `--live` flag only fires if both XRay secrets are present,
+      # so forks that don't have access to repo secrets get a dry-run
+      # log without failing the PR gate.
+      - name: Upload Test Execution to XRay (live, PR-reused)
+        if: always() && (steps.e2e.outcome == 'success' || steps.e2e.outcome == 'failure')
+        env:
+          XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+          XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+          XRAY_PROJECT_KEY: HE
+          # Quoted because an unquoted '#' after whitespace is a YAML comment
+          # marker — without the quotes, GHA would set this to just "PR ".
+          XRAY_TEST_EXEC_REUSE_TAG: "PR #${{ github.event.pull_request.number || github.run_id }}"
+        run: |
+          set -eu
+          if [[ -z "${XRAY_CLIENT_ID:-}" || -z "${XRAY_CLIENT_SECRET:-}" ]]; then
+            echo "::warning ::XRay secrets unavailable (likely fork PR); running export in dry-run mode."
+            bash bin/xray-export-execution.sh --environment "CI"
+          else
+            bash bin/xray-export-execution.sh \
+              --live \
+              --environment "CI" \
+              --branch "${{ github.event.pull_request.head.ref || github.ref_name }}" \
+              --commit "${{ github.event.pull_request.head.sha || github.sha }}"
+          fi
