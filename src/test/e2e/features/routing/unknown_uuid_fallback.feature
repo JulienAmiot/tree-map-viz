@@ -17,7 +17,7 @@ Feature: Unknown UUID in the URL hash falls back to the board root (§17.35)
     And I seed the "textTree" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2737 @priority:high
   Scenario: External hash change to an unknown UUID falls back to the root
     # SPEC §11 — the kiosk treats an unparseable / missing /
     # unknown route as "focus the board root and replace the URL".
@@ -26,7 +26,7 @@ Feature: Unknown UUID in the URL hash falls back to the board root (§17.35)
     Then the focused id is "TXT-ROOT"
     And the URL hash includes "/n/TXT-ROOT"
 
-  @HE-???? @priority:high
+  @HE-2736 @priority:high
   Scenario: Reload on an unknown-UUID hash also falls back to the root
     # The bootup path's `startRoute && startRoute.boardId === ...`
     # branch falls through; the `else { router.replace(... root) }`
@@ -36,7 +36,7 @@ Feature: Unknown UUID in the URL hash falls back to the board root (§17.35)
     Then the focused id is "TXT-ROOT"
     And the URL hash includes "/n/TXT-ROOT"
 
-  @HE-???? @priority:high
+  @HE-2738 @priority:high
   Scenario: Hash with a non-current board id is ignored (route is for the test-board, not us)
     # SPEC §11: `router.onChange` short-circuits when
     # `state.boardId !== boards.getCurrentBoardId()`. The current

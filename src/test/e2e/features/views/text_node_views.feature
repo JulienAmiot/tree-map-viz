@@ -12,7 +12,7 @@ Feature: Text node views render Title + the latest text value (timestamp bottom-
     And I seed the "textTree" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2804 @priority:high
   Scenario: TextNode `asParent` renders Title + value (no description, no Σ)
     Then the focused title is "Quarterly review"
     And the focused value is "On track for Q2"
@@ -20,7 +20,7 @@ Feature: Text node views render Title + the latest text value (timestamp bottom-
     And the focused node has no computed badge
     And the focused tile has no description block
 
-  @HE-???? @priority:high
+  @HE-2802 @priority:high
   Scenario: TextNode `asChild` renders Title + value (no description, no Σ)
     Then there are 2 child tiles
     And the child "TXT-A" has title "Region"
@@ -28,7 +28,7 @@ Feature: Text node views render Title + the latest text value (timestamp bottom-
     And the child "TXT-A" has a date
     And the child "TXT-A" has no computed badge
 
-  @HE-???? @priority:high
+  @HE-2803 @priority:high
   Scenario: TextNode with empty history renders an empty value area and no timestamp
     When I focus on node "TXT-B"
     Then the focused title is "Bare"

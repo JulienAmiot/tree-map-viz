@@ -94,6 +94,13 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      # Required before the e2e step: Playwright's webServer config in
+      # src/test/e2e/playwright.config.ts launches `npm run preview` which
+      # serves `./dist/`. Without a build, `vite preview` either fails or
+      # serves nothing, and Playwright times out waiting for port 4173.
+      - name: Build (dist/ feeds vite preview for e2e)
+        run: npm run build
+
       - name: E2E (Playwright + playwright-bdd) — PR-gating step
         id: e2e
         run: npm run test:e2e

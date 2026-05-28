@@ -14,14 +14,14 @@ Feature: Import / Export the current board's tree as JSON (§17.33)
     And I seed the "orgTree" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2696 @priority:high
   Scenario: Export downloads a JSON file matching the seeded tree
     When I tap the burger trigger
     And I trigger a download via the burger menu item with action "export"
     Then the downloaded JSON has root id "UUID1"
     And the downloaded JSON has root title "UUID1 Title"
 
-  @HE-???? @priority:high
+  @HE-2695 @priority:high
   Scenario: Import replaces the current board's tree with the picked file
     # Empty-storage seed = the showcase tree (root title varies). Re-seed
     # a known fixture, then import the textTree fixture and assert the
@@ -31,7 +31,7 @@ Feature: Import / Export the current board's tree as JSON (§17.33)
     Then the focused id is "TXT-ROOT"
     And the URL hash includes "/n/TXT-ROOT"
 
-  @HE-???? @priority:high
+  @HE-2697 @priority:high
   Scenario: Import of malformed JSON surfaces a window.alert and leaves the tree put
     Given I capture window.alert messages
     When I tap the burger trigger

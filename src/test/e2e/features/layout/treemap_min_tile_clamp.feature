@@ -14,12 +14,12 @@ Feature: Children grid clamps small tiles to the 1/12 floor
     And I seed the "skewedWeights" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2650 @priority:high
   Scenario: Smallest tile is clamped up to the one-twelfth floor
     Then there are 4 child tiles
     And there is exactly one plus tile
     And every tile area is at least one twelfth of the inner children grid area
 
-  @HE-???? @priority:medium
+  @HE-2649 @priority:medium
   Scenario: Tiles together cover the inner children grid area
     Then the sum of tile areas covers the inner children grid area within 2%

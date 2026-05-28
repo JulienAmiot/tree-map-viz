@@ -19,7 +19,7 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
   These invariants are layout-only, so we assert via real-browser
   computed styles (jsdom is too lossy for shadow-scoped CSS).
 
-  @HE-???? @priority:high
+  @HE-2815 @priority:high
   Scenario: Tile titles share a viewport-relative height across all tiles
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge
@@ -27,7 +27,7 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     Then every tile title has the same font-size
     And every tile title's font-size is approximately 2vh
 
-  @HE-???? @priority:high
+  @HE-2816 @priority:high
   Scenario: Numeric value renders the unit (now block-level under the value, §17.116) at roughly 1/3 of the value's font-size
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge
@@ -35,7 +35,7 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And I focus on node "ChildB"
     Then the focused value's unit font-size is roughly one third of the value font-size
 
-  @HE-???? @priority:high
+  @HE-2814 @priority:high
   Scenario: Current-value timestamp is rendered in the bottom-right corner of the tile (§17.18)
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge
@@ -43,7 +43,7 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And I focus on node "ChildB"
     Then the focused value-date is in the bottom-right corner of the tile
 
-  @HE-???? @priority:high
+  @HE-2813 @priority:high
   Scenario: Current-value timestamp colour is age-gradient driven (§17.18 / §17.42 — bright off-white → dark grey)
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge
@@ -51,14 +51,14 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And I focus on node "ChildB"
     Then the focused value-date colour is on the warm-to-cold age gradient
 
-  @HE-???? @priority:high
+  @HE-2812 @priority:high
   Scenario: The figure is substantially bigger than the title on every child tile (§17.17)
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge
     And I reload the kiosk
     Then on every child tile the value font-size is at least 3 times the title font-size
 
-  @HE-???? @priority:high
+  @HE-2811 @priority:high
   Scenario: Child tiles are visually distinguishable from each other (§17.17)
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge
@@ -66,7 +66,7 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     Then every child tile has a visible border
     And every child tile has a non-transparent background
 
-  @HE-???? @priority:high
+  @HE-2810 @priority:high
   Scenario: Parent panel and child tiles share the same panel surface (§17.36)
     # SPEC §17.36 — the parent-identity-strip and every child tile read
     # from the same screen-level CSS custom properties:
@@ -89,7 +89,7 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And the parent panel border-radius matches a child tile border-radius
     And the parent panel background tint differs from a child tile background tint
 
-  @HE-???? @priority:high
+  @HE-2809 @priority:high
   Scenario: Parent panel timestamp sits at the same offset from its outer edge as a child tile timestamp (§17.30 / §17.45)
     # SPEC §17.30 — the date on the focused panel must visually hug
     # the panel's bottom-right corner at the same distance a child
@@ -124,7 +124,7 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And I reload the kiosk
     Then the focused value-date offset matches a child tile value-date offset within 4 px
 
-  @HE-???? @priority:high
+  @HE-2808 @priority:high
   Scenario: Parent panel title sits at the same offset from its outer edge as a child tile title (§17.37)
     # SPEC §17.37 — the title on the focused panel must align with
     # the title on a child tile so the drill-into FLIP morph
@@ -147,7 +147,7 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And I reload the kiosk
     Then the focused title offset matches a child tile title offset within 4 px
 
-  @HE-???? @priority:high
+  @HE-2807 @priority:high
   Scenario: Parent BSC value is horizontally centered to its metric pane (§17.39 / §17.45)
     # SPEC §17.39 — when the focused panel renders a BSC node, the
     # centered `.value` span must sit at the metric area's
@@ -186,7 +186,7 @@ Feature: Tile layout — title 3vh, value fills, unit 1/3, timestamp bottom-righ
     And I focus on node "ChildB"
     Then the focused BSC value is horizontally centered to its metric pane within 2 px
 
-  @HE-???? @priority:high
+  @HE-2806 @priority:high
   Scenario: Long values shrink to fit the tile width (§17.116-followup-3)
     # SPEC §17.116-followup-3 — the `.value` font-size rule's per-
     # character width cap (160cqi / max(2, --char-count)) must keep

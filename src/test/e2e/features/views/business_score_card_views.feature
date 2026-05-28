@@ -18,7 +18,7 @@ Feature: BusinessScoreCard views render the (role × computed) matrix
     And I seed the "mixedComputed" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2779 @priority:high
   Scenario: asParent + computed=true renders the weighted mean with a Σ badge and a children-derived date (§17.18)
     Then the focused title is "Root"
     # §17.99c landed the proper v5 polymorphic recursion: ChildA is now
@@ -36,19 +36,19 @@ Feature: BusinessScoreCard views render the (role × computed) matrix
     And the focused node has a computed badge
     And the focused value has a date
 
-  @HE-???? @priority:high
+  @HE-2778 @priority:high
   Scenario: asChild + computed=true renders the weighted mean with a Σ badge
     Then the child "ChildA" has title "ChildA"
     And the child "ChildA" has value "80 %"
     And the child "ChildA" has a computed badge
 
-  @HE-???? @priority:high
+  @HE-2777 @priority:high
   Scenario: asChild + computed=false renders own latest value with date and no Σ
     Then the child "ChildB" has value "60 %"
     And the child "ChildB" has a date
     And the child "ChildB" has no computed badge
 
-  @HE-???? @priority:high
+  @HE-2776 @priority:high
   Scenario: asParent + computed=false renders own latest value with date and no Σ
     When I focus on node "ChildB"
     Then the focused title is "ChildB"
@@ -56,7 +56,7 @@ Feature: BusinessScoreCard views render the (role × computed) matrix
     And the focused value has a date
     And the focused node has no computed badge
 
-  @HE-???? @priority:high
+  @HE-2775 @priority:high
   Scenario: asParent renders the description below the title (SPEC §17.30)
     # SPEC §17.30 — the focused panel for a BSC shows the metric's
     # definition (the `description` field) under the title. Read-only
@@ -64,7 +64,7 @@ Feature: BusinessScoreCard views render the (role × computed) matrix
     When I focus on node "ChildB"
     Then the focused description is "Recorded child"
 
-  @HE-???? @priority:high
+  @HE-2774 @priority:high
   Scenario: asChild does NOT render the description (SPEC §17.30 — parent-role only)
     # SPEC §17.30 — descriptions are intentionally rendered ONLY on
     # the focused panel. On a child tile a multi-line description

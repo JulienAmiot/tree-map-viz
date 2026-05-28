@@ -12,7 +12,7 @@ Feature: Children grid renders N+1 tiles unless at the 12-children cap
     And I seed the "capacityTree" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2652 @priority:high
   Scenario Outline: Focused on a parent with <n> child(ren) renders <n> child tiles + <plus> plus tile(s)
     When I focus on node "<focus>"
     Then there are <n> child tiles

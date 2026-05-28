@@ -1,4 +1,4 @@
-@HE-???? @component:views @phase:10
+@HE-2570 @component:views @phase:10
 Feature: BSC objective row, gradient value colour, off-track warning (§17.40 + §17.44)
 
   SPEC §17.40 enriches the BusinessScoreCard tile rendering so the
@@ -45,7 +45,7 @@ Feature: BSC objective row, gradient value colour, off-track warning (§17.40 + 
                       vs ~33 expected — RED gradient, warning glyph
                       visible).
 
-  @HE-???? @priority:high
+  @HE-2769 @priority:high
   Scenario: Each child BSC tile shows a target row with target value, unit, and target date
     When I open the kiosk in test mode with empty storage
     And I seed the "objectiveProgress" fixture via the test bridge
@@ -53,7 +53,7 @@ Feature: BSC objective row, gradient value colour, off-track warning (§17.40 + 
     Then the child tile "OnTrack" shows a target row with text containing "100 %"
     And the child tile "OffTrack" shows a target row with text containing "100 %"
 
-  @HE-???? @priority:high
+  @HE-2773 @priority:high
   Scenario: Each child BSC value carries a gradient colour painted via --bsc-value-color
     When I open the kiosk in test mode with empty storage
     And I seed the "objectiveProgress" fixture via the test bridge
@@ -61,7 +61,7 @@ Feature: BSC objective row, gradient value colour, off-track warning (§17.40 + 
     Then the child tile "OnTrack" value carries a gradient colour
     And the child tile "OffTrack" value carries a gradient colour
 
-  @HE-???? @priority:high
+  @HE-2771 @priority:high
   Scenario: Off-track BSC shows a warning glyph in the target row tinted by deviation magnitude (§17.44), on-track BSC does not
     When I open the kiosk in test mode with empty storage
     And I seed the "objectiveProgress" fixture via the test bridge
@@ -69,7 +69,7 @@ Feature: BSC objective row, gradient value colour, off-track warning (§17.40 + 
     Then the child tile "OffTrack" shows the off-track warning glyph
     And the child tile "OnTrack" does not show the off-track warning glyph
 
-  @HE-???? @priority:high
+  @HE-2772 @priority:high
   Scenario: Focused BSC parent strip also renders the target row
     When I open the kiosk in test mode with empty storage
     And I seed the "objectiveProgress" fixture via the test bridge
@@ -78,7 +78,7 @@ Feature: BSC objective row, gradient value colour, off-track warning (§17.40 + 
     Then the focused parent strip shows a target row with text containing "100 %"
     And the focused parent strip shows the off-track warning glyph
 
-  @HE-???? @priority:high
+  @HE-2770 @priority:high
   Scenario: Each recordedValue BSC tile shows a trend arrow whose data-direction matches the regression bucket (§17.41)
     # SPEC §17.41 — every recordedValue BSC with at least 2 distinct-
     # timestamp historized entries carries a small trend arrow at the

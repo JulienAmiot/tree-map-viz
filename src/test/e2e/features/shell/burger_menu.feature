@@ -15,11 +15,11 @@ Feature: Burger menu offers Import / Export / Boards / Settings entries
   Background:
     When I open the kiosk in test mode with empty storage
 
-  @HE-???? @priority:high
+  @HE-2752 @priority:high
   Scenario: At rest the burger menu is closed
     Then the burger menu is closed
 
-  @HE-???? @priority:high
+  @HE-2823 @priority:high
   Scenario: Tapping the burger trigger reveals exactly 5 items in order (\u00a717.31, \u00a717.84)
     # SPEC §17.31 — Settings… joins Import / Export / Boards as the
     # fourth menu item.
@@ -37,14 +37,14 @@ Feature: Burger menu offers Import / Export / Boards / Settings entries
     And the burger menu has an item with action "settings"
     And the burger menu has an item with action "about"
 
-  @HE-???? @priority:high
+  @HE-2751 @priority:high
   Scenario: Tapping the top bar but outside the burger closes only the menu
     When I tap the burger trigger
     And I tap the board name
     Then the burger menu is closed
     And the top bar is visible
 
-  @HE-???? @priority:high
+  @HE-2753 @priority:high
   Scenario: Tapping the burger trigger a second time toggles the menu closed
     When I tap the burger trigger
     And I tap the burger trigger

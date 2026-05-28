@@ -19,7 +19,7 @@ Feature: Every focus change reflects in the URL hash (§17.35)
     And I reload the kiosk
     And I dismiss animations via the test bridge
 
-  @HE-???? @priority:high
+  @HE-2734 @priority:high
   Scenario: Drilling into a child tile pushes the new focus on the URL
     # Drill is a `pushState` (history accumulates).
     Then the URL hash includes "/n/TXT-ROOT"
@@ -27,7 +27,7 @@ Feature: Every focus change reflects in the URL hash (§17.35)
     Then the focused id is "TXT-A"
     And the URL hash includes "/n/TXT-A"
 
-  @HE-???? @priority:high
+  @HE-2732 @priority:high
   Scenario: Browser Back after a drill restores the previous focus
     # SPEC §9: drill uses pushState, so the browser back stack
     # holds the pre-drill focus. router.onChange picks the change
@@ -38,7 +38,7 @@ Feature: Every focus change reflects in the URL hash (§17.35)
     Then the focused id is "TXT-ROOT"
     And the URL hash includes "/n/TXT-ROOT"
 
-  @HE-???? @priority:high
+  @HE-2731 @priority:high
   Scenario: Tapping a breadcrumb ancestor segment updates the URL
     # SPEC §17.43 — the breadcrumb lives in the permanent top bar
     # and is always visible / tappable.
@@ -48,7 +48,7 @@ Feature: Every focus change reflects in the URL hash (§17.35)
     Then the focused id is "TXT-ROOT"
     And the URL hash includes "/n/TXT-ROOT"
 
-  @HE-???? @priority:high
+  @HE-2733 @priority:high
   Scenario: Tapping the close-to-parent X updates the URL
     When I tap the child tile for "TXT-A"
     Then the focused id is "TXT-A"

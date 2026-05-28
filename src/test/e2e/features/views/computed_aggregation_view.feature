@@ -7,7 +7,7 @@ Feature: BusinessScoreCard value aggregation modes
   `<n> children` plain text — no `Unit`, no `Σ`) and `n = 0` (empty value
   area — see `valueTemplate.ts`).
 
-  @HE-???? @priority:high
+  @HE-2792 @priority:high
   Scenario: computed=true with eligible children renders weighted mean with Σ and a children-derived date (§17.18 / §17.116)
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge
@@ -20,7 +20,7 @@ Feature: BusinessScoreCard value aggregation modes
     And the focused node has a computed badge
     And the focused value has a date
 
-  @HE-???? @priority:high
+  @HE-2791 @priority:high
   Scenario: computed=true with zero eligible children renders the §17.116 warning-fill (cannot-compute → full-tile ⚠)
     # SPEC §17.116 — a Computed*BusinessScoreNode whose strategy
     # cannot produce a numeric value (every eligible child surfaced
@@ -37,7 +37,7 @@ Feature: BusinessScoreCard value aggregation modes
     And the focused node has no computed badge
     And the focused value has no date
 
-  @HE-???? @priority:high
+  @HE-2790 @priority:high
   Scenario: computed=true with zero children renders the §17.116 warning-fill and only a "+" tile
     # SPEC §17.116 — a CBSN with literally zero children also
     # surfaces the warning-fill (parity with the zero-eligible
@@ -56,7 +56,7 @@ Feature: BusinessScoreCard value aggregation modes
     And there are 0 child tiles
     And there is exactly one plus tile
 
-  @HE-???? @priority:high
+  @HE-2789 @priority:high
   Scenario: computed=false renders own latest value with date and no Σ
     When I open the kiosk in test mode with empty storage
     And I seed the "mixedComputed" fixture via the test bridge

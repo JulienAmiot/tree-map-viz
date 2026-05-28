@@ -17,7 +17,7 @@ Feature: Drilling into a child tile changes the focus
     And I reload the kiosk
     And I dismiss animations via the test bridge
 
-  @HE-???? @priority:high
+  @HE-2794 @priority:high
   Scenario: Tapping a child tile drills into it (focus + URL update)
     Then the focused id is "TXT-ROOT"
     And there are 2 child tiles
@@ -25,7 +25,7 @@ Feature: Drilling into a child tile changes the focus
     Then the focused id is "TXT-A"
     And the URL hash includes "/n/TXT-A"
 
-  @HE-???? @priority:medium
+  @HE-2793 @priority:medium
   Scenario: Drilling deeper preserves the URL contract (each drill pushes a new state)
     # The router uses pushState (per §17.11) so subsequent drills stack rather
     # than replace; the previous focus is reachable via browser back.

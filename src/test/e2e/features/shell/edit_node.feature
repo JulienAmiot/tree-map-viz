@@ -29,13 +29,13 @@ Feature: Editing the focused node from the top panel
     And I seed the "textTree" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2764 @priority:high
   Scenario: Edit pencil is visible on the focused panel and targets the focused id
     Then the focused id is "TXT-ROOT"
     And the edit-node pencil is visible
     And the edit-node pencil targets node "TXT-ROOT"
 
-  @HE-???? @priority:high
+  @HE-2766 @priority:high
   Scenario: Tapping the pencil opens the edit modal pre-filled with the focused node's weight (SPEC §17.50 — no title field)
     # SPEC §17.50 -- the modal renders no `field-title`; the weight
     # input is the always-present field for both TextNode and BSC.
@@ -47,7 +47,7 @@ Feature: Editing the focused node from the top panel
     And the edit-node modal does not render a title field
     And the edit-node modal weight field shows "1"
 
-  @HE-???? @priority:high
+  @HE-2762 @priority:high
   Scenario: Confirming the edit modal updates the focused weight (SPEC §17.50 — title is inline-only)
     # SPEC §17.50 -- weight is one of the modal-only fields. Renaming
     # is exercised by the inline-edit scenario below; the modal no
@@ -58,7 +58,7 @@ Feature: Editing the focused node from the top panel
     Then the edit-node modal is closed
     And the focused title is "Quarterly review"
 
-  @HE-???? @priority:high
+  @HE-2767 @priority:high
   Scenario: Cancelling the edit modal does not change the focused node
     When I tap the edit-node pencil
     And I set the edit-node modal field "field-weight" to "7"
@@ -66,7 +66,7 @@ Feature: Editing the focused node from the top panel
     Then the edit-node modal is closed
     And the focused title is "Quarterly review"
 
-  @HE-???? @priority:high
+  @HE-2761 @priority:high
   Scenario: The top-right close-X dismisses the edit modal without applying changes (SPEC §17.29)
     # SPEC §17.29 — every modal in the app carries a close-X glyph
     # in its top-right corner. The edit modal's close-X is the same
@@ -78,13 +78,13 @@ Feature: Editing the focused node from the top panel
     Then the edit-node modal is closed
     And the focused title is "Quarterly review"
 
-  @HE-???? @priority:high
+  @HE-2763 @priority:high
   Scenario: Inline title edit on the focused panel renames the node
     When I tap the focused title
     And I type "Inline-renamed" in the focused title editor and press Enter
     Then the focused title is "Inline-renamed"
 
-  @HE-???? @priority:high
+  @HE-2765 @priority:high
   Scenario: Inline value edit on a TextNode appends a new history entry
     When I tap the focused value
     And I type "Fresh status" in the focused value editor and commit
