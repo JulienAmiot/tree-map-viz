@@ -46,12 +46,16 @@ Feature: BSC objective row, gradient value colour, off-track warning (§17.40 + 
                       visible).
 
   @HE-2769 @priority:high
-  Scenario: Each child BSC tile shows a target row with target value, unit, and target date
+  Scenario: Each child BSC tile shows a target row with target value and target date
+    # SPEC §17.141 dropped the unit from the target cell — the unit
+    # now lives on the title-prefix chip (§17.125), and the target
+    # cell renders ONLY the bare numeric value. The assertion below
+    # is on "100" rather than "100 %" accordingly.
     When I open the kiosk in test mode with empty storage
     And I seed the "objectiveProgress" fixture via the test bridge
     And I reload the kiosk
-    Then the child tile "OnTrack" shows a target row with text containing "100 %"
-    And the child tile "OffTrack" shows a target row with text containing "100 %"
+    Then the child tile "OnTrack" shows a target row with text containing "100"
+    And the child tile "OffTrack" shows a target row with text containing "100"
 
   @HE-2773 @priority:high
   Scenario: Each child BSC value carries a gradient colour painted via --bsc-value-color
@@ -75,7 +79,7 @@ Feature: BSC objective row, gradient value colour, off-track warning (§17.40 + 
     And I seed the "objectiveProgress" fixture via the test bridge
     And I reload the kiosk
     And I focus on node "OffTrack"
-    Then the focused parent strip shows a target row with text containing "100 %"
+    Then the focused parent strip shows a target row with text containing "100"
     And the focused parent strip shows the off-track warning glyph
 
   @HE-2770 @priority:high
