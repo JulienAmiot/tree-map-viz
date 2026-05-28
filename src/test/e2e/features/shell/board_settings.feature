@@ -19,16 +19,19 @@ Feature: Board settings modal — name + delete (§17.31, simplified by §17.42)
     And I tap the burger trigger
     And I tap the burger menu item with action "settings"
 
+  @HE-2829 @priority:high
   Scenario: Tapping Settings… opens the modal pre-filled with the current board's name
     Then the board-settings modal is open
     And the board-settings modal name field shows the current board's name
 
+  @HE-2827 @priority:high
   Scenario: Confirming the form persists the new name and re-paints the top-bar label
     When I set the board-settings modal field "field-name" to "Renamed via settings"
     And I confirm the board-settings modal
     Then the board-settings modal is closed
     And the top-bar board name is "Renamed via settings"
 
+  @HE-2825 @priority:high
   Scenario: The focused-panel title is bright off-white regardless of board (§17.42)
     # §17.42 — the focused-panel title is a flat off-white
     # `rgb(245, 245, 245)` for every board; the per-board fresh-date
@@ -40,17 +43,20 @@ Feature: Board settings modal — name + delete (§17.31, simplified by §17.42)
     When I cancel the board-settings modal
     Then the focused-panel title colour is "rgb(245, 245, 245)"
 
+  @HE-2830 @priority:high
   Scenario: Cancelling the modal does not change the board name
     When I set the board-settings modal field "field-name" to "Should be discarded"
     And I cancel the board-settings modal
     Then the board-settings modal is closed
     And the top-bar board name is unchanged from the seed default
 
+  @HE-2826 @priority:high
   Scenario: The Delete button is disabled when only one board exists
     # SPEC §17.31 — the empty-storage seed plants a single showcase
     # board; deleting it would violate the `getCurrentBoard` invariant.
     Then the board-settings delete button is disabled
 
+  @HE-2828 @priority:high
   Scenario: Inline delete confirm requires a second tap (single tap arms only)
     # The empty-storage seed plants only one board, so the delete
     # button is disabled — but we can still verify the
