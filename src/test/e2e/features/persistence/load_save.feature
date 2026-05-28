@@ -21,7 +21,7 @@ Feature: Mutations survive a kiosk reload (§17.35)
     And I seed the "textTree" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2701 @priority:high
   Scenario: Inline title edit on the focused node survives reload
     # SPEC §17.28 — inline title edit goes through
     # `EditNodeService.editFields(...)` → `persistCurrent` →
@@ -34,7 +34,7 @@ Feature: Mutations survive a kiosk reload (§17.35)
     When I reload the kiosk
     Then the focused title is "Annual review"
 
-  @HE-???? @priority:high
+  @HE-2699 @priority:high
   Scenario: Drilling state (URL focus) survives reload
     # SPEC §9: the URL hash is the source of truth for focus.
     # Reload preserves the hash; the bootup path re-seats the
@@ -46,7 +46,7 @@ Feature: Mutations survive a kiosk reload (§17.35)
     Then the focused id is "TXT-A"
     And the focused title is "Region"
 
-  @HE-???? @priority:high
+  @HE-2700 @priority:high
   Scenario: Adding a child survives reload
     # SPEC §7 — `AddChildService` mutates the in-memory tree and
     # persists. Reload must rehydrate the new node.

@@ -414,7 +414,13 @@ $failedFiles   = @()
 
 foreach ($f in $features) {
     Write-Host "[$($f.Name)]"
-    $content = Get-Content -LiteralPath $f.FullName -Raw
+    # Explicit UTF-8 read: `Get-Content -Raw` on Windows PowerShell 5.1
+    # defaults to the system ANSI codepage (Windows-1252 in most en/fr
+    # installs), which corrupts em-dashes, `§`, and other multi-byte
+    # characters on the write-back roundtrip below. Read with the same
+    # encoding we write with (UTF-8 no-BOM) to keep `.feature` source bytes
+    # byte-identical except for the placeholder substitutions.
+    $content = [System.IO.File]::ReadAllText($f.FullName, [System.Text.UTF8Encoding]::new($false))
 
     # Step 1: auto-default any feature-level @HE-???? to the cover Epic key
     # (SPEC §17.149 bug-fix 2). XRay treats feature-level tags as
@@ -504,7 +510,10 @@ foreach ($f in $features) {
     } elseif ($newKeys.Count -gt 0) {
         # Step 2: pair scenarios to new keys by summary (SPEC §17.149 bug-fix 1).
         $summaryByKey = Get-XrayTestSummaries -keys $newKeys -jwt $jwt
-        $matched = ($summaryByKey.Keys | Where-Object { $newKeys -contains $_ }).Count
+        # @(...) forces a single-match pipeline result back to an array;
+        # without it, strict mode throws PropertyNotFoundStrict on .Count
+        # when only one of the returned keys is matched (1-scenario files).
+        $matched = @($summaryByKey.Keys | Where-Object { $newKeys -contains $_ }).Count
         if ($summaryByKey.Count -gt 0) {
             Write-Host "  graphql summaries : $matched/$($newKeys.Count) Tests resolved via getTests"
         }

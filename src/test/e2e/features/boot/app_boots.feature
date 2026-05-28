@@ -5,7 +5,7 @@ Feature: App boots and renders the focused tree
   Vite preview, LocalStorage seeding, hash router, navigation service, and
   the `<tree-map-screen>` Lit element — plus the test bridge, end-to-end.
 
-  @HE-???? @priority:high
+  @HE-2644 @priority:high
   Scenario: Default seed renders the showcase board's root title
     # SPEC §17.122 — a fresh kiosk lands on the Data Platform Obeya
     # showcase tree (root + six panels: reliability / ingestion /
@@ -15,7 +15,7 @@ Feature: App boots and renders the focused tree
     When I open the kiosk in test mode with empty storage
     Then the focused title is "Data Platform Obeya"
 
-  @HE-???? @priority:medium
+  @HE-2643 @priority:medium
   Scenario: Test bridge seeds a tree and reload renders its root
     When I open the kiosk in test mode with empty storage
     And I seed the org tree via the test bridge

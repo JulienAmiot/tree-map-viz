@@ -14,7 +14,7 @@ Feature: TextNode values render Markdown (SPEC §17.27)
     And I seed the "markdownTextTree" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2800 @priority:high
   Scenario: Markdown source renders the matching semantic elements
     Then the focused title is "Markdown demo"
     And the focused value contains a "h4" element
@@ -24,6 +24,6 @@ Feature: TextNode values render Markdown (SPEC §17.27)
     And the focused value contains 2 "li" elements
     And the focused value contains a "code" element
 
-  @HE-???? @priority:high
+  @HE-2799 @priority:high
   Scenario: The markdown body font-size adapts to the tile (between 8 and 64 px)
     Then the focused value's body font-size is between 8 and 64 pixels

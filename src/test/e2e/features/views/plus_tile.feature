@@ -13,7 +13,7 @@ Feature: Plus tile is the add-child affordance, never a node
     And I reload the kiosk
     And I focus on node "EmptyLeaf"
 
-  @HE-???? @priority:high
+  @HE-2796 @priority:high
   Scenario: Plus tile renders alone, with a dashed border and a "+" glyph
     Then there are 0 child tiles
     And there is exactly one plus tile
@@ -23,7 +23,7 @@ Feature: Plus tile is the add-child affordance, never a node
     And the plus tile has no value
     And the plus tile has no value-date
 
-  @HE-???? @priority:high
+  @HE-2797 @priority:high
   Scenario: Clicking the plus tile never drills (focus is unchanged)
     When I click the plus tile
     Then the focused id is "EmptyLeaf"

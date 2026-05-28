@@ -22,13 +22,13 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And I seed the "emptyRoot" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2668 @priority:high
   Scenario: At rest the modal is closed
     Then the add-child modal is closed
     And there are 0 child tiles
     And there is exactly one plus tile
 
-  @HE-???? @priority:high
+  @HE-2680 @priority:high
   Scenario: Clicking the "+" tile opens the modal with a left-rail kind list (§17.25)
     When I click the plus tile
     Then the add-child modal is open
@@ -45,7 +45,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal offers a "Picture" kind
     And the modal offers a "URL" kind
 
-  @HE-???? @priority:high
+  @HE-2679 @priority:high
   Scenario: Before a kind is chosen, no type-specific fields render in the right pane (§17.25)
     When I click the plus tile
     Then the add-child modal is open
@@ -53,12 +53,12 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has no current-value field
     And the modal has no unit field
 
-  @HE-???? @priority:high
+  @HE-2665 @priority:high
   Scenario: The modal backdrop is semi-transparent (the board is still behind)
     When I click the plus tile
     Then the modal backdrop is semi-transparent
 
-  @HE-???? @priority:high
+  @HE-2677 @priority:high
   Scenario: Picking Text reveals title + weight + current-value (no description, no unit, no objective — §17.15)
     When I click the plus tile
     And I pick the kind "TextNode"
@@ -72,7 +72,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has no unit field
     And the modal has no objective fields
 
-  @HE-???? @priority:high
+  @HE-2678 @priority:high
   Scenario: Picking BusinessScoreCard reveals description + unit + current-value + objective + toggles
     When I click the plus tile
     And I pick the kind "BusinessScoreCardNode"
@@ -85,7 +85,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has the computed toggle
     And the modal has the eligible-for-parent-computation toggle
 
-  @HE-???? @priority:high
+  @HE-2676 @priority:high
   Scenario: Switching the kind from Text to BusinessScoreCard swaps in the BSC form (§17.25)
     When I click the plus tile
     And I pick the kind "TextNode"
@@ -95,7 +95,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has a unit field
     And the modal has a description field
 
-  @HE-???? @priority:high
+  @HE-2659 @priority:high
   Scenario: Confirming a Text child appends it to the focused parent and closes the modal
     When I click the plus tile
     And I pick the kind "TextNode"
@@ -106,7 +106,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And there are 1 child tiles
     And the focused id is unchanged after the modal interaction
 
-  @HE-???? @priority:high
+  @HE-2661 @priority:high
   Scenario: Cancel closes the modal without adding a child
     When I click the plus tile
     And I pick the kind "TextNode"
@@ -115,7 +115,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     Then the add-child modal is closed
     And there are 0 child tiles
 
-  @HE-???? @priority:high
+  @HE-2675 @priority:high
   Scenario: The top-right close-X dismisses the modal without adding a child (SPEC §17.29)
     # SPEC §17.29 — every modal in the app carries a close-X glyph
     # in its top-right corner. Tapping it is a fourth close path
@@ -127,7 +127,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     Then the add-child modal is closed
     And there are 0 child tiles
 
-  @HE-???? @priority:high
+  @HE-2674 @priority:high
   Scenario: Modal panel is content-sized and capped at viewport - 4rem (SPEC §17.29)
     # SPEC §17.29 — the modal panel never exceeds the viewport (modulo
     # a 4rem margin) and otherwise shrinks to its content. Pre-§17.29
@@ -136,7 +136,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     When I click the plus tile
     Then the modal panel fits inside the viewport with at least 2rem of margin
 
-  @HE-???? @priority:high
+  @HE-2658 @priority:high
   Scenario: Activating the "+" tile is not a navigation (focused id is unchanged)
     When I click the plus tile
     And I pick the kind "TextNode"
@@ -145,7 +145,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And I confirm the add-child modal
     Then the focused id is unchanged after the modal interaction
 
-  @HE-???? @priority:high
+  @HE-2673 @priority:high
   Scenario: Weight is a slider + numeric input pair, bidirectionally synced (§17.26)
     When I click the plus tile
     And I pick the kind "TextNode"
@@ -153,7 +153,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     When I set the weight slider to "3.5"
     Then the weight number input shows the value "3.5"
 
-  @HE-???? @priority:high
+  @HE-2672 @priority:high
   Scenario: Picking Strict Range reveals title + description + weight + range + current-value + as-of (no unit, no objective — §17.77 / §17.94)
     # SPEC §17.77 / §17.94 — `StrictRangeNode<number>` is the bounded-metric
     # kind. The form collects min + max + a seed observation, but no unit
@@ -171,7 +171,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has no unit field
     And the modal has no objective fields
 
-  @HE-???? @priority:high
+  @HE-2671 @priority:high
   Scenario: Switching from BSC to Strict Range swaps the form (§17.25 / §17.77)
     # SPEC §17.25 — kind swaps re-render the right-pane form without
     # closing the modal. The previously-visible unit + objective rows
@@ -187,7 +187,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has no unit field
     And the modal has no objective fields
 
-  @HE-???? @priority:high
+  @HE-2670 @priority:high
   Scenario: Confirming a Strict Range child appends it to the focused parent and closes the modal (§17.77 / §17.94)
     # SPEC §17.77 — the seed value `42` lives inside `[0, 100]` so the
     # domain accepts it; the child appends and the modal closes.
@@ -202,7 +202,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And there are 1 child tiles
     And the focused id is unchanged after the modal interaction
 
-  @HE-???? @priority:high
+  @HE-2669 @priority:high
   Scenario: Picking Computed reveals title + description + weight + strategy picker (no seed value, no unit, no objective — §17.94)
     # SPEC §17.94 — `ComputedNode` is a derived metric: its value is
     # rolled up from eligible children through a strategy, so the
@@ -220,7 +220,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has no objective fields
     And the modal has no range fields
 
-  @HE-???? @priority:high
+  @HE-2667 @priority:high
   Scenario: Confirming a Computed child with the default strategy appends and closes the modal (§17.94)
     # SPEC §17.94 — `computationKindName` defaults to "AVERAGE" so
     # confirming without touching the strategy dropdown still produces
@@ -235,7 +235,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And there are 1 child tiles
     And the focused id is unchanged after the modal interaction
 
-  @HE-???? @priority:high
+  @HE-2666 @priority:high
   Scenario: Picking Computed Business Score Card reveals unit + target objective + strategy (no initial baseline, no seed value — §17.95)
     # SPEC §17.95 — `ComputedBusinessScoreNode` combines the BSC's
     # measured shape (unit + target objective) with the Computed
@@ -255,7 +255,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has no current-value field
     And the modal has no range fields
 
-  @HE-???? @priority:high
+  @HE-2664 @priority:high
   Scenario: Switching from Computed to Computed Business Score Card adds unit + objective fields (§17.25 / §17.95)
     # SPEC §17.25 — kind swaps re-render the right pane without
     # closing the modal. The strategy picker stays put (both Computed
@@ -271,7 +271,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has a unit field
     And the modal has the target-only objective fields
 
-  @HE-???? @priority:high
+  @HE-2663 @priority:high
   Scenario: Confirming a Computed Business Score Card child with the default strategy appends and closes the modal (§17.95)
     # SPEC §17.95 — minimum-viable CBSN seed: title + unit + target value
     # + target date. Description is optional (no `required` attribute);
@@ -288,7 +288,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And there are 1 child tiles
     And the focused id is unchanged after the modal interaction
 
-  @HE-???? @priority:high
+  @HE-2662 @priority:high
   Scenario: Picking Workflow reveals title + weight + status picker + current-value + as-of (§17.118)
     # SPEC §17.118 — Workflow is a TextNode plus a board-level status
     # badge. The form therefore carries the full TextNode current-value
@@ -308,7 +308,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has no range fields
     And the modal has no strategy picker
 
-  @HE-???? @priority:high
+  @HE-2660 @priority:high
   Scenario: Confirming a Workflow child appends with the default "plan" status (§17.118)
     # SPEC §17.118 — `DEFAULT_WORKFLOW_STATUS_ID` is `"plan"`; the
     # modal's `statusId` defaults to it so confirming without touching
@@ -323,7 +323,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And there are 1 child tiles
     And the focused id is unchanged after the modal interaction
 
-  @HE-???? @priority:high
+  @HE-2657 @priority:high
   Scenario: Picking Picture reveals title + weight + image-url and nothing else (§17.119)
     # SPEC §17.119 — PictureNode is a title-bearing image card. The
     # only kind-specific input is the image URL (object-fit: cover at
@@ -343,7 +343,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has no strategy picker
     And the modal has no status picker
 
-  @HE-???? @priority:high
+  @HE-2656 @priority:high
   Scenario: Confirming a Picture child appends with a valid image URL (§17.119)
     # SPEC §17.119 — minimum-viable Picture seed: title + a syntactically
     # valid image URL. Render-time load failures surface a warning glyph
@@ -357,7 +357,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And there are 1 child tiles
     And the focused id is unchanged after the modal interaction
 
-  @HE-???? @priority:high
+  @HE-2655 @priority:high
   Scenario: Picking URL reveals title + weight + URL field and nothing else (§17.120)
     # SPEC §17.120 — URLNode is a title-bearing QR card. The only
     # kind-specific input is the URL (rendered as a scannable QR with
@@ -379,7 +379,7 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has no strategy picker
     And the modal has no status picker
 
-  @HE-???? @priority:high
+  @HE-2654 @priority:high
   Scenario: Confirming a URL child appends with a valid URL (§17.120)
     # SPEC §17.120 — minimum-viable URL seed: title + a syntactically
     # valid URL. QR generation failures surface a warning glyph at

@@ -12,19 +12,19 @@ Feature: Close-to-parent X navigates the focused panel back up
     And I seed the "capacityTree" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2759 @priority:high
   Scenario: At root focus the close-to-parent button is not rendered
     Then the focused id is "capacity-root"
     And the close-to-parent button is not rendered
 
-  @HE-???? @priority:high
+  @HE-2758 @priority:high
   Scenario: After drilling, the close-to-parent button is visible on the focused panel
     When I focus on node "n11c5"
     Then the focused id is "n11c5"
     And the close-to-parent button is visible
     And the close-to-parent button targets node "n11"
 
-  @HE-???? @priority:high
+  @HE-2756 @priority:high
   Scenario: Tapping the close-to-parent button focuses the parent
     When I focus on node "n11c5"
     And I tap the close-to-parent button
@@ -33,7 +33,7 @@ Feature: Close-to-parent X navigates the focused panel back up
     And the close-to-parent button is visible
     And the close-to-parent button targets node "capacity-root"
 
-  @HE-???? @priority:high
+  @HE-2757 @priority:high
   Scenario: Walking up to the root removes the close-to-parent button
     When I focus on node "n11c5"
     And I tap the close-to-parent button

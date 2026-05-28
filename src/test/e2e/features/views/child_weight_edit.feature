@@ -27,20 +27,20 @@ Feature: Inline weight editing on child tiles (SPEC §17.52)
     And I reload the kiosk
     And I dismiss animations via the test bridge
 
-  @HE-???? @priority:high
+  @HE-2786 @priority:high
   Scenario: Each child tile shows a weight-edit corner button
     Then there are 2 child tiles
     And the child tile "TXT-A" shows a weight-edit corner button
     And the child tile "TXT-B" shows a weight-edit corner button
 
-  @HE-???? @priority:high
+  @HE-2782 @priority:high
   Scenario: Tapping the corner icon opens the popover seeded at the tile's weight
     When I tap the weight-edit corner button on child tile "TXT-A"
     Then the weight-edit popover is open
     And the weight-edit slider value is "1"
     And the weight-edit live label shows "1.0"
 
-  @HE-???? @priority:high
+  @HE-2781 @priority:high
   Scenario: Tapping the corner icon does NOT drill into the tile
     # SPEC §17.52 -- the icon's click handler stops propagation so
     # the operator gets the popover, not a navigation jump.
@@ -49,7 +49,7 @@ Feature: Inline weight editing on child tiles (SPEC §17.52)
     Then the focused id is "TXT-ROOT"
     And the weight-edit popover is open
 
-  @HE-???? @priority:high
+  @HE-2784 @priority:high
   Scenario: Dragging the slider updates the live label without committing (commit-on-release)
     # SPEC §17.52 commit-on-release contract: the live label updates
     # on `input`, the persisted commit fires only on `change` (thumb
@@ -61,7 +61,7 @@ Feature: Inline weight editing on child tiles (SPEC §17.52)
     Then the weight-edit live label shows "5.0"
     And the child tile "TXT-A" carries data-weight "1"
 
-  @HE-???? @priority:high
+  @HE-2785 @priority:high
   Scenario: Releasing the slider commits the new weight and reflows the treemap
     When I tap the weight-edit corner button on child tile "TXT-A"
     Then the weight-edit popover is open
@@ -71,7 +71,7 @@ Feature: Inline weight editing on child tiles (SPEC §17.52)
     And the child tile "TXT-B" carries data-weight "1"
     And the child tile "TXT-A" bounding-box area exceeds the child tile "TXT-B" bounding-box area
 
-  @HE-???? @priority:medium
+  @HE-2783 @priority:medium
   Scenario: Pressing Escape closes the popover without committing
     When I tap the weight-edit corner button on child tile "TXT-A"
     Then the weight-edit popover is open
@@ -80,7 +80,7 @@ Feature: Inline weight editing on child tiles (SPEC §17.52)
     Then the weight-edit popover is closed
     And the child tile "TXT-A" carries data-weight "1"
 
-  @HE-???? @priority:medium
+  @HE-2787 @priority:medium
   Scenario: A long-press on a child tile opens the same popover (SPEC §17.52 hidden gesture)
     # SPEC §17.52 -- the long-press is the hidden gesture; the corner
     # icon is the discoverable path. Both open the same popover.

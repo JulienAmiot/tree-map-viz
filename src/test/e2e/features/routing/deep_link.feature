@@ -17,7 +17,7 @@ Feature: Deep-linking via the URL hash (§17.35)
     And I seed the "textTree" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2703 @priority:high
   Scenario: Reloading on a non-root deep link lands focused on that node
     # Drive the URL to a non-root focus, then reload — the bootup
     # path's `nav.focusByUuid(startRoute.focusNodeUuid)` must read
@@ -28,7 +28,7 @@ Feature: Deep-linking via the URL hash (§17.35)
     And the focused title is "Region"
     And the URL hash includes "/n/TXT-A"
 
-  @HE-???? @priority:high
+  @HE-2704 @priority:high
   Scenario: Reloading on the root deep link lands focused at root
     When I focus on node "TXT-ROOT"
     And I reload the kiosk
@@ -36,7 +36,7 @@ Feature: Deep-linking via the URL hash (§17.35)
     And the focused title is "Quarterly review"
     And the URL hash includes "/n/TXT-ROOT"
 
-  @HE-???? @priority:high
+  @HE-2705 @priority:high
   Scenario: Manually changing the hash to an existing node updates the focus
     # External hash change (the operator pastes a URL, browser
     # back/forward, etc.). `router.onChange` runs synchronously

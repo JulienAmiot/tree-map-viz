@@ -17,18 +17,18 @@ Feature: Layout reflows when the viewport rotates
     And I seed the "textTree" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2647 @priority:high
   Scenario: Default Playwright viewport (1280x720) reports landscape
     Then the layout orientation is "landscape"
     And the parent strip is to the left of the children grid
 
-  @HE-???? @priority:high
+  @HE-2645 @priority:high
   Scenario: Resizing to a portrait viewport flips the orientation flag
     When I resize the viewport to 400x900
     Then the layout orientation is "portrait"
     And the parent strip is above the children grid
 
-  @HE-???? @priority:high
+  @HE-2646 @priority:high
   Scenario: Rotating back to landscape flips the orientation again
     When I resize the viewport to 400x900
     And I resize the viewport to 1280x720

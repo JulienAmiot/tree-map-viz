@@ -14,13 +14,13 @@ Feature: Breadcrumb shows the focus path and navigates on tap
     And I seed the "capacityTree" fixture via the test bridge
     And I reload the kiosk
 
-  @HE-???? @priority:high
+  @HE-2749 @priority:high
   Scenario: At root the breadcrumb shows a single non-tappable segment
     Then the breadcrumb has 1 segment
     And breadcrumb segment 1 shows "Capacity test root"
     And the last breadcrumb segment is the current page
 
-  @HE-???? @priority:high
+  @HE-2747 @priority:high
   Scenario: A 3-deep focus produces 3 segments root → … → focused
     When I focus on node "n11c5"
     Then the breadcrumb has 3 segments
@@ -29,7 +29,7 @@ Feature: Breadcrumb shows the focus path and navigates on tap
     And breadcrumb segment 3 shows "5"
     And the last breadcrumb segment is the current page
 
-  @HE-???? @priority:high
+  @HE-2748 @priority:high
   Scenario: Tapping an ancestor segment navigates to that ancestor
     When I focus on node "n11c5"
     And I tap the breadcrumb segment for "n11"
