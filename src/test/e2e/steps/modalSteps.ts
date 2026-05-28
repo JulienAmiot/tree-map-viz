@@ -401,16 +401,6 @@ Then(
   },
 );
 
-Then("the modal has the computed toggle", async ({ page }) => {
-  const kiosk = new TreeMapPage(page);
-  await expect(kiosk.addChildModalField("field-computed")).toHaveCount(1);
-});
-
-Then("the modal has the eligible-for-parent-computation toggle", async ({ page }) => {
-  const kiosk = new TreeMapPage(page);
-  await expect(kiosk.addChildModalField("field-eligible")).toHaveCount(1);
-});
-
 Then(
   "the title field shows the value {string}",
   async ({ page }, expected: string) => {

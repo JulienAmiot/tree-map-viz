@@ -73,7 +73,12 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has no objective fields
 
   @HE-2678 @priority:high
-  Scenario: Picking BusinessScoreCard reveals description + unit + current-value + objective + toggles
+  Scenario: Picking BusinessScoreCard reveals description + unit + current-value + objective fields
+    # SPEC §17.99b/c retired the v3-era `computed` + `eligible-for-
+    # parent-computation` checkboxes from the add-child modal — a
+    # computed BSC is now created via the parent's kind picker, not
+    # via toggles on the child form. The two former toggle assertions
+    # were dropped from this scenario accordingly.
     When I click the plus tile
     And I pick the kind "BusinessScoreCardNode"
     Then the modal form is for kind "BusinessScoreCardNode"
@@ -82,8 +87,6 @@ Feature: Add-child modal opens from the "+" tile and appends a new child
     And the modal has a current-value field
     And the as-of date defaults to today's local-calendar ISO
     And the modal has objective fields
-    And the modal has the computed toggle
-    And the modal has the eligible-for-parent-computation toggle
 
   @HE-2676 @priority:high
   Scenario: Switching the kind from Text to BusinessScoreCard swaps in the BSC form (§17.25)
