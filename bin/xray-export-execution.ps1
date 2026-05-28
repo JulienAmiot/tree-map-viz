@@ -59,6 +59,21 @@
   XRay testEnvironments value. Defaults to "CI" when $env:CI is truthy,
   else "local".
 
+.PARAMETER ReuseTag
+  Free-form identifier used to find + reuse a Test Execution across
+  runs (typically `PR #123` from the CI workflow's pull_request
+  trigger). When set, the script:
+    - includes the tag in the Test Execution summary,
+    - applies a unique Jira label `tmv-e2e-<slug>-<tpKey>` per
+      group so the issue can be looked up later,
+    - in `-Live` mode runs a GraphQL `getTestExecutions(jql:"labels =
+      \"...\"")` lookup; if found, the existing issue key drives an
+      UPDATE; if not, a fresh issue is CREATEd with the label so the
+      next run can find it.
+  Falls back to $env:XRAY_TEST_EXEC_REUSE_TAG when not passed.
+  Takes precedence over the `XRAY_EXECUTION_KEY_<BRANCH>` legacy
+  reuse mechanism (§17.148 Q1). See SPEC §17.150.
+
 .PARAMETER Live
   When set, authenticates and POSTs to XRay. Otherwise (default) the
   script prints the `info` JSON + the per-group summary and exits without
@@ -72,6 +87,10 @@
   # Real upload (only meaningful once the pairing-bug follow-up has
   # resolved all @HE-???? scenario placeholders).
   pwsh ./bin/xray-export-execution.ps1 -Live
+
+.EXAMPLE
+  # CI usage: one reused Test Execution per PR + Test Plan group.
+  pwsh ./bin/xray-export-execution.ps1 -Live -ReuseTag "PR #123"
 #>
 
 [CmdletBinding()]
@@ -82,6 +101,7 @@ param(
     [string] $Branch,
     [string] $CommitSha,
     [string] $Environment,
+    [string] $ReuseTag,
     [switch] $Live
 )
 
@@ -129,6 +149,9 @@ if (-not $CommitSha) {
 }
 if (-not $Environment) {
     if ($env:CI) { $Environment = "CI" } else { $Environment = "local" }
+}
+if (-not $ReuseTag) {
+    $ReuseTag = $env:XRAY_TEST_EXEC_REUSE_TAG
 }
 $ClientId     = $env:XRAY_CLIENT_ID
 $ClientSecret = $env:XRAY_CLIENT_SECRET
@@ -211,12 +234,70 @@ function Get-XrayJwt {
     return $script:jwt
 }
 
+# --- §17.150 reuse-tag helpers -----------------------------------------------
+# Returns a Jira-safe label combining the reuse tag + Test Plan key. Used as
+# the lookup key for `Find-ExistingTestExecution` AND embedded as a Jira
+# label on every created Test Execution so the next run can find it.
+# Slug rules: lowercase, [^a-z0-9] -> "-", collapsed + trimmed; prefixed
+# with "tmv-e2e-" so labels scope cleanly to this codebase.
+function Get-ReuseTagLabel([string] $reuseTag, [string] $tpKey) {
+    if (-not $reuseTag) { return "" }
+    $combined = "$reuseTag-$tpKey"
+    $slug = $combined.ToLowerInvariant() -replace "[^a-z0-9]+", "-"
+    $slug = $slug.Trim("-")
+    return "tmv-e2e-$slug"
+}
+
+# Looks up an existing Test Execution issue carrying the `Get-ReuseTagLabel`
+# label via XRay's GraphQL `getTestExecutions(jql:"...")`. Returns the
+# issue key or $null. Same fail-soft contract as `Get-XrayTestSummaries`
+# in xray-import.ps1: any error logs a warning and returns $null, which
+# causes the caller to CREATE a fresh Test Execution.
+function Find-ExistingTestExecution([string] $jwt, [string] $reuseTag, [string] $tpKey) {
+    if (-not $reuseTag) { return $null }
+    $label = Get-ReuseTagLabel -reuseTag $reuseTag -tpKey $tpKey
+    if (-not $label) { return $null }
+    $jql   = "labels = `"$label`""
+    $query = "{ getTestExecutions(jql: `"$jql`", limit: 5) { results { jira(fields: [`"key`", `"summary`"]) } } }"
+    $body  = @{ query = $query } | ConvertTo-Json -Compress
+    try {
+        $resp = Invoke-RestMethod `
+            -Method Post `
+            -Uri "$BaseUrl/api/v2/graphql" `
+            -Headers @{ Authorization = "Bearer $jwt" } `
+            -ContentType "application/json" `
+            -Body $body
+    } catch {
+        Write-Warning "  Reuse-tag GraphQL lookup failed for label '$label': $($_.Exception.Message). Will CREATE a new Test Execution."
+        return $null
+    }
+    if ($resp -and $resp.data -and $resp.data.getTestExecutions -and $resp.data.getTestExecutions.results) {
+        $first = @($resp.data.getTestExecutions.results) | Select-Object -First 1
+        if ($first -and $first.jira -and $first.jira.key) {
+            return [string]$first.jira.key
+        }
+    }
+    return $null
+}
+
 # --- Build the per-group `info` JSON -----------------------------------------
-function New-InfoPayload([string] $testPlanKey, [int] $scenarioCount, [int] $passedCount, [int] $failedCount) {
+function New-InfoPayload {
+    param(
+        [string] $testPlanKey,
+        [int]    $scenarioCount,
+        [int]    $passedCount,
+        [int]    $failedCount,
+        [string] $reuseTag          = "",
+        [string] $reuseExecutionKey = ""
+    )
     $perBranchKey = Get-PerBranchExecutionKey -branch $Branch
     $timestamp    = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-    $summary      = "E2E run -- $Branch@$CommitSha -- $timestamp -- $testPlanKey"
-    $description  = @(
+    $summary = if ($reuseTag) {
+        "E2E run -- $reuseTag -- $testPlanKey"
+    } else {
+        "E2E run -- $Branch@$CommitSha -- $timestamp -- $testPlanKey"
+    }
+    $description = @(
         "Automated XRay Test Execution import.",
         "",
         "Branch       : $Branch",
@@ -224,24 +305,32 @@ function New-InfoPayload([string] $testPlanKey, [int] $scenarioCount, [int] $pas
         "Environment  : $Environment",
         "Test Plan    : $testPlanKey",
         "Scenarios    : $scenarioCount (passed: $passedCount, failed: $failedCount)",
+        "Reuse Tag    : $(if ($reuseTag) { $reuseTag } else { '<none>' })",
         "Source       : src/test/e2e/test-results/cucumber.json"
     ) -join "`n"
 
+    $fields = [ordered]@{
+        project     = @{ key = $ProjectKey }
+        summary     = $summary
+        description = $description
+        issuetype   = @{ name = "Test Execution" }
+    }
+    if ($reuseTag) {
+        # Per-(reuseTag, tpKey) label so the next run's GraphQL lookup
+        # uniquely resolves THIS group's Test Execution issue.
+        $fields["labels"] = @(Get-ReuseTagLabel -reuseTag $reuseTag -tpKey $testPlanKey)
+    }
     $info = [ordered]@{
-        fields = [ordered]@{
-            project   = @{ key = $ProjectKey }
-            summary   = $summary
-            description = $description
-            issuetype = @{ name = "Test Execution" }
-        }
+        fields = $fields
         xrayFields = [ordered]@{
             testPlanKey      = $testPlanKey
             testEnvironments = @($Environment)
         }
     }
-    if ($perBranchKey) {
-        # Top-level testExecutionKey instructs XRay to UPDATE the existing
-        # issue rather than create a new one (Q1 update-shared).
+    # Precedence: explicit reuse-lookup result > XRAY_EXECUTION_KEY_<BRANCH>.
+    if ($reuseExecutionKey) {
+        $info["testExecutionKey"] = $reuseExecutionKey
+    } elseif ($perBranchKey) {
         $info["testExecutionKey"] = $perBranchKey
     }
     return $info
@@ -295,6 +384,7 @@ Write-Host "[xray-export-execution] BaseUrl    : $BaseUrl"
 Write-Host "[xray-export-execution] Branch     : $Branch"
 Write-Host "[xray-export-execution] Commit     : $CommitSha"
 Write-Host "[xray-export-execution] Environment: $Environment"
+Write-Host "[xray-export-execution] ReuseTag   : $(if ($ReuseTag) { $ReuseTag } else { '<unset>' })"
 Write-Host "[xray-export-execution] Source     : $CucumberReport"
 Write-Host "[xray-export-execution] Features   : $($cucumberArray.Count)"
 Write-Host "[xray-export-execution] Mode       : $(if ($Live) { 'LIVE (will POST)' } else { 'DRY-RUN (no network calls)' })"
@@ -359,9 +449,22 @@ foreach ($tpKey in ($grouped.Keys | Sort-Object)) {
     $grandTotal.skipped   += $skippedCount
 
     Write-Host "=== Group: $tpKey ($($features.Count) feature(s), $scenarioCount scenarios) ==="
+    $reuseKey = $null
+    if ($Live -and $ReuseTag) {
+        $reuseKey = Find-ExistingTestExecution -jwt (Get-XrayJwt) -reuseTag $ReuseTag -tpKey $tpKey
+        if ($reuseKey) {
+            Write-Host "  reuse lookup     : found $reuseKey via label '$(Get-ReuseTagLabel -reuseTag $ReuseTag -tpKey $tpKey)' (UPDATE)" -ForegroundColor Cyan
+        } else {
+            Write-Host "  reuse lookup     : no existing Test Execution for '$ReuseTag' + $tpKey (CREATE, label '$(Get-ReuseTagLabel -reuseTag $ReuseTag -tpKey $tpKey)' attached for next run)" -ForegroundColor Cyan
+        }
+    }
     $perBranchKey = Get-PerBranchExecutionKey -branch $Branch
-    if ($perBranchKey) {
-        Write-Host "  testExecutionKey : $perBranchKey (UPDATE mode)"
+    if ($reuseKey) {
+        Write-Host "  testExecutionKey : $reuseKey (UPDATE via reuse-tag)"
+    } elseif ($perBranchKey) {
+        Write-Host "  testExecutionKey : $perBranchKey (UPDATE via XRAY_EXECUTION_KEY_<BRANCH>)"
+    } elseif ($ReuseTag) {
+        Write-Host "  testExecutionKey : <unset> (would CREATE; labelled for reuse on next run)"
     } else {
         Write-Host "  testExecutionKey : <unset> (would CREATE a new Test Execution issue)"
     }
@@ -371,7 +474,9 @@ foreach ($tpKey in ($grouped.Keys | Sort-Object)) {
         -testPlanKey $tpKey `
         -scenarioCount $scenarioCount `
         -passedCount $passedCount `
-        -failedCount $failedCount
+        -failedCount $failedCount `
+        -reuseTag $ReuseTag `
+        -reuseExecutionKey $reuseKey
     if (-not $Live) {
         Write-Host "  --- info JSON (would POST) ---"
         Write-Host (($info | ConvertTo-Json -Depth 8) -split "`n" | ForEach-Object { "    $_" } | Out-String)

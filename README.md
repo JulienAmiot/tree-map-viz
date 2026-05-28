@@ -225,6 +225,7 @@ The Lit custom-element surface (each in its own shadow root):
 | End-to-end tests    | playwright-bdd (Gherkin → Playwright)          |
 | Quality gate        | SonarQube (local Docker; pre-push husky hook)  |
 | Deploy              | GitHub Pages (`.github/workflows/pages.yml`)   |
+| PR gate             | E2E + Jira Test Execution upload (`.github/workflows/e2e-pr-gate.yml`) |
 | Persistence         | Browser `localStorage` (single envelope)       |
 | Dependencies (prod) | `lit`, `qrcode`                                |
 
